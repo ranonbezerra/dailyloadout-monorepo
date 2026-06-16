@@ -12,7 +12,8 @@ dailyloadout-monorepo/
 ├── PRODUCT.md
 ├── ARCHITECTURE.md
 ├── ROADMAP.md
-├── docker-compose.yml              # postgres + redis + ollama + api + web
+├── Makefile                        # orchestrates all commands from root
+├── docker-compose.yml              # postgres + redis + ollama
 ├── docker-compose.dev.yml          # hot-reload overrides for dev
 ├── .env.example
 ├── .github/
@@ -45,7 +46,7 @@ dailyloadout-monorepo/
 - **FastAPI** 0.115+
 - **Pydantic v2** for schemas
 - **SQLAlchemy 2.x async** + **Alembic** for migrations
-- **PostgreSQL 16** with `citext`, `pg_trgm`, `pgcrypto` extensions
+- **PostgreSQL 18** with `citext`, `pg_trgm`, `pgcrypto` extensions
 - **Redis 7** for IGDB cache, refresh-token denylist, job queue
 - **arq** for async background jobs (chosen over Celery for async-native fit with FastAPI)
 - **fastapi-users** for authentication (email/password + optional Google OAuth)
@@ -102,7 +103,7 @@ Target platforms: **iOS, Android, macOS, Linux, Windows, Web.** Web has known au
 
 ## 3. Database schema
 
-PostgreSQL 16 with these extensions, created in `infra/postgres/init.sql`:
+PostgreSQL 18 with these extensions, created in `infra/postgres/init.sql`:
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS citext;       -- case-insensitive emails
@@ -550,8 +551,20 @@ LLM, STT, storage, email, IGDB — each follows the same shape: abstract base cl
 # Core
 APP_ENV=development
 SECRET_KEY=change-me-in-prod
-DATABASE_URL=postgresql+asyncpg://dailyloadout:dailyloadout@postgres/dailyloadout
-REDIS_URL=redis://redis:6379/0
+
+# Ports (remapped to avoid conflicts with sibling projects)
+POSTGRES_PORT=5433
+REDIS_PORT=6380
+OLLAMA_PORT=11434
+API_PORT=8100
+WEB_PORT=3000
+
+# Database
+POSTGRES_USER=dailyloadout
+POSTGRES_PASSWORD=dailyloadout
+POSTGRES_DB=dailyloadout
+DATABASE_URL=postgresql+asyncpg://dailyloadout:dailyloadout@localhost:5433/dailyloadout
+REDIS_URL=redis://localhost:6380/0
 
 # Single-user mode
 SINGLE_USER_MODE=false
@@ -559,7 +572,7 @@ SINGLE_USER_EMAIL=
 
 # LLM
 LLM_PROVIDER=ollama                  # ollama | bedrock
-OLLAMA_BASE_URL=http://ollama:11434
+OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_FAST_MODEL=gemma3:4b
 OLLAMA_SMART_MODEL=gemma3:12b
 LLM_TIMEOUT_SECONDS=60
@@ -605,28 +618,27 @@ OTEL_EXPORTER_OTLP_ENDPOINT=
 ### 8.1 Local dev / self-hosting (default)
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│ Docker Compose                                           │
-│                                                          │
-│  ┌─────────┐  ┌──────┐  ┌────────┐                       │
-│  │postgres │  │redis │  │ollama  │                       │
-│  └────┬────┘  └──┬───┘  └───┬────┘                       │
-│       │         │           │                            │
-│       └─────────┴───────────┘                            │
-│                 │                                        │
-│            ┌────┴────┐                                   │
-│            │  api    │── faster-whisper in-process       │
-│            │ FastAPI │                                   │
-│            └────┬────┘                                   │
-│                 │                                        │
-│         ┌───────┴────────┐                               │
-│         │                │                               │
-│    ┌────┴───┐       ┌────┴─────┐                         │
-│    │  web   │       │  app     │ Flutter, separate run   │
-│    │ React  │       │ (desktop)│                         │
-│    └────────┘       └──────────┘                         │
-└──────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────┐
+│ Docker Compose (make up)                             │
+│                                                      │
+│  ┌─────────┐  ┌──────┐  ┌────────┐                   │
+│  │postgres │  │redis │  │ollama  │                   │
+│  │ :5433   │  │ :6380│  │ :11434 │                   │
+│  └────┬────┘  └──┬───┘  └───┬────┘                   │
+│       └──────────┴───────────┘                       │
+└──────────────────────────────────────────────────────┘
+                     │
+     ┌───────────────┼───────────────┐
+     │               │               │
+┌────┴────┐    ┌─────┴────┐    ┌─────┴─────┐
+│  api    │    │  web     │    │  app      │
+│ FastAPI │    │ React    │    │ Flutter   │
+│ :8100   │    │ :3000    │    │ (desktop) │
+└─────────┘    └──────────┘    └───────────┘
+  host process   host process   host process
 ```
+
+Ports are remapped from standard defaults to avoid conflicts with other local projects (ocs-online, cleanmarket, trezya, etc.). All ports are configurable via `.env`.
 
 ### 8.2 Production self-host (Fly.io / Railway)
 

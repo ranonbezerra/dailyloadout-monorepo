@@ -1,0 +1,49 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: dl-postgres
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-dailyloadout}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dailyloadout}
+      POSTGRES_DB: ${POSTGRES_DB:-dailyloadout}
+    volumes:
+      - dl_postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dailyloadout}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: dl-redis
+    ports:
+      - "${REDIS_PORT:-6380}:6379"
+    volumes:
+      - dl_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: dl-ollama
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - dl_ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  dl_postgres_data:
+  dl_redis_data:
+  dl_ollama_data:

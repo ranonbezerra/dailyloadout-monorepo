@@ -1,0 +1,18 @@
+# Development overrides — use with: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+# The Makefile handles this automatically via `make up`.
+
+services:
+  postgres:
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+
+  redis:
+    command: redis-server --save 60 1 --loglevel warning
+
+  ollama:
+    # On macOS with Apple Silicon, Ollama runs natively for GPU access.
+    # This container is for Linux hosts or CI environments.
+    # To use host Ollama instead, comment out the ollama service and set:
+    #   OLLAMA_BASE_URL=http://host.docker.internal:11434
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"

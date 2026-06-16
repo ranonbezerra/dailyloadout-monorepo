@@ -43,26 +43,26 @@ cd dailyloadout-monorepo
 cp .env.example .env
 # (edit .env — defaults are sane for local dev)
 
-# Up everything
-docker compose up
+# Start infrastructure
+make up
 ```
 
 That starts:
-- **PostgreSQL 16** on `:5432`
-- **Redis 7** on `:6379`
-- **Ollama** on `:11434` (will pull `gemma3:4b` and `gemma3:12b` on first run)
-- **API (FastAPI)** on `:8000`
-- **Web (React)** on `:3000`
+- **PostgreSQL 18** on `:5433`
+- **Redis 7** on `:6380`
+- **Ollama** on `:11434`
 
-To run the Flutter app:
+Then run the services on the host:
 
 ```bash
-cd packages/app
-flutter pub get
-flutter run -d macos   # or chrome, ios, android, linux, windows
+make api          # FastAPI on :8100
+make web          # React on :3000
+make app          # Flutter (macOS by default)
 ```
 
-Open `http://localhost:3000` for the web dashboard, `http://localhost:8000/docs` for the API reference.
+Open `http://localhost:3000` for the web dashboard, `http://localhost:8100/docs` for the API reference.
+
+Run `make help` to see all available commands.
 
 ---
 
@@ -70,7 +70,7 @@ Open `http://localhost:3000` for the web dashboard, `http://localhost:8000/docs`
 
 | Package | Stack |
 |---|---|
-| `packages/api/` | Python 3.14 · FastAPI · Pydantic v2 · SQLAlchemy 2 async · PostgreSQL 16 · Redis · arq · Poetry |
+| `packages/api/` | Python 3.14 · FastAPI · Pydantic v2 · SQLAlchemy 2 async · PostgreSQL 18 · Redis · arq · Poetry |
 | `packages/app/` | Flutter 3.27+ · BLoC · go_router · dio · faster-whisper (server-side) |
 | `packages/web/` | Bun · Vite · React 19 · TypeScript · Mantine v8 · TanStack Query |
 | AI | **Ollama** (Gemma 3 4B + 12B, configurable) · **faster-whisper** local |
