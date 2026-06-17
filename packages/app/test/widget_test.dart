@@ -1,33 +1,46 @@
 import 'package:app/app/app.dart';
 import 'package:app/core/auth/auth_repository.dart';
+import 'package:app/core/library/library_repository.dart';
 import 'package:app/features/auth/bloc/auth_bloc.dart';
+import 'package:app/features/library/bloc/library_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockAuthRepository extends Mock implements AuthRepository {}
 
+class MockLibraryRepository extends Mock implements LibraryRepository {}
+
 void main() {
   late MockAuthRepository mockAuthRepository;
+  late MockLibraryRepository mockLibraryRepository;
   late AuthBloc authBloc;
+  late LibraryBloc libraryBloc;
 
   setUp(() {
     mockAuthRepository = MockAuthRepository();
+    mockLibraryRepository = MockLibraryRepository();
 
     // Stub the hasTokens call that AppStarted will trigger.
     when(() => mockAuthRepository.hasTokens())
         .thenAnswer((_) async => false);
 
     authBloc = AuthBloc(authRepository: mockAuthRepository);
+    libraryBloc = LibraryBloc(libraryRepository: mockLibraryRepository);
   });
 
   tearDown(() {
     authBloc.close();
+    libraryBloc.close();
   });
 
   testWidgets('App widget mounts and renders MaterialApp',
       (tester) async {
-    await tester.pumpWidget(App(authBloc: authBloc));
+    await tester.pumpWidget(App(
+      authBloc: authBloc,
+      libraryBloc: libraryBloc,
+      libraryRepository: mockLibraryRepository,
+    ));
 
     // The App widget should be mounted successfully.
     expect(find.byType(App), findsOneWidget);
@@ -36,7 +49,11 @@ void main() {
 
   testWidgets('App shows splash with loading indicator on startup',
       (tester) async {
-    await tester.pumpWidget(App(authBloc: authBloc));
+    await tester.pumpWidget(App(
+      authBloc: authBloc,
+      libraryBloc: libraryBloc,
+      libraryRepository: mockLibraryRepository,
+    ));
 
     // The splash screen should show a progress indicator.
     expect(find.byType(CircularProgressIndicator), findsOneWidget);

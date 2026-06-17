@@ -33,7 +33,7 @@ export function LoginPage() {
 	});
 
 	if (!isLoading && isAuthenticated) {
-		return <Navigate to="/" replace />;
+		return <Navigate to="/library" replace />;
 	}
 
 	const handleSubmit = async (values: LoginFormValues) => {

@@ -8,7 +8,14 @@ from dailyloadout.config import settings
 from dailyloadout.infrastructure.db.base import Base
 
 # Import all models so Alembic can detect them for autogenerate.
-from dailyloadout.infrastructure.db.models import OAuthIdentity, RefreshToken, User  # noqa: F401
+from dailyloadout.infrastructure.db.models import (  # noqa: F401
+    Game,
+    LibraryEntry,
+    OAuthIdentity,
+    Platform,
+    RefreshToken,
+    User,
+)
 
 config = context.config
 
