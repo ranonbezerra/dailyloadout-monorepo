@@ -16,7 +16,7 @@ defaults:
     working-directory: packages/api
 
 jobs:
-  lint-and-test:
+  api-lint-and-test:
     runs-on: ubuntu-latest
 
     services:

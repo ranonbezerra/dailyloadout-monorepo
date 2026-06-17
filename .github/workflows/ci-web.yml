@@ -16,7 +16,7 @@ defaults:
     working-directory: packages/web
 
 jobs:
-  lint-and-test:
+  web-lint-and-test:
     runs-on: ubuntu-latest
 
     steps:
