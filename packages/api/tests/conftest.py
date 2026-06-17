@@ -6,12 +6,13 @@ depend on a running PostgreSQL instance.
 
 from __future__ import annotations
 
+import json
 from collections.abc import AsyncIterator
 from typing import Any
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import BigInteger, Integer, event
+from sqlalchemy import BigInteger, Integer, SmallInteger, Text, event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 # ---------------------------------------------------------------------------
@@ -19,14 +20,53 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 # autoincrement works correctly (SQLite only auto-increments INTEGER PKs).
 # ---------------------------------------------------------------------------
 from sqlalchemy.ext.compiler import compiles  # noqa: E402
+from sqlalchemy.types import TypeDecorator
 
 from dailyloadout.infrastructure.db.base import Base
-from dailyloadout.infrastructure.db.models import User  # noqa: F401  — ensure models registered
+from dailyloadout.infrastructure.db.models import (
+    Game,
+    LibraryEntry,  # noqa: F401  — ensure models registered
+    Platform,  # noqa: F401  — ensure models registered
+    User,  # noqa: F401  — ensure models registered
+)
 
 
 @compiles(BigInteger, "sqlite")
 def _bi_to_int(element: BigInteger, compiler: Any, **kw: Any) -> str:  # noqa: ARG001
     return compiler.visit_INTEGER(Integer(), **kw)
+
+
+@compiles(SmallInteger, "sqlite")
+def _si_to_int(element: SmallInteger, compiler: Any, **kw: Any) -> str:  # noqa: ARG001
+    return compiler.visit_INTEGER(Integer(), **kw)
+
+
+# ---------------------------------------------------------------------------
+# SQLite compatibility: PostgreSQL ARRAY(String) → JSON text in SQLite.
+# We monkey-patch the Game.genres column type so that create_all() produces
+# a TEXT column and the ORM transparently serialises lists as JSON strings.
+# ---------------------------------------------------------------------------
+
+
+class _JSONEncodedList(TypeDecorator):
+    """Store a Python list as a JSON string in SQLite."""
+
+    impl = Text
+    cache_ok = True
+
+    def process_bind_param(self, value: list[str] | None, dialect: Any) -> str | None:  # noqa: ARG002
+        if value is None:
+            return None
+        return json.dumps(value)
+
+    def process_result_value(self, value: str | None, dialect: Any) -> list[str] | None:  # noqa: ARG002
+        if value is None:
+            return None
+        return json.loads(value)
+
+
+# Swap the column type at import time, before create_all() runs.
+Game.__table__.c.genres.type = _JSONEncodedList()
 
 
 # ---------------------------------------------------------------------------
@@ -56,6 +96,22 @@ def _enable_sqlite_fks(dbapi_connection: Any, _connection_record: Any) -> None:
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# SQLite compatibility: remove indexes that use features unsupported by SQLite
+# (GIN, NULLS LAST, etc.).  This must happen once, before any create_all().
+# ---------------------------------------------------------------------------
+
+_SQLITE_INCOMPATIBLE_INDEXES = {
+    "idx_games_title_trgm",  # GIN + pg_trgm
+    "idx_library_user_last_played",  # NULLS LAST
+}
+
+for _table in Base.metadata.tables.values():
+    _to_remove = [idx for idx in _table.indexes if idx.name in _SQLITE_INCOMPATIBLE_INDEXES]
+    for idx in _to_remove:
+        _table.indexes.discard(idx)
 
 
 @pytest.fixture(autouse=True)
@@ -132,3 +188,46 @@ async def auth_headers(register_user: dict[str, Any]) -> dict[str, str]:
     default test user.
     """
     return {"Authorization": f"Bearer {register_user['access_token']}"}
+
+
+# ---------------------------------------------------------------------------
+# Platform seed data for library tests
+# ---------------------------------------------------------------------------
+
+_SEED_PLATFORMS = [
+    {"slug": "pc", "label": "PC", "family": "pc"},
+    {"slug": "ps5", "label": "PlayStation 5", "family": "playstation"},
+    {"slug": "ps4", "label": "PlayStation 4", "family": "playstation"},
+    {"slug": "xbox-series-x", "label": "Xbox Series X|S", "family": "xbox"},
+    {"slug": "xbox-one", "label": "Xbox One", "family": "xbox"},
+    {"slug": "switch", "label": "Nintendo Switch", "family": "nintendo"},
+    {"slug": "switch-2", "label": "Nintendo Switch 2", "family": "nintendo"},
+    {"slug": "steam-deck", "label": "Steam Deck", "family": "pc"},
+    {"slug": "ios", "label": "iOS", "family": "mobile"},
+    {"slug": "android", "label": "Android", "family": "mobile"},
+]
+
+
+@pytest.fixture
+async def seed_platforms() -> list[dict[str, Any]]:
+    """Insert seed platforms into the test database and return them as dicts.
+
+    Each dict contains ``id``, ``slug``, ``label``, and ``family`` after
+    insertion.
+    """
+    async with _TestSessionFactory() as session:
+        rows: list[dict[str, Any]] = []
+        for p in _SEED_PLATFORMS:
+            platform = Platform(**p)
+            session.add(platform)
+            await session.flush()
+            rows.append(
+                {
+                    "id": platform.id,
+                    "slug": platform.slug,
+                    "label": platform.label,
+                    "family": platform.family,
+                }
+            )
+        await session.commit()
+    return rows

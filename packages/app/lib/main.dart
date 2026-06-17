@@ -2,7 +2,9 @@ import 'package:app/app/app.dart';
 import 'package:app/core/api/api_client.dart';
 import 'package:app/core/auth/auth_repository.dart';
 import 'package:app/core/auth/auth_token_store.dart';
+import 'package:app/core/library/library_repository.dart';
 import 'package:app/features/auth/bloc/auth_bloc.dart';
+import 'package:app/features/library/bloc/library_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -23,7 +25,14 @@ Future<void> main() async {
     tokenStore: tokenStore,
   );
 
-  final authBloc = AuthBloc(authRepository: authRepository);
+  final libraryRepository = LibraryRepository(apiClient: apiClient);
 
-  runApp(App(authBloc: authBloc));
+  final authBloc = AuthBloc(authRepository: authRepository);
+  final libraryBloc = LibraryBloc(libraryRepository: libraryRepository);
+
+  runApp(App(
+    authBloc: authBloc,
+    libraryBloc: libraryBloc,
+    libraryRepository: libraryRepository,
+  ));
 }

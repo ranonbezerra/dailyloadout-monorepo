@@ -1,14 +1,20 @@
 import 'dart:async';
 
+import 'package:app/core/library/library_repository.dart';
 import 'package:app/features/auth/bloc/auth_bloc.dart';
 import 'package:app/features/auth/view/login_page.dart';
 import 'package:app/features/auth/view/register_page.dart';
 import 'package:app/features/auth/view/splash_page.dart';
-import 'package:app/features/home/view/home_page.dart';
+import 'package:app/features/library/view/add_game_page.dart';
+import 'package:app/features/library/view/library_detail_page.dart';
+import 'package:app/features/library/view/library_list_page.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-GoRouter createRouter(AuthBloc authBloc) {
+GoRouter createRouter(
+  AuthBloc authBloc, {
+  required LibraryRepository libraryRepository,
+}) {
   return GoRouter(
     initialLocation: '/splash',
     refreshListenable: _AuthBlocListenable(authBloc),
@@ -34,7 +40,7 @@ GoRouter createRouter(AuthBloc authBloc) {
       }
 
       // Redirect authenticated users away from auth/splash pages.
-      if (isOnAuthPage || isOnSplash) return '/';
+      if (isOnAuthPage || isOnSplash) return '/library';
       return null;
     },
     routes: [
@@ -52,7 +58,23 @@ GoRouter createRouter(AuthBloc authBloc) {
       ),
       GoRoute(
         path: '/',
-        builder: (context, state) => const HomePage(),
+        redirect: (context, state) => '/library',
+      ),
+      GoRoute(
+        path: '/library',
+        builder: (context, state) => const LibraryListPage(),
+      ),
+      GoRoute(
+        path: '/library/add',
+        builder: (context, state) => AddGamePage(
+          libraryRepository: libraryRepository,
+        ),
+      ),
+      GoRoute(
+        path: '/library/:id',
+        builder: (context, state) => LibraryDetailPage(
+          entryPublicId: state.pathParameters['id']!,
+        ),
       ),
     ],
   );

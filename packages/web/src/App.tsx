@@ -1,18 +1,49 @@
-import { AppShell, Text, Title } from "@mantine/core";
-import { Route, Routes } from "react-router-dom";
+import { AppShell, Button, NavLink, Stack, Text } from "@mantine/core";
+import { IconBooks, IconLogout } from "@tabler/icons-react";
+import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { useAuthContext } from "./contexts/AuthContext";
+import { LibraryPage } from "./pages/LibraryPage";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 
-function Dashboard() {
+function AppLayout() {
+	const { logout } = useAuthContext();
+	const location = useLocation();
+	const navigate = useNavigate();
+
 	return (
 		<AppShell navbar={{ width: 250, breakpoint: "sm" }} padding="md">
 			<AppShell.Navbar p="md">
-				<Text fw={700}>Navigation</Text>
+				<Stack justify="space-between" h="100%">
+					<Stack gap="xs">
+						<Text fw={700} mb="sm">
+							DailyLoadout
+						</Text>
+						<NavLink
+							label="Library"
+							leftSection={<IconBooks size={18} />}
+							active={location.pathname.startsWith("/library")}
+							onClick={() => navigate("/library")}
+						/>
+					</Stack>
+					<Button
+						variant="subtle"
+						color="gray"
+						leftSection={<IconLogout size={16} />}
+						onClick={() => logout()}
+						justify="flex-start"
+					>
+						Sign out
+					</Button>
+				</Stack>
 			</AppShell.Navbar>
 
 			<AppShell.Main>
-				<Title order={1}>DailyLoadout</Title>
+				<Routes>
+					<Route path="/library" element={<LibraryPage />} />
+					<Route path="*" element={<Navigate to="/library" replace />} />
+				</Routes>
 			</AppShell.Main>
 		</AppShell>
 	);
@@ -27,7 +58,7 @@ function App() {
 				path="/*"
 				element={
 					<ProtectedRoute>
-						<Dashboard />
+						<AppLayout />
 					</ProtectedRoute>
 				}
 			/>
