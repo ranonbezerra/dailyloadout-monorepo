@@ -10,7 +10,7 @@ WEB_DIR := packages/web
 FLUTTER := fvm flutter
 DART    := fvm dart
 
-# Load .env if present
+# Load root .env for infrastructure vars (ports, PG credentials)
 ifneq (,$(wildcard .env))
   include .env
   export
@@ -57,7 +57,7 @@ ollama-pull: ## Pull Ollama models (gemma3:4b + gemma3:12b)
 
 .PHONY: api
 api: ## Run API dev server (uvicorn with reload)
-	cd $(API_DIR) && poetry run uvicorn src.dailyloadout.main:app --reload --host 0.0.0.0 --port $(API_PORT)
+	cd $(API_DIR) && poetry run uvicorn src.dailyloadout.main:app --reload --host 0.0.0.0 --port $${API_PORT:-8100}
 
 .PHONY: api-test
 api-test: ## Run API tests
@@ -89,7 +89,7 @@ api-install: ## Install API dependencies
 
 .PHONY: web
 web: ## Run web dev server (vite)
-	cd $(WEB_DIR) && bun run dev --port $(WEB_PORT)
+	cd $(WEB_DIR) && bun run dev --port $${WEB_PORT:-3000}
 
 .PHONY: web-test
 web-test: ## Run web tests

@@ -1,6 +1,10 @@
 import { AppShell, Text, Title } from "@mantine/core";
+import { Route, Routes } from "react-router-dom";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+import { LoginPage } from "./pages/LoginPage";
+import { RegisterPage } from "./pages/RegisterPage";
 
-function App() {
+function Dashboard() {
 	return (
 		<AppShell navbar={{ width: 250, breakpoint: "sm" }} padding="md">
 			<AppShell.Navbar p="md">
@@ -11,6 +15,23 @@ function App() {
 				<Title order={1}>DailyLoadout</Title>
 			</AppShell.Main>
 		</AppShell>
+	);
+}
+
+function App() {
+	return (
+		<Routes>
+			<Route path="/login" element={<LoginPage />} />
+			<Route path="/register" element={<RegisterPage />} />
+			<Route
+				path="/*"
+				element={
+					<ProtectedRoute>
+						<Dashboard />
+					</ProtectedRoute>
+				}
+			/>
+		</Routes>
 	);
 }
 

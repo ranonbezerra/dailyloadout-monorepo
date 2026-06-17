@@ -1,12 +1,15 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.0.0/schema.json",
+	"$schema": "https://biomejs.dev/schemas/2.5.0/schema.json",
+	"files": {
+		"includes": ["**", "!dist", "!public"]
+	},
 	"formatter": {
 		"indentStyle": "tab",
 		"lineWidth": 99
 	},
 	"linter": {
 		"rules": {
-			"recommended": true
+			"preset": "recommended"
 		}
 	},
 	"assist": {

@@ -8,9 +8,6 @@ class Settings(BaseSettings):
     app_env: str = "development"
     secret_key: str = "change-me-in-prod"
 
-    # ── Ports ────────────────────────────────────────────────────────────
-    api_port: int = 8100
-
     # ── Database ─────────────────────────────────────────────────────────
     database_url: str = (
         "postgresql+asyncpg://dailyloadout:dailyloadout@localhost:5433/dailyloadout"
