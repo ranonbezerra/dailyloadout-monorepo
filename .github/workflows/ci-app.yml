@@ -16,7 +16,7 @@ defaults:
     working-directory: packages/app
 
 jobs:
-  analyze-and-test:
+  app-analyze-and-test:
     runs-on: ubuntu-latest
 
     steps:
