@@ -27,6 +27,26 @@ final class SubmitTextCapture extends CaptureEvent {
   List<Object?> get props => [rawText];
 }
 
+/// Dispatched when the user submits voice-transcribed (possibly edited) text.
+final class SubmitVoiceCapture extends CaptureEvent {
+  const SubmitVoiceCapture({required this.rawText});
+
+  final String rawText;
+
+  @override
+  List<Object?> get props => [rawText];
+}
+
+/// Dispatched when the user uploads audio for transcription.
+final class TranscribeAudio extends CaptureEvent {
+  const TranscribeAudio({required this.filePath});
+
+  final String filePath;
+
+  @override
+  List<Object?> get props => [filePath];
+}
+
 /// Dispatched when the user confirms a candidate into their library.
 final class ConfirmCandidate extends CaptureEvent {
   const ConfirmCandidate({

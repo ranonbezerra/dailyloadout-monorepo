@@ -46,8 +46,8 @@ class CaptureChoicePage extends StatelessWidget {
               icon: Icons.mic_outlined,
               title: 'Voice',
               subtitle: 'Speak about your games',
-              enabled: false,
-              onTap: () => _showComingSoon(context),
+              enabled: true,
+              onTap: () => context.go('/capture/voice'),
             ),
             const SizedBox(height: 12),
             _CaptureOptionCard(

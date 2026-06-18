@@ -28,12 +28,15 @@ class Settings(BaseSettings):
     llm_timeout_seconds: int = 60
 
     # ── STT ──────────────────────────────────────────────────────────────
-    stt_provider: str = "whisper_local"
-    whisper_model: str = "base"
+    stt_provider: str = "dummy"
+    whisper_model_size: str = "base"
+    whisper_device: str = "cpu"
+    whisper_compute_type: str = "int8"
 
     # ── Storage ──────────────────────────────────────────────────────────
     storage_provider: str = "local_fs"
     storage_local_path: str = "/var/lib/dailyloadout/uploads"
+    capture_upload_dir: str = "uploads/captures"
 
     # ── IGDB (optional) ──────────────────────────────────────────────────
     igdb_client_id: str = ""

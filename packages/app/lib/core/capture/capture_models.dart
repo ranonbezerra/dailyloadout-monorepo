@@ -108,6 +108,30 @@ class Capture extends Equatable {
       ];
 }
 
+/// Result of transcribing an audio file.
+class TranscribeResult extends Equatable {
+  const TranscribeResult({
+    required this.text,
+    this.language,
+    this.durationSeconds,
+  });
+
+  factory TranscribeResult.fromJson(Map<String, dynamic> json) {
+    return TranscribeResult(
+      text: json['text'] as String,
+      language: json['language'] as String?,
+      durationSeconds: (json['duration_seconds'] as num?)?.toDouble(),
+    );
+  }
+
+  final String text;
+  final String? language;
+  final double? durationSeconds;
+
+  @override
+  List<Object?> get props => [text, language, durationSeconds];
+}
+
 /// Paginated response for capture listings.
 class CaptureListResponse extends Equatable {
   const CaptureListResponse({

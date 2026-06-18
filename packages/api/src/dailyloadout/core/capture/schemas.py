@@ -19,6 +19,15 @@ class CaptureTextRequest(BaseModel):
     """Body for ``POST /v1/captures/text``."""
 
     raw_text: str = Field(min_length=3, max_length=2000)
+    input_type: str = "text"
+
+
+class TranscribeResponse(BaseModel):
+    """Response from ``POST /v1/captures/transcribe``."""
+
+    text: str
+    language: str | None = None
+    duration_seconds: float | None = None
 
 
 class CandidateConfirmRequest(BaseModel):
@@ -109,4 +118,5 @@ __all__ = [
     "CaptureResponse",
     "CaptureStatus",
     "CaptureTextRequest",
+    "TranscribeResponse",
 ]

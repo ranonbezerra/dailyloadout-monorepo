@@ -1,5 +1,5 @@
-import { Badge, Button, Group, Skeleton, Stack, Text, Title } from "@mantine/core";
-import { IconPlus } from "@tabler/icons-react";
+import { Badge, Button, Group, Menu, Skeleton, Stack, Text, Title } from "@mantine/core";
+import { IconChevronDown, IconMicrophone, IconTextPlus } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import { DataTable } from "mantine-datatable";
 import { useState } from "react";
@@ -7,6 +7,7 @@ import { useCaptures } from "../hooks/useCapture";
 import type { CaptureListItem } from "../types/capture";
 import { CaptureReviewModal } from "./CaptureReviewModal";
 import { CaptureTextModal } from "./CaptureTextModal";
+import { CaptureVoiceModal } from "./CaptureVoiceModal";
 
 const STATUS_TABS: { value: string; label: string }[] = [
 	{ value: "all", label: "All" },
@@ -29,6 +30,7 @@ const STATUS_COLORS: Record<string, string> = {
 export function CapturesPage() {
 	const [statusFilter, setStatusFilter] = useState("all");
 	const [textModalOpened, setTextModalOpened] = useState(false);
+	const [voiceModalOpened, setVoiceModalOpened] = useState(false);
 	const [reviewCaptureId, setReviewCaptureId] = useState<string | null>(null);
 
 	const activeStatus = statusFilter === "all" ? undefined : statusFilter;
@@ -55,9 +57,25 @@ export function CapturesPage() {
 		<Stack>
 			<Group justify="space-between">
 				<Title order={2}>Quick Add</Title>
-				<Button leftSection={<IconPlus size={16} />} onClick={() => setTextModalOpened(true)}>
-					New
-				</Button>
+				<Menu position="bottom-end" withinPortal>
+					<Menu.Target>
+						<Button rightSection={<IconChevronDown size={14} />}>New</Button>
+					</Menu.Target>
+					<Menu.Dropdown>
+						<Menu.Item
+							leftSection={<IconTextPlus size={16} />}
+							onClick={() => setTextModalOpened(true)}
+						>
+							Text
+						</Menu.Item>
+						<Menu.Item
+							leftSection={<IconMicrophone size={16} />}
+							onClick={() => setVoiceModalOpened(true)}
+						>
+							Voice
+						</Menu.Item>
+					</Menu.Dropdown>
+				</Menu>
 			</Group>
 
 			<Group gap="xs">
@@ -129,6 +147,15 @@ export function CapturesPage() {
 				onClose={() => setTextModalOpened(false)}
 				onSuccess={(captureId) => {
 					setTextModalOpened(false);
+					setReviewCaptureId(captureId);
+				}}
+			/>
+
+			<CaptureVoiceModal
+				opened={voiceModalOpened}
+				onClose={() => setVoiceModalOpened(false)}
+				onSuccess={(captureId) => {
+					setVoiceModalOpened(false);
 					setReviewCaptureId(captureId);
 				}}
 			/>

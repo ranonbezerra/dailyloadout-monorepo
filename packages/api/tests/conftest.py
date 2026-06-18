@@ -150,13 +150,19 @@ async def async_client() -> AsyncIterator[AsyncClient]:
     database dependency overridden to use the in-memory SQLite engine.
     """
     from dailyloadout.deps import get_db
-    from dailyloadout.deps.capture import get_igdb_client_dep, get_llm_client_dep
+    from dailyloadout.deps.capture import (
+        get_igdb_client_dep,
+        get_llm_client_dep,
+        get_stt_client_dep,
+    )
     from dailyloadout.infrastructure.llm.dummy import DummyLLMClient
+    from dailyloadout.infrastructure.stt.dummy import DummySTTClient
     from dailyloadout.main import app
 
     app.dependency_overrides[get_db] = _override_get_db
     app.dependency_overrides[get_llm_client_dep] = lambda: DummyLLMClient()
     app.dependency_overrides[get_igdb_client_dep] = lambda: None
+    app.dependency_overrides[get_stt_client_dep] = lambda: DummySTTClient()
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:

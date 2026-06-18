@@ -5,6 +5,7 @@ import {
 	listCaptures,
 	rejectCandidate,
 	submitTextCapture,
+	transcribeAudio,
 } from "../lib/capture-api";
 import type { LibraryStatus } from "../types/library";
 
@@ -42,10 +43,17 @@ export function useSubmitTextCapture() {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: (rawText: string) => submitTextCapture(rawText),
+		mutationFn: (vars: { rawText: string; inputType?: string }) =>
+			submitTextCapture(vars.rawText, vars.inputType),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: CAPTURES_KEY });
 		},
+	});
+}
+
+export function useTranscribeAudio() {
+	return useMutation({
+		mutationFn: (audioBlob: Blob) => transcribeAudio(audioBlob),
 	});
 }
 

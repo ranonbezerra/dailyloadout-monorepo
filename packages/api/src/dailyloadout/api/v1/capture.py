@@ -1,15 +1,21 @@
-"""Capture API endpoints: text capture, candidate review, and library commit."""
+"""Capture API endpoints: text capture, voice transcription, candidate review."""
 
+from __future__ import annotations
+
+import os
+import tempfile
 from uuid import UUID
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, HTTPException, Query, UploadFile, status
 
+from dailyloadout.config import settings
 from dailyloadout.core.capture.schemas import (
     CandidateConfirmRequest,
     CaptureListItem,
     CaptureListResponse,
     CaptureResponse,
     CaptureTextRequest,
+    TranscribeResponse,
 )
 from dailyloadout.core.library.schemas import LibraryEntryResponse
 from dailyloadout.deps import CurrentUserDep
@@ -19,6 +25,7 @@ from dailyloadout.deps.capture import (
     CaptureServiceDep,
     IGDBClientDep,
     LLMClientDep,
+    STTClientDep,
 )
 from dailyloadout.workers.capture_processor import process_capture
 
@@ -52,6 +59,7 @@ async def submit_text_capture(
     capture = await capture_service.submit_text(
         user_id=current_user.id,
         raw_text=body.raw_text,
+        input_type=body.input_type,
     )
 
     # Process inline (will become arq job later).
@@ -66,6 +74,74 @@ async def submit_text_capture(
     # Re-fetch with candidates eagerly loaded.
     capture = await capture_service.get_capture(current_user.id, capture.public_id)
     return CaptureResponse.model_validate(capture)
+
+
+# ---------------------------------------------------------------------------
+# Voice transcription (STT only — returns text for user review)
+# ---------------------------------------------------------------------------
+
+
+def _guess_extension(content_type: str | None) -> str:
+    """Map an audio MIME type to a file extension."""
+    mapping = {
+        "audio/webm": ".webm",
+        "audio/mp4": ".m4a",
+        "audio/mpeg": ".mp3",
+        "audio/wav": ".wav",
+        "audio/x-wav": ".wav",
+        "audio/ogg": ".ogg",
+        "audio/flac": ".flac",
+    }
+    return mapping.get(content_type or "", ".wav")
+
+
+@router.post(
+    "/transcribe",
+    response_model=TranscribeResponse,
+)
+async def transcribe_audio(
+    file: UploadFile,
+    current_user: CurrentUserDep,  # noqa: ARG001
+    stt_client: STTClientDep,
+) -> TranscribeResponse:
+    """Transcribe an audio file and return the text for user review.
+
+    The user can then edit the transcribed text and submit it via the
+    ``POST /v1/captures/text`` endpoint with ``input_type="voice"``.
+    """
+    # Validate MIME type.
+    if file.content_type and not file.content_type.startswith("audio/"):
+        raise HTTPException(status_code=400, detail="File must be an audio file.")
+
+    # Validate file size (5 MB max).
+    max_size = 5 * 1024 * 1024
+    contents = await file.read()
+    if len(contents) > max_size:
+        raise HTTPException(status_code=400, detail="Audio file must be under 5MB.")
+
+    if stt_client is None:
+        raise HTTPException(status_code=503, detail="Speech-to-text service is not available.")
+
+    # Save file temporarily for transcription.
+    upload_dir = settings.capture_upload_dir
+    os.makedirs(upload_dir, exist_ok=True)
+
+    suffix = _guess_extension(file.content_type)
+    with tempfile.NamedTemporaryFile(dir=upload_dir, suffix=suffix, delete=False) as tmp:
+        tmp.write(contents)
+        audio_path = tmp.name
+
+    try:
+        result = await stt_client.transcribe(audio_path)
+        return TranscribeResponse(
+            text=result.text,
+            language=result.language,
+            duration_seconds=result.duration_seconds,
+        )
+    finally:
+        # Always clean up the temp file.
+        if os.path.exists(audio_path):
+            os.unlink(audio_path)
 
 
 # ---------------------------------------------------------------------------

@@ -1,5 +1,6 @@
 import 'package:app/core/api/api_client.dart';
 import 'package:app/core/capture/capture_models.dart';
+import 'package:dio/dio.dart';
 
 /// Provides high-level capture operations backed by the API.
 class CaptureRepository {
@@ -8,12 +9,33 @@ class CaptureRepository {
   final ApiClient _apiClient;
 
   /// Submits free text for game extraction.
-  Future<Capture> submitText(String rawText) async {
+  ///
+  /// [inputType] defaults to `"text"` but can be `"voice"` when the text
+  /// originated from voice transcription.
+  Future<Capture> submitText(
+    String rawText, {
+    String inputType = 'text',
+  }) async {
     final response = await _apiClient.dio.post<Map<String, dynamic>>(
       '/v1/captures/text',
-      data: {'raw_text': rawText},
+      data: {'raw_text': rawText, 'input_type': inputType},
     );
     return Capture.fromJson(response.data!);
+  }
+
+  /// Uploads audio for transcription. Returns the transcribed text.
+  Future<TranscribeResult> transcribeAudio(String filePath) async {
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(
+        filePath,
+        contentType: DioMediaType('audio', 'wav'),
+      ),
+    });
+    final response = await _apiClient.dio.post<Map<String, dynamic>>(
+      '/v1/captures/transcribe',
+      data: formData,
+    );
+    return TranscribeResult.fromJson(response.data!);
   }
 
   /// Lists the current user's captures.

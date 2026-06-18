@@ -46,6 +46,21 @@ final class CaptureSubmitted extends CaptureState {
   List<Object?> get props => [capture];
 }
 
+/// Audio is being transcribed.
+final class CaptureTranscribing extends CaptureState {
+  const CaptureTranscribing();
+}
+
+/// Audio transcription is complete; the text is ready for review/editing.
+final class CaptureTranscribed extends CaptureState {
+  const CaptureTranscribed({required this.text});
+
+  final String text;
+
+  @override
+  List<Object?> get props => [text];
+}
+
 /// A capture operation failed.
 final class CaptureError extends CaptureState {
   const CaptureError({required this.message});

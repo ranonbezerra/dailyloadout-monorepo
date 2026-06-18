@@ -8,6 +8,7 @@ import 'package:app/features/auth/view/splash_page.dart';
 import 'package:app/features/capture/view/capture_choice_page.dart';
 import 'package:app/features/capture/view/capture_review_page.dart';
 import 'package:app/features/capture/view/capture_text_page.dart';
+import 'package:app/features/capture/view/capture_voice_page.dart';
 import 'package:app/features/library/view/add_game_page.dart';
 import 'package:app/features/library/view/library_detail_page.dart';
 import 'package:app/features/library/view/library_list_page.dart';
@@ -86,6 +87,10 @@ GoRouter createRouter(
       GoRoute(
         path: '/capture/text',
         builder: (context, state) => const CaptureTextPage(),
+      ),
+      GoRoute(
+        path: '/capture/voice',
+        builder: (context, state) => const CaptureVoicePage(),
       ),
       GoRoute(
         path: '/capture/review/:id',
