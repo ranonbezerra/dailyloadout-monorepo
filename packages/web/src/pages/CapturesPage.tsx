@@ -1,12 +1,4 @@
-import {
-	Badge,
-	Button,
-	Group,
-	Skeleton,
-	Stack,
-	Text,
-	Title,
-} from "@mantine/core";
+import { Badge, Button, Group, Skeleton, Stack, Text, Title } from "@mantine/core";
 import dayjs from "dayjs";
 import { DataTable } from "mantine-datatable";
 import { useState } from "react";
@@ -134,19 +126,14 @@ export function CapturesPage() {
 							accessor: "inputType",
 							title: "Type",
 							width: 80,
-							render: (capture: CaptureListItem) => (
-								<Text size="sm">{capture.inputType}</Text>
-							),
+							render: (capture: CaptureListItem) => <Text size="sm">{capture.inputType}</Text>,
 						},
 						{
 							accessor: "status",
 							title: "Status",
 							width: 140,
 							render: (capture: CaptureListItem) => (
-								<Badge
-									color={STATUS_COLORS[capture.status] ?? "gray"}
-									variant="light"
-								>
+								<Badge color={STATUS_COLORS[capture.status] ?? "gray"} variant="light">
 									{capture.status.replace("_", " ")}
 								</Badge>
 							),
@@ -156,9 +143,7 @@ export function CapturesPage() {
 							title: "Created",
 							width: 140,
 							render: (capture: CaptureListItem) => (
-								<Text size="xs">
-									{dayjs(capture.createdAt).format("MMM D, YYYY")}
-								</Text>
+								<Text size="xs">{dayjs(capture.createdAt).format("MMM D, YYYY")}</Text>
 							),
 						},
 					]}
@@ -192,10 +177,7 @@ export function CapturesPage() {
 				}}
 			/>
 
-			<CaptureReviewModal
-				captureId={reviewCaptureId}
-				onClose={() => setReviewCaptureId(null)}
-			/>
+			<CaptureReviewModal captureId={reviewCaptureId} onClose={() => setReviewCaptureId(null)} />
 		</Stack>
 	);
 }

@@ -13,11 +13,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import { IconCheck, IconX } from "@tabler/icons-react";
 import { useState } from "react";
-import {
-	useCapture,
-	useConfirmCandidate,
-	useRejectCandidate,
-} from "../hooks/useCapture";
+import { useCapture, useConfirmCandidate, useRejectCandidate } from "../hooks/useCapture";
 import { usePlatforms } from "../hooks/useLibrary";
 import type { CaptureCandidate } from "../types/capture";
 import type { LibraryStatus } from "../types/library";
@@ -52,17 +48,12 @@ function getConfidenceLabel(confidence: number | null): {
 	color: string;
 } {
 	if (confidence === null) return { label: "Unknown", color: "gray" };
-	if (confidence >= 0.8)
-		return { label: "High", color: CONFIDENCE_COLORS.high };
-	if (confidence >= 0.5)
-		return { label: "Medium", color: CONFIDENCE_COLORS.medium };
+	if (confidence >= 0.8) return { label: "High", color: CONFIDENCE_COLORS.high };
+	if (confidence >= 0.5) return { label: "Medium", color: CONFIDENCE_COLORS.medium };
 	return { label: "Low", color: CONFIDENCE_COLORS.low };
 }
 
-export function CaptureReviewModal({
-	captureId,
-	onClose,
-}: CaptureReviewModalProps) {
+export function CaptureReviewModal({ captureId, onClose }: CaptureReviewModalProps) {
 	const { data: capture, isLoading } = useCapture(captureId ?? "");
 	const { data: platforms = [] } = usePlatforms();
 	const confirmMutation = useConfirmCandidate();
@@ -73,18 +64,12 @@ export function CaptureReviewModal({
 		label: p.label,
 	}));
 
-	const pendingCount =
-		capture?.candidates.filter((c) => c.status === "pending").length ?? 0;
+	const pendingCount = capture?.candidates.filter((c) => c.status === "pending").length ?? 0;
 
 	if (!captureId) return null;
 
 	return (
-		<Modal
-			opened={!!captureId}
-			onClose={onClose}
-			title="Review Candidates"
-			size="lg"
-		>
+		<Modal opened={!!captureId} onClose={onClose} title="Review Candidates" size="lg">
 			{isLoading ? (
 				<Stack align="center" py="xl">
 					<Loader />
@@ -131,10 +116,7 @@ export function CaptureReviewModal({
 									} catch (err) {
 										notifications.show({
 											title: "Confirm failed",
-											message:
-												err instanceof Error
-													? err.message
-													: "An unexpected error occurred",
+											message: err instanceof Error ? err.message : "An unexpected error occurred",
 											color: "red",
 										});
 									}
@@ -154,17 +136,12 @@ export function CaptureReviewModal({
 									} catch (err) {
 										notifications.show({
 											title: "Reject failed",
-											message:
-												err instanceof Error
-													? err.message
-													: "An unexpected error occurred",
+											message: err instanceof Error ? err.message : "An unexpected error occurred",
 											color: "red",
 										});
 									}
 								}}
-								isPending={
-									confirmMutation.isPending || rejectMutation.isPending
-								}
+								isPending={confirmMutation.isPending || rejectMutation.isPending}
 							/>
 						))
 					)}
@@ -218,12 +195,11 @@ function CandidateCard({
 							<Text fw={600} size="sm">
 								{candidate.igdbTitle ?? candidate.title}
 							</Text>
-							{candidate.igdbTitle &&
-								candidate.igdbTitle !== candidate.title && (
-									<Text size="xs" c="dimmed">
-										Extracted as: {candidate.title}
-									</Text>
-								)}
+							{candidate.igdbTitle && candidate.igdbTitle !== candidate.title && (
+								<Text size="xs" c="dimmed">
+									Extracted as: {candidate.title}
+								</Text>
+							)}
 						</div>
 						<Group gap="xs">
 							<Badge color={confidence.color} variant="light" size="sm">
@@ -291,10 +267,7 @@ function CandidateCard({
 									loading={isPending}
 									disabled={!platformId}
 									onClick={() =>
-										onConfirm(
-											Number(platformId),
-											(status as LibraryStatus) ?? "backlog",
-										)
+										onConfirm(Number(platformId), (status as LibraryStatus) ?? "backlog")
 									}
 								>
 									Confirm
