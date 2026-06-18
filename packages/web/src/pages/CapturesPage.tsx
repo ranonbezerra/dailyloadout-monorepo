@@ -1,4 +1,12 @@
-import { Badge, Button, Group, Skeleton, Stack, Text, Title } from "@mantine/core";
+import {
+	Badge,
+	Button,
+	Group,
+	Skeleton,
+	Stack,
+	Text,
+	Title,
+} from "@mantine/core";
 import dayjs from "dayjs";
 import { DataTable } from "mantine-datatable";
 import { useState } from "react";
@@ -27,6 +35,16 @@ const STATUS_COLORS: Record<string, string> = {
 	failed: "red",
 	cancelled: "gray",
 };
+
+function getCaptureDescription(capture: CaptureListItem): {
+	text: string;
+	dimmed: boolean;
+} {
+	if (capture.rawText) return { text: capture.rawText, dimmed: false };
+	if (capture.candidateTitles.length > 0)
+		return { text: capture.candidateTitles.join(", "), dimmed: false };
+	return { text: `${capture.inputType} capture`, dimmed: true };
+}
 
 export function CapturesPage() {
 	const [statusFilter, setStatusFilter] = useState("all");
@@ -96,25 +114,39 @@ export function CapturesPage() {
 					columns={[
 						{
 							accessor: "rawText",
-							title: "Text",
-							render: (capture: CaptureListItem) => (
-								<Text size="sm" lineClamp={1} maw={400}>
-									{capture.rawText ?? "--"}
-								</Text>
-							),
+							title: "Description",
+							render: (capture: CaptureListItem) => {
+								const desc = getCaptureDescription(capture);
+								return (
+									<Text
+										size="sm"
+										lineClamp={1}
+										maw={400}
+										c={desc.dimmed ? "dimmed" : undefined}
+										fs={desc.dimmed ? "italic" : undefined}
+									>
+										{desc.text}
+									</Text>
+								);
+							},
 						},
 						{
 							accessor: "inputType",
 							title: "Type",
 							width: 80,
-							render: (capture: CaptureListItem) => <Text size="sm">{capture.inputType}</Text>,
+							render: (capture: CaptureListItem) => (
+								<Text size="sm">{capture.inputType}</Text>
+							),
 						},
 						{
 							accessor: "status",
 							title: "Status",
 							width: 140,
 							render: (capture: CaptureListItem) => (
-								<Badge color={STATUS_COLORS[capture.status] ?? "gray"} variant="light">
+								<Badge
+									color={STATUS_COLORS[capture.status] ?? "gray"}
+									variant="light"
+								>
 									{capture.status.replace("_", " ")}
 								</Badge>
 							),
@@ -124,7 +156,9 @@ export function CapturesPage() {
 							title: "Created",
 							width: 140,
 							render: (capture: CaptureListItem) => (
-								<Text size="xs">{dayjs(capture.createdAt).format("MMM D, YYYY")}</Text>
+								<Text size="xs">
+									{dayjs(capture.createdAt).format("MMM D, YYYY")}
+								</Text>
 							),
 						},
 					]}
@@ -158,7 +192,10 @@ export function CapturesPage() {
 				}}
 			/>
 
-			<CaptureReviewModal captureId={reviewCaptureId} onClose={() => setReviewCaptureId(null)} />
+			<CaptureReviewModal
+				captureId={reviewCaptureId}
+				onClose={() => setReviewCaptureId(null)}
+			/>
 		</Stack>
 	);
 }

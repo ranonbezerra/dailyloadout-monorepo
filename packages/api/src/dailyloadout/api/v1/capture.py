@@ -233,17 +233,19 @@ async def list_captures(
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ) -> CaptureListResponse:
-    """List the current user's captures (without candidates)."""
+    """List the current user's captures."""
     captures, total = await capture_service.list_captures(
         user_id=current_user.id,
         status_filter=status_filter,
         limit=limit,
         offset=offset,
     )
-    return CaptureListResponse(
-        items=[CaptureListItem.model_validate(c) for c in captures],
-        total=total,
-    )
+    items = []
+    for c in captures:
+        item = CaptureListItem.model_validate(c)
+        item.candidate_titles = [cand.igdb_title or cand.title for cand in c.candidates]
+        items.append(item)
+    return CaptureListResponse(items=items, total=total)
 
 
 @router.get("/{public_id}", response_model=CaptureResponse)

@@ -75,13 +75,14 @@ class CaptureResponse(BaseModel):
 
 
 class CaptureListItem(BaseModel):
-    """Capture summary for list views (without candidates)."""
+    """Capture summary for list views."""
 
     public_id: UUID
     input_type: str
     raw_text: str | None = None
     status: str
     error_message: str | None = None
+    candidate_titles: list[str] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 

@@ -45,6 +45,7 @@ export interface CaptureListItem {
 	rawText: string | null;
 	status: CaptureStatus;
 	errorMessage: string | null;
+	candidateTitles: string[];
 	createdAt: string;
 	updatedAt: string;
 }

@@ -13,9 +13,11 @@ infrastructure is fully wired.
 from __future__ import annotations
 
 import base64
+import io
 from pathlib import Path
 
 import structlog
+from PIL import Image
 
 from dailyloadout.infrastructure.db.models import Capture
 from dailyloadout.infrastructure.db.repositories.capture import (
@@ -52,7 +54,7 @@ async def process_capture(
                 )
                 return capture
 
-            image_bytes = Path(capture.image_path).read_bytes()
+            image_bytes = _load_image_as_jpeg(Path(capture.image_path))
             image_base64 = base64.b64encode(image_bytes).decode("utf-8")
 
             extracted = await llm_client.parse_capture_image(image_base64)
@@ -128,3 +130,34 @@ async def process_capture(
         await capture_repo.update_status(capture.id, "failed", error_message=str(exc))
 
     return capture
+
+
+# Formats natively supported by Ollama's vision endpoint.
+_OLLAMA_NATIVE_FORMATS = {"JPEG", "PNG", "GIF", "WEBP"}
+
+
+def _load_image_as_jpeg(path: Path) -> bytes:
+    """Read an image file and return JPEG bytes.
+
+    Ollama's vision API only accepts JPEG, PNG, GIF, and WebP.  Images
+    in other formats (HEIC, HEIF, BMP, TIFF, etc.) are converted to
+    JPEG before being sent.
+    """
+    # Register HEIF/HEIC opener if available.
+    try:
+        import pillow_heif  # noqa: PLC0415
+
+        pillow_heif.register_heif_opener()
+    except ImportError:
+        pass
+
+    img = Image.open(path)
+    if img.format and img.format.upper() in _OLLAMA_NATIVE_FORMATS:
+        # Already a supported format — return raw bytes as-is.
+        return path.read_bytes()
+
+    # Convert to JPEG.
+    out = img.convert("RGB") if img.mode in ("RGBA", "P", "LA") else img
+    buf = io.BytesIO()
+    out.save(buf, format="JPEG", quality=90)
+    return buf.getvalue()
