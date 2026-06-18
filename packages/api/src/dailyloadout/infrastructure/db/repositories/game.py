@@ -29,6 +29,12 @@ class GameRepository:
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def get_by_igdb_id(self, igdb_id: int) -> Game | None:
+        """Return the game with the given *igdb_id*, or ``None``."""
+        stmt = select(Game).where(Game.igdb_id == igdb_id)
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def get_by_slug(self, slug: str) -> Game | None:
         """Return the game with the given *slug*, or ``None``."""
         stmt = select(Game).where(Game.slug == slug)

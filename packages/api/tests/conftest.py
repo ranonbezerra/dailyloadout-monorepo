@@ -24,6 +24,8 @@ from sqlalchemy.types import TypeDecorator
 
 from dailyloadout.infrastructure.db.base import Base
 from dailyloadout.infrastructure.db.models import (
+    Capture,  # noqa: F401  — ensure models registered
+    CaptureCandidate,  # noqa: F401  — ensure models registered
     Game,
     LibraryEntry,  # noqa: F401  — ensure models registered
     Platform,  # noqa: F401  — ensure models registered
@@ -65,8 +67,9 @@ class _JSONEncodedList(TypeDecorator):
         return json.loads(value)
 
 
-# Swap the column type at import time, before create_all() runs.
+# Swap ARRAY(String) column types at import time, before create_all() runs.
 Game.__table__.c.genres.type = _JSONEncodedList()
+CaptureCandidate.__table__.c.igdb_genres.type = _JSONEncodedList()
 
 
 # ---------------------------------------------------------------------------
@@ -106,6 +109,7 @@ def _enable_sqlite_fks(dbapi_connection: Any, _connection_record: Any) -> None:
 _SQLITE_INCOMPATIBLE_INDEXES = {
     "idx_games_title_trgm",  # GIN + pg_trgm
     "idx_library_user_last_played",  # NULLS LAST
+    "idx_captures_created",  # created_at DESC expression
 }
 
 for _table in Base.metadata.tables.values():
@@ -146,9 +150,13 @@ async def async_client() -> AsyncIterator[AsyncClient]:
     database dependency overridden to use the in-memory SQLite engine.
     """
     from dailyloadout.deps import get_db
+    from dailyloadout.deps.capture import get_igdb_client_dep, get_llm_client_dep
+    from dailyloadout.infrastructure.llm.dummy import DummyLLMClient
     from dailyloadout.main import app
 
     app.dependency_overrides[get_db] = _override_get_db
+    app.dependency_overrides[get_llm_client_dep] = lambda: DummyLLMClient()
+    app.dependency_overrides[get_igdb_client_dep] = lambda: None
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:

@@ -126,9 +126,22 @@ class _LibraryListPageState extends State<LibraryListPage> {
           return const SizedBox.shrink();
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.go('/library/add'),
-        child: const Icon(Icons.add),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton.small(
+            heroTag: 'capture_fab',
+            onPressed: () => context.go('/capture'),
+            tooltip: 'Quick Add',
+            child: const Icon(Icons.auto_awesome),
+          ),
+          const SizedBox(height: 8),
+          FloatingActionButton(
+            heroTag: 'add_fab',
+            onPressed: () => context.go('/library/add'),
+            child: const Icon(Icons.add),
+          ),
+        ],
       ),
     );
   }

@@ -1,7 +1,9 @@
 import 'package:app/app/app.dart';
 import 'package:app/core/auth/auth_repository.dart';
+import 'package:app/core/capture/capture_repository.dart';
 import 'package:app/core/library/library_repository.dart';
 import 'package:app/features/auth/bloc/auth_bloc.dart';
+import 'package:app/features/capture/bloc/capture_bloc.dart';
 import 'package:app/features/library/bloc/library_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -11,15 +13,20 @@ class MockAuthRepository extends Mock implements AuthRepository {}
 
 class MockLibraryRepository extends Mock implements LibraryRepository {}
 
+class MockCaptureRepository extends Mock implements CaptureRepository {}
+
 void main() {
   late MockAuthRepository mockAuthRepository;
   late MockLibraryRepository mockLibraryRepository;
+  late MockCaptureRepository mockCaptureRepository;
   late AuthBloc authBloc;
   late LibraryBloc libraryBloc;
+  late CaptureBloc captureBloc;
 
   setUp(() {
     mockAuthRepository = MockAuthRepository();
     mockLibraryRepository = MockLibraryRepository();
+    mockCaptureRepository = MockCaptureRepository();
 
     // Stub the hasTokens call that AppStarted will trigger.
     when(() => mockAuthRepository.hasTokens())
@@ -27,11 +34,13 @@ void main() {
 
     authBloc = AuthBloc(authRepository: mockAuthRepository);
     libraryBloc = LibraryBloc(libraryRepository: mockLibraryRepository);
+    captureBloc = CaptureBloc(captureRepository: mockCaptureRepository);
   });
 
   tearDown(() {
     authBloc.close();
     libraryBloc.close();
+    captureBloc.close();
   });
 
   testWidgets('App widget mounts and renders MaterialApp',
@@ -39,6 +48,7 @@ void main() {
     await tester.pumpWidget(App(
       authBloc: authBloc,
       libraryBloc: libraryBloc,
+      captureBloc: captureBloc,
       libraryRepository: mockLibraryRepository,
     ));
 
@@ -52,6 +62,7 @@ void main() {
     await tester.pumpWidget(App(
       authBloc: authBloc,
       libraryBloc: libraryBloc,
+      captureBloc: captureBloc,
       libraryRepository: mockLibraryRepository,
     ));
 

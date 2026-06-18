@@ -1,0 +1,79 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+	confirmCandidate,
+	getCapture,
+	listCaptures,
+	rejectCandidate,
+	submitTextCapture,
+} from "../lib/capture-api";
+import type { LibraryStatus } from "../types/library";
+
+// ---------------------------------------------------------------------------
+// Query keys
+// ---------------------------------------------------------------------------
+
+const CAPTURES_KEY = ["captures"] as const;
+const LIBRARY_KEY = ["library"] as const;
+
+// ---------------------------------------------------------------------------
+// Queries
+// ---------------------------------------------------------------------------
+
+export function useCaptures(status?: string) {
+	return useQuery({
+		queryKey: [...CAPTURES_KEY, { status }],
+		queryFn: () => listCaptures(status ? { status } : undefined),
+	});
+}
+
+export function useCapture(publicId: string) {
+	return useQuery({
+		queryKey: [...CAPTURES_KEY, publicId],
+		queryFn: () => getCapture(publicId),
+		enabled: !!publicId,
+	});
+}
+
+// ---------------------------------------------------------------------------
+// Mutations
+// ---------------------------------------------------------------------------
+
+export function useSubmitTextCapture() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (rawText: string) => submitTextCapture(rawText),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: CAPTURES_KEY });
+		},
+	});
+}
+
+export function useConfirmCandidate() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (vars: {
+			captureId: string;
+			candidateId: string;
+			platformId: number;
+			status?: LibraryStatus;
+		}) => confirmCandidate(vars.captureId, vars.candidateId, vars.platformId, vars.status),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: CAPTURES_KEY });
+			queryClient.invalidateQueries({ queryKey: LIBRARY_KEY });
+		},
+	});
+}
+
+export function useRejectCandidate() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (vars: { captureId: string; candidateId: string }) =>
+			rejectCandidate(vars.captureId, vars.candidateId),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: CAPTURES_KEY });
+		},
+	});
+}
