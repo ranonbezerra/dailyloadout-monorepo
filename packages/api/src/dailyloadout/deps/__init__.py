@@ -12,6 +12,7 @@ from .capture import (
     CaptureServiceDep,
     IGDBClientDep,
     LLMClientDep,
+    STTClientDep,
 )
 from .db import DbSession, get_db
 from .library import (
@@ -32,6 +33,7 @@ __all__ = [
     "IGDBClientDep",
     "LLMClientDep",
     "LibraryRepoDep",
+    "STTClientDep",
     "LibraryServiceDep",
     "PlatformRepoDep",
     "get_db",

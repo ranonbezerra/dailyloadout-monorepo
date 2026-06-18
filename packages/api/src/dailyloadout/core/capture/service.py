@@ -46,11 +46,11 @@ class CaptureService:
     # Submission
     # ------------------------------------------------------------------
 
-    async def submit_text(self, user_id: int, raw_text: str) -> Capture:
-        """Create a new text capture with status ``queued``."""
+    async def submit_text(self, user_id: int, raw_text: str, input_type: str = "text") -> Capture:
+        """Create a new capture with status ``queued``."""
         return await self._capture_repo.create(
             user_id=user_id,
-            input_type="text",
+            input_type=input_type,
             raw_text=raw_text,
         )
 

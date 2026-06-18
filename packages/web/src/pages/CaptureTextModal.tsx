@@ -34,7 +34,7 @@ export function CaptureTextModal({ opened, onClose, onSuccess }: CaptureTextModa
 		}
 
 		try {
-			const capture = await submitMutation.mutateAsync(trimmed);
+			const capture = await submitMutation.mutateAsync({ rawText: trimmed });
 			notifications.show({
 				title: "Capture submitted",
 				message: `Found ${capture.candidates.length} candidate(s). Review them now.`,

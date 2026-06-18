@@ -1,6 +1,10 @@
+<p align="center">
+  <img src="./docs/brand/readme-hero.png" alt="DailyLoadout" width="100%" />
+</p>
+
 # DailyLoadout
 
-> A personal gaming backlog manager with local AI. No streaks, no guilt, no Steam integration. Voice/photo/text capture, "previously on..." briefings before each session, and a 3-question daily loadout that picks one game for you.
+> *Less deciding. More playing.* A personal gaming backlog manager with local AI. No streaks, no guilt, no Steam integration. Voice/photo/text capture, "previously on..." briefings before each session, and a 3-question daily loadout that picks one game for you.
 
 [![CI – API](https://img.shields.io/badge/CI-API-blue)]() [![CI – App](https://img.shields.io/badge/CI-App-blue)]() [![CI – Web](https://img.shields.io/badge/CI-Web-blue)]() [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -56,11 +60,11 @@ Then run the services on the host:
 
 ```bash
 make api          # FastAPI on :8100
-make web          # React on :3000
+make web          # React on :3200
 make app          # Flutter (macOS by default)
 ```
 
-Open `http://localhost:3000` for the web dashboard, `http://localhost:8100/docs` for the API reference.
+Open `http://localhost:3200` for the web dashboard, `http://localhost:8100/docs` for the API reference.
 
 Run `make help` to see all available commands.
 

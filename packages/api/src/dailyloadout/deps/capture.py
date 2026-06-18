@@ -1,4 +1,4 @@
-"""Capture dependencies: repositories, service, LLM and IGDB clients."""
+"""Capture dependencies: repositories, service, LLM, IGDB, and STT clients."""
 
 from __future__ import annotations
 
@@ -16,6 +16,8 @@ from dailyloadout.infrastructure.igdb.client import IGDBClient
 from dailyloadout.infrastructure.igdb.exceptions import IGDBNotConfigured
 from dailyloadout.infrastructure.llm.base import AbstractLLMClient
 from dailyloadout.infrastructure.llm.factory import get_llm_client
+from dailyloadout.infrastructure.stt.base import AbstractSTTClient
+from dailyloadout.infrastructure.stt.factory import get_stt_client
 
 from .db import DbSession
 from .library import GameRepoDep, LibraryRepoDep, PlatformRepoDep
@@ -53,8 +55,17 @@ def get_igdb_client_dep() -> IGDBClient | None:
         return None
 
 
+def get_stt_client_dep() -> AbstractSTTClient | None:
+    """Provide the STT client, or ``None`` if the provider is not configured."""
+    try:
+        return get_stt_client(settings)
+    except Exception:
+        return None
+
+
 LLMClientDep = Annotated[AbstractLLMClient, Depends(get_llm_client_dep)]
 IGDBClientDep = Annotated[IGDBClient | None, Depends(get_igdb_client_dep)]
+STTClientDep = Annotated[AbstractSTTClient | None, Depends(get_stt_client_dep)]
 
 
 # ── Service ────────────────────────────────────────────────────────────

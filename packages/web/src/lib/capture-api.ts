@@ -35,12 +35,47 @@ const BASE_URL =
 // Text capture
 // ---------------------------------------------------------------------------
 
-export async function submitTextCapture(rawText: string): Promise<Capture> {
+export async function submitTextCapture(rawText: string, inputType = "text"): Promise<Capture> {
 	const raw = await apiFetch<unknown>("/v1/captures/text", {
 		method: "POST",
-		body: JSON.stringify({ raw_text: rawText }),
+		body: JSON.stringify({ raw_text: rawText, input_type: inputType }),
 	});
 	return snakeToCamel<Capture>(raw);
+}
+
+// ---------------------------------------------------------------------------
+// Voice transcription
+// ---------------------------------------------------------------------------
+
+export interface TranscribeResult {
+	text: string;
+	language: string | null;
+	durationSeconds: number | null;
+}
+
+export async function transcribeAudio(audioBlob: Blob): Promise<TranscribeResult> {
+	const formData = new FormData();
+	formData.append("file", audioBlob, "recording.webm");
+
+	const headers: Record<string, string> = {};
+	const accessToken = getAccessToken();
+	if (accessToken) {
+		headers.Authorization = `Bearer ${accessToken}`;
+	}
+
+	const res = await fetch(`${BASE_URL}/v1/captures/transcribe`, {
+		method: "POST",
+		headers,
+		body: formData,
+	});
+
+	if (!res.ok) {
+		const errBody = await res.text();
+		throw new Error(errBody || `Transcription failed: ${res.status}`);
+	}
+
+	const raw = await res.json();
+	return snakeToCamel<TranscribeResult>(raw);
 }
 
 // ---------------------------------------------------------------------------

@@ -8,6 +8,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App.tsx";
 import { AuthProvider } from "./contexts/AuthContext.tsx";
+import { theme } from "./theme.ts";
 
 const queryClient = new QueryClient();
 
@@ -15,7 +16,7 @@ const queryClient = new QueryClient();
 createRoot(document.getElementById("root")!).render(
 	<StrictMode>
 		<QueryClientProvider client={queryClient}>
-			<MantineProvider>
+			<MantineProvider theme={theme} defaultColorScheme="dark">
 				<Notifications position="top-right" />
 				<BrowserRouter>
 					<AuthProvider>

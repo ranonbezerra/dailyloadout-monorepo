@@ -14,6 +14,8 @@ class CaptureBloc extends Bloc<CaptureEvent, CaptureState> {
         super(const CaptureInitial()) {
     on<LoadCaptures>(_onLoadCaptures);
     on<SubmitTextCapture>(_onSubmitTextCapture);
+    on<SubmitVoiceCapture>(_onSubmitVoiceCapture);
+    on<TranscribeAudio>(_onTranscribeAudio);
     on<ConfirmCandidate>(_onConfirmCandidate);
     on<RejectCandidate>(_onRejectCandidate);
   }
@@ -52,6 +54,43 @@ class CaptureBloc extends Bloc<CaptureEvent, CaptureState> {
 
     try {
       final capture = await _captureRepository.submitText(event.rawText);
+      emit(CaptureSubmitted(capture: capture));
+    } on DioException catch (e) {
+      final message = _extractErrorMessage(e);
+      emit(CaptureError(message: message));
+    } on Exception catch (e) {
+      emit(CaptureError(message: e.toString()));
+    }
+  }
+
+  Future<void> _onTranscribeAudio(
+    TranscribeAudio event,
+    Emitter<CaptureState> emit,
+  ) async {
+    emit(const CaptureTranscribing());
+
+    try {
+      final result = await _captureRepository.transcribeAudio(event.filePath);
+      emit(CaptureTranscribed(text: result.text));
+    } on DioException catch (e) {
+      final message = _extractErrorMessage(e);
+      emit(CaptureError(message: message));
+    } on Exception catch (e) {
+      emit(CaptureError(message: e.toString()));
+    }
+  }
+
+  Future<void> _onSubmitVoiceCapture(
+    SubmitVoiceCapture event,
+    Emitter<CaptureState> emit,
+  ) async {
+    emit(const CaptureSubmitting());
+
+    try {
+      final capture = await _captureRepository.submitText(
+        event.rawText,
+        inputType: 'voice',
+      );
       emit(CaptureSubmitted(capture: capture));
     } on DioException catch (e) {
       final message = _extractErrorMessage(e);
