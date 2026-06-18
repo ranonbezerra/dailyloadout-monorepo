@@ -77,7 +77,8 @@ class OllamaClient(AbstractLLMClient):
                         parsed = [parsed]
                     else:
                         logger.warning(
-                            "ollama_unexpected_json_structure", raw=raw_text,
+                            "ollama_unexpected_json_structure",
+                            raw=raw_text,
                         )
                         return []
 
