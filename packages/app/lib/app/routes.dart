@@ -6,6 +6,7 @@ import 'package:app/features/auth/view/login_page.dart';
 import 'package:app/features/auth/view/register_page.dart';
 import 'package:app/features/auth/view/splash_page.dart';
 import 'package:app/features/capture/view/capture_choice_page.dart';
+import 'package:app/features/capture/view/capture_photo_page.dart';
 import 'package:app/features/capture/view/capture_review_page.dart';
 import 'package:app/features/capture/view/capture_text_page.dart';
 import 'package:app/features/capture/view/capture_voice_page.dart';
@@ -91,6 +92,11 @@ GoRouter createRouter(
       GoRoute(
         path: '/capture/voice',
         builder: (context, state) => const CaptureVoicePage(),
+      ),
+      GoRoute(
+        path: '/capture/photo',
+        builder: (context, state) =>
+            const CapturePhotoPage(),
       ),
       GoRoute(
         path: '/capture/review/:id',

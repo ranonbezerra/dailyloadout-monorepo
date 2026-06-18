@@ -16,6 +16,7 @@ class CaptureBloc extends Bloc<CaptureEvent, CaptureState> {
     on<SubmitTextCapture>(_onSubmitTextCapture);
     on<SubmitVoiceCapture>(_onSubmitVoiceCapture);
     on<TranscribeAudio>(_onTranscribeAudio);
+    on<SubmitPhotoCapture>(_onSubmitPhotoCapture);
     on<ConfirmCandidate>(_onConfirmCandidate);
     on<RejectCandidate>(_onRejectCandidate);
   }
@@ -90,6 +91,25 @@ class CaptureBloc extends Bloc<CaptureEvent, CaptureState> {
       final capture = await _captureRepository.submitText(
         event.rawText,
         inputType: 'voice',
+      );
+      emit(CaptureSubmitted(capture: capture));
+    } on DioException catch (e) {
+      final message = _extractErrorMessage(e);
+      emit(CaptureError(message: message));
+    } on Exception catch (e) {
+      emit(CaptureError(message: e.toString()));
+    }
+  }
+
+  Future<void> _onSubmitPhotoCapture(
+    SubmitPhotoCapture event,
+    Emitter<CaptureState> emit,
+  ) async {
+    emit(const CaptureSubmitting());
+
+    try {
+      final capture = await _captureRepository.submitPhoto(
+        event.imagePath,
       );
       emit(CaptureSubmitted(capture: capture));
     } on DioException catch (e) {

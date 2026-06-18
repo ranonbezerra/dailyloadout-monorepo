@@ -1,10 +1,11 @@
-import { Badge, Button, Group, Menu, Skeleton, Stack, Text, Title } from "@mantine/core";
-import { IconChevronDown, IconMicrophone, IconTextPlus } from "@tabler/icons-react";
+import { Badge, Button, Group, Skeleton, Stack, Text, Title } from "@mantine/core";
 import dayjs from "dayjs";
 import { DataTable } from "mantine-datatable";
 import { useState } from "react";
+import { QuickAddMenu } from "../components/QuickAddMenu";
 import { useCaptures } from "../hooks/useCapture";
 import type { CaptureListItem } from "../types/capture";
+import { CapturePhotoModal } from "./CapturePhotoModal";
 import { CaptureReviewModal } from "./CaptureReviewModal";
 import { CaptureTextModal } from "./CaptureTextModal";
 import { CaptureVoiceModal } from "./CaptureVoiceModal";
@@ -31,6 +32,7 @@ export function CapturesPage() {
 	const [statusFilter, setStatusFilter] = useState("all");
 	const [textModalOpened, setTextModalOpened] = useState(false);
 	const [voiceModalOpened, setVoiceModalOpened] = useState(false);
+	const [photoModalOpened, setPhotoModalOpened] = useState(false);
 	const [reviewCaptureId, setReviewCaptureId] = useState<string | null>(null);
 
 	const activeStatus = statusFilter === "all" ? undefined : statusFilter;
@@ -56,26 +58,12 @@ export function CapturesPage() {
 	return (
 		<Stack>
 			<Group justify="space-between">
-				<Title order={2}>Quick Add</Title>
-				<Menu position="bottom-end" withinPortal>
-					<Menu.Target>
-						<Button rightSection={<IconChevronDown size={14} />}>New</Button>
-					</Menu.Target>
-					<Menu.Dropdown>
-						<Menu.Item
-							leftSection={<IconTextPlus size={16} />}
-							onClick={() => setTextModalOpened(true)}
-						>
-							Text
-						</Menu.Item>
-						<Menu.Item
-							leftSection={<IconMicrophone size={16} />}
-							onClick={() => setVoiceModalOpened(true)}
-						>
-							Voice
-						</Menu.Item>
-					</Menu.Dropdown>
-				</Menu>
+				<Title order={2}>Capture History</Title>
+				<QuickAddMenu
+					onText={() => setTextModalOpened(true)}
+					onVoice={() => setVoiceModalOpened(true)}
+					onPhoto={() => setPhotoModalOpened(true)}
+				/>
 			</Group>
 
 			<Group gap="xs">
@@ -93,7 +81,7 @@ export function CapturesPage() {
 
 			{captures.length === 0 ? (
 				<Text c="dimmed" ta="center" py="xl">
-					No captures yet. Submit your first text capture!
+					No captures yet. Use the New button above to get started.
 				</Text>
 			) : (
 				<DataTable
@@ -101,6 +89,7 @@ export function CapturesPage() {
 					borderRadius="sm"
 					striped
 					highlightOnHover
+					noRecordsText="No captures match this filter"
 					records={captures}
 					idAccessor="publicId"
 					onRowClick={({ record }) => setReviewCaptureId(record.publicId)}
@@ -156,6 +145,15 @@ export function CapturesPage() {
 				onClose={() => setVoiceModalOpened(false)}
 				onSuccess={(captureId) => {
 					setVoiceModalOpened(false);
+					setReviewCaptureId(captureId);
+				}}
+			/>
+
+			<CapturePhotoModal
+				opened={photoModalOpened}
+				onClose={() => setPhotoModalOpened(false)}
+				onSuccess={(captureId) => {
+					setPhotoModalOpened(false);
 					setReviewCaptureId(captureId);
 				}}
 			/>

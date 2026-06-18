@@ -4,6 +4,7 @@ import {
 	getCapture,
 	listCaptures,
 	rejectCandidate,
+	submitPhotoCapture,
 	submitTextCapture,
 	transcribeAudio,
 } from "../lib/capture-api";
@@ -45,6 +46,17 @@ export function useSubmitTextCapture() {
 	return useMutation({
 		mutationFn: (vars: { rawText: string; inputType?: string }) =>
 			submitTextCapture(vars.rawText, vars.inputType),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: CAPTURES_KEY });
+		},
+	});
+}
+
+export function useSubmitPhotoCapture() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (imageFile: File) => submitPhotoCapture(imageFile),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: CAPTURES_KEY });
 		},

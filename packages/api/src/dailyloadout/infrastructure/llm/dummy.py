@@ -40,3 +40,23 @@ class DummyLLMClient(AbstractLLMClient):
             results.append(ExtractedGame(title=fallback_title, confidence=0.5))
 
         return results
+
+    async def parse_capture_image(self, image_base64: str) -> list[ExtractedGame]:  # noqa: ARG002
+        """Return canned results simulating a shelf photo with three games."""
+        return [
+            ExtractedGame(
+                title="The Legend of Zelda: Tears of the Kingdom",
+                platform_hint="Switch",
+                confidence=0.92,
+            ),
+            ExtractedGame(
+                title="Elden Ring",
+                platform_hint=None,
+                confidence=0.90,
+            ),
+            ExtractedGame(
+                title="Celeste",
+                platform_hint=None,
+                confidence=0.88,
+            ),
+        ]

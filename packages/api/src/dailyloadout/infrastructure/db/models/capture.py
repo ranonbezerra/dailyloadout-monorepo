@@ -44,6 +44,7 @@ class Capture(Base):
     input_type: Mapped[str] = mapped_column(String, nullable=False)
     raw_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     audio_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    image_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     status: Mapped[str] = mapped_column(String, nullable=False, default="queued")
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

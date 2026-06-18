@@ -12,6 +12,9 @@ infrastructure is fully wired.
 
 from __future__ import annotations
 
+import base64
+from pathlib import Path
+
 import structlog
 
 from dailyloadout.infrastructure.db.models import Capture
@@ -41,19 +44,37 @@ async def process_capture(
     try:
         await capture_repo.update_status(capture.id, "processing")
 
-        if not capture.raw_text:
-            await capture_repo.update_status(
-                capture.id, "failed", error_message="No text to process"
-            )
-            return capture
+        # Photo capture: read image, encode to base64, and parse via vision LLM.
+        if capture.input_type == "photo":
+            if not capture.image_path:
+                await capture_repo.update_status(
+                    capture.id, "failed", error_message="No image to process"
+                )
+                return capture
 
-        # Step 1: Extract game titles via LLM.
-        extracted = await llm_client.parse_capture_text(capture.raw_text)
-        logger.info(
-            "capture_llm_extracted",
-            capture_id=capture.id,
-            count=len(extracted),
-        )
+            image_bytes = Path(capture.image_path).read_bytes()
+            image_base64 = base64.b64encode(image_bytes).decode("utf-8")
+
+            extracted = await llm_client.parse_capture_image(image_base64)
+            logger.info(
+                "capture_vision_extracted",
+                capture_id=capture.id,
+                count=len(extracted),
+            )
+        else:
+            # Text/voice capture: parse raw text via LLM.
+            if not capture.raw_text:
+                await capture_repo.update_status(
+                    capture.id, "failed", error_message="No text to process"
+                )
+                return capture
+
+            extracted = await llm_client.parse_capture_text(capture.raw_text)
+            logger.info(
+                "capture_llm_extracted",
+                capture_id=capture.id,
+                count=len(extracted),
+            )
 
         if not extracted:
             await capture_repo.update_status(

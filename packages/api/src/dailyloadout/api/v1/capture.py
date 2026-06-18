@@ -77,6 +77,82 @@ async def submit_text_capture(
 
 
 # ---------------------------------------------------------------------------
+# Photo capture
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/photo",
+    response_model=CaptureResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def submit_photo_capture(
+    file: UploadFile,
+    current_user: CurrentUserDep,
+    capture_service: CaptureServiceDep,
+    capture_repo: CaptureRepoDep,
+    candidate_repo: CaptureCandidateRepoDep,
+    llm_client: LLMClientDep,
+    igdb_client: IGDBClientDep,
+) -> CaptureResponse:
+    """Submit a photo capture, process it inline (vision LLM + IGDB), and return candidates."""
+    # Validate MIME type.
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image.")
+
+    # Validate file size.
+    max_size = settings.capture_max_image_mb * 1024 * 1024
+    contents = await file.read()
+    if len(contents) > max_size:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Image file must be under {settings.capture_max_image_mb}MB.",
+        )
+
+    # Save file to temp location.
+    upload_dir = settings.capture_upload_dir
+    os.makedirs(upload_dir, exist_ok=True)
+
+    ext = _guess_image_extension(file.content_type)
+    with tempfile.NamedTemporaryFile(dir=upload_dir, suffix=ext, delete=False) as tmp:
+        tmp.write(contents)
+        image_path = tmp.name
+
+    capture = await capture_service.submit_photo(
+        user_id=current_user.id,
+        image_path=image_path,
+    )
+
+    # Process inline (will become arq job later).
+    await process_capture(
+        capture=capture,
+        capture_repo=capture_repo,
+        candidate_repo=candidate_repo,
+        llm_client=llm_client,
+        igdb_client=igdb_client,
+    )
+
+    # Re-fetch with candidates eagerly loaded.
+    capture = await capture_service.get_capture(current_user.id, capture.public_id)
+    return CaptureResponse.model_validate(capture)
+
+
+def _guess_image_extension(content_type: str | None) -> str:
+    """Map an image MIME type to a file extension."""
+    mapping = {
+        "image/jpeg": ".jpg",
+        "image/png": ".png",
+        "image/gif": ".gif",
+        "image/webp": ".webp",
+        "image/bmp": ".bmp",
+        "image/tiff": ".tiff",
+        "image/heic": ".heic",
+        "image/heif": ".heif",
+    }
+    return mapping.get(content_type or "", ".jpg")
+
+
+# ---------------------------------------------------------------------------
 # Voice transcription (STT only — returns text for user review)
 # ---------------------------------------------------------------------------
 

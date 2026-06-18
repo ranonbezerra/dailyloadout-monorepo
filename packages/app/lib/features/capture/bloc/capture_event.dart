@@ -47,6 +47,16 @@ final class TranscribeAudio extends CaptureEvent {
   List<Object?> get props => [filePath];
 }
 
+/// Dispatched when the user submits a photo for vision processing.
+final class SubmitPhotoCapture extends CaptureEvent {
+  const SubmitPhotoCapture({required this.imagePath});
+
+  final String imagePath;
+
+  @override
+  List<Object?> get props => [imagePath];
+}
+
 /// Dispatched when the user confirms a candidate into their library.
 final class ConfirmCandidate extends CaptureEvent {
   const ConfirmCandidate({

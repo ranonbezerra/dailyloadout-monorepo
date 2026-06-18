@@ -79,6 +79,35 @@ export async function transcribeAudio(audioBlob: Blob): Promise<TranscribeResult
 }
 
 // ---------------------------------------------------------------------------
+// Photo capture
+// ---------------------------------------------------------------------------
+
+export async function submitPhotoCapture(imageFile: File): Promise<Capture> {
+	const formData = new FormData();
+	formData.append("file", imageFile);
+
+	const headers: Record<string, string> = {};
+	const accessToken = getAccessToken();
+	if (accessToken) {
+		headers.Authorization = `Bearer ${accessToken}`;
+	}
+
+	const res = await fetch(`${BASE_URL}/v1/captures/photo`, {
+		method: "POST",
+		headers,
+		body: formData,
+	});
+
+	if (!res.ok) {
+		const errBody = await res.text();
+		throw new Error(errBody || `Photo capture failed: ${res.status}`);
+	}
+
+	const raw = await res.json();
+	return snakeToCamel<Capture>(raw);
+}
+
+// ---------------------------------------------------------------------------
 // Capture listing and detail
 // ---------------------------------------------------------------------------
 

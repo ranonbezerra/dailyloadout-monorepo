@@ -54,21 +54,13 @@ class CaptureChoicePage extends StatelessWidget {
               icon: Icons.camera_alt_outlined,
               title: 'Photo',
               subtitle: 'Take a photo of your game shelf',
-              enabled: false,
-              onTap: () => _showComingSoon(context),
+              enabled: true,
+              onTap: () => context.go('/capture/photo'),
             ),
           ],
         ),
       ),
     );
-  }
-
-  void _showComingSoon(BuildContext context) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(content: Text('Coming soon!')),
-      );
   }
 }
 

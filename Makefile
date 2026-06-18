@@ -48,8 +48,8 @@ clean: ## Stop infrastructure and remove volumes
 
 .PHONY: ollama-pull
 ollama-pull: ## Pull Ollama models (gemma3:4b + gemma3:12b)
-	docker exec dl-ollama ollama pull $(OLLAMA_FAST_MODEL)
-	docker exec dl-ollama ollama pull $(OLLAMA_SMART_MODEL)
+	ollama pull gemma3:4b
+	ollama pull gemma3:12b
 
 # ─────────────────────────────────────────────
 # API (packages/api)

@@ -54,6 +54,14 @@ class CaptureService:
             raw_text=raw_text,
         )
 
+    async def submit_photo(self, user_id: int, image_path: str) -> Capture:
+        """Create a capture from a photo."""
+        return await self._capture_repo.create(
+            user_id=user_id,
+            input_type="photo",
+            image_path=image_path,
+        )
+
     # ------------------------------------------------------------------
     # Query
     # ------------------------------------------------------------------

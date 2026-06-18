@@ -10,13 +10,16 @@ import {
 	Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconPlus } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import { DataTable } from "mantine-datatable";
 import { useState } from "react";
+import { QuickAddMenu } from "../components/QuickAddMenu";
 import { useDeleteEntry, useLibrary, useUpdateEntry } from "../hooks/useLibrary";
 import type { LibraryEntry, LibraryStatus } from "../types/library";
-import { AddGameModal } from "./AddGameModal";
+import { CapturePhotoModal } from "./CapturePhotoModal";
+import { CaptureReviewModal } from "./CaptureReviewModal";
+import { CaptureTextModal } from "./CaptureTextModal";
+import { CaptureVoiceModal } from "./CaptureVoiceModal";
 
 const STATUS_TABS: { value: string; label: string }[] = [
 	{ value: "all", label: "All" },
@@ -47,8 +50,11 @@ const PAGE_SIZE = 50;
 
 export function LibraryPage() {
 	const [statusFilter, setStatusFilter] = useState("all");
-	const [modalOpened, setModalOpened] = useState(false);
 	const [expandedIds, setExpandedIds] = useState<string[]>([]);
+	const [textModalOpened, setTextModalOpened] = useState(false);
+	const [voiceModalOpened, setVoiceModalOpened] = useState(false);
+	const [photoModalOpened, setPhotoModalOpened] = useState(false);
+	const [reviewCaptureId, setReviewCaptureId] = useState<string | null>(null);
 
 	const queryParams = {
 		status: statusFilter === "all" ? undefined : statusFilter,
@@ -82,9 +88,11 @@ export function LibraryPage() {
 		<Stack>
 			<Group justify="space-between">
 				<Title order={2}>Library</Title>
-				<Button leftSection={<IconPlus size={16} />} onClick={() => setModalOpened(true)}>
-					Add Game
-				</Button>
+				<QuickAddMenu
+					onText={() => setTextModalOpened(true)}
+					onVoice={() => setVoiceModalOpened(true)}
+					onPhoto={() => setPhotoModalOpened(true)}
+				/>
 			</Group>
 
 			<Group gap="xs">
@@ -102,7 +110,7 @@ export function LibraryPage() {
 
 			{entries.length === 0 ? (
 				<Text c="dimmed" ta="center" py="xl">
-					Your backlog is empty. Add your first game!
+					Your library is empty. Use Quick Add to add your first game!
 				</Text>
 			) : (
 				<DataTable
@@ -110,6 +118,7 @@ export function LibraryPage() {
 					borderRadius="sm"
 					striped
 					highlightOnHover
+					noRecordsText="No games match this filter"
 					records={entries}
 					idAccessor="publicId"
 					columns={[
@@ -205,7 +214,31 @@ export function LibraryPage() {
 				/>
 			)}
 
-			<AddGameModal opened={modalOpened} onClose={() => setModalOpened(false)} />
+			<CaptureTextModal
+				opened={textModalOpened}
+				onClose={() => setTextModalOpened(false)}
+				onSuccess={(captureId) => {
+					setTextModalOpened(false);
+					setReviewCaptureId(captureId);
+				}}
+			/>
+			<CaptureVoiceModal
+				opened={voiceModalOpened}
+				onClose={() => setVoiceModalOpened(false)}
+				onSuccess={(captureId) => {
+					setVoiceModalOpened(false);
+					setReviewCaptureId(captureId);
+				}}
+			/>
+			<CapturePhotoModal
+				opened={photoModalOpened}
+				onClose={() => setPhotoModalOpened(false)}
+				onSuccess={(captureId) => {
+					setPhotoModalOpened(false);
+					setReviewCaptureId(captureId);
+				}}
+			/>
+			<CaptureReviewModal captureId={reviewCaptureId} onClose={() => setReviewCaptureId(null)} />
 		</Stack>
 	);
 }

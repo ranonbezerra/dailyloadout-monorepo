@@ -24,6 +24,7 @@ class CaptureRepository:
         input_type: str,
         raw_text: str | None = None,
         audio_path: str | None = None,
+        image_path: str | None = None,
     ) -> Capture:
         """Insert a new capture and return the persisted instance."""
         capture = Capture(
@@ -31,6 +32,7 @@ class CaptureRepository:
             input_type=input_type,
             raw_text=raw_text,
             audio_path=audio_path,
+            image_path=image_path,
         )
         self._session.add(capture)
         await self._session.flush()

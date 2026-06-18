@@ -1,5 +1,5 @@
 import { AppShell, Button, NavLink, Stack, Text } from "@mantine/core";
-import { IconBooks, IconLogout, IconTextPlus } from "@tabler/icons-react";
+import { IconBooks, IconHistory, IconLogout } from "@tabler/icons-react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { useAuthContext } from "./contexts/AuthContext";
@@ -28,8 +28,8 @@ function AppLayout() {
 							onClick={() => navigate("/library")}
 						/>
 						<NavLink
-							label="Quick Add"
-							leftSection={<IconTextPlus size={18} />}
+							label="Capture History"
+							leftSection={<IconHistory size={18} />}
 							active={location.pathname.startsWith("/captures")}
 							onClick={() => navigate("/captures")}
 						/>

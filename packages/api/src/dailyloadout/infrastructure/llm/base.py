@@ -22,3 +22,8 @@ class AbstractLLMClient(ABC):
     async def parse_capture_text(self, text: str) -> list[ExtractedGame]:
         """Extract game titles from free text input."""
         ...
+
+    @abstractmethod
+    async def parse_capture_image(self, image_base64: str) -> list[ExtractedGame]:
+        """Extract game titles from a photo (cover or shelf)."""
+        ...

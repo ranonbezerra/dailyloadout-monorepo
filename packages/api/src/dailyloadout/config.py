@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://localhost:11434"
     ollama_fast_model: str = "gemma3:4b"
     ollama_smart_model: str = "gemma3:12b"
+    ollama_vision_model: str = "qwen3-vl:4b"
     llm_timeout_seconds: int = 60
 
     # ── STT ──────────────────────────────────────────────────────────────
