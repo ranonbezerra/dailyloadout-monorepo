@@ -43,7 +43,10 @@ const CONFIDENCE_COLORS: Record<string, string> = {
 	low: "red",
 };
 
-function getConfidenceLabel(confidence: number | null): { label: string; color: string } {
+function getConfidenceLabel(confidence: number | null): {
+	label: string;
+	color: string;
+} {
 	if (confidence === null) return { label: "Unknown", color: "gray" };
 	if (confidence >= 0.8) return { label: "High", color: CONFIDENCE_COLORS.high };
 	if (confidence >= 0.5) return { label: "Medium", color: CONFIDENCE_COLORS.medium };
@@ -60,6 +63,8 @@ export function CaptureReviewModal({ captureId, onClose }: CaptureReviewModalPro
 		value: String(p.id),
 		label: p.label,
 	}));
+
+	const pendingCount = capture?.candidates.filter((c) => c.status === "pending").length ?? 0;
 
 	if (!captureId) return null;
 
@@ -107,6 +112,7 @@ export function CaptureReviewModal({ captureId, onClose }: CaptureReviewModalPro
 											message: `"${candidate.igdbTitle ?? candidate.title}" added to library.`,
 											color: "green",
 										});
+										if (pendingCount <= 1) onClose();
 									} catch (err) {
 										notifications.show({
 											title: "Confirm failed",
@@ -126,6 +132,7 @@ export function CaptureReviewModal({ captureId, onClose }: CaptureReviewModalPro
 											message: `"${candidate.igdbTitle ?? candidate.title}" has been rejected.`,
 											color: "gray",
 										});
+										if (pendingCount <= 1) onClose();
 									} catch (err) {
 										notifications.show({
 											title: "Reject failed",

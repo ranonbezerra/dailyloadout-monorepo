@@ -28,6 +28,16 @@ const STATUS_COLORS: Record<string, string> = {
 	cancelled: "gray",
 };
 
+function getCaptureDescription(capture: CaptureListItem): {
+	text: string;
+	dimmed: boolean;
+} {
+	if (capture.rawText) return { text: capture.rawText, dimmed: false };
+	if (capture.candidateTitles.length > 0)
+		return { text: capture.candidateTitles.join(", "), dimmed: false };
+	return { text: `${capture.inputType} capture`, dimmed: true };
+}
+
 export function CapturesPage() {
 	const [statusFilter, setStatusFilter] = useState("all");
 	const [textModalOpened, setTextModalOpened] = useState(false);
@@ -96,12 +106,21 @@ export function CapturesPage() {
 					columns={[
 						{
 							accessor: "rawText",
-							title: "Text",
-							render: (capture: CaptureListItem) => (
-								<Text size="sm" lineClamp={1} maw={400}>
-									{capture.rawText ?? "--"}
-								</Text>
-							),
+							title: "Description",
+							render: (capture: CaptureListItem) => {
+								const desc = getCaptureDescription(capture);
+								return (
+									<Text
+										size="sm"
+										lineClamp={1}
+										maw={400}
+										c={desc.dimmed ? "dimmed" : undefined}
+										fs={desc.dimmed ? "italic" : undefined}
+									>
+										{desc.text}
+									</Text>
+								);
+							},
 						},
 						{
 							accessor: "inputType",

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import httpx
@@ -26,6 +27,32 @@ def _load_prompt(name: str) -> Template:
 
 _CAPTURE_PARSE_TEMPLATE = _load_prompt("capture_parse.j2")
 _CAPTURE_PARSE_VISION_TEMPLATE = _load_prompt("capture_parse_vision.j2")
+
+# Regex to find JSON array or object in free-text LLM output (handles
+# markdown fences, preamble, etc.)
+_JSON_BLOCK_RE = re.compile(
+    r"```(?:json)?\s*([\[\{].*?[\]\}])\s*```"  # fenced code block
+    r"|"
+    r"([\[\{][\s\S]*[\]\}])",  # bare JSON
+    re.DOTALL,
+)
+
+
+def _extract_json(text: str) -> str | None:
+    """Extract the first JSON array or object from *text*.
+
+    Vision models don't support ``format: "json"`` reliably, so the
+    response may contain markdown fences or preamble text around the
+    JSON payload.  This helper extracts the JSON portion.
+    """
+    text = text.strip()
+    # Fast path: response is already valid JSON.
+    if text.startswith(("[", "{")):
+        return text
+    m = _JSON_BLOCK_RE.search(text)
+    if m:
+        return m.group(1) or m.group(2)
+    return None
 
 
 class OllamaClient(AbstractLLMClient):
@@ -116,7 +143,6 @@ class OllamaClient(AbstractLLMClient):
             "prompt": prompt,
             "images": [image_base64],
             "stream": False,
-            "format": "json",
         }
 
         async with httpx.AsyncClient(timeout=self._timeout) as client:
@@ -133,7 +159,11 @@ class OllamaClient(AbstractLLMClient):
         try:
             body = resp.json()
             raw_text = body.get("response", "")
-            parsed = json.loads(raw_text)
+            json_str = _extract_json(raw_text)
+            if not json_str:
+                logger.warning("ollama_vision_no_json_found", raw=raw_text[:500])
+                return []
+            parsed = json.loads(json_str)
 
             # The LLM might return a dict with a key wrapping the array,
             # or a single game object instead of an array.

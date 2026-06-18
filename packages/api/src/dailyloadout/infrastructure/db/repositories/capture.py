@@ -67,12 +67,16 @@ class CaptureRepository:
         offset: int = 0,
     ) -> list[Capture]:
         """Return captures for *user_id* ordered by newest first."""
-        stmt = select(Capture).where(Capture.user_id == user_id)
+        stmt = (
+            select(Capture)
+            .options(joinedload(Capture.candidates))
+            .where(Capture.user_id == user_id)
+        )
         if status is not None:
             stmt = stmt.where(Capture.status == status)
         stmt = stmt.order_by(Capture.created_at.desc()).offset(offset).limit(limit)
         result = await self._session.execute(stmt)
-        return list(result.scalars().all())
+        return list(result.scalars().unique().all())
 
     async def count_for_user(self, user_id: int, status: str | None = None) -> int:
         """Return the total number of captures for *user_id*."""
