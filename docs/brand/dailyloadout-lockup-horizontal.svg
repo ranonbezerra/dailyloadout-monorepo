@@ -1,0 +1,13 @@
+<svg width="430" height="96" viewBox="0 0 430 96" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="dailyloadout logo">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&amp;display=swap');
+    .wm { font-family: 'Outfit', system-ui, sans-serif; }
+  </style>
+  <!-- Mark -->
+  <rect x="16" y="24" width="48" height="48" rx="15" fill="#FF5A4D"/>
+  <path d="M34 36 L34 60 L52.5 48 Z" fill="#121119" stroke="#121119" stroke-width="3" stroke-linejoin="round"/>
+  <!-- Wordmark -->
+  <text class="wm" x="84" y="63" font-size="46" letter-spacing="-1.1" fill="#F0EDF5">
+    <tspan font-weight="400">daily</tspan><tspan font-weight="700">loadout</tspan>
+  </text>
+</svg>

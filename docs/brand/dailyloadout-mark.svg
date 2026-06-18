@@ -1,0 +1,5 @@
+<svg width="96" height="96" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="DailyLoadout mark">
+  <!-- The Pick: one slot, lit, ready to play. Coral on midnight. For every gamer, not a war room. -->
+  <rect x="8" y="8" width="32" height="32" rx="10" fill="#FF5A4D"/>
+  <path d="M20 16.5 L20 31.5 L32 24 Z" fill="#121119" stroke="#121119" stroke-width="2.2" stroke-linejoin="round"/>
+</svg>

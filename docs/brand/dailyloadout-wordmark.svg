@@ -1,0 +1,10 @@
+<svg width="360" height="72" viewBox="0 0 360 72" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="dailyloadout">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&amp;display=swap');
+    .wm { font-family: 'Outfit', system-ui, sans-serif; }
+  </style>
+  <!-- Default color is ink (#121119) for light backgrounds; set color/fill to #F0EDF5 for dark. -->
+  <text class="wm" x="0" y="51" font-size="52" letter-spacing="-1.2" fill="currentColor" color="#121119">
+    <tspan font-weight="400">daily</tspan><tspan font-weight="700">loadout</tspan>
+  </text>
+</svg>

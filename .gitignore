@@ -8,7 +8,7 @@
 .env.*.local
 
 # Local brand
-brand/
+branding/
 
 # OS
 .DS_Store

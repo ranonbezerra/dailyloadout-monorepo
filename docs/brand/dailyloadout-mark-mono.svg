@@ -1,0 +1,5 @@
+<svg width="96" height="96" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="DailyLoadout mark (monochrome)">
+  <!-- Single-color version. Inherits color via currentColor; defaults to ink. -->
+  <rect x="8" y="8" width="32" height="32" rx="10" fill="none" stroke="currentColor" stroke-width="3.2"/>
+  <path d="M20.5 17 L20.5 31 L31.5 24 Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+</svg>
