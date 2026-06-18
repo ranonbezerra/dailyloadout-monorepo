@@ -9,6 +9,8 @@ from dailyloadout.infrastructure.db.base import Base
 
 # Import all models so Alembic can detect them for autogenerate.
 from dailyloadout.infrastructure.db.models import (  # noqa: F401
+    Capture,
+    CaptureCandidate,
     Game,
     LibraryEntry,
     OAuthIdentity,

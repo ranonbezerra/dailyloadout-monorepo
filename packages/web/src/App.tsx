@@ -1,8 +1,9 @@
 import { AppShell, Button, NavLink, Stack, Text } from "@mantine/core";
-import { IconBooks, IconLogout } from "@tabler/icons-react";
+import { IconBooks, IconLogout, IconTextPlus } from "@tabler/icons-react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { useAuthContext } from "./contexts/AuthContext";
+import { CapturesPage } from "./pages/CapturesPage";
 import { LibraryPage } from "./pages/LibraryPage";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
@@ -26,6 +27,12 @@ function AppLayout() {
 							active={location.pathname.startsWith("/library")}
 							onClick={() => navigate("/library")}
 						/>
+						<NavLink
+							label="Quick Add"
+							leftSection={<IconTextPlus size={18} />}
+							active={location.pathname.startsWith("/captures")}
+							onClick={() => navigate("/captures")}
+						/>
 					</Stack>
 					<Button
 						variant="subtle"
@@ -42,6 +49,7 @@ function AppLayout() {
 			<AppShell.Main>
 				<Routes>
 					<Route path="/library" element={<LibraryPage />} />
+					<Route path="/captures" element={<CapturesPage />} />
 					<Route path="*" element={<Navigate to="/library" replace />} />
 				</Routes>
 			</AppShell.Main>

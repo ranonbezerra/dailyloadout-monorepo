@@ -10,6 +10,7 @@ from slowapi.errors import RateLimitExceeded
 
 from dailyloadout.api.v1.auth import limiter
 from dailyloadout.api.v1.auth import router as auth_router
+from dailyloadout.api.v1.capture import router as capture_router
 from dailyloadout.api.v1.library import router as library_router
 from dailyloadout.config import settings
 
@@ -71,6 +72,7 @@ def create_app() -> FastAPI:
 
     # Routers
     application.include_router(auth_router)
+    application.include_router(capture_router)
     application.include_router(library_router)
 
     @application.get("/health")

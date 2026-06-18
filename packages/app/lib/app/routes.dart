@@ -5,6 +5,9 @@ import 'package:app/features/auth/bloc/auth_bloc.dart';
 import 'package:app/features/auth/view/login_page.dart';
 import 'package:app/features/auth/view/register_page.dart';
 import 'package:app/features/auth/view/splash_page.dart';
+import 'package:app/features/capture/view/capture_choice_page.dart';
+import 'package:app/features/capture/view/capture_review_page.dart';
+import 'package:app/features/capture/view/capture_text_page.dart';
 import 'package:app/features/library/view/add_game_page.dart';
 import 'package:app/features/library/view/library_detail_page.dart';
 import 'package:app/features/library/view/library_list_page.dart';
@@ -74,6 +77,21 @@ GoRouter createRouter(
         path: '/library/:id',
         builder: (context, state) => LibraryDetailPage(
           entryPublicId: state.pathParameters['id']!,
+        ),
+      ),
+      GoRoute(
+        path: '/capture',
+        builder: (context, state) => const CaptureChoicePage(),
+      ),
+      GoRoute(
+        path: '/capture/text',
+        builder: (context, state) => const CaptureTextPage(),
+      ),
+      GoRoute(
+        path: '/capture/review/:id',
+        builder: (context, state) => CaptureReviewPage(
+          capturePublicId: state.pathParameters['id']!,
+          libraryRepository: libraryRepository,
         ),
       ),
     ],
