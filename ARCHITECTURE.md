@@ -557,7 +557,7 @@ POSTGRES_PORT=5433
 REDIS_PORT=6380
 OLLAMA_PORT=11434
 API_PORT=8100
-WEB_PORT=3000
+WEB_PORT=3200
 
 # Database
 POSTGRES_USER=dailyloadout
@@ -633,7 +633,7 @@ OTEL_EXPORTER_OTLP_ENDPOINT=
 ┌────┴────┐    ┌─────┴────┐    ┌─────┴─────┐
 │  api    │    │  web     │    │  app      │
 │ FastAPI │    │ React    │    │ Flutter   │
-│ :8100   │    │ :3000    │    │ (desktop) │
+│ :8100   │    │ :3200    │    │ (desktop) │
 └─────────┘    └──────────┘    └───────────┘
   host process   host process   host process
 ```

@@ -7,6 +7,10 @@ class Settings(BaseSettings):
     # ── Core ─────────────────────────────────────────────────────────────
     app_env: str = "development"
     secret_key: str = "change-me-in-prod"
+    cors_origins: list[str] = [
+        "http://localhost:3200",
+        "http://localhost:5173",
+    ]
 
     # ── Database ─────────────────────────────────────────────────────────
     database_url: str = (

@@ -57,7 +57,7 @@ ollama-pull: ## Pull Ollama models (gemma3:4b + gemma3:12b)
 
 .PHONY: api
 api: ## Run API dev server (uvicorn with reload)
-	cd $(API_DIR) && poetry run uvicorn src.dailyloadout.main:app --reload --host 0.0.0.0 --port $${API_PORT:-8100}
+	cd $(API_DIR) && HF_HOME=$(HOME)/.cache/huggingface poetry run uvicorn src.dailyloadout.main:app --reload --host 0.0.0.0 --port $${API_PORT:-8100}
 
 .PHONY: api-test
 api-test: ## Run API tests
@@ -89,7 +89,7 @@ api-install: ## Install API dependencies
 
 .PHONY: web
 web: ## Run web dev server (vite)
-	cd $(WEB_DIR) && bun run dev --port $${WEB_PORT:-3000}
+	cd $(WEB_DIR) && bun run dev --port $${WEB_PORT:-3200}
 
 .PHONY: web-test
 web-test: ## Run web tests

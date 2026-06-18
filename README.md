@@ -60,11 +60,11 @@ Then run the services on the host:
 
 ```bash
 make api          # FastAPI on :8100
-make web          # React on :3000
+make web          # React on :3200
 make app          # Flutter (macOS by default)
 ```
 
-Open `http://localhost:3000` for the web dashboard, `http://localhost:8100/docs` for the API reference.
+Open `http://localhost:3200` for the web dashboard, `http://localhost:8100/docs` for the API reference.
 
 Run `make help` to see all available commands.
 
