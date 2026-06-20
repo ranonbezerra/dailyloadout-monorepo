@@ -240,7 +240,7 @@ class OllamaClient(AbstractLLMClient):
                 logger.warning("ollama_briefing_failed", error=str(exc))
                 return ""
 
-        body = resp.json()
+        body: dict[str, str] = resp.json()
         return body.get("response", "").strip()
 
     async def extract_debrief_state(

@@ -135,7 +135,7 @@ class MissionRepository:
     async def set_extracted_state(
         self,
         mission_id: int,
-        extracted_state: dict,
+        extracted_state: dict[str, object],
     ) -> None:
         """Set the LLM-extracted state on a mission."""
         mission = await self._session.get(Mission, mission_id)
