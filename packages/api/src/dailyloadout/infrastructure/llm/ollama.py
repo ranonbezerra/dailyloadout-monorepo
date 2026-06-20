@@ -12,7 +12,7 @@ from jinja2 import Template
 
 from dailyloadout.config import Settings
 
-from .base import AbstractLLMClient, ExtractedGame
+from .base import AbstractLLMClient, ExtractedGame, ExtractedState
 
 logger = structlog.get_logger()
 
@@ -27,6 +27,8 @@ def _load_prompt(name: str) -> Template:
 
 _CAPTURE_PARSE_TEMPLATE = _load_prompt("capture_parse.j2")
 _CAPTURE_PARSE_VISION_TEMPLATE = _load_prompt("capture_parse_vision.j2")
+_BRIEFING_TEMPLATE = _load_prompt("briefing.j2")
+_DEBRIEF_EXTRACT_TEMPLATE = _load_prompt("debrief_extract.j2")
 
 # Regex to find JSON array or object in free-text LLM output (handles
 # markdown fences, preamble, etc.)
@@ -61,6 +63,7 @@ class OllamaClient(AbstractLLMClient):
     def __init__(self, settings: Settings) -> None:
         self._base_url = settings.ollama_base_url.rstrip("/")
         self._model = settings.ollama_fast_model
+        self._smart_model = settings.ollama_smart_model
         self._vision_model = settings.ollama_vision_model
         self._timeout = settings.llm_timeout_seconds
         self._max_games_per_shelf = settings.capture_max_games_per_shelf
@@ -204,3 +207,86 @@ class OllamaClient(AbstractLLMClient):
         except (json.JSONDecodeError, KeyError, TypeError) as exc:
             logger.warning("ollama_vision_parse_error", error=str(exc))
             return []
+
+    async def generate_briefing(
+        self,
+        game_title: str,
+        previous_debriefs: list[dict[str, object]],
+        current_next_action: str | None = None,
+        position_override: str | None = None,
+    ) -> str:
+        """Generate a mission briefing using the smart LLM model."""
+        prompt = _BRIEFING_TEMPLATE.render(
+            game_title=game_title,
+            previous_debriefs=previous_debriefs,
+            current_next_action=current_next_action,
+            position_override=position_override,
+        )
+
+        payload = {
+            "model": self._smart_model,
+            "prompt": prompt,
+            "stream": False,
+        }
+
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            try:
+                resp = await client.post(
+                    f"{self._base_url}/api/generate",
+                    json=payload,
+                )
+                resp.raise_for_status()
+            except httpx.HTTPError as exc:
+                logger.warning("ollama_briefing_failed", error=str(exc))
+                return ""
+
+        body: dict[str, str] = resp.json()
+        return body.get("response", "").strip()
+
+    async def extract_debrief_state(
+        self,
+        game_title: str,
+        debrief_text: str,
+    ) -> ExtractedState:
+        """Extract structured state from a debrief using the fast LLM model."""
+        prompt = _DEBRIEF_EXTRACT_TEMPLATE.render(
+            game_title=game_title,
+            debrief_text=debrief_text,
+        )
+
+        payload = {
+            "model": self._model,
+            "prompt": prompt,
+            "stream": False,
+            "format": "json",
+        }
+
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            try:
+                resp = await client.post(
+                    f"{self._base_url}/api/generate",
+                    json=payload,
+                )
+                resp.raise_for_status()
+            except httpx.HTTPError as exc:
+                logger.warning("ollama_debrief_extract_failed", error=str(exc))
+                return ExtractedState()
+
+        try:
+            body = resp.json()
+            raw_text = body.get("response", "")
+            parsed = json.loads(raw_text)
+
+            if not isinstance(parsed, dict):
+                logger.warning("ollama_debrief_not_a_dict", raw=raw_text)
+                return ExtractedState()
+
+            return ExtractedState(
+                location=parsed.get("location"),
+                next_action=parsed.get("next_action"),
+                level=str(parsed["level"]) if parsed.get("level") is not None else None,
+                current_quest=parsed.get("current_quest"),
+            )
+        except (json.JSONDecodeError, KeyError, TypeError) as exc:
+            logger.warning("ollama_debrief_parse_error", error=str(exc))
+            return ExtractedState()

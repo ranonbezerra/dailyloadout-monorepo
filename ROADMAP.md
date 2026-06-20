@@ -20,8 +20,9 @@ The repository is public from Epic 0 onward. Every commit and PR is part of the 
 | 8 | Daily Loadout | Second AI feature with UUID validation |
 | 9 | Stats + Web analytics | Where the dashboard shines |
 | 10 | Polish + Launch | README final, demo GIF, announcement |
+| 11 | Deep Research Briefing | Web-augmented spoiler-free suggestions (v1.1+) |
 
-Total: **10 weekends ≈ 2.5 months** assuming 8–12 productive hours per weekend.
+Total: **10 weekends ≈ 2.5 months** for v1.0 (assuming 8–12 productive hours per weekend). Epic 11 is a v1.1+ enhancement.
 
 ---
 
@@ -394,6 +395,48 @@ This is the spot that connects DailyLoadout to Freeler narratively. A recruiter 
 - Every important technical decision has a paragraph in ARCHITECTURE.md
 - Everything works offline (Ollama local, zero cloud dependency)
 - Future roadmap is visible in open issues
+
+---
+
+## Epic 10 — Deep Research Briefing (v1.1+)
+
+**Goal:** augment mission briefings with web-researched, spoiler-free game knowledge using local deep research.
+
+### Context
+
+Epic 6 briefings use only the LLM's parametric knowledge and the user's own debrief data to suggest next steps. This works well for popular titles but produces vague suggestions for niche games or complex quest structures. Deep research bridging the gap between "what the user told us" and "what's actually available in the game world" would make briefings significantly more useful.
+
+### Integration: local-deep-research
+
+[local-deep-research](https://github.com/LearningCircuit/local-deep-research) is a privacy-first, local-first research agent that supports Ollama and SearXNG. It fits DailyLoadout's architecture: no cloud keys required, runs alongside the existing stack.
+
+### Tasks
+
+- [ ] Add SearXNG + local-deep-research to `docker-compose.yml`
+- [ ] New infrastructure module `infrastructure/research/` with abstract base + LDR client + dummy for tests
+- [ ] "Deep briefing" mode: opt-in per mission start (user chooses quick vs. deep)
+- [ ] Research query construction: `"{game_title} walkthrough tips after {location} {current_quest} spoiler-free"`
+- [ ] Spoiler filter prompt layer: LLM receives research results but is constrained to suggest **directions and areas**, never reveal boss names, plot twists, story events, or item locations the player hasn't mentioned
+- [ ] Latency handling: deep briefing takes 30-60s — show progress indicator, allow cancellation, fall back to quick briefing on timeout
+- [ ] Search source config: allow users to choose search engines (Wikipedia, game wikis, etc.) via settings
+- [ ] Pytest with DummyResearchClient returning canned results
+- [ ] Web: toggle in briefing modal for "Quick briefing" vs. "Deep briefing (slower, web-researched)"
+
+### Definition of Done
+
+- User starts a mission with "deep briefing" selected
+- Within 60s, briefing includes web-researched suggestions grounded in the game world
+- Suggestions are spoiler-free: "explore the northwest passage" not "defeat the hidden boss there"
+- Quick briefing still works in 2-3s (default, no regression)
+- Deep briefing falls back gracefully if SearXNG/LDR is unavailable
+
+### Technical highlight
+
+> **Spoiler-free constraint on web-augmented AI:** the research agent fetches walkthrough content that inherently contains spoilers. The briefing prompt is constrained to suggest directions and areas without revealing what the player will find. This is a two-layer filter: the research query targets "next steps" content, and the briefing prompt strips specifics. The anti-hallucination validator from Epic 6 still runs on the output.
+
+### Why this is a separate epic
+
+LDR integration adds Docker services (SearXNG), a new dependency stack (LangGraph/LangChain), and a hard prompt engineering problem (spoiler filtering). Mixing this into Epic 6 would risk the anchor feature's stability. Epic 6 delivers actionable briefings from LLM knowledge; Epic 10 enhances them with web research.
 
 ---
 

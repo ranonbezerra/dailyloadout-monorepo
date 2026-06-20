@@ -8,6 +8,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App.tsx";
+import { ErrorBoundary } from "./components/ErrorBoundary.tsx";
 import { AuthProvider } from "./contexts/AuthContext.tsx";
 import { theme } from "./theme.ts";
 
@@ -19,11 +20,13 @@ createRoot(document.getElementById("root")!).render(
 		<QueryClientProvider client={queryClient}>
 			<MantineProvider theme={theme} defaultColorScheme="dark">
 				<Notifications position="top-right" />
-				<BrowserRouter>
-					<AuthProvider>
-						<App />
-					</AuthProvider>
-				</BrowserRouter>
+				<ErrorBoundary>
+					<BrowserRouter>
+						<AuthProvider>
+							<App />
+						</AuthProvider>
+					</BrowserRouter>
+				</ErrorBoundary>
 			</MantineProvider>
 		</QueryClientProvider>
 	</StrictMode>,

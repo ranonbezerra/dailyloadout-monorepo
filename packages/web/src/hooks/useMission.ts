@@ -1,0 +1,97 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+	endMission,
+	getActiveMission,
+	getMission,
+	listMissions,
+	regenerateBriefing,
+	startMission,
+	submitDebrief,
+} from "../lib/mission-api";
+
+// ---------------------------------------------------------------------------
+// Query keys
+// ---------------------------------------------------------------------------
+
+const MISSIONS_KEY = ["missions"] as const;
+const LIBRARY_KEY = ["library"] as const;
+
+// ---------------------------------------------------------------------------
+// Queries
+// ---------------------------------------------------------------------------
+
+export function useMissions(params?: { limit?: number; offset?: number }) {
+	return useQuery({
+		queryKey: [...MISSIONS_KEY, params],
+		queryFn: () => listMissions(params),
+	});
+}
+
+export function useMission(publicId: string) {
+	return useQuery({
+		queryKey: [...MISSIONS_KEY, publicId],
+		queryFn: () => getMission(publicId),
+		enabled: !!publicId,
+	});
+}
+
+export function useActiveMission() {
+	return useQuery({
+		queryKey: [...MISSIONS_KEY, "active"],
+		queryFn: () => getActiveMission(),
+	});
+}
+
+// ---------------------------------------------------------------------------
+// Mutations
+// ---------------------------------------------------------------------------
+
+export function useStartMission() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (libraryEntryPublicId: string) => startMission(libraryEntryPublicId),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: MISSIONS_KEY });
+			queryClient.invalidateQueries({ queryKey: LIBRARY_KEY });
+		},
+	});
+}
+
+export function useSubmitDebrief() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (vars: { publicId: string; debriefText: string }) =>
+			submitDebrief(vars.publicId, vars.debriefText),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: MISSIONS_KEY });
+			queryClient.invalidateQueries({ queryKey: LIBRARY_KEY });
+		},
+	});
+}
+
+export function useEndMission() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (vars: { publicId: string; endedVia?: string }) =>
+			endMission(vars.publicId, vars.endedVia),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: MISSIONS_KEY });
+			queryClient.invalidateQueries({ queryKey: LIBRARY_KEY });
+		},
+	});
+}
+
+export function useRegenerateBriefing() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (vars: { publicId: string; currentPosition?: string }) =>
+			regenerateBriefing(vars.publicId, vars.currentPosition),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: MISSIONS_KEY });
+		},
+	});
+}

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from .base import AbstractLLMClient, ExtractedGame
+from .base import AbstractLLMClient, ExtractedGame, ExtractedState
 
 # Well-known titles used for deterministic test matching.
 _KNOWN_TITLES: list[tuple[str, re.Pattern[str]]] = [
@@ -60,3 +60,49 @@ class DummyLLMClient(AbstractLLMClient):
                 confidence=0.88,
             ),
         ]
+
+    async def generate_briefing(
+        self,
+        game_title: str,
+        previous_debriefs: list[dict[str, object]],
+        current_next_action: str | None = None,
+        position_override: str | None = None,
+    ) -> str:
+        """Return a deterministic briefing for tests."""
+        if not previous_debriefs:
+            return (
+                f"Welcome to your first mission in {game_title}! "
+                "No previous session data available. Enjoy your adventure."
+            )
+
+        parts = [f"Previously on {game_title}:"]
+        for debrief in previous_debriefs:
+            if debrief.get("next_action"):
+                parts.append(f"- Your next objective was: {debrief['next_action']}")
+            if debrief.get("location"):
+                parts.append(f"- You were at: {debrief['location']}")
+
+        if position_override:
+            parts.append(f"\nPlayer correction: {position_override}")
+
+        if current_next_action:
+            parts.append(f"\nSuggested next action: {current_next_action}")
+
+        parts.append("\nWhat you could do this session:")
+        parts.append("- Continue your current objective")
+        parts.append("- Explore the surrounding area for hidden secrets")
+
+        return "\n".join(parts)
+
+    async def extract_debrief_state(
+        self,
+        game_title: str,  # noqa: ARG002
+        debrief_text: str,
+    ) -> ExtractedState:
+        """Return a deterministic extracted state for tests."""
+        return ExtractedState(
+            location=None,
+            next_action=debrief_text[:100] if debrief_text else None,
+            level=None,
+            current_quest=None,
+        )

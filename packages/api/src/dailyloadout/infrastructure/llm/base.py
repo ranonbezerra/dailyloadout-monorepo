@@ -15,8 +15,18 @@ class ExtractedGame:
     confidence: float | None = None
 
 
+@dataclass
+class ExtractedState:
+    """Structured state extracted from a mission debrief."""
+
+    location: str | None = None
+    next_action: str | None = None
+    level: str | None = None
+    current_quest: str | None = None
+
+
 class AbstractLLMClient(ABC):
-    """Contract for LLM clients that parse capture text into game titles."""
+    """Contract for LLM clients used in capture and mission processing."""
 
     @abstractmethod
     async def parse_capture_text(self, text: str) -> list[ExtractedGame]:
@@ -26,4 +36,24 @@ class AbstractLLMClient(ABC):
     @abstractmethod
     async def parse_capture_image(self, image_base64: str) -> list[ExtractedGame]:
         """Extract game titles from a photo (cover or shelf)."""
+        ...
+
+    @abstractmethod
+    async def generate_briefing(
+        self,
+        game_title: str,
+        previous_debriefs: list[dict[str, object]],
+        current_next_action: str | None = None,
+        position_override: str | None = None,
+    ) -> str:
+        """Generate a mission briefing from previous debrief context."""
+        ...
+
+    @abstractmethod
+    async def extract_debrief_state(
+        self,
+        game_title: str,
+        debrief_text: str,
+    ) -> ExtractedState:
+        """Extract structured state from a user's free-text debrief."""
         ...

@@ -21,6 +21,10 @@ from .library import (
     LibraryServiceDep,
     PlatformRepoDep,
 )
+from .mission import (
+    MissionRepoDep,
+    MissionServiceDep,
+)
 
 __all__ = [
     "AuthServiceDep",
@@ -33,6 +37,8 @@ __all__ = [
     "IGDBClientDep",
     "LLMClientDep",
     "LibraryRepoDep",
+    "MissionRepoDep",
+    "MissionServiceDep",
     "STTClientDep",
     "LibraryServiceDep",
     "PlatformRepoDep",

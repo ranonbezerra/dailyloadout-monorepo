@@ -8,11 +8,7 @@ export function useAuth() {
 	const queryClient = useQueryClient();
 
 	// ---- Current user query -------------------------------------------------
-	const {
-		data: user = null,
-		isLoading,
-		isFetching,
-	} = useQuery<User | null>({
+	const { data: user = null, isLoading } = useQuery<User | null>({
 		queryKey: USER_QUERY_KEY,
 		queryFn: async () => {
 			if (!getAccessToken()) return null;
@@ -94,7 +90,7 @@ export function useAuth() {
 
 	return {
 		user,
-		isLoading: isLoading || isFetching,
+		isLoading,
 		isAuthenticated: !!user,
 		login,
 		register,

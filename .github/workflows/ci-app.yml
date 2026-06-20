@@ -2,9 +2,6 @@ name: CI — App
 
 on:
   pull_request:
-    paths:
-      - "packages/app/**"
-      - ".github/workflows/ci-app.yml"
   push:
     branches: [main]
     paths:
@@ -16,7 +13,25 @@ defaults:
     working-directory: packages/app
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      app: ${{ steps.filter.outputs.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            app:
+              - "packages/app/**"
+              - ".github/workflows/ci-app.yml"
+
   app-analyze-and-test:
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
 
     steps:
