@@ -1,4 +1,4 @@
-import type { Mission, MissionListResponse } from "../types/mission";
+import type { BriefingPreview, Mission, MissionListResponse } from "../types/mission";
 import { apiFetch } from "./api";
 
 // ---------------------------------------------------------------------------
@@ -24,13 +24,53 @@ function snakeToCamel<T>(data: unknown): T {
 }
 
 // ---------------------------------------------------------------------------
+// Preview briefing (before starting a mission)
+// ---------------------------------------------------------------------------
+
+export async function previewBriefing(
+	libraryEntryPublicId: string,
+	positionOverride?: string,
+): Promise<BriefingPreview> {
+	const body: Record<string, string> = { library_entry_public_id: libraryEntryPublicId };
+	if (positionOverride) body.position_override = positionOverride;
+	const raw = await apiFetch<unknown>("/v1/missions/preview-briefing", {
+		method: "POST",
+		body: JSON.stringify(body),
+	});
+	return snakeToCamel<BriefingPreview>(raw);
+}
+
+// ---------------------------------------------------------------------------
+// Retroactive debrief (unregistered play session)
+// ---------------------------------------------------------------------------
+
+export async function submitRetroactiveDebrief(
+	libraryEntryPublicId: string,
+	debriefText: string,
+): Promise<BriefingPreview> {
+	const raw = await apiFetch<unknown>("/v1/missions/retroactive-debrief", {
+		method: "POST",
+		body: JSON.stringify({
+			library_entry_public_id: libraryEntryPublicId,
+			debrief_text: debriefText,
+		}),
+	});
+	return snakeToCamel<BriefingPreview>(raw);
+}
+
+// ---------------------------------------------------------------------------
 // Start mission
 // ---------------------------------------------------------------------------
 
-export async function startMission(libraryEntryPublicId: string): Promise<Mission> {
+export async function startMission(
+	libraryEntryPublicId: string,
+	briefingText?: string,
+): Promise<Mission> {
+	const body: Record<string, string> = { library_entry_public_id: libraryEntryPublicId };
+	if (briefingText) body.briefing_text = briefingText;
 	const raw = await apiFetch<unknown>("/v1/missions", {
 		method: "POST",
-		body: JSON.stringify({ library_entry_public_id: libraryEntryPublicId }),
+		body: JSON.stringify(body),
 	});
 	return snakeToCamel<Mission>(raw);
 }

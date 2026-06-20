@@ -44,14 +44,37 @@ async def _start_mission(
     client: AsyncClient,
     headers: dict[str, str],
     entry_public_id: str,
+    briefing_text: str | None = None,
 ) -> dict[str, Any]:
     """Start a mission and return the parsed response."""
+    body: dict[str, Any] = {"library_entry_public_id": entry_public_id}
+    if briefing_text is not None:
+        body["briefing_text"] = briefing_text
     resp = await client.post(
         "/v1/missions",
-        json={"library_entry_public_id": entry_public_id},
+        json=body,
         headers=headers,
     )
     assert resp.status_code == 201, resp.text
+    return resp.json()
+
+
+async def _preview_briefing(
+    client: AsyncClient,
+    headers: dict[str, str],
+    entry_public_id: str,
+    position_override: str | None = None,
+) -> dict[str, Any]:
+    """Preview a briefing without starting a mission."""
+    body: dict[str, Any] = {"library_entry_public_id": entry_public_id}
+    if position_override is not None:
+        body["position_override"] = position_override
+    resp = await client.post(
+        "/v1/missions/preview-briefing",
+        json=body,
+        headers=headers,
+    )
+    assert resp.status_code == 200, resp.text
     return resp.json()
 
 
@@ -186,15 +209,16 @@ class TestSubmitDebrief:
         assert data["debrief_text"] == "Beat the Mantis Lords. Heading to Greenpath."
         assert data["ended_via"] == "debrief_completed"
         assert data["ended_at"] is not None
-        assert data["extracted_state"] is not None
+        # Extraction is now async — extracted_state is null in the immediate response.
+        assert data["extracted_state"] is None
 
-    async def test_debrief_updates_next_action(
+    async def test_debrief_extraction_via_sync_fallback(
         self,
         async_client: AsyncClient,
         auth_headers: dict[str, str],
         seed_platforms: list[dict[str, Any]],
     ) -> None:
-        """Debrief should extract next_action and update the library entry."""
+        """Sync fallback extracts state when a preview is requested."""
         entry = await _create_library_entry(async_client, auth_headers, seed_platforms)
         mission = await _start_mission(async_client, auth_headers, entry["public_id"])
 
@@ -204,7 +228,12 @@ class TestSubmitDebrief:
             headers=auth_headers,
         )
 
-        # Check that the library entry was updated.
+        # Preview briefing — sync fallback should extract the first debrief.
+        preview = await _preview_briefing(async_client, auth_headers, entry["public_id"])
+        assert preview["last_session_context"] is not None
+        assert preview["last_session_context"]["next_action"] is not None
+
+        # Library entry should also be updated via fallback.
         resp = await async_client.get("/v1/library", headers=auth_headers)
         items = resp.json()["items"]
         assert len(items) == 1
@@ -245,6 +274,87 @@ class TestSubmitDebrief:
             headers=auth_headers,
         )
         assert resp.status_code == 404
+
+
+# =====================================================================
+# Test: Retroactive debrief (unregistered session)
+# =====================================================================
+
+
+class TestRetroactiveDebrief:
+    async def test_retroactive_creates_mission_and_updates_preview(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+        seed_platforms: list[dict[str, Any]],
+    ) -> None:
+        """Submitting a retroactive debrief creates a pre-ended mission
+        and returns an updated preview with extracted context."""
+        entry = await _create_library_entry(async_client, auth_headers, seed_platforms)
+
+        resp = await async_client.post(
+            "/v1/missions/retroactive-debrief",
+            json={
+                "library_entry_public_id": entry["public_id"],
+                "debrief_text": "Played for 3 hours. Beat Soul Master and got to City of Tears.",
+            },
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        preview = resp.json()
+        assert preview["last_session_context"] is not None
+        assert preview["briefing_text"] is not None
+
+        # Verify the retroactive mission exists in the timeline.
+        resp = await async_client.get("/v1/missions", headers=auth_headers)
+        data = resp.json()
+        assert data["total"] == 1
+        retro = data["items"][0]
+        assert retro["mission_type"] == "retroactive"
+        assert retro["ended_via"] == "retroactive"
+
+    async def test_retroactive_entry_not_found(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        resp = await async_client.post(
+            "/v1/missions/retroactive-debrief",
+            json={
+                "library_entry_public_id": str(uuid4()),
+                "debrief_text": "Some session notes.",
+            },
+            headers=auth_headers,
+        )
+        assert resp.status_code == 404
+
+    async def test_retroactive_does_not_block_active_mission(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+        seed_platforms: list[dict[str, Any]],
+    ) -> None:
+        """Retroactive debrief should work even with an active mission
+        for a different game, since it creates a pre-ended mission."""
+        entry1 = await _create_library_entry(async_client, auth_headers, seed_platforms)
+        entry2 = await _create_library_entry(
+            async_client, auth_headers, seed_platforms, game_text="I bought Celeste"
+        )
+
+        # Start a regular mission for entry1.
+        await _start_mission(async_client, auth_headers, entry1["public_id"])
+
+        # Submit retroactive debrief for entry2 — should succeed
+        # because the retroactive mission is pre-ended.
+        resp = await async_client.post(
+            "/v1/missions/retroactive-debrief",
+            json={
+                "library_entry_public_id": entry2["public_id"],
+                "debrief_text": "Cleared chapter 3 of Celeste.",
+            },
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
 
 
 # =====================================================================
@@ -509,29 +619,31 @@ class TestAntiHallucination:
 
 
 class TestActionableBriefing:
-    async def test_start_returns_last_session_context(
+    async def test_preview_returns_last_session_context(
         self,
         async_client: AsyncClient,
         auth_headers: dict[str, str],
         seed_platforms: list[dict[str, Any]],
     ) -> None:
-        """Starting a second mission should return the first's extracted state."""
+        """Preview for a second mission should return the first's extracted state."""
         entry = await _create_library_entry(async_client, auth_headers, seed_platforms)
+
+        # First preview: no prior sessions.
+        p1 = await _preview_briefing(async_client, auth_headers, entry["public_id"])
+        assert p1["last_session_context"] is None
 
         # First mission: start, debrief, end.
         m1 = await _start_mission(async_client, auth_headers, entry["public_id"])
-        assert m1["last_session_context"] is None  # no prior sessions
-
         await async_client.patch(
             f"/v1/missions/{m1['public_id']}/debrief",
             json={"debrief_text": "Beat the Mantis Lords, heading to City of Tears"},
             headers=auth_headers,
         )
 
-        # Second mission: should carry context from the first.
-        m2 = await _start_mission(async_client, auth_headers, entry["public_id"])
-        assert m2["last_session_context"] is not None
-        assert m2["last_session_context"]["next_action"] is not None
+        # Second preview: should carry context from the first.
+        p2 = await _preview_briefing(async_client, auth_headers, entry["public_id"])
+        assert p2["last_session_context"] is not None
+        assert p2["last_session_context"]["next_action"] is not None
 
     async def test_briefing_contains_suggestions(
         self,
@@ -601,16 +713,16 @@ class TestActionableBriefing:
         )
         assert resp.status_code == 200
 
-    async def test_first_mission_no_confirmation_needed(
+    async def test_first_preview_no_confirmation_needed(
         self,
         async_client: AsyncClient,
         auth_headers: dict[str, str],
         seed_platforms: list[dict[str, Any]],
     ) -> None:
-        """First mission has no prior context — lastSessionContext should be null."""
+        """First preview has no prior context — lastSessionContext should be null."""
         entry = await _create_library_entry(async_client, auth_headers, seed_platforms)
-        m = await _start_mission(async_client, auth_headers, entry["public_id"])
-        assert m["last_session_context"] is None
+        p = await _preview_briefing(async_client, auth_headers, entry["public_id"])
+        assert p["last_session_context"] is None
 
 
 # =====================================================================

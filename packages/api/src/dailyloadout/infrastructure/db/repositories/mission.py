@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
@@ -30,6 +31,29 @@ class MissionRepository:
             user_id=user_id,
             library_entry_id=library_entry_id,
             briefing_text=briefing_text,
+        )
+        self._session.add(mission)
+        await self._session.flush()
+        return mission
+
+    async def create_retroactive(
+        self,
+        user_id: int,
+        library_entry_id: int,
+        debrief_text: str,
+        extracted_state: dict[str, Any] | None = None,
+    ) -> Mission:
+        """Insert a pre-ended retroactive mission and return it."""
+        now = datetime.now(UTC)
+        mission = Mission(
+            user_id=user_id,
+            library_entry_id=library_entry_id,
+            mission_type="retroactive",
+            debrief_text=debrief_text,
+            extracted_state=extracted_state,
+            ended_via="retroactive",
+            started_at=now,
+            ended_at=now,
         )
         self._session.add(mission)
         await self._session.flush()
@@ -167,6 +191,31 @@ class MissionRepository:
         if mission is not None:
             mission.briefing_text = briefing_text
             await self._session.flush()
+
+    async def get_pending_extractions(
+        self,
+        library_entry_id: int,
+    ) -> list[Mission]:
+        """Return ended missions with debrief text but no extracted state.
+
+        These are missions where the async extraction task hasn't completed
+        (or failed). Used by the sync fallback before briefing generation.
+        """
+        stmt = (
+            select(Mission)
+            .options(
+                joinedload(Mission.library_entry).joinedload(LibraryEntry.game),
+                joinedload(Mission.library_entry).joinedload(LibraryEntry.platform),
+            )
+            .where(
+                Mission.library_entry_id == library_entry_id,
+                Mission.ended_at.is_not(None),
+                Mission.debrief_text.is_not(None),
+                Mission.extracted_state.is_(None),
+            )
+        )
+        result = await self._session.execute(stmt)
+        return list(result.scalars().unique().all())
 
     async def get_stale_missions(self, max_hours: int = 8) -> list[Mission]:
         """Return active missions older than *max_hours*."""

@@ -4,9 +4,11 @@ import {
 	getActiveMission,
 	getMission,
 	listMissions,
+	previewBriefing,
 	regenerateBriefing,
 	startMission,
 	submitDebrief,
+	submitRetroactiveDebrief,
 } from "../lib/mission-api";
 
 // ---------------------------------------------------------------------------
@@ -46,11 +48,32 @@ export function useActiveMission() {
 // Mutations
 // ---------------------------------------------------------------------------
 
+export function usePreviewBriefing() {
+	return useMutation({
+		mutationFn: (vars: { libraryEntryPublicId: string; positionOverride?: string }) =>
+			previewBriefing(vars.libraryEntryPublicId, vars.positionOverride),
+	});
+}
+
+export function useRetroactiveDebrief() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (vars: { libraryEntryPublicId: string; debriefText: string }) =>
+			submitRetroactiveDebrief(vars.libraryEntryPublicId, vars.debriefText),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: MISSIONS_KEY });
+			queryClient.invalidateQueries({ queryKey: LIBRARY_KEY });
+		},
+	});
+}
+
 export function useStartMission() {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: (libraryEntryPublicId: string) => startMission(libraryEntryPublicId),
+		mutationFn: (vars: { libraryEntryPublicId: string; briefingText?: string }) =>
+			startMission(vars.libraryEntryPublicId, vars.briefingText),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: MISSIONS_KEY });
 			queryClient.invalidateQueries({ queryKey: LIBRARY_KEY });

@@ -19,6 +19,28 @@ class MissionStartRequest(BaseModel):
     """Body for ``POST /v1/missions``."""
 
     library_entry_public_id: UUID
+    briefing_text: str | None = Field(
+        default=None,
+        description="Pre-generated briefing from a preview call. Skips LLM generation.",
+    )
+
+
+class BriefingPreviewRequest(BaseModel):
+    """Body for ``POST /v1/missions/preview-briefing``."""
+
+    library_entry_public_id: UUID
+    position_override: str | None = Field(
+        default=None,
+        max_length=2000,
+        description="Optional player-provided correction of their current in-game position.",
+    )
+
+
+class RetroactiveDebriefRequest(BaseModel):
+    """Body for ``POST /v1/missions/retroactive-debrief``."""
+
+    library_entry_public_id: UUID
+    debrief_text: str = Field(min_length=3, max_length=5000)
 
 
 class MissionDebriefRequest(BaseModel):
@@ -53,6 +75,7 @@ class MissionResponse(BaseModel):
 
     public_id: UUID
     library_entry: LibraryEntryResponse
+    mission_type: str = "regular"
     briefing_text: str | None = None
     debrief_text: str | None = None
     extracted_state: dict[str, Any] | None = None
@@ -71,6 +94,7 @@ class MissionListItem(BaseModel):
 
     public_id: UUID
     library_entry: LibraryEntryResponse
+    mission_type: str = "regular"
     ended_via: str | None = None
     started_at: datetime
     ended_at: datetime | None = None
@@ -85,13 +109,27 @@ class MissionListResponse(BaseModel):
     total: int
 
 
+class BriefingPreviewResponse(BaseModel):
+    """Briefing preview without creating a mission."""
+
+    library_entry: LibraryEntryResponse
+    briefing_text: str | None = None
+    last_session_context: dict[str, Any] | None = None
+
+    model_config = {"from_attributes": True}
+
+
 # Valid ended_via values (for documentation / validation).
-EndedVia = Literal["debrief_completed", "paused_app", "auto_clamp"]
+EndedVia = Literal["debrief_completed", "paused_app", "auto_clamp", "retroactive"]
+
+MissionType = Literal["regular", "retroactive"]
 
 MissionStatus = Literal["active", "ended"]
 
 
 __all__ = [
+    "BriefingPreviewRequest",
+    "BriefingPreviewResponse",
     "EndedVia",
     "MissionDebriefRequest",
     "MissionEndRequest",
@@ -100,5 +138,7 @@ __all__ = [
     "MissionResponse",
     "MissionStartRequest",
     "MissionStatus",
+    "MissionType",
     "RegenerateBriefingRequest",
+    "RetroactiveDebriefRequest",
 ]

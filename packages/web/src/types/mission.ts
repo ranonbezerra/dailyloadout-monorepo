@@ -4,7 +4,9 @@
 
 import type { LibraryEntry } from "./library";
 
-export type EndedVia = "debrief_completed" | "paused_app" | "auto_clamp";
+export type EndedVia = "debrief_completed" | "paused_app" | "auto_clamp" | "retroactive";
+
+export type MissionType = "regular" | "retroactive";
 
 export interface SessionContext {
 	location?: string | null;
@@ -16,6 +18,7 @@ export interface SessionContext {
 export interface Mission {
 	publicId: string;
 	libraryEntry: LibraryEntry;
+	missionType: MissionType;
 	briefingText: string | null;
 	debriefText: string | null;
 	extractedState: Record<string, unknown> | null;
@@ -30,6 +33,7 @@ export interface Mission {
 export interface MissionListItem {
 	publicId: string;
 	libraryEntry: LibraryEntry;
+	missionType: MissionType;
 	endedVia: EndedVia | null;
 	startedAt: string;
 	endedAt: string | null;
@@ -38,4 +42,10 @@ export interface MissionListItem {
 export interface MissionListResponse {
 	items: MissionListItem[];
 	total: number;
+}
+
+export interface BriefingPreview {
+	libraryEntry: LibraryEntry;
+	briefingText: string | null;
+	lastSessionContext: SessionContext | null;
 }

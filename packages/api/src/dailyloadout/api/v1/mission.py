@@ -7,6 +7,8 @@ from uuid import UUID
 from fastapi import APIRouter, Query, status
 
 from dailyloadout.core.mission.schemas import (
+    BriefingPreviewRequest,
+    BriefingPreviewResponse,
     MissionDebriefRequest,
     MissionEndRequest,
     MissionListItem,
@@ -14,6 +16,7 @@ from dailyloadout.core.mission.schemas import (
     MissionResponse,
     MissionStartRequest,
     RegenerateBriefingRequest,
+    RetroactiveDebriefRequest,
 )
 from dailyloadout.deps import CurrentUserDep
 from dailyloadout.deps.mission import MissionServiceDep
@@ -38,14 +41,70 @@ async def start_mission(
 ) -> MissionResponse:
     """Start a new mission for a library entry.
 
-    Generates a briefing from the last 3 debriefs and creates the mission.
-    Returns 409 if the user already has an active mission.
+    If ``briefing_text`` is provided (from a prior preview call), the LLM
+    briefing generation step is skipped. Returns 409 if the user already
+    has an active mission.
     """
     mission = await mission_service.start_mission(
         user_id=current_user.id,
         library_entry_public_id=body.library_entry_public_id,
+        briefing_text=body.briefing_text,
     )
     return MissionResponse.model_validate(mission)
+
+
+# ---------------------------------------------------------------------------
+# Preview briefing (before starting a mission)
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/preview-briefing",
+    response_model=BriefingPreviewResponse,
+)
+async def preview_briefing(
+    body: BriefingPreviewRequest,
+    current_user: CurrentUserDep,
+    mission_service: MissionServiceDep,
+) -> BriefingPreviewResponse:
+    """Generate a briefing preview without creating a mission.
+
+    Returns the briefing text and last session context so the user can
+    review before committing to a mission.
+    """
+    result = await mission_service.preview_briefing(
+        user_id=current_user.id,
+        library_entry_public_id=body.library_entry_public_id,
+        position_override=body.position_override,
+    )
+    return BriefingPreviewResponse.model_validate(result)
+
+
+# ---------------------------------------------------------------------------
+# Retroactive debrief (unregistered play session)
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/retroactive-debrief",
+    response_model=BriefingPreviewResponse,
+)
+async def submit_retroactive_debrief(
+    body: RetroactiveDebriefRequest,
+    current_user: CurrentUserDep,
+    mission_service: MissionServiceDep,
+) -> BriefingPreviewResponse:
+    """Record a debrief for a play session that wasn't tracked.
+
+    Creates a pre-ended retroactive mission, extracts state, and returns
+    an updated briefing preview that includes the new data.
+    """
+    result = await mission_service.submit_retroactive_debrief(
+        user_id=current_user.id,
+        library_entry_public_id=body.library_entry_public_id,
+        debrief_text=body.debrief_text,
+    )
+    return BriefingPreviewResponse.model_validate(result)
 
 
 # ---------------------------------------------------------------------------

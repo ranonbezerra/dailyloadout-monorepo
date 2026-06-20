@@ -14,6 +14,7 @@ const ENDED_VIA_LABELS: Record<string, { label: string; color: string }> = {
 	debrief_completed: { label: "Debriefed", color: "green" },
 	paused_app: { label: "Paused", color: "yellow" },
 	auto_clamp: { label: "Auto-closed", color: "gray" },
+	retroactive: { label: "Retroactive", color: "grape" },
 };
 
 function getEndedViaBadge(endedVia: string | null) {
@@ -134,11 +135,14 @@ export function MissionsPage() {
 				/>
 			)}
 
-			<MissionBriefingModal
-				mission={briefingMission}
-				onClose={() => setBriefingMission(null)}
-				onMissionUpdated={(updated) => setBriefingMission(updated)}
-			/>
+			{briefingMission && (
+				<MissionBriefingModal
+					mode="view"
+					mission={briefingMission}
+					onClose={() => setBriefingMission(null)}
+					onMissionUpdated={(updated) => setBriefingMission(updated)}
+				/>
+			)}
 			<MissionDebriefModal mission={debriefMission} onClose={() => setDebriefMission(null)} />
 		</Stack>
 	);

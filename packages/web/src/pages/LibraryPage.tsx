@@ -15,11 +15,12 @@ import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { DataTable } from "mantine-datatable";
 import { useState } from "react";
+import { AiBriefingOverlay } from "../components/AiBriefingOverlay";
 import { QuickAddMenu } from "../components/QuickAddMenu";
 import { useDeleteEntry, useLibrary, useUpdateEntry } from "../hooks/useLibrary";
-import { useActiveMission, useStartMission } from "../hooks/useMission";
+import { useActiveMission, usePreviewBriefing } from "../hooks/useMission";
 import type { LibraryEntry, LibraryStatus } from "../types/library";
-import type { Mission } from "../types/mission";
+import type { BriefingPreview, Mission } from "../types/mission";
 import { CapturePhotoModal } from "./CapturePhotoModal";
 import { CaptureReviewModal } from "./CaptureReviewModal";
 import { CaptureTextModal } from "./CaptureTextModal";
@@ -63,7 +64,15 @@ export function LibraryPage() {
 	const [voiceModalOpened, setVoiceModalOpened] = useState(false);
 	const [photoModalOpened, setPhotoModalOpened] = useState(false);
 	const [reviewCaptureId, setReviewCaptureId] = useState<string | null>(null);
+
+	// View mode: viewing an existing mission's briefing
 	const [briefingMission, setBriefingMission] = useState<Mission | null>(null);
+	// Preview mode: reviewing a briefing before starting a mission
+	const [previewData, setPreviewData] = useState<{
+		preview: BriefingPreview;
+		entryPublicId: string;
+	} | null>(null);
+
 	const [debriefMission, setDebriefMission] = useState<Mission | null>(null);
 
 	const queryParams = {
@@ -251,7 +260,12 @@ export function LibraryPage() {
 										});
 									}
 								}}
-								onMissionStarted={(mission) => setBriefingMission(mission)}
+								onPreviewReady={(preview) =>
+									setPreviewData({
+										preview,
+										entryPublicId: record.publicId,
+									})
+								}
 								isPending={updateMutation.isPending || deleteMutation.isPending}
 							/>
 						),
@@ -284,11 +298,31 @@ export function LibraryPage() {
 				}}
 			/>
 			<CaptureReviewModal captureId={reviewCaptureId} onClose={() => setReviewCaptureId(null)} />
-			<MissionBriefingModal
-				mission={briefingMission}
-				onClose={() => setBriefingMission(null)}
-				onMissionUpdated={(updated) => setBriefingMission(updated)}
-			/>
+
+			{/* Preview mode: reviewing briefing before starting */}
+			{previewData && (
+				<MissionBriefingModal
+					mode="preview"
+					preview={previewData.preview}
+					libraryEntryPublicId={previewData.entryPublicId}
+					onConfirm={() => setPreviewData(null)}
+					onPreviewUpdated={(updated) =>
+						setPreviewData((prev) => (prev ? { ...prev, preview: updated } : null))
+					}
+					onClose={() => setPreviewData(null)}
+				/>
+			)}
+
+			{/* View mode: viewing an existing mission's briefing */}
+			{briefingMission && (
+				<MissionBriefingModal
+					mode="view"
+					mission={briefingMission}
+					onClose={() => setBriefingMission(null)}
+					onMissionUpdated={(updated) => setBriefingMission(updated)}
+				/>
+			)}
+
 			<MissionDebriefModal mission={debriefMission} onClose={() => setDebriefMission(null)} />
 		</Stack>
 	);
@@ -302,21 +336,15 @@ interface ExpandedRowProps {
 	entry: LibraryEntry;
 	onUpdate: (data: { status?: LibraryStatus; notes?: string }) => Promise<void>;
 	onDelete: () => Promise<void>;
-	onMissionStarted: (mission: Mission) => void;
+	onPreviewReady: (preview: BriefingPreview) => void;
 	isPending: boolean;
 }
 
-function ExpandedRow({
-	entry,
-	onUpdate,
-	onDelete,
-	onMissionStarted,
-	isPending,
-}: ExpandedRowProps) {
+function ExpandedRow({ entry, onUpdate, onDelete, onPreviewReady, isPending }: ExpandedRowProps) {
 	const [editStatus, setEditStatus] = useState<string | null>(entry.status);
 	const [editNotes, setEditNotes] = useState(entry.notes ?? "");
 	const { data: activeMission } = useActiveMission();
-	const startMission = useStartMission();
+	const previewBriefing = usePreviewBriefing();
 
 	const hasActiveMission = activeMission != null;
 	const isThisEntryActive = activeMission?.libraryEntry.publicId === entry.publicId;
@@ -361,12 +389,13 @@ function ExpandedRow({
 				<Button
 					size="xs"
 					color="teal"
-					loading={startMission.isPending}
 					disabled={hasActiveMission}
 					onClick={async () => {
 						try {
-							const mission = await startMission.mutateAsync(entry.publicId);
-							onMissionStarted(mission);
+							const preview = await previewBriefing.mutateAsync({
+								libraryEntryPublicId: entry.publicId,
+							});
+							onPreviewReady(preview);
 						} catch (err) {
 							notifications.show({
 								title: "Cannot start mission",
@@ -382,6 +411,8 @@ function ExpandedRow({
 					Delete
 				</Button>
 			</Group>
+
+			<AiBriefingOverlay opened={previewBriefing.isPending} gameTitle={entry.game.title} />
 		</Stack>
 	);
 }

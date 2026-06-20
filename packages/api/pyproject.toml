@@ -15,7 +15,8 @@ pydantic-settings = "*"
 sqlalchemy = { version = ">=2", extras = ["asyncio"] }
 asyncpg = "*"
 alembic = "*"
-arq = "*"
+taskiq = "*"
+taskiq-redis = "*"
 redis = { version = "*", extras = ["hiredis"] }
 httpx = "*"
 structlog = "*"
