@@ -18,6 +18,7 @@ The repository is public from Epic 0 onward. Every commit and PR is part of the 
 | 6 | Capture (photo) | Multimodal LLM (vision) |
 | 7 | Mission + Briefing | **Anchor feature** — anti-hallucination |
 | 8 | Daily Loadout | Second AI feature with UUID validation |
+| 8.5 | Async Debrief (Taskiq) | Decouple LLM extraction from debrief flow |
 | 9 | Stats + Web analytics | Where the dashboard shines |
 | 10 | Polish + Launch | README final, demo GIF, announcement |
 | 11 | Deep Research Briefing | Web-augmented spoiler-free suggestions (v1.1+) |
@@ -322,6 +323,56 @@ In interviews this becomes: *"How do you handle LLM hallucinations in production
 ### Technical highlight
 
 > **Constraint: LLM must pick from existing library.** The loadout endpoint validates that the returned UUID exists in the user's eligible library entries. If not (the LLM hallucinated a UUID), reroll once, then 422. Same anti-hallucination pattern as briefing, applied to structured output.
+
+---
+
+## Epic 7B — Async Debrief Extraction with Taskiq (Weekend 8.5)
+
+**Goal:** decouple LLM debrief extraction from the mission end flow. User gets an instant response; extraction happens in a background worker with retries.
+
+### Context
+
+When a user submits a debrief, `submit_debrief()` currently calls `extract_debrief_state()` synchronously — blocking the HTTP response while the LLM processes the text. The extracted state (location, next_action, level, current_quest) is only needed later, when generating a briefing for the next mission on that game. There's no reason to make the user wait.
+
+### Strategy
+
+1. **Debrief submission returns immediately.** Save the debrief text, end the mission, respond to the user. No LLM call in the request path.
+2. **Async extraction via Taskiq worker.** A background task picks up the debrief and calls `extract_debrief_state()` with automatic retries on failure.
+3. **Sync fallback at next briefing.** When starting a new mission, if the previous mission has `debrief_text` but null `extracted_state` (extraction failed or hasn't run yet), do a synchronous extraction at that point with a friendly loading message. This is a rare edge case — the async worker will have succeeded in almost all cases.
+
+### Why Taskiq
+
+- **Asyncio-native** — tasks are plain `async def`, no event loop conflicts with FastAPI
+- **Official FastAPI integration** via `taskiq-fastapi` with shared dependency injection
+- **Actively maintained** (2026 releases, growing community)
+- **Broker-flexible** — Redis now (already in the stack), can swap to RabbitMQ/NATS/Kafka later
+- **Built-in retries and middleware** — covers the retry strategy without custom code
+- **arq is dead** (maintenance-only, creator moved on) and **Celery lacks async support** (sync workers, event loop conflicts, operational overhead)
+
+### Tasks
+
+- [ ] Add `taskiq`, `taskiq-redis`, and `taskiq-fastapi` to API dependencies
+- [ ] Create `infrastructure/tasks/` module with Taskiq broker configuration (Redis)
+- [ ] Create task `extract_debrief_state_task` that runs the LLM extraction + DB update
+- [ ] Configure retry policy: 3 attempts with exponential backoff
+- [ ] Modify `MissionService.submit_debrief()`: save text, end mission, dispatch async task, return immediately
+- [ ] Add sync fallback in `MissionService.start_mission()` / briefing generation: if previous mission has `debrief_text` but null `extracted_state`, run extraction synchronously before generating the briefing
+- [ ] Frontend: add a brief loading state when the sync fallback triggers ("Loading context from your last session...")
+- [ ] Add Taskiq worker to `docker-compose.yml` as a separate service
+- [ ] Pytest: test debrief submission returns instantly without LLM call, test extraction task runs correctly, test sync fallback path
+- [ ] Update `ARCHITECTURE.md` with the async extraction pattern
+
+### Definition of Done
+
+- Submitting a debrief responds instantly (no LLM latency in the response)
+- Extracted state appears on the mission within seconds (background worker)
+- If the worker fails all retries, the next briefing still works (sync fallback with friendly loading message)
+- Taskiq worker runs as a separate process alongside the API
+- Tests cover: happy path (async extraction succeeds), failure path (sync fallback triggers)
+
+### Technical highlight
+
+> **Async-first with sync fallback:** debrief extraction is fire-and-forget with retries. The system optimistically processes in the background, but never loses data — if all retries fail, the extraction runs on-demand when the data is actually needed (next briefing). The user only experiences latency in the rare failure case, and even then gets a clear explanation of what's happening.
 
 ---
 

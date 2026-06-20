@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from dailyloadout.infrastructure.db.models.auth import User  # noqa: F401
+    from dailyloadout.infrastructure.db.models.loadout import Loadout  # noqa: F401
     from dailyloadout.infrastructure.db.models.mission import Mission  # noqa: F401
 
 from sqlalchemy import (
@@ -120,6 +121,7 @@ class LibraryEntry(Base):
     game: Mapped["Game"] = relationship(back_populates="library_entries")
     platform: Mapped["Platform"] = relationship(back_populates="library_entries")
     missions: Mapped[list["Mission"]] = relationship(back_populates="library_entry")
+    loadouts: Mapped[list["Loadout"]] = relationship(back_populates="library_entry")
 
     __table_args__ = (
         UniqueConstraint(

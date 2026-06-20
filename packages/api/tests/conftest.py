@@ -28,6 +28,7 @@ from dailyloadout.infrastructure.db.models import (
     CaptureCandidate,  # noqa: F401  — ensure models registered
     Game,
     LibraryEntry,  # noqa: F401  — ensure models registered
+    Loadout,  # noqa: F401  — ensure models registered
     Mission,  # noqa: F401  — ensure models registered
     Platform,  # noqa: F401  — ensure models registered
     User,  # noqa: F401  — ensure models registered
@@ -116,6 +117,7 @@ _SQLITE_INCOMPATIBLE_INDEXES = {
     "idx_captures_created",  # created_at DESC expression
     "idx_missions_user_active",  # partial unique (WHERE ended_at IS NULL)
     "idx_missions_entry_ended",  # DESC expression
+    "idx_loadouts_user_created",  # DESC expression
 }
 
 for _table in Base.metadata.tables.values():

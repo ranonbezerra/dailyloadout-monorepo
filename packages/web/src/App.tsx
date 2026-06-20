@@ -1,10 +1,11 @@
 import { AppShell, Button, NavLink, Stack, Text } from "@mantine/core";
-import { IconBooks, IconHistory, IconLogout, IconSwords } from "@tabler/icons-react";
+import { IconBooks, IconDice3, IconHistory, IconLogout, IconSwords } from "@tabler/icons-react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { useAuthContext } from "./contexts/AuthContext";
 import { CapturesPage } from "./pages/CapturesPage";
 import { LibraryPage } from "./pages/LibraryPage";
+import { LoadoutPage } from "./pages/LoadoutPage";
 import { LoginPage } from "./pages/LoginPage";
 import { MissionsPage } from "./pages/MissionsPage";
 import { RegisterPage } from "./pages/RegisterPage";
@@ -27,6 +28,12 @@ function AppLayout() {
 							leftSection={<IconBooks size={18} />}
 							active={location.pathname.startsWith("/library")}
 							onClick={() => navigate("/library")}
+						/>
+						<NavLink
+							label="Daily Loadout"
+							leftSection={<IconDice3 size={18} />}
+							active={location.pathname.startsWith("/loadout")}
+							onClick={() => navigate("/loadout")}
 						/>
 						<NavLink
 							label="Missions"
@@ -56,6 +63,7 @@ function AppLayout() {
 			<AppShell.Main>
 				<Routes>
 					<Route path="/library" element={<LibraryPage />} />
+					<Route path="/loadout" element={<LoadoutPage />} />
 					<Route path="/missions" element={<MissionsPage />} />
 					<Route path="/captures" element={<CapturesPage />} />
 					<Route path="*" element={<Navigate to="/library" replace />} />

@@ -15,12 +15,14 @@ from dailyloadout.api.v1.auth import limiter
 from dailyloadout.api.v1.auth import router as auth_router
 from dailyloadout.api.v1.capture import router as capture_router
 from dailyloadout.api.v1.library import router as library_router
+from dailyloadout.api.v1.loadout import router as loadout_router
 from dailyloadout.api.v1.mission import router as mission_router
 from dailyloadout.config import settings
 
 logger = structlog.get_logger()
 
 AUTO_CLAMP_INTERVAL_SECONDS = 3600  # 1 hour
+AUTO_IGNORE_INTERVAL_SECONDS = 3600  # 1 hour
 
 
 async def _ensure_single_user() -> None:
@@ -75,20 +77,43 @@ async def _auto_clamp_loop() -> None:
             logger.exception("auto_clamp_cycle_error")
 
 
+async def _auto_ignore_loop() -> None:
+    """Periodically mark stale loadouts as ignored."""
+    from dailyloadout.infrastructure.db.repositories.loadout import LoadoutRepository
+    from dailyloadout.infrastructure.db.session import async_session_factory
+    from dailyloadout.workers.loadout_auto_ignore import auto_ignore_stale_loadouts
+
+    while True:
+        await asyncio.sleep(AUTO_IGNORE_INTERVAL_SECONDS)
+        try:
+            async with async_session_factory() as session:
+                repo = LoadoutRepository(session)
+                ignored = await auto_ignore_stale_loadouts(repo, max_hours=24)
+                await session.commit()
+                if ignored:
+                    logger.info("auto_ignore_cycle_done", ignored=ignored)
+        except Exception:
+            logger.exception("auto_ignore_cycle_error")
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     # Single-user mode: ensure the default account exists.
     if settings.single_user_mode:
         await _ensure_single_user()
 
-    # Start periodic auto-clamp background task.
+    # Start periodic background tasks.
     clamp_task = asyncio.create_task(_auto_clamp_loop())
+    ignore_task = asyncio.create_task(_auto_ignore_loop())
 
     yield
 
     clamp_task.cancel()
+    ignore_task.cancel()
     with contextlib.suppress(asyncio.CancelledError):
         await clamp_task
+    with contextlib.suppress(asyncio.CancelledError):
+        await ignore_task
 
 
 def create_app() -> FastAPI:
@@ -117,6 +142,7 @@ def create_app() -> FastAPI:
     application.include_router(capture_router)
     application.include_router(library_router)
     application.include_router(mission_router)
+    application.include_router(loadout_router)
 
     @application.get("/health")
     async def health() -> dict[str, str]:

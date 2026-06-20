@@ -12,7 +12,7 @@ from jinja2 import Template
 
 from dailyloadout.config import Settings
 
-from .base import AbstractLLMClient, ExtractedGame, ExtractedState
+from .base import AbstractLLMClient, ExtractedGame, ExtractedState, LoadoutPick
 
 logger = structlog.get_logger()
 
@@ -29,6 +29,7 @@ _CAPTURE_PARSE_TEMPLATE = _load_prompt("capture_parse.j2")
 _CAPTURE_PARSE_VISION_TEMPLATE = _load_prompt("capture_parse_vision.j2")
 _BRIEFING_TEMPLATE = _load_prompt("briefing.j2")
 _DEBRIEF_EXTRACT_TEMPLATE = _load_prompt("debrief_extract.j2")
+_LOADOUT_PICK_TEMPLATE = _load_prompt("loadout_pick.j2")
 
 # Regex to find JSON array or object in free-text LLM output (handles
 # markdown fences, preamble, etc.)
@@ -290,3 +291,47 @@ class OllamaClient(AbstractLLMClient):
         except (json.JSONDecodeError, KeyError, TypeError) as exc:
             logger.warning("ollama_debrief_parse_error", error=str(exc))
             return ExtractedState()
+
+    async def pick_loadout_game(
+        self,
+        candidates: list[dict[str, object]],
+        mood: str,
+        available_minutes: int,
+        mental_energy: str,
+        context: str | None = None,
+    ) -> LoadoutPick:
+        """Pick a game from candidates using the smart LLM model."""
+        prompt = _LOADOUT_PICK_TEMPLATE.render(
+            candidates=candidates,
+            mood=mood,
+            available_minutes=available_minutes,
+            mental_energy=mental_energy,
+            context=context,
+        )
+
+        payload = {
+            "model": self._smart_model,
+            "prompt": prompt,
+            "stream": False,
+            "format": "json",
+        }
+
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            try:
+                resp = await client.post(
+                    f"{self._base_url}/api/generate",
+                    json=payload,
+                )
+                resp.raise_for_status()
+            except httpx.HTTPError as exc:
+                logger.warning("ollama_loadout_pick_failed", error=str(exc))
+                raise
+
+        body = resp.json()
+        raw_text = body.get("response", "")
+        parsed = json.loads(raw_text)
+
+        return LoadoutPick(
+            library_entry_public_id=str(parsed["library_entry_public_id"]),
+            reasoning=str(parsed.get("reasoning", "")),
+        )

@@ -25,6 +25,14 @@ class ExtractedState:
     current_quest: str | None = None
 
 
+@dataclass
+class LoadoutPick:
+    """LLM's game pick for a daily loadout."""
+
+    library_entry_public_id: str
+    reasoning: str
+
+
 class AbstractLLMClient(ABC):
     """Contract for LLM clients used in capture and mission processing."""
 
@@ -56,4 +64,16 @@ class AbstractLLMClient(ABC):
         debrief_text: str,
     ) -> ExtractedState:
         """Extract structured state from a user's free-text debrief."""
+        ...
+
+    @abstractmethod
+    async def pick_loadout_game(
+        self,
+        candidates: list[dict[str, object]],
+        mood: str,
+        available_minutes: int,
+        mental_energy: str,
+        context: str | None = None,
+    ) -> LoadoutPick:
+        """Pick a game from *candidates* based on the user's current state."""
         ...

@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from dailyloadout.infrastructure.db.models import LibraryEntry
+from dailyloadout.infrastructure.db.models import LibraryEntry, Mission
 
 
 class LibraryRepository:
@@ -92,6 +92,41 @@ class LibraryRepository:
         """Remove *entry* from the database."""
         stmt = delete(LibraryEntry).where(LibraryEntry.id == entry.id)
         await self._session.execute(stmt)
+
+    async def list_eligible_for_loadout(
+        self,
+        user_id: int,
+        cooldown_hours: int = 12,
+    ) -> list[LibraryEntry]:
+        """Return entries eligible for a daily loadout suggestion.
+
+        An entry is eligible when:
+        - ``status`` is ``backlog``, ``playing``, or ``paused``
+        - No mission on that entry ended within the last *cooldown_hours*
+        """
+        recent_cutoff = datetime.now(UTC) - timedelta(hours=cooldown_hours)
+
+        # Subquery: entry IDs with a mission ended within the cooldown window.
+        recently_ended = (
+            select(Mission.library_entry_id)
+            .where(
+                Mission.ended_at.is_not(None),
+                Mission.ended_at > recent_cutoff,
+            )
+            .subquery()
+        )
+
+        stmt = (
+            select(LibraryEntry)
+            .options(joinedload(LibraryEntry.game), joinedload(LibraryEntry.platform))
+            .where(
+                LibraryEntry.user_id == user_id,
+                LibraryEntry.status.in_(["backlog", "playing", "paused"]),
+                LibraryEntry.id.not_in(select(recently_ended.c.library_entry_id)),
+            )
+        )
+        result = await self._session.execute(stmt)
+        return list(result.scalars().unique().all())
 
     async def exists(self, user_id: int, game_id: int, platform_id: int) -> bool:
         """Return ``True`` if an entry for the given triple already exists."""

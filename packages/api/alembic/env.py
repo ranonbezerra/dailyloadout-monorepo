@@ -13,6 +13,7 @@ from dailyloadout.infrastructure.db.models import (  # noqa: F401
     CaptureCandidate,
     Game,
     LibraryEntry,
+    Loadout,
     Mission,
     OAuthIdentity,
     Platform,

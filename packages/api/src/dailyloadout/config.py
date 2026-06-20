@@ -63,6 +63,8 @@ class Settings(BaseSettings):
     capture_max_image_mb: int = 10
     capture_max_games_per_shelf: int = 12
     mission_auto_clamp_hours: int = 24
+    loadout_auto_ignore_hours: int = 24
+    loadout_cooldown_hours: int = 12
 
     # ── Observability (optional) ─────────────────────────────────────────
     sentry_dsn: str = ""

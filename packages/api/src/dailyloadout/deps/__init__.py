@@ -21,6 +21,10 @@ from .library import (
     LibraryServiceDep,
     PlatformRepoDep,
 )
+from .loadout import (
+    LoadoutRepoDep,
+    LoadoutServiceDep,
+)
 from .mission import (
     MissionRepoDep,
     MissionServiceDep,
@@ -37,10 +41,12 @@ __all__ = [
     "IGDBClientDep",
     "LLMClientDep",
     "LibraryRepoDep",
+    "LibraryServiceDep",
+    "LoadoutRepoDep",
+    "LoadoutServiceDep",
     "MissionRepoDep",
     "MissionServiceDep",
-    "STTClientDep",
-    "LibraryServiceDep",
     "PlatformRepoDep",
+    "STTClientDep",
     "get_db",
 ]
