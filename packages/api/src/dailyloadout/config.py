@@ -62,7 +62,7 @@ class Settings(BaseSettings):
     capture_max_audio_seconds: int = 60
     capture_max_image_mb: int = 10
     capture_max_games_per_shelf: int = 12
-    mission_auto_clamp_hours: int = 8
+    mission_auto_clamp_hours: int = 24
 
     # ── Observability (optional) ─────────────────────────────────────────
     sentry_dsn: str = ""

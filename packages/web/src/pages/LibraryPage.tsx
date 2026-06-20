@@ -1,6 +1,7 @@
 import {
 	Badge,
 	Button,
+	Card,
 	Group,
 	Select,
 	Skeleton,
@@ -11,15 +12,22 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
 import { DataTable } from "mantine-datatable";
 import { useState } from "react";
 import { QuickAddMenu } from "../components/QuickAddMenu";
 import { useDeleteEntry, useLibrary, useUpdateEntry } from "../hooks/useLibrary";
+import { useActiveMission, useStartMission } from "../hooks/useMission";
 import type { LibraryEntry, LibraryStatus } from "../types/library";
+import type { Mission } from "../types/mission";
 import { CapturePhotoModal } from "./CapturePhotoModal";
 import { CaptureReviewModal } from "./CaptureReviewModal";
 import { CaptureTextModal } from "./CaptureTextModal";
 import { CaptureVoiceModal } from "./CaptureVoiceModal";
+import { MissionBriefingModal } from "./MissionBriefingModal";
+import { MissionDebriefModal } from "./MissionDebriefModal";
+
+dayjs.extend(relativeTime);
 
 const STATUS_TABS: { value: string; label: string }[] = [
 	{ value: "all", label: "All" },
@@ -55,6 +63,8 @@ export function LibraryPage() {
 	const [voiceModalOpened, setVoiceModalOpened] = useState(false);
 	const [photoModalOpened, setPhotoModalOpened] = useState(false);
 	const [reviewCaptureId, setReviewCaptureId] = useState<string | null>(null);
+	const [briefingMission, setBriefingMission] = useState<Mission | null>(null);
+	const [debriefMission, setDebriefMission] = useState<Mission | null>(null);
 
 	const queryParams = {
 		status: statusFilter === "all" ? undefined : statusFilter,
@@ -63,6 +73,7 @@ export function LibraryPage() {
 	};
 
 	const { data, isLoading } = useLibrary(queryParams);
+	const { data: activeMission } = useActiveMission();
 	const updateMutation = useUpdateEntry();
 	const deleteMutation = useDeleteEntry();
 
@@ -107,6 +118,39 @@ export function LibraryPage() {
 					</Button>
 				))}
 			</Group>
+
+			{activeMission && (
+				<Card withBorder p="sm" radius="md">
+					<Group justify="space-between">
+						<Group gap="sm">
+							<Badge color="teal" variant="dot" size="lg">
+								Mission active
+							</Badge>
+							<Text fw={500}>{activeMission.libraryEntry.game.title}</Text>
+							<Text size="sm" c="dimmed">
+								{activeMission.libraryEntry.platform.label}
+							</Text>
+							<Text size="sm" c="dimmed">
+								started {dayjs(activeMission.startedAt).fromNow()}
+							</Text>
+						</Group>
+						<Group gap="xs">
+							{activeMission.briefingText && (
+								<Button
+									size="xs"
+									variant="light"
+									onClick={() => setBriefingMission(activeMission)}
+								>
+									View briefing
+								</Button>
+							)}
+							<Button size="xs" color="teal" onClick={() => setDebriefMission(activeMission)}>
+								End mission
+							</Button>
+						</Group>
+					</Group>
+				</Card>
+			)}
 
 			{entries.length === 0 ? (
 				<Text c="dimmed" ta="center" py="xl">
@@ -207,6 +251,7 @@ export function LibraryPage() {
 										});
 									}
 								}}
+								onMissionStarted={(mission) => setBriefingMission(mission)}
 								isPending={updateMutation.isPending || deleteMutation.isPending}
 							/>
 						),
@@ -239,6 +284,12 @@ export function LibraryPage() {
 				}}
 			/>
 			<CaptureReviewModal captureId={reviewCaptureId} onClose={() => setReviewCaptureId(null)} />
+			<MissionBriefingModal
+				mission={briefingMission}
+				onClose={() => setBriefingMission(null)}
+				onMissionUpdated={(updated) => setBriefingMission(updated)}
+			/>
+			<MissionDebriefModal mission={debriefMission} onClose={() => setDebriefMission(null)} />
 		</Stack>
 	);
 }
@@ -251,15 +302,32 @@ interface ExpandedRowProps {
 	entry: LibraryEntry;
 	onUpdate: (data: { status?: LibraryStatus; notes?: string }) => Promise<void>;
 	onDelete: () => Promise<void>;
+	onMissionStarted: (mission: Mission) => void;
 	isPending: boolean;
 }
 
-function ExpandedRow({ entry, onUpdate, onDelete, isPending }: ExpandedRowProps) {
+function ExpandedRow({
+	entry,
+	onUpdate,
+	onDelete,
+	onMissionStarted,
+	isPending,
+}: ExpandedRowProps) {
 	const [editStatus, setEditStatus] = useState<string | null>(entry.status);
 	const [editNotes, setEditNotes] = useState(entry.notes ?? "");
+	const { data: activeMission } = useActiveMission();
+	const startMission = useStartMission();
+
+	const hasActiveMission = activeMission != null;
+	const isThisEntryActive = activeMission?.libraryEntry.publicId === entry.publicId;
 
 	return (
 		<Stack p="md" gap="sm">
+			{entry.missionNextAction && (
+				<Text size="sm" c="dimmed">
+					Next objective: {entry.missionNextAction}
+				</Text>
+			)}
 			<Group>
 				<Select
 					label="Status"
@@ -289,6 +357,26 @@ function ExpandedRow({ entry, onUpdate, onDelete, isPending }: ExpandedRowProps)
 					}
 				>
 					Save
+				</Button>
+				<Button
+					size="xs"
+					color="teal"
+					loading={startMission.isPending}
+					disabled={hasActiveMission}
+					onClick={async () => {
+						try {
+							const mission = await startMission.mutateAsync(entry.publicId);
+							onMissionStarted(mission);
+						} catch (err) {
+							notifications.show({
+								title: "Cannot start mission",
+								message: err instanceof Error ? err.message : "An unexpected error occurred",
+								color: "red",
+							});
+						}
+					}}
+				>
+					{isThisEntryActive ? "Mission active" : "Start Mission"}
 				</Button>
 				<Button size="xs" color="red" variant="light" loading={isPending} onClick={onDelete}>
 					Delete

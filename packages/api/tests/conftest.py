@@ -28,6 +28,7 @@ from dailyloadout.infrastructure.db.models import (
     CaptureCandidate,  # noqa: F401  — ensure models registered
     Game,
     LibraryEntry,  # noqa: F401  — ensure models registered
+    Mission,  # noqa: F401  — ensure models registered
     Platform,  # noqa: F401  — ensure models registered
     User,  # noqa: F401  — ensure models registered
 )
@@ -71,6 +72,9 @@ class _JSONEncodedList(TypeDecorator):
 Game.__table__.c.genres.type = _JSONEncodedList()
 CaptureCandidate.__table__.c.igdb_genres.type = _JSONEncodedList()
 
+# Swap JSONB → JSON-encoded TEXT for SQLite.
+Mission.__table__.c.extracted_state.type = _JSONEncodedList()
+
 
 # ---------------------------------------------------------------------------
 # Test-scoped async SQLite engine
@@ -110,6 +114,8 @@ _SQLITE_INCOMPATIBLE_INDEXES = {
     "idx_games_title_trgm",  # GIN + pg_trgm
     "idx_library_user_last_played",  # NULLS LAST
     "idx_captures_created",  # created_at DESC expression
+    "idx_missions_user_active",  # partial unique (WHERE ended_at IS NULL)
+    "idx_missions_entry_ended",  # DESC expression
 }
 
 for _table in Base.metadata.tables.values():

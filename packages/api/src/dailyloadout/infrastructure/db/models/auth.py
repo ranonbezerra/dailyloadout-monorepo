@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from dailyloadout.infrastructure.db.models.capture import Capture  # noqa: F401
     from dailyloadout.infrastructure.db.models.library import LibraryEntry  # noqa: F401
+    from dailyloadout.infrastructure.db.models.mission import Mission  # noqa: F401
 
 from sqlalchemy import (
     BigInteger,
@@ -56,6 +57,7 @@ class User(Base):
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(back_populates="user")
     library_entries: Mapped[list["LibraryEntry"]] = relationship(back_populates="user")
     captures: Mapped[list["Capture"]] = relationship(back_populates="user")
+    missions: Mapped[list["Mission"]] = relationship(back_populates="user")
 
     __table_args__ = (
         Index(
