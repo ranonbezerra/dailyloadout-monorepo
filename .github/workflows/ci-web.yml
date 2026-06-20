@@ -2,9 +2,6 @@ name: CI — Web
 
 on:
   pull_request:
-    paths:
-      - "packages/web/**"
-      - ".github/workflows/ci-web.yml"
   push:
     branches: [main]
     paths:
@@ -16,7 +13,25 @@ defaults:
     working-directory: packages/web
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      web: ${{ steps.filter.outputs.web }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            web:
+              - "packages/web/**"
+              - ".github/workflows/ci-web.yml"
+
   web-lint-and-test:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
 
     steps:
