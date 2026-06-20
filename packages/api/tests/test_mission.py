@@ -651,9 +651,7 @@ class TestAutoClamp:
         assert clamped == 1
 
         # Verify via API: mission is now ended.
-        resp = await async_client.get(
-            f"/v1/missions/{mission['public_id']}", headers=auth_headers
-        )
+        resp = await async_client.get(f"/v1/missions/{mission['public_id']}", headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["ended_via"] == "auto_clamp"
@@ -714,9 +712,7 @@ class TestAutoClamp:
             await auto_clamp_stale_missions(repo, max_hours=24)
             await session.commit()
 
-        resp = await async_client.get(
-            f"/v1/missions/{mission['public_id']}", headers=auth_headers
-        )
+        resp = await async_client.get(f"/v1/missions/{mission['public_id']}", headers=auth_headers)
         data = resp.json()
         ended_at = datetime.fromisoformat(data["ended_at"])
         expected = stale_start + timedelta(hours=24)
@@ -795,9 +791,7 @@ class TestAutoClamp:
 
         async with _TestSessionFactory() as session:
             for mid in (m2, m3):
-                row = await session.get(
-                    Mission, 2 if mid is m2 else 3
-                )
+                row = await session.get(Mission, 2 if mid is m2 else 3)
                 assert row is not None
                 row.started_at = datetime.now(UTC) - timedelta(hours=25)
             await session.commit()
