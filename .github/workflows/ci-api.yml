@@ -125,6 +125,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check status
+        working-directory: .
         run: |
           if [ "${{ needs.changes.outputs.api }}" != "true" ]; then
             echo "No API changes detected — skipping."

@@ -63,6 +63,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check status
+        working-directory: .
         run: |
           if [ "${{ needs.changes.outputs.web }}" != "true" ]; then
             echo "No Web changes detected — skipping."
