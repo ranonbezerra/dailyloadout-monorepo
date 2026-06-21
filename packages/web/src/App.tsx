@@ -1,8 +1,16 @@
 import { AppShell, Button, NavLink, Stack, Text } from "@mantine/core";
-import { IconBooks, IconDice3, IconHistory, IconLogout, IconSwords } from "@tabler/icons-react";
+import {
+	IconBooks,
+	IconChartBar,
+	IconDice3,
+	IconHistory,
+	IconLogout,
+	IconSwords,
+} from "@tabler/icons-react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { useAuthContext } from "./contexts/AuthContext";
+import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { CapturesPage } from "./pages/CapturesPage";
 import { LibraryPage } from "./pages/LibraryPage";
 import { LoadoutPage } from "./pages/LoadoutPage";
@@ -47,6 +55,12 @@ function AppLayout() {
 							active={location.pathname.startsWith("/captures")}
 							onClick={() => navigate("/captures")}
 						/>
+						<NavLink
+							label="Analytics"
+							leftSection={<IconChartBar size={18} />}
+							active={location.pathname.startsWith("/analytics")}
+							onClick={() => navigate("/analytics")}
+						/>
 					</Stack>
 					<Button
 						variant="subtle"
@@ -66,6 +80,7 @@ function AppLayout() {
 					<Route path="/loadout" element={<LoadoutPage />} />
 					<Route path="/missions" element={<MissionsPage />} />
 					<Route path="/captures" element={<CapturesPage />} />
+					<Route path="/analytics" element={<AnalyticsPage />} />
 					<Route path="*" element={<Navigate to="/library" replace />} />
 				</Routes>
 			</AppShell.Main>

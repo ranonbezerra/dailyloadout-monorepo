@@ -76,3 +76,20 @@ class GameRepository:
         self._session.add(game)
         await self._session.flush()
         return game
+
+    async def distinct_genres(self) -> list[str]:
+        """Return all unique genre strings across all games, sorted."""
+        stmt = select(Game.genres).where(Game.genres.is_not(None))
+        result = await self._session.execute(stmt)
+        genres: set[str] = set()
+        for (game_genres,) in result.all():
+            if game_genres:
+                genres.update(game_genres)
+        return sorted(genres)
+
+    async def update(self, game: Game, **fields: object) -> Game:
+        """Update the given *game* with the provided fields and flush."""
+        for key, value in fields.items():
+            setattr(game, key, value)
+        await self._session.flush()
+        return game

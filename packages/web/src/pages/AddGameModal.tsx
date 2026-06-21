@@ -8,6 +8,7 @@ import {
 	Select,
 	Stack,
 	Switch,
+	TagsInput,
 	Text,
 	Textarea,
 	TextInput,
@@ -16,7 +17,13 @@ import {
 import { useDebouncedValue } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { useState } from "react";
-import { useAddToLibrary, useCreateGame, usePlatforms, useSearchGames } from "../hooks/useLibrary";
+import {
+	useAddToLibrary,
+	useCreateGame,
+	useGameGenres,
+	usePlatforms,
+	useSearchGames,
+} from "../hooks/useLibrary";
 import type { Game, LibraryStatus } from "../types/library";
 
 interface AddGameModalProps {
@@ -42,6 +49,7 @@ export function AddGameModal({ opened, onClose }: AddGameModalProps) {
 	const [manualMode, setManualMode] = useState(false);
 	const [manualTitle, setManualTitle] = useState("");
 	const [manualSlug, setManualSlug] = useState("");
+	const [manualGenres, setManualGenres] = useState<string[]>([]);
 
 	// -- Common fields --
 	const [platformId, setPlatformId] = useState<string | null>(null);
@@ -51,6 +59,7 @@ export function AddGameModal({ opened, onClose }: AddGameModalProps) {
 	// -- Queries & mutations --
 	const { data: platforms = [] } = usePlatforms();
 	const { data: searchResults = [], isFetching: isSearching } = useSearchGames(debouncedSearch);
+	const { data: genreOptions = [] } = useGameGenres();
 	const addMutation = useAddToLibrary();
 	const createGameMutation = useCreateGame();
 
@@ -65,6 +74,7 @@ export function AddGameModal({ opened, onClose }: AddGameModalProps) {
 		setManualMode(false);
 		setManualTitle("");
 		setManualSlug("");
+		setManualGenres([]);
 		setPlatformId(null);
 		setStatus("backlog");
 		setNotes("");
@@ -100,6 +110,7 @@ export function AddGameModal({ opened, onClose }: AddGameModalProps) {
 				const created = await createGameMutation.mutateAsync({
 					title: manualTitle.trim(),
 					slug: manualSlug.trim(),
+					genres: manualGenres.length > 0 ? manualGenres : undefined,
 				});
 				gamePublicId = created.publicId;
 			} else {
@@ -174,6 +185,13 @@ export function AddGameModal({ opened, onClose }: AddGameModalProps) {
 							required
 							value={manualSlug}
 							onChange={(e) => setManualSlug(e.currentTarget.value)}
+						/>
+						<TagsInput
+							label="Genres"
+							placeholder="Type a genre and press Enter"
+							data={genreOptions}
+							value={manualGenres}
+							onChange={setManualGenres}
 						/>
 					</>
 				) : (

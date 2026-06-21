@@ -12,7 +12,7 @@ from typing import Any
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import BigInteger, Integer, SmallInteger, Text, event
+from sqlalchemy import BigInteger, Integer, SmallInteger, Text, event, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 # ---------------------------------------------------------------------------
@@ -126,19 +126,32 @@ for _table in Base.metadata.tables.values():
         _table.indexes.discard(idx)
 
 
+_schema_created = False
+
+
 @pytest.fixture(autouse=True)
 async def _setup_database() -> AsyncIterator[None]:
-    """Create all tables before the test and drop them afterwards.
+    """Ensure schema exists and clean all data before each test.
 
-    This gives each test a completely fresh schema.
+    The schema is created lazily on the first test and reused for the
+    rest of the session.  Data is wiped via DELETE (much faster than
+    ``create_all`` / ``drop_all`` on every test).
     """
+    global _schema_created
+
+    if not _schema_created:
+        async with _test_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        _schema_created = True
+
+    # Wipe data: disable FKs, delete all rows, re-enable FKs.
     async with _test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        await conn.execute(text("PRAGMA foreign_keys=OFF"))
+        for table in reversed(Base.metadata.sorted_tables):
+            await conn.execute(table.delete())
+        await conn.execute(text("PRAGMA foreign_keys=ON"))
 
     yield
-
-    async with _test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
 
 
 async def _override_get_db() -> AsyncIterator[AsyncSession]:
@@ -253,3 +266,23 @@ async def seed_platforms() -> list[dict[str, Any]]:
             )
         await session.commit()
     return rows
+
+
+# ---------------------------------------------------------------------------
+# Cleanup: dispose engines at session end to avoid ResourceWarning
+# ---------------------------------------------------------------------------
+
+
+def pytest_sessionfinish(session: Any, exitstatus: int) -> None:
+    """Dispose async engines so connections are closed before process exit."""
+    import asyncio
+
+    async def _dispose() -> None:
+        await _test_engine.dispose()
+        from dailyloadout.infrastructure.db.session import engine as real_engine
+
+        await real_engine.dispose()
+
+    loop = asyncio.new_event_loop()
+    loop.run_until_complete(_dispose())
+    loop.close()

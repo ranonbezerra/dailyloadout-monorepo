@@ -58,6 +58,21 @@ class LibraryService:
             genres=genres,
         )
 
+    async def update_game(self, game_public_id: UUID, **fields: object) -> Game:
+        """Update a game's fields.
+
+        Raises:
+            ValueError: If the game is not found.
+        """
+        game = await self._game_repo.get_by_public_id(game_public_id)
+        if game is None:
+            raise ValueError("Game not found")
+        return await self._game_repo.update(game, **fields)
+
+    async def list_genres(self) -> list[str]:
+        """Return all distinct genre names from the games catalog."""
+        return await self._game_repo.distinct_genres()
+
     async def search_games(self, query: str, limit: int = 20) -> list[Game]:
         """Search games by title."""
         return await self._game_repo.search(query, limit=limit)

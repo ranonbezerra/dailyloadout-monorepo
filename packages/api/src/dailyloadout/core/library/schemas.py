@@ -40,6 +40,10 @@ class GameResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class GameUpdate(BaseModel):
+    genres: list[str] | None = None
+
+
 class GameSearchResponse(BaseModel):
     items: list[GameResponse]
     total: int
@@ -100,6 +104,7 @@ __all__ = [
     "GameCreate",
     "GameResponse",
     "GameSearchResponse",
+    "GameUpdate",
     "LibraryEntryCreate",
     "LibraryEntryResponse",
     "LibraryEntryUpdate",

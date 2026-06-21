@@ -14,6 +14,7 @@ from dailyloadout.api.v1.capture import router as capture_router
 from dailyloadout.api.v1.library import router as library_router
 from dailyloadout.api.v1.loadout import router as loadout_router
 from dailyloadout.api.v1.mission import router as mission_router
+from dailyloadout.api.v1.stats import router as stats_router
 from dailyloadout.config import settings
 
 logger = structlog.get_logger()
@@ -136,6 +137,7 @@ def create_app() -> FastAPI:
     application.include_router(library_router)
     application.include_router(mission_router)
     application.include_router(loadout_router)
+    application.include_router(stats_router)
 
     @application.get("/health")
     async def health() -> dict[str, str]:

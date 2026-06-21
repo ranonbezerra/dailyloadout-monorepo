@@ -6,6 +6,7 @@ import {
 	Select,
 	Skeleton,
 	Stack,
+	TagsInput,
 	Text,
 	Textarea,
 	Title,
@@ -17,7 +18,13 @@ import { DataTable } from "mantine-datatable";
 import { useState } from "react";
 import { AiBriefingOverlay } from "../components/AiBriefingOverlay";
 import { QuickAddMenu } from "../components/QuickAddMenu";
-import { useDeleteEntry, useLibrary, useUpdateEntry } from "../hooks/useLibrary";
+import {
+	useDeleteEntry,
+	useGameGenres,
+	useLibrary,
+	useUpdateEntry,
+	useUpdateGame,
+} from "../hooks/useLibrary";
 import { useActiveMission, usePreviewBriefing } from "../hooks/useMission";
 import type { LibraryEntry, LibraryStatus } from "../types/library";
 import type { BriefingPreview, Mission } from "../types/mission";
@@ -343,11 +350,31 @@ interface ExpandedRowProps {
 function ExpandedRow({ entry, onUpdate, onDelete, onPreviewReady, isPending }: ExpandedRowProps) {
 	const [editStatus, setEditStatus] = useState<string | null>(entry.status);
 	const [editNotes, setEditNotes] = useState(entry.notes ?? "");
+	const [editGenres, setEditGenres] = useState<string[]>(entry.game.genres ?? []);
 	const { data: activeMission } = useActiveMission();
 	const previewBriefing = usePreviewBriefing();
+	const updateGameMutation = useUpdateGame();
+	const { data: genreOptions = [] } = useGameGenres();
 
 	const hasActiveMission = activeMission != null;
 	const isThisEntryActive = activeMission?.libraryEntry.publicId === entry.publicId;
+
+	const handleSave = async () => {
+		// Update game genres if changed
+		const prev = [...(entry.game.genres ?? [])].sort();
+		const next = [...editGenres].sort();
+		if (JSON.stringify(prev) !== JSON.stringify(next)) {
+			await updateGameMutation.mutateAsync({
+				publicId: entry.game.publicId,
+				data: { genres: editGenres },
+			});
+		}
+		// Update library entry fields
+		await onUpdate({
+			status: (editStatus as LibraryStatus) ?? undefined,
+			notes: editNotes.trim() || undefined,
+		});
+	};
 
 	return (
 		<Stack p="md" gap="sm">
@@ -365,6 +392,13 @@ function ExpandedRow({ entry, onUpdate, onDelete, onPreviewReady, isPending }: E
 					w={200}
 				/>
 			</Group>
+			<TagsInput
+				label="Genres"
+				placeholder="Type a genre and press Enter"
+				data={genreOptions}
+				value={editGenres}
+				onChange={setEditGenres}
+			/>
 			<Textarea
 				label="Notes"
 				value={editNotes}
@@ -374,16 +408,7 @@ function ExpandedRow({ entry, onUpdate, onDelete, onPreviewReady, isPending }: E
 				maxRows={4}
 			/>
 			<Group>
-				<Button
-					size="xs"
-					loading={isPending}
-					onClick={() =>
-						onUpdate({
-							status: (editStatus as LibraryStatus) ?? undefined,
-							notes: editNotes.trim() || undefined,
-						})
-					}
-				>
+				<Button size="xs" loading={isPending || updateGameMutation.isPending} onClick={handleSave}>
 					Save
 				</Button>
 				<Button

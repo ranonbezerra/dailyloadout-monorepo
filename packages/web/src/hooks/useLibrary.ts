@@ -3,12 +3,19 @@ import {
 	addToLibrary,
 	createGame,
 	deleteEntry,
+	fetchGameGenres,
 	fetchLibrary,
 	fetchPlatforms,
 	searchGames,
 	updateEntry,
+	updateGame,
 } from "../lib/library-api";
-import type { GameCreate, LibraryEntryCreate, LibraryEntryUpdate } from "../types/library";
+import type {
+	GameCreate,
+	GameUpdate,
+	LibraryEntryCreate,
+	LibraryEntryUpdate,
+} from "../types/library";
 
 // ---------------------------------------------------------------------------
 // Query keys
@@ -16,6 +23,7 @@ import type { GameCreate, LibraryEntryCreate, LibraryEntryUpdate } from "../type
 
 const PLATFORMS_KEY = ["platforms"] as const;
 const GAMES_SEARCH_KEY = ["games", "search"] as const;
+const GAME_GENRES_KEY = ["games", "genres"] as const;
 const LIBRARY_KEY = ["library"] as const;
 
 // ---------------------------------------------------------------------------
@@ -36,6 +44,14 @@ export function useSearchGames(query: string) {
 		queryFn: () => searchGames(query),
 		enabled: query.length >= 2,
 		staleTime: 30_000,
+	});
+}
+
+export function useGameGenres() {
+	return useQuery({
+		queryKey: GAME_GENRES_KEY,
+		queryFn: fetchGameGenres,
+		staleTime: 60_000,
 	});
 }
 
@@ -87,5 +103,17 @@ export function useDeleteEntry() {
 export function useCreateGame() {
 	return useMutation({
 		mutationFn: (data: GameCreate) => createGame(data),
+	});
+}
+
+export function useUpdateGame() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (vars: { publicId: string; data: GameUpdate }) =>
+			updateGame(vars.publicId, vars.data),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: LIBRARY_KEY });
+		},
 	});
 }

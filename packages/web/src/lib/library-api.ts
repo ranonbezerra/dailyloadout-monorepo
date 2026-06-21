@@ -1,6 +1,7 @@
 import type {
 	Game,
 	GameCreate,
+	GameUpdate,
 	LibraryEntry,
 	LibraryEntryCreate,
 	LibraryEntryUpdate,
@@ -32,6 +33,18 @@ export async function searchGames(query: string, limit = 20): Promise<Game[]> {
 export async function createGame(data: GameCreate): Promise<Game> {
 	const raw = await apiFetch<unknown>("/v1/games", {
 		method: "POST",
+		body: JSON.stringify(camelToSnake(data as unknown as Record<string, unknown>)),
+	});
+	return snakeToCamel<Game>(raw);
+}
+
+export async function fetchGameGenres(): Promise<string[]> {
+	return apiFetch<string[]>("/v1/games/genres");
+}
+
+export async function updateGame(publicId: string, data: GameUpdate): Promise<Game> {
+	const raw = await apiFetch<unknown>(`/v1/games/${publicId}`, {
+		method: "PATCH",
 		body: JSON.stringify(camelToSnake(data as unknown as Record<string, unknown>)),
 	});
 	return snakeToCamel<Game>(raw);

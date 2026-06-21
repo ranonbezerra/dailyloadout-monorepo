@@ -18,16 +18,15 @@ ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
 REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
 _ALGORITHM = "HS256"
-_BCRYPT_ROUNDS = 12
 
 # ---------------------------------------------------------------------------
-# Password hashing (bcrypt, 12 rounds)
+# Password hashing (bcrypt)
 # ---------------------------------------------------------------------------
 
 
 def hash_password(password: str) -> str:
     """Return a bcrypt hash of *password*."""
-    salt = bcrypt.gensalt(rounds=_BCRYPT_ROUNDS)
+    salt = bcrypt.gensalt(rounds=settings.bcrypt_rounds)
     return bcrypt.hashpw(password.encode(), salt).decode()
 
 

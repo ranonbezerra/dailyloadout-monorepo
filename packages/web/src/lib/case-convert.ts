@@ -6,7 +6,7 @@
  */
 
 function snakeToCamelKey(key: string): string {
-	return key.replace(/_([a-z])/g, (_, char: string) => char.toUpperCase());
+	return key.replace(/_([a-z0-9])/g, (_, char: string) => char.toUpperCase());
 }
 
 export function snakeToCamel<T>(data: unknown): T {
