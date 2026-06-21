@@ -93,7 +93,7 @@ class MissionService:
         user_id: int,
         library_entry_public_id: UUID,
         position_override: str | None = None,
-    ) -> dict:
+    ) -> dict[str, object]:
         """Generate a briefing preview without creating a mission.
 
         Returns a dict with ``library_entry``, ``briefing_text``, and
@@ -128,7 +128,7 @@ class MissionService:
         user_id: int,
         library_entry_public_id: UUID,
         debrief_text: str,
-    ) -> dict:
+    ) -> dict[str, object]:
         """Record a debrief for a play session that wasn't tracked.
 
         Creates a pre-ended mission with ``mission_type="retroactive"``,
@@ -325,7 +325,7 @@ class MissionService:
         self,
         entry: LibraryEntry,
         position_override: str | None = None,
-    ) -> dict:
+    ) -> dict[str, object]:
         """Build a briefing preview dict for a library entry.
 
         Shared by ``preview_briefing`` and ``submit_retroactive_debrief``.
