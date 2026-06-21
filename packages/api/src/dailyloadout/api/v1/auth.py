@@ -1,8 +1,7 @@
 """Auth API endpoints: register, login, refresh, logout, me."""
 
-from fastapi import APIRouter, HTTPException, Request, status
-from slowapi import Limiter
-from slowapi.util import get_remote_address
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pyrate_limiter import Duration, Limiter, Rate
 
 from dailyloadout.config import settings
 from dailyloadout.core.auth.schemas import (
@@ -15,7 +14,18 @@ from dailyloadout.core.auth.schemas import (
 )
 from dailyloadout.deps import AuthServiceDep, CurrentUserDep
 
-limiter = Limiter(key_func=get_remote_address)
+_login_limiter = Limiter(Rate(10, Duration.MINUTE))
+
+
+async def _check_login_rate(request: Request) -> None:
+    client_ip = request.client.host if request.client else "unknown"
+    allowed = _login_limiter.try_acquire(client_ip, blocking=False)
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many login attempts. Try again later.",
+        )
+
 
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
 
@@ -47,10 +57,12 @@ async def register(
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)
 
 
-@router.post("/login", response_model=TokenResponse)
-@limiter.limit("10/minute")
+@router.post(
+    "/login",
+    response_model=TokenResponse,
+    dependencies=[Depends(_check_login_rate)],
+)
 async def login(
-    request: Request,
     body: LoginRequest,
     auth_service: AuthServiceDep,
 ) -> TokenResponse:

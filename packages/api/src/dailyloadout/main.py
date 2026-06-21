@@ -8,10 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from scalar_fastapi import get_scalar_api_reference
-from slowapi import _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
 
-from dailyloadout.api.v1.auth import limiter
 from dailyloadout.api.v1.auth import router as auth_router
 from dailyloadout.api.v1.capture import router as capture_router
 from dailyloadout.api.v1.library import router as library_router
@@ -132,10 +129,6 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
-    # Rate limiting
-    application.state.limiter = limiter
-    application.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
     # Routers
     application.include_router(auth_router)

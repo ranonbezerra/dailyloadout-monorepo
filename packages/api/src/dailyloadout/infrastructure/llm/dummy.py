@@ -42,7 +42,7 @@ class DummyLLMClient(AbstractLLMClient):
 
         return results
 
-    async def parse_capture_image(self, image_base64: str) -> list[ExtractedGame]:  # noqa: ARG002
+    async def parse_capture_image(self, image_base64: str) -> list[ExtractedGame]:
         """Return canned results simulating a shelf photo with three games."""
         return [
             ExtractedGame(
@@ -97,7 +97,7 @@ class DummyLLMClient(AbstractLLMClient):
 
     async def extract_debrief_state(
         self,
-        game_title: str,  # noqa: ARG002
+        game_title: str,
         debrief_text: str,
     ) -> ExtractedState:
         """Return a deterministic extracted state for tests."""
@@ -112,9 +112,9 @@ class DummyLLMClient(AbstractLLMClient):
         self,
         candidates: list[dict[str, object]],
         mood: str,
-        available_minutes: int,  # noqa: ARG002
-        mental_energy: str,  # noqa: ARG002
-        context: str | None = None,  # noqa: ARG002
+        available_minutes: int,
+        mental_energy: str,
+        context: str | None = None,
     ) -> LoadoutPick:
         """Return a deterministic pick for tests.
 

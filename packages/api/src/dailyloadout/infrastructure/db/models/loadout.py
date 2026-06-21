@@ -1,32 +1,29 @@
 """Loadout domain model."""
 
 import uuid
-from datetime import datetime
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from dailyloadout.infrastructure.db.models.auth import User  # noqa: F401
-    from dailyloadout.infrastructure.db.models.library import LibraryEntry  # noqa: F401
-    from dailyloadout.infrastructure.db.models.mission import Mission  # noqa: F401
+    from dailyloadout.infrastructure.db.models.auth import User
+    from dailyloadout.infrastructure.db.models.library import LibraryEntry
+    from dailyloadout.infrastructure.db.models.mission import Mission
 
 from sqlalchemy import (
     BigInteger,
-    DateTime,
     ForeignKey,
     Index,
     SmallInteger,
     String,
     Text,
     Uuid,
-    func,
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from dailyloadout.infrastructure.db.base import Base
+from dailyloadout.infrastructure.db.base import Base, TimestampMixin
 
 
-class Loadout(Base):
+class Loadout(TimestampMixin, Base):
     __tablename__ = "loadouts"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
@@ -54,15 +51,6 @@ class Loadout(Base):
     action: Mapped[str | None] = mapped_column(String, nullable=True)
     mission_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("missions.id", ondelete="SET NULL"), nullable=True
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        server_default=func.now(),
-        onupdate=func.now(),
     )
 
     # Relationships

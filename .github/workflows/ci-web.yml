@@ -29,10 +29,11 @@ jobs:
               - "packages/web/**"
               - ".github/workflows/ci-web.yml"
 
-  web-lint-and-test:
+  web-quality:
     needs: changes
     if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@v4
@@ -55,3 +56,21 @@ jobs:
 
       - name: Build
         run: bun run build
+
+  web-status:
+    if: always()
+    needs: [changes, web-quality]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check status
+        working-directory: .
+        run: |
+          if [ "${{ needs.changes.outputs.web }}" != "true" ]; then
+            echo "No Web changes detected — skipping."
+            exit 0
+          fi
+          if [ "${{ needs.web-quality.result }}" != "success" ]; then
+            echo "Web quality checks failed."
+            exit 1
+          fi
+          echo "All Web checks passed."

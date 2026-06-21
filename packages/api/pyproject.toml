@@ -20,7 +20,7 @@ taskiq-redis = "*"
 redis = { version = "*", extras = ["hiredis"] }
 httpx = "*"
 structlog = "*"
-slowapi = "*"
+pyrate-limiter = ">=3"
 python-jose = { version = "*", extras = ["cryptography"] }
 passlib = { version = "*", extras = ["bcrypt"] }
 python-multipart = "*"
@@ -45,6 +45,9 @@ mypy = "*"
 httpx = "*"
 aiosqlite = "^0.22.1"
 greenlet = "^3.5.1"
+bandit = "^1.9.4"
+typos = "^1.47.2"
+pytest-env = "^1.6.0"
 
 [build-system]
 requires = ["poetry-core"]
@@ -59,7 +62,18 @@ line-length = 99
 target-version = "py313"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM"]
+select = ["E", "F", "I", "UP", "B", "SIM", "S", "C90", "N", "ASYNC", "RUF"]
+ignore = ["S104", "B008", "S101", "S105"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/dailyloadout/api/v1/capture.py" = ["ASYNC240"]
+"tests/**" = ["S106"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 12
+
+[tool.ruff.lint.pylint]
+max-args = 10
 
 [tool.mypy]
 strict = true
@@ -68,3 +82,38 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+filterwarnings = ["error"]
+env = ["APP_ENV=testing"]
+
+[tool.coverage.run]
+branch = true
+source = ["src/dailyloadout"]
+omit = [
+    "src/dailyloadout/main.py",
+    # External service adapters — tested via integration tests, not unit tests.
+    "src/dailyloadout/infrastructure/llm/ollama.py",
+    "src/dailyloadout/infrastructure/igdb/client.py",
+    "src/dailyloadout/infrastructure/stt/whisper.py",
+]
+
+[tool.coverage.report]
+fail_under = 90
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
+
+[tool.bandit]
+exclude_dirs = ["tests", "alembic"]
+skips = ["B101"]
+
+[tool.typos.default.extend-words]
+# Game-domain words that typos may flag
+loadout = "loadout"
+loadouts = "loadouts"
+debrief = "debrief"
+debriefs = "debriefs"
+
+[tool.typos.files]
+extend-exclude = ["*.lock", "alembic/versions/*"]

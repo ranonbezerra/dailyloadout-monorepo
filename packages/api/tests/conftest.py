@@ -19,29 +19,29 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 # SQLite compatibility: render BigInteger as plain INTEGER so that SQLite
 # autoincrement works correctly (SQLite only auto-increments INTEGER PKs).
 # ---------------------------------------------------------------------------
-from sqlalchemy.ext.compiler import compiles  # noqa: E402
+from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.types import TypeDecorator
 
 from dailyloadout.infrastructure.db.base import Base
 from dailyloadout.infrastructure.db.models import (
     Capture,  # noqa: F401  — ensure models registered
-    CaptureCandidate,  # noqa: F401  — ensure models registered
+    CaptureCandidate,
     Game,
     LibraryEntry,  # noqa: F401  — ensure models registered
     Loadout,  # noqa: F401  — ensure models registered
-    Mission,  # noqa: F401  — ensure models registered
-    Platform,  # noqa: F401  — ensure models registered
+    Mission,
+    Platform,
     User,  # noqa: F401  — ensure models registered
 )
 
 
 @compiles(BigInteger, "sqlite")
-def _bi_to_int(element: BigInteger, compiler: Any, **kw: Any) -> str:  # noqa: ARG001
+def _bi_to_int(element: BigInteger, compiler: Any, **kw: Any) -> str:
     return compiler.visit_INTEGER(Integer(), **kw)
 
 
 @compiles(SmallInteger, "sqlite")
-def _si_to_int(element: SmallInteger, compiler: Any, **kw: Any) -> str:  # noqa: ARG001
+def _si_to_int(element: SmallInteger, compiler: Any, **kw: Any) -> str:
     return compiler.visit_INTEGER(Integer(), **kw)
 
 
@@ -58,12 +58,12 @@ class _JSONEncodedList(TypeDecorator):
     impl = Text
     cache_ok = True
 
-    def process_bind_param(self, value: list[str] | None, dialect: Any) -> str | None:  # noqa: ARG002
+    def process_bind_param(self, value: list[str] | None, dialect: Any) -> str | None:
         if value is None:
             return None
         return json.dumps(value)
 
-    def process_result_value(self, value: str | None, dialect: Any) -> list[str] | None:  # noqa: ARG002
+    def process_result_value(self, value: str | None, dialect: Any) -> list[str] | None:
         if value is None:
             return None
         return json.loads(value)

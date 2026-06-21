@@ -13,7 +13,7 @@ from dailyloadout.infrastructure.db.repositories.capture import (
     CaptureRepository,
 )
 from dailyloadout.infrastructure.igdb.client import IGDBClient
-from dailyloadout.infrastructure.igdb.exceptions import IGDBNotConfigured
+from dailyloadout.infrastructure.igdb.exceptions import IGDBNotConfiguredError
 from dailyloadout.infrastructure.llm.base import AbstractLLMClient
 from dailyloadout.infrastructure.llm.factory import get_llm_client
 from dailyloadout.infrastructure.stt.base import AbstractSTTClient
@@ -51,7 +51,7 @@ def get_igdb_client_dep() -> IGDBClient | None:
     """Provide the IGDB client, or ``None`` if credentials are missing."""
     try:
         return IGDBClient(settings)
-    except IGDBNotConfigured:
+    except IGDBNotConfiguredError:
         return None
 
 

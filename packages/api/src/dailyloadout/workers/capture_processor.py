@@ -25,7 +25,7 @@ from dailyloadout.infrastructure.db.repositories.capture import (
     CaptureRepository,
 )
 from dailyloadout.infrastructure.igdb.client import IGDBClient
-from dailyloadout.infrastructure.igdb.exceptions import IGDBNotConfigured
+from dailyloadout.infrastructure.igdb.exceptions import IGDBNotConfiguredError
 from dailyloadout.infrastructure.llm.base import AbstractLLMClient
 
 logger = structlog.get_logger()
@@ -101,7 +101,7 @@ async def process_capture(
                             "igdb_genres": best.genres,
                             "igdb_first_release_date": best.first_release_date,
                         }
-                except IGDBNotConfigured:
+                except IGDBNotConfiguredError:
                     logger.info("igdb_not_configured_skipping")
                 except Exception:
                     logger.warning(
@@ -145,19 +145,19 @@ def _load_image_as_jpeg(path: Path) -> bytes:
     """
     # Register HEIF/HEIC opener if available.
     try:
-        import pillow_heif  # noqa: PLC0415
+        import pillow_heif
 
         pillow_heif.register_heif_opener()
     except ImportError:
         pass
 
-    img = Image.open(path)
-    if img.format and img.format.upper() in _OLLAMA_NATIVE_FORMATS:
-        # Already a supported format — return raw bytes as-is.
-        return path.read_bytes()
+    with Image.open(path) as img:
+        if img.format and img.format.upper() in _OLLAMA_NATIVE_FORMATS:
+            # Already a supported format — return raw bytes as-is.
+            return path.read_bytes()
 
-    # Convert to JPEG.
-    out = img.convert("RGB") if img.mode in ("RGBA", "P", "LA") else img
-    buf = io.BytesIO()
-    out.save(buf, format="JPEG", quality=90)
-    return buf.getvalue()
+        # Convert to JPEG.
+        out = img.convert("RGB") if img.mode in ("RGBA", "P", "LA") else img
+        buf = io.BytesIO()
+        out.save(buf, format="JPEG", quality=90)
+        return buf.getvalue()

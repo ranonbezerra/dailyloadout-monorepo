@@ -1,0 +1,15 @@
+{
+  "threshold": 5,
+  "reporters": ["console"],
+  "minLines": 10,
+  "minTokens": 50,
+  "path": ["packages/api/src", "packages/web/src"],
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/.venv/**",
+    "**/*.lock",
+    "**/build/**"
+  ],
+  "absolute": true
+}

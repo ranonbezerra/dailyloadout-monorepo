@@ -1,5 +1,5 @@
 """IGDB-specific exceptions."""
 
 
-class IGDBNotConfigured(Exception):
+class IGDBNotConfiguredError(Exception):
     """IGDB credentials not provided. Enrichment skipped."""

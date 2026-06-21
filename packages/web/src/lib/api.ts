@@ -1,4 +1,4 @@
-const BASE_URL =
+export const BASE_URL =
 	(typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) || "http://localhost:8100";
 
 const ACCESS_TOKEN_KEY = "dl_access_token";

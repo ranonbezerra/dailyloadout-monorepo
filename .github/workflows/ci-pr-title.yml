@@ -1,0 +1,29 @@
+name: CI — PR Title
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+jobs:
+  validate-title:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Check conventional commit format
+        run: |
+          TITLE="${{ github.event.pull_request.title }}"
+          PATTERN='^(feat|fix|chore|docs|refactor|test|ci|perf|style|build|revert)(\(.+\))?: .+'
+          if [[ ! "$TITLE" =~ $PATTERN ]]; then
+            echo "::error::PR title must follow conventional commits format."
+            echo ""
+            echo "Expected: <type>(<scope>): <description>"
+            echo "Got:      $TITLE"
+            echo ""
+            echo "Valid types: feat, fix, chore, docs, refactor, test, ci, perf, style, build, revert"
+            echo "Examples:"
+            echo "  feat(mission): add retroactive debrief flow"
+            echo "  fix(api): handle missing library entry gracefully"
+            echo "  chore: update dependencies"
+            exit 1
+          fi
+          echo "PR title is valid: $TITLE"

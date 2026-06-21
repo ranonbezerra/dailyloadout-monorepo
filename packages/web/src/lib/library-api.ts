@@ -7,47 +7,8 @@ import type {
 	LibraryListResponse,
 	Platform,
 } from "../types/library";
-import { apiFetch, getAccessToken } from "./api";
-
-// ---------------------------------------------------------------------------
-// snake_case -> camelCase conversion
-// ---------------------------------------------------------------------------
-
-function snakeToCamelKey(key: string): string {
-	return key.replace(/_([a-z])/g, (_, char: string) => char.toUpperCase());
-}
-
-function snakeToCamel<T>(data: unknown): T {
-	if (Array.isArray(data)) {
-		return data.map((item) => snakeToCamel(item)) as T;
-	}
-	if (data !== null && typeof data === "object") {
-		const converted: Record<string, unknown> = {};
-		for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
-			converted[snakeToCamelKey(key)] = snakeToCamel(value);
-		}
-		return converted as T;
-	}
-	return data as T;
-}
-
-// ---------------------------------------------------------------------------
-// camelCase -> snake_case conversion (for request payloads)
-// ---------------------------------------------------------------------------
-
-function camelToSnakeKey(key: string): string {
-	return key.replace(/[A-Z]/g, (char) => `_${char.toLowerCase()}`);
-}
-
-function camelToSnake(data: Record<string, unknown>): Record<string, unknown> {
-	const converted: Record<string, unknown> = {};
-	for (const [key, value] of Object.entries(data)) {
-		if (value !== undefined) {
-			converted[camelToSnakeKey(key)] = value;
-		}
-	}
-	return converted;
-}
+import { apiFetch, BASE_URL, getAccessToken } from "./api";
+import { camelToSnake, snakeToCamel } from "./case-convert";
 
 // ---------------------------------------------------------------------------
 // Platforms
@@ -115,9 +76,6 @@ export async function updateEntry(
 	});
 	return snakeToCamel<LibraryEntry>(raw);
 }
-
-const BASE_URL =
-	(typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) || "http://localhost:8100";
 
 export async function deleteEntry(publicId: string): Promise<void> {
 	// The API returns 204 No Content. apiFetch always calls res.json() which

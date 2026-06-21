@@ -5,9 +5,9 @@ from datetime import date, datetime
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from dailyloadout.infrastructure.db.models.auth import User  # noqa: F401
-    from dailyloadout.infrastructure.db.models.loadout import Loadout  # noqa: F401
-    from dailyloadout.infrastructure.db.models.mission import Mission  # noqa: F401
+    from dailyloadout.infrastructure.db.models.auth import User
+    from dailyloadout.infrastructure.db.models.loadout import Loadout
+    from dailyloadout.infrastructure.db.models.mission import Mission
 
 from sqlalchemy import (
     BigInteger,
@@ -20,13 +20,12 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     Uuid,
-    func,
     text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from dailyloadout.infrastructure.db.base import Base
+from dailyloadout.infrastructure.db.base import Base, TimestampMixin
 
 
 class Platform(Base):
@@ -41,7 +40,7 @@ class Platform(Base):
     library_entries: Mapped[list["LibraryEntry"]] = relationship(back_populates="platform")
 
 
-class Game(Base):
+class Game(TimestampMixin, Base):
     __tablename__ = "games"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
@@ -60,15 +59,6 @@ class Game(Base):
     first_release_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     genres: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True)
     metadata_source: Mapped[str] = mapped_column(String, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        server_default=func.now(),
-        onupdate=func.now(),
-    )
 
     # Relationships
     library_entries: Mapped[list["LibraryEntry"]] = relationship(back_populates="game")
@@ -83,7 +73,7 @@ class Game(Base):
     )
 
 
-class LibraryEntry(Base):
+class LibraryEntry(TimestampMixin, Base):
     __tablename__ = "library_entries"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
@@ -106,15 +96,6 @@ class LibraryEntry(Base):
     last_played_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     mission_next_action: Mapped[str | None] = mapped_column(String, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        server_default=func.now(),
-        onupdate=func.now(),
-    )
 
     # Relationships
     user: Mapped["User"] = relationship(back_populates="library_entries")

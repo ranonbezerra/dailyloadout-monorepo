@@ -1,27 +1,6 @@
 import type { BriefingPreview, Mission, MissionListResponse } from "../types/mission";
 import { apiFetch } from "./api";
-
-// ---------------------------------------------------------------------------
-// snake_case -> camelCase conversion (same pattern as capture-api.ts)
-// ---------------------------------------------------------------------------
-
-function snakeToCamelKey(key: string): string {
-	return key.replace(/_([a-z])/g, (_, char: string) => char.toUpperCase());
-}
-
-function snakeToCamel<T>(data: unknown): T {
-	if (Array.isArray(data)) {
-		return data.map((item) => snakeToCamel(item)) as T;
-	}
-	if (data !== null && typeof data === "object") {
-		const converted: Record<string, unknown> = {};
-		for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
-			converted[snakeToCamelKey(key)] = snakeToCamel(value);
-		}
-		return converted as T;
-	}
-	return data as T;
-}
+import { snakeToCamel } from "./case-convert";
 
 // ---------------------------------------------------------------------------
 // Preview briefing (before starting a mission)

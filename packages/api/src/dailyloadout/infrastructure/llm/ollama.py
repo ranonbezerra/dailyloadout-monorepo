@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import re
 from pathlib import Path
 
 import httpx
@@ -13,6 +12,7 @@ from jinja2 import Template
 from dailyloadout.config import Settings
 
 from .base import AbstractLLMClient, ExtractedGame, ExtractedState, LoadoutPick
+from .parsers import _extract_json, _parse_game_list
 
 logger = structlog.get_logger()
 
@@ -31,32 +31,6 @@ _BRIEFING_TEMPLATE = _load_prompt("briefing.j2")
 _DEBRIEF_EXTRACT_TEMPLATE = _load_prompt("debrief_extract.j2")
 _LOADOUT_PICK_TEMPLATE = _load_prompt("loadout_pick.j2")
 
-# Regex to find JSON array or object in free-text LLM output (handles
-# markdown fences, preamble, etc.)
-_JSON_BLOCK_RE = re.compile(
-    r"```(?:json)?\s*([\[\{].*?[\]\}])\s*```"  # fenced code block
-    r"|"
-    r"([\[\{][\s\S]*[\]\}])",  # bare JSON
-    re.DOTALL,
-)
-
-
-def _extract_json(text: str) -> str | None:
-    """Extract the first JSON array or object from *text*.
-
-    Vision models don't support ``format: "json"`` reliably, so the
-    response may contain markdown fences or preamble text around the
-    JSON payload.  This helper extracts the JSON portion.
-    """
-    text = text.strip()
-    # Fast path: response is already valid JSON.
-    if text.startswith(("[", "{")):
-        return text
-    m = _JSON_BLOCK_RE.search(text)
-    if m:
-        return m.group(1) or m.group(2)
-    return None
-
 
 class OllamaClient(AbstractLLMClient):
     """LLM client that calls a local Ollama instance."""
@@ -69,17 +43,14 @@ class OllamaClient(AbstractLLMClient):
         self._timeout = settings.llm_timeout_seconds
         self._max_games_per_shelf = settings.capture_max_games_per_shelf
 
-    async def parse_capture_text(self, text: str) -> list[ExtractedGame]:
-        """Extract game titles from *text* using Ollama's generate endpoint."""
-        prompt = _CAPTURE_PARSE_TEMPLATE.render(text=text)
+    # -- shared HTTP helper ---------------------------------------------------
 
-        payload = {
-            "model": self._model,
-            "prompt": prompt,
-            "stream": False,
-            "format": "json",
-        }
-
+    async def _call_generate(
+        self,
+        payload: dict[str, object],
+        log_key: str,
+    ) -> httpx.Response | None:
+        """POST to Ollama ``/api/generate``. Returns *None* on HTTP error."""
         async with httpx.AsyncClient(timeout=self._timeout) as client:
             try:
                 resp = await client.post(
@@ -87,50 +58,34 @@ class OllamaClient(AbstractLLMClient):
                     json=payload,
                 )
                 resp.raise_for_status()
+                return resp
             except httpx.HTTPError as exc:
-                logger.warning("ollama_request_failed", error=str(exc))
-                return []
+                logger.warning(log_key, error=str(exc))
+                return None
+
+    # -- public methods -------------------------------------------------------
+
+    async def parse_capture_text(self, text: str) -> list[ExtractedGame]:
+        """Extract game titles from *text* using Ollama's generate endpoint."""
+        prompt = _CAPTURE_PARSE_TEMPLATE.render(text=text)
+        payload = {
+            "model": self._model,
+            "prompt": prompt,
+            "stream": False,
+            "format": "json",
+        }
+
+        resp = await self._call_generate(payload, "ollama_request_failed")
+        if resp is None:
+            return []
 
         try:
             body = resp.json()
             raw_text = body.get("response", "")
             parsed = json.loads(raw_text)
 
-            # The LLM might return a dict with a key wrapping the array,
-            # or a single game object instead of an array.
-            if isinstance(parsed, dict):
-                for key in ("games", "results", "titles"):
-                    if key in parsed and isinstance(parsed[key], list):
-                        parsed = parsed[key]
-                        break
-                else:
-                    if "title" in parsed:
-                        parsed = [parsed]
-                    else:
-                        logger.warning(
-                            "ollama_unexpected_json_structure",
-                            raw=raw_text,
-                        )
-                        return []
-
-            if not isinstance(parsed, list):
-                logger.warning("ollama_not_a_list", raw=raw_text)
-                return []
-
-            results: list[ExtractedGame] = []
-            for item in parsed:
-                if not isinstance(item, dict) or "title" not in item:
-                    continue
-                results.append(
-                    ExtractedGame(
-                        title=str(item["title"]),
-                        platform_hint=item.get("platform_hint"),
-                        confidence=float(item["confidence"])
-                        if item.get("confidence") is not None
-                        else None,
-                    )
-                )
-            return results
+            results = _parse_game_list(parsed, raw_text, log_prefix="ollama")
+            return results if results is not None else []
 
         except (json.JSONDecodeError, KeyError, TypeError) as exc:
             logger.warning("ollama_parse_error", error=str(exc))
@@ -141,7 +96,6 @@ class OllamaClient(AbstractLLMClient):
         prompt = _CAPTURE_PARSE_VISION_TEMPLATE.render(
             max_games=self._max_games_per_shelf,
         )
-
         payload = {
             "model": self._vision_model,
             "prompt": prompt,
@@ -149,16 +103,9 @@ class OllamaClient(AbstractLLMClient):
             "stream": False,
         }
 
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            try:
-                resp = await client.post(
-                    f"{self._base_url}/api/generate",
-                    json=payload,
-                )
-                resp.raise_for_status()
-            except httpx.HTTPError as exc:
-                logger.warning("ollama_vision_request_failed", error=str(exc))
-                return []
+        resp = await self._call_generate(payload, "ollama_vision_request_failed")
+        if resp is None:
+            return []
 
         try:
             body = resp.json()
@@ -169,41 +116,13 @@ class OllamaClient(AbstractLLMClient):
                 return []
             parsed = json.loads(json_str)
 
-            # The LLM might return a dict with a key wrapping the array,
-            # or a single game object instead of an array.
-            if isinstance(parsed, dict):
-                for key in ("games", "results", "titles"):
-                    if key in parsed and isinstance(parsed[key], list):
-                        parsed = parsed[key]
-                        break
-                else:
-                    if "title" in parsed:
-                        parsed = [parsed]
-                    else:
-                        logger.warning(
-                            "ollama_vision_unexpected_json_structure",
-                            raw=raw_text,
-                        )
-                        return []
-
-            if not isinstance(parsed, list):
-                logger.warning("ollama_vision_not_a_list", raw=raw_text)
-                return []
-
-            results: list[ExtractedGame] = []
-            for item in parsed[: self._max_games_per_shelf]:
-                if not isinstance(item, dict) or "title" not in item:
-                    continue
-                results.append(
-                    ExtractedGame(
-                        title=str(item["title"]),
-                        platform_hint=item.get("platform_hint"),
-                        confidence=float(item["confidence"])
-                        if item.get("confidence") is not None
-                        else None,
-                    )
-                )
-            return results
+            results = _parse_game_list(
+                parsed,
+                raw_text,
+                log_prefix="ollama_vision",
+                max_items=self._max_games_per_shelf,
+            )
+            return results if results is not None else []
 
         except (json.JSONDecodeError, KeyError, TypeError) as exc:
             logger.warning("ollama_vision_parse_error", error=str(exc))
@@ -223,23 +142,15 @@ class OllamaClient(AbstractLLMClient):
             current_next_action=current_next_action,
             position_override=position_override,
         )
-
         payload = {
             "model": self._smart_model,
             "prompt": prompt,
             "stream": False,
         }
 
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            try:
-                resp = await client.post(
-                    f"{self._base_url}/api/generate",
-                    json=payload,
-                )
-                resp.raise_for_status()
-            except httpx.HTTPError as exc:
-                logger.warning("ollama_briefing_failed", error=str(exc))
-                return ""
+        resp = await self._call_generate(payload, "ollama_briefing_failed")
+        if resp is None:
+            return ""
 
         body: dict[str, str] = resp.json()
         return body.get("response", "").strip()
@@ -254,7 +165,6 @@ class OllamaClient(AbstractLLMClient):
             game_title=game_title,
             debrief_text=debrief_text,
         )
-
         payload = {
             "model": self._model,
             "prompt": prompt,
@@ -262,16 +172,9 @@ class OllamaClient(AbstractLLMClient):
             "format": "json",
         }
 
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            try:
-                resp = await client.post(
-                    f"{self._base_url}/api/generate",
-                    json=payload,
-                )
-                resp.raise_for_status()
-            except httpx.HTTPError as exc:
-                logger.warning("ollama_debrief_extract_failed", error=str(exc))
-                return ExtractedState()
+        resp = await self._call_generate(payload, "ollama_debrief_extract_failed")
+        if resp is None:
+            return ExtractedState()
 
         try:
             body = resp.json()
@@ -308,7 +211,6 @@ class OllamaClient(AbstractLLMClient):
             mental_energy=mental_energy,
             context=context,
         )
-
         payload = {
             "model": self._smart_model,
             "prompt": prompt,
@@ -316,16 +218,9 @@ class OllamaClient(AbstractLLMClient):
             "format": "json",
         }
 
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            try:
-                resp = await client.post(
-                    f"{self._base_url}/api/generate",
-                    json=payload,
-                )
-                resp.raise_for_status()
-            except httpx.HTTPError as exc:
-                logger.warning("ollama_loadout_pick_failed", error=str(exc))
-                raise
+        resp = await self._call_generate(payload, "ollama_loadout_pick_failed")
+        if resp is None:
+            raise httpx.HTTPError("Ollama loadout pick request failed")
 
         body = resp.json()
         raw_text = body.get("response", "")

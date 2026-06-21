@@ -29,10 +29,52 @@ jobs:
               - "packages/api/**"
               - ".github/workflows/ci-api.yml"
 
-  api-lint-and-test:
+  api-quality:
     needs: changes
     if: needs.changes.outputs.api == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          allow-prereleases: true
+
+      - name: Install Poetry
+        run: pipx install poetry
+
+      - name: Cache Poetry virtualenv
+        uses: actions/cache@v4
+        with:
+          path: packages/api/.venv
+          key: api-venv-${{ runner.os }}-py3.14-${{ hashFiles('packages/api/poetry.lock') }}
+
+      - name: Install dependencies
+        run: poetry install --no-interaction
+
+      - name: Ruff check
+        run: poetry run ruff check .
+
+      - name: Ruff format check
+        run: poetry run ruff format --check .
+
+      - name: Mypy
+        run: poetry run mypy src/
+
+      - name: Bandit security scan
+        run: poetry run bandit -r src/ -ll -ii -c pyproject.toml
+
+      - name: Typos spell check
+        run: poetry run typos src/ tests/
+
+  api-test:
+    needs: [changes, api-quality]
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     services:
       postgres:
@@ -69,19 +111,32 @@ jobs:
       - name: Install dependencies
         run: poetry install --no-interaction
 
-      - name: Ruff check
-        run: poetry run ruff check .
-
-      - name: Ruff format check
-        run: poetry run ruff format --check .
-
-      - name: Mypy
-        run: poetry run mypy src/
-
-      - name: Pytest
+      - name: Pytest with coverage
         env:
           DATABASE_URL: postgresql+asyncpg://dailyloadout:dailyloadout@localhost:5433/dailyloadout_test
           REDIS_URL: redis://localhost:6380/0
           APP_ENV: test
           SECRET_KEY: test-secret
-        run: poetry run pytest --cov=src/dailyloadout --cov-report=term-missing
+        run: poetry run pytest --cov=src/dailyloadout --cov-report=term-missing --cov-fail-under=80
+
+  api-status:
+    if: always()
+    needs: [changes, api-quality, api-test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check status
+        working-directory: .
+        run: |
+          if [ "${{ needs.changes.outputs.api }}" != "true" ]; then
+            echo "No API changes detected — skipping."
+            exit 0
+          fi
+          if [ "${{ needs.api-quality.result }}" != "success" ]; then
+            echo "API quality checks failed."
+            exit 1
+          fi
+          if [ "${{ needs.api-test.result }}" != "success" ]; then
+            echo "API tests failed."
+            exit 1
+          fi
+          echo "All API checks passed."

@@ -12,7 +12,7 @@ import structlog
 
 from dailyloadout.config import Settings
 
-from .exceptions import IGDBNotConfigured
+from .exceptions import IGDBNotConfiguredError
 from .schemas import IGDBGame
 
 logger = structlog.get_logger()
@@ -30,7 +30,7 @@ class IGDBClient:
 
     def __init__(self, settings: Settings) -> None:
         if not settings.igdb_client_id or not settings.igdb_client_secret:
-            raise IGDBNotConfigured("IGDB credentials not provided. Enrichment skipped.")
+            raise IGDBNotConfiguredError("IGDB credentials not provided. Enrichment skipped.")
 
         self._client_id = settings.igdb_client_id
         self._client_secret = settings.igdb_client_secret
