@@ -5,10 +5,10 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from dailyloadout.infrastructure.db.models.capture import Capture  # noqa: F401
-    from dailyloadout.infrastructure.db.models.library import LibraryEntry  # noqa: F401
-    from dailyloadout.infrastructure.db.models.loadout import Loadout  # noqa: F401
-    from dailyloadout.infrastructure.db.models.mission import Mission  # noqa: F401
+    from dailyloadout.infrastructure.db.models.capture import Capture
+    from dailyloadout.infrastructure.db.models.library import LibraryEntry
+    from dailyloadout.infrastructure.db.models.loadout import Loadout
+    from dailyloadout.infrastructure.db.models.mission import Mission
 
 from sqlalchemy import (
     BigInteger,
@@ -24,10 +24,10 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from dailyloadout.infrastructure.db.base import Base
+from dailyloadout.infrastructure.db.base import Base, SoftDeleteMixin, TimestampMixin
 
 
-class User(Base):
+class User(SoftDeleteMixin, TimestampMixin, Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
@@ -45,13 +45,6 @@ class User(Base):
     email_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     locale: Mapped[str] = mapped_column(String, nullable=False, default="pt-BR")
     timezone: Mapped[str] = mapped_column(String, nullable=False, default="America/Recife")
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
-    )
-    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     oauth_identities: Mapped[list["OAuthIdentity"]] = relationship(back_populates="user")

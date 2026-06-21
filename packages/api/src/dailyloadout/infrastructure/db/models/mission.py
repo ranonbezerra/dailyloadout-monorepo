@@ -5,8 +5,8 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from dailyloadout.infrastructure.db.models.auth import User  # noqa: F401
-    from dailyloadout.infrastructure.db.models.library import LibraryEntry  # noqa: F401
+    from dailyloadout.infrastructure.db.models.auth import User
+    from dailyloadout.infrastructure.db.models.library import LibraryEntry
 
 from sqlalchemy import (
     BigInteger,
@@ -22,10 +22,10 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from dailyloadout.infrastructure.db.base import Base
+from dailyloadout.infrastructure.db.base import Base, TimestampMixin
 
 
-class Mission(Base):
+class Mission(TimestampMixin, Base):
     __tablename__ = "missions"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
@@ -53,15 +53,6 @@ class Mission(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        server_default=func.now(),
-        onupdate=func.now(),
-    )
 
     # Relationships
     user: Mapped["User"] = relationship(back_populates="missions")

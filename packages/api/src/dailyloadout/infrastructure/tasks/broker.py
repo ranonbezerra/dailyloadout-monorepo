@@ -1,11 +1,19 @@
 """Taskiq broker configuration.
 
-Uses Redis as the message broker. The broker URL comes from the
-application settings (``redis_url``).
+Uses Redis as the message broker in production. Falls back to an
+in-memory broker when the ``APP_ENV`` is ``"testing"`` so that tests
+never open real Redis connections.
 """
 
-from taskiq_redis import ListQueueBroker
+from taskiq import AsyncBroker, InMemoryBroker
 
 from dailyloadout.config import settings
 
-broker = ListQueueBroker(url=settings.redis_url)
+broker: AsyncBroker
+
+if settings.app_env == "testing":
+    broker = InMemoryBroker()
+else:
+    from taskiq_redis import ListQueueBroker
+
+    broker = ListQueueBroker(url=settings.redis_url)

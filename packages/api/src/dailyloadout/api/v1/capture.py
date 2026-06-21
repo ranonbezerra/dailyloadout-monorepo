@@ -8,6 +8,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, UploadFile, status
 
+from dailyloadout.api.v1._mime_helpers import guess_audio_extension, guess_image_extension
 from dailyloadout.config import settings
 from dailyloadout.core.capture.schemas import (
     CandidateConfirmRequest,
@@ -113,7 +114,7 @@ async def submit_photo_capture(
     upload_dir = settings.capture_upload_dir
     os.makedirs(upload_dir, exist_ok=True)
 
-    ext = _guess_image_extension(file.content_type)
+    ext = guess_image_extension(file.content_type)
     with tempfile.NamedTemporaryFile(dir=upload_dir, suffix=ext, delete=False) as tmp:
         tmp.write(contents)
         image_path = tmp.name
@@ -137,47 +138,13 @@ async def submit_photo_capture(
     return CaptureResponse.model_validate(capture)
 
 
-def _guess_image_extension(content_type: str | None) -> str:
-    """Map an image MIME type to a file extension."""
-    mapping = {
-        "image/jpeg": ".jpg",
-        "image/png": ".png",
-        "image/gif": ".gif",
-        "image/webp": ".webp",
-        "image/bmp": ".bmp",
-        "image/tiff": ".tiff",
-        "image/heic": ".heic",
-        "image/heif": ".heif",
-    }
-    return mapping.get(content_type or "", ".jpg")
-
-
-# ---------------------------------------------------------------------------
-# Voice transcription (STT only — returns text for user review)
-# ---------------------------------------------------------------------------
-
-
-def _guess_extension(content_type: str | None) -> str:
-    """Map an audio MIME type to a file extension."""
-    mapping = {
-        "audio/webm": ".webm",
-        "audio/mp4": ".m4a",
-        "audio/mpeg": ".mp3",
-        "audio/wav": ".wav",
-        "audio/x-wav": ".wav",
-        "audio/ogg": ".ogg",
-        "audio/flac": ".flac",
-    }
-    return mapping.get(content_type or "", ".wav")
-
-
 @router.post(
     "/transcribe",
     response_model=TranscribeResponse,
 )
 async def transcribe_audio(
     file: UploadFile,
-    current_user: CurrentUserDep,  # noqa: ARG001
+    current_user: CurrentUserDep,
     stt_client: STTClientDep,
 ) -> TranscribeResponse:
     """Transcribe an audio file and return the text for user review.
@@ -202,7 +169,7 @@ async def transcribe_audio(
     upload_dir = settings.capture_upload_dir
     os.makedirs(upload_dir, exist_ok=True)
 
-    suffix = _guess_extension(file.content_type)
+    suffix = guess_audio_extension(file.content_type)
     with tempfile.NamedTemporaryFile(dir=upload_dir, suffix=suffix, delete=False) as tmp:
         tmp.write(contents)
         audio_path = tmp.name

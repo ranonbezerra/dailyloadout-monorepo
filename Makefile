@@ -18,6 +18,15 @@ endif
 
 .DEFAULT_GOAL := help
 
+# ── Helpers ─────────────────────────────────────────────────────────
+define check
+	@printf "\033[34m▶ %-40s\033[0m" "$(1)" && $(2) && printf "\033[32m ✓\033[0m\n" || (printf "\033[31m ✗\033[0m\n" && exit 1)
+endef
+
+define warn
+	@printf "\033[34m▶ %-40s\033[0m" "$(1)" && $(2) && printf "\033[32m ✓\033[0m\n" || printf "\033[33m ⚠ (warning)\033[0m\n"
+endef
+
 # ─────────────────────────────────────────────
 # Infrastructure
 # ─────────────────────────────────────────────
@@ -63,9 +72,41 @@ api: ## Run API dev server (uvicorn with reload)
 api-test: ## Run API tests
 	cd $(API_DIR) && poetry run pytest
 
+.PHONY: api-test-cov
+api-test-cov: ## Run API tests with coverage (fail under 80%)
+	cd $(API_DIR) && poetry run pytest --cov=src/dailyloadout --cov-report=term-missing --cov-fail-under=90
+
 .PHONY: api-lint
-api-lint: ## Lint API (ruff + ruff format + mypy)
-	cd $(API_DIR) && poetry run ruff check . && poetry run ruff format --check . && poetry run mypy src/
+api-lint: ## Lint API (ruff check)
+	cd $(API_DIR) && poetry run ruff check .
+
+.PHONY: api-format-check
+api-format-check: ## Check API formatting (ruff format --check)
+	cd $(API_DIR) && poetry run ruff format --check .
+
+.PHONY: api-typecheck
+api-typecheck: ## Type-check API (mypy strict)
+	cd $(API_DIR) && poetry run mypy src/
+
+.PHONY: api-security
+api-security: ## Security scan API (bandit)
+	cd $(API_DIR) && poetry run bandit -r src/ -ll -ii -c pyproject.toml
+
+.PHONY: api-typos
+api-typos: ## Spell-check API (typos)
+	cd $(API_DIR) && poetry run typos src/ tests/
+
+.PHONY: api-file-sizes
+api-file-sizes: ## Check API file sizes (max 300 lines)
+	@echo "Checking Python files > 300 lines..."
+	@OVERSIZED=$$(find $(API_DIR)/src -name '*.py' -exec awk 'END{if(NR>300) print FILENAME": "NR" lines"}' {} \;); \
+	if [ -n "$$OVERSIZED" ]; then \
+		echo "$$OVERSIZED"; \
+		echo "\033[31m✗ Files exceed 300-line limit\033[0m"; \
+		exit 1; \
+	else \
+		echo "\033[32m✓ All files within limit\033[0m"; \
+	fi
 
 .PHONY: api-fmt
 api-fmt: ## Format API code
@@ -96,16 +137,20 @@ web-test: ## Run web tests
 	cd $(WEB_DIR) && bun test
 
 .PHONY: web-lint
-web-lint: ## Lint web (biome)
+web-lint: ## Lint web (biome check)
 	cd $(WEB_DIR) && bun run lint
 
-.PHONY: web-fmt
-web-fmt: ## Format web code
-	cd $(WEB_DIR) && bun run format
+.PHONY: web-typecheck
+web-typecheck: ## Type-check web (tsc)
+	cd $(WEB_DIR) && bun run tsc -b --noEmit
 
 .PHONY: web-build
 web-build: ## Build web for production
 	cd $(WEB_DIR) && bun run build
+
+.PHONY: web-fmt
+web-fmt: ## Format web code
+	cd $(WEB_DIR) && bun run format
 
 .PHONY: web-install
 web-install: ## Install web dependencies
@@ -136,7 +181,60 @@ app-install: ## Get Flutter dependencies
 	cd $(APP_DIR) && $(FLUTTER) pub get
 
 # ─────────────────────────────────────────────
-# Quality gate (all packages)
+# Quality gates (per-package)
+# ─────────────────────────────────────────────
+
+.PHONY: quality-api
+quality-api: ## Full API quality gate
+	@echo "\n\033[1;36m══════ API Quality Gate ══════\033[0m"
+	$(call check,Ruff lint,                  cd $(API_DIR) && poetry run ruff check . --fix)
+	$(call check,Ruff format,                cd $(API_DIR) && poetry run ruff format --check .)
+	$(call check,Mypy strict,                cd $(API_DIR) && poetry run mypy src/)
+	$(call check,Bandit security,            cd $(API_DIR) && poetry run bandit -r src/ -ll -ii -c pyproject.toml -q)
+	$(call check,Typos spell-check,          cd $(API_DIR) && poetry run typos src/ tests/)
+	$(call check,File sizes (≤300 lines),    $(MAKE) api-file-sizes > /dev/null 2>&1)
+	$(call check,Pytest + coverage ≥90%,     cd $(API_DIR) && poetry run pytest -q --tb=short --cov=src/dailyloadout --cov-report=term-missing --cov-fail-under=90)
+	@echo "\033[1;32m══════ API: All checks passed ══════\033[0m\n"
+
+.PHONY: quality-web
+quality-web: ## Full Web quality gate
+	@echo "\n\033[1;36m══════ Web Quality Gate ══════\033[0m"
+	$(call check,Biome lint + format,  cd $(WEB_DIR) && bun run lint)
+	$(call check,TypeScript check,     cd $(WEB_DIR) && bun run tsc -b --noEmit)
+	$(call check,Vitest,               cd $(WEB_DIR) && bun test)
+	$(call check,Vite build,           cd $(WEB_DIR) && bun run build > /dev/null 2>&1)
+	@echo "\033[1;32m══════ Web: All checks passed ══════\033[0m\n"
+
+.PHONY: quality-app
+quality-app: ## Full App quality gate
+	@echo "\n\033[1;36m══════ App Quality Gate ══════\033[0m"
+	$(call check,Flutter analyze,  cd $(APP_DIR) && $(FLUTTER) analyze)
+	$(call check,Flutter test,     cd $(APP_DIR) && $(FLUTTER) test)
+	@echo "\033[1;32m══════ App: All checks passed ══════\033[0m\n"
+
+.PHONY: pre-commit
+pre-commit: ## Run pre-commit hooks on all files
+	pre-commit run --all-files
+
+# ─────────────────────────────────────────────
+# Quality gate (full monorepo)
+# ─────────────────────────────────────────────
+
+.PHONY: quality
+quality: ## Run ALL quality gates (pre-commit + api + web + app)
+	@echo "\n\033[1;35m╔══════════════════════════════════════╗\033[0m"
+	@echo "\033[1;35m║     DailyLoadout — Quality Gate      ║\033[0m"
+	@echo "\033[1;35m╚══════════════════════════════════════╝\033[0m"
+	$(call check,Pre-commit hooks,  pre-commit run --all-files)
+	@$(MAKE) quality-api
+	@$(MAKE) quality-web
+	$(call warn,Code duplication (jscpd ≤5%),  npx jscpd --silent)
+	@echo "\033[1;32m╔══════════════════════════════════════╗\033[0m"
+	@echo "\033[1;32m║     All quality gates passed ✓       ║\033[0m"
+	@echo "\033[1;32m╚══════════════════════════════════════╝\033[0m"
+
+# ─────────────────────────────────────────────
+# Convenience aggregates
 # ─────────────────────────────────────────────
 
 .PHONY: install
@@ -152,7 +250,7 @@ test: api-test web-test app-test ## Test all packages
 fmt: api-fmt web-fmt ## Format all packages
 
 .PHONY: check
-check: lint test ## Full quality gate (lint + test)
+check: lint test ## Quick check (lint + test, no security/coverage)
 
 # ─────────────────────────────────────────────
 # Help
@@ -161,4 +259,4 @@ check: lint test ## Full quality gate (lint + test)
 .PHONY: help
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
-		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-18s\033[0m %s\n", $$1, $$2}'
+		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-22s\033[0m %s\n", $$1, $$2}'

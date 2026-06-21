@@ -33,10 +33,6 @@ class LoadoutService:
         self._mission_repo = mission_repo
         self._llm_client = llm_client
 
-    # ------------------------------------------------------------------
-    # Create loadout
-    # ------------------------------------------------------------------
-
     async def create_loadout(
         self,
         user_id: int,
@@ -79,7 +75,7 @@ class LoadoutService:
 
         if not entries:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="No eligible games in your library. "
                 "Add games first or wait for the cooldown.",
             )
@@ -149,7 +145,7 @@ class LoadoutService:
 
         if not results:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Could not pick a valid game. Please try again.",
             )
 
@@ -192,10 +188,6 @@ class LoadoutService:
             )
 
         return None
-
-    # ------------------------------------------------------------------
-    # Accept loadout → creates a mission
-    # ------------------------------------------------------------------
 
     async def accept_loadout(
         self,
@@ -242,10 +234,6 @@ class LoadoutService:
         # Re-fetch for response.
         return await self._get_loadout(user_id, loadout_public_id)
 
-    # ------------------------------------------------------------------
-    # Reject loadout
-    # ------------------------------------------------------------------
-
     async def reject_loadout(
         self,
         user_id: int,
@@ -275,10 +263,6 @@ class LoadoutService:
         # Re-fetch for response.
         return await self._get_loadout(user_id, loadout_public_id)
 
-    # ------------------------------------------------------------------
-    # Query
-    # ------------------------------------------------------------------
-
     async def get_latest_pending(self, user_id: int) -> Loadout | None:
         """Return the latest pending loadout, or None."""
         return await self._loadout_repo.get_pending_for_user(user_id)
@@ -293,10 +277,6 @@ class LoadoutService:
         loadouts = await self._loadout_repo.list_for_user(user_id, limit=limit, offset=offset)
         total = await self._loadout_repo.count_for_user(user_id)
         return loadouts, total
-
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
 
     async def _get_loadout(self, user_id: int, loadout_public_id: UUID) -> Loadout:
         """Fetch a loadout or raise 404."""

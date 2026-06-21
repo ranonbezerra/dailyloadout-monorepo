@@ -249,3 +249,57 @@ class TestMe:
         headers = {"Authorization": "Bearer totally.bogus.token"}
         resp = await async_client.get("/v1/auth/me", headers=headers)
         assert resp.status_code == 401
+
+    async def test_me_deleted_user(self, async_client: AsyncClient) -> None:
+        """A valid JWT for a user that no longer exists returns 401."""
+        payload = {
+            "email": "deleted@example.com",
+            "password": "securepassword",
+            "display_name": "Ghost",
+        }
+        resp = await async_client.post("/v1/auth/register", json=payload)
+        assert resp.status_code == 201
+        token = resp.json()["access_token"]
+
+        # Delete the user directly from the DB.
+        from dailyloadout.infrastructure.db.models import User
+        from tests.conftest import _TestSessionFactory
+
+        async with _TestSessionFactory() as session:
+            from sqlalchemy import delete
+
+            await session.execute(delete(User).where(User.email == "deleted@example.com"))
+            await session.commit()
+
+        headers = {"Authorization": f"Bearer {token}"}
+        resp = await async_client.get("/v1/auth/me", headers=headers)
+        assert resp.status_code == 401
+
+
+class TestRefreshDeletedUser:
+    """Refresh token for a deleted user returns 401."""
+
+    async def test_refresh_after_user_deleted(self, async_client: AsyncClient) -> None:
+        payload = {
+            "email": "gone@example.com",
+            "password": "securepassword",
+            "display_name": "Gone User",
+        }
+        resp = await async_client.post("/v1/auth/register", json=payload)
+        assert resp.status_code == 201
+        refresh_token = resp.json()["refresh_token"]
+
+        from dailyloadout.infrastructure.db.models import User
+        from tests.conftest import _TestSessionFactory
+
+        async with _TestSessionFactory() as session:
+            from sqlalchemy import delete
+
+            await session.execute(delete(User).where(User.email == "gone@example.com"))
+            await session.commit()
+
+        resp = await async_client.post(
+            "/v1/auth/refresh",
+            json={"refresh_token": refresh_token},
+        )
+        assert resp.status_code == 401

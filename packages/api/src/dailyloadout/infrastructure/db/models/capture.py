@@ -5,8 +5,8 @@ from datetime import date, datetime
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from dailyloadout.infrastructure.db.models.auth import User  # noqa: F401
-    from dailyloadout.infrastructure.db.models.library import Game  # noqa: F401
+    from dailyloadout.infrastructure.db.models.auth import User
+    from dailyloadout.infrastructure.db.models.library import Game
 
 from sqlalchemy import (
     BigInteger,
@@ -24,10 +24,10 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from dailyloadout.infrastructure.db.base import Base
+from dailyloadout.infrastructure.db.base import Base, TimestampMixin
 
 
-class Capture(Base):
+class Capture(TimestampMixin, Base):
     __tablename__ = "captures"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
@@ -47,15 +47,6 @@ class Capture(Base):
     image_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     status: Mapped[str] = mapped_column(String, nullable=False, default="queued")
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        server_default=func.now(),
-        onupdate=func.now(),
-    )
 
     # Relationships
     user: Mapped["User"] = relationship(back_populates="captures")
