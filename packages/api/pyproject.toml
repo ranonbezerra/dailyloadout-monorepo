@@ -83,7 +83,11 @@ ignore_missing_imports = true
 asyncio_mode = "auto"
 testpaths = ["tests"]
 filterwarnings = ["error"]
-env = ["APP_ENV=testing"]
+env = [
+    "APP_ENV=testing",
+    "DATABASE_URL=sqlite+aiosqlite://",
+    "BCRYPT_ROUNDS=4",
+]
 
 [tool.coverage.run]
 branch = true

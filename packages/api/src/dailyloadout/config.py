@@ -58,6 +58,9 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     smtp_from: str = "DailyLoadout <noreply@dailyloadout.local>"
 
+    # ── Auth ───────────────────────────────────────────────────────
+    bcrypt_rounds: int = 12
+
     # ── Limits ───────────────────────────────────────────────────────────
     capture_max_audio_seconds: int = 60
     capture_max_image_mb: int = 10

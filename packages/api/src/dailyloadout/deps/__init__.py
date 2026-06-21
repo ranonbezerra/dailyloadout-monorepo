@@ -29,6 +29,7 @@ from .mission import (
     MissionRepoDep,
     MissionServiceDep,
 )
+from .stats import StatsRepoDep, StatsServiceDep
 
 __all__ = [
     "AuthServiceDep",
@@ -48,5 +49,7 @@ __all__ = [
     "MissionServiceDep",
     "PlatformRepoDep",
     "STTClientDep",
+    "StatsRepoDep",
+    "StatsServiceDep",
     "get_db",
 ]

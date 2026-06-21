@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from dailyloadout.core.library.schemas import (
     GameCreate,
     GameResponse,
+    GameUpdate,
     LibraryEntryCreate,
     LibraryEntryResponse,
     LibraryEntryUpdate,
@@ -51,6 +52,37 @@ async def create_game(
         ) from exc
 
     return GameResponse.model_validate(game)
+
+
+@router.patch("/games/{public_id}", response_model=GameResponse)
+async def update_game(
+    public_id: UUID,
+    body: GameUpdate,
+    current_user: CurrentUserDep,
+    library_service: LibraryServiceDep,
+) -> GameResponse:
+    """Update a game's details (e.g. genres)."""
+    update_fields = body.model_dump(exclude_unset=True)
+    try:
+        game = await library_service.update_game(
+            game_public_id=public_id,
+            **update_fields,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    return GameResponse.model_validate(game)
+
+
+@router.get("/games/genres", response_model=list[str])
+async def list_genres(
+    current_user: CurrentUserDep,
+    library_service: LibraryServiceDep,
+) -> list[str]:
+    """Return all distinct genre names from the games catalog."""
+    return await library_service.list_genres()
 
 
 @router.get("/games/search", response_model=list[GameResponse])

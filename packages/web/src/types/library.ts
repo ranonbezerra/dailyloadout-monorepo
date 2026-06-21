@@ -65,4 +65,9 @@ export interface GameCreate {
 	title: string;
 	summary?: string;
 	coverUrl?: string;
+	genres?: string[];
+}
+
+export interface GameUpdate {
+	genres?: string[];
 }
