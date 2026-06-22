@@ -508,6 +508,38 @@ Client                  API                       arq worker            External
 
 The validation step is **deterministic** layered on top of probabilistic LLM output. No retraining, no fine-tuning — just an explicit guardrail.
 
+### 5.4 Debrief extraction (async-first with sync fallback)
+
+```
+Client                  API                     Taskiq worker          External
+  |                      |                            |                     |
+  |--PATCH debrief------>|                            |                     |
+  |                      |--save debrief_text         |                     |
+  |                      |--end mission               |                     |
+  |                      |--dispatch task------------>|                     |
+  |<--200 (instant)------|                            |                     |
+  |                                                   |                     |
+  |                                                   |--LLM extract------->| Ollama
+  |                                                   |--set extracted_state|
+  |                                                   |--update next_action |
+  |                                                   |--commit             |
+  |                                                                         |
+  |            [Later: user starts next mission]                            |
+  |--POST /missions----->|                                                  |
+  |                      |--check: previous mission has extracted_state?    |
+  |                      |    YES → use it for briefing                     |
+  |                      |    NO  → sync fallback: extract now, then brief  |
+  |<--201 + briefing-----|                                                  |
+```
+
+**Why async:** debrief extraction calls the LLM (1–10s depending on hardware). The user doesn't need the extracted state immediately — it's only consumed when generating the *next* briefing for that game. Blocking the HTTP response for a result the user won't see until their next session is unnecessary latency.
+
+**Why Taskiq:** asyncio-native (tasks are plain `async def`), Redis broker (already in the stack), built-in retry support, actively maintained. Celery lacks async support; arq is maintenance-only.
+
+**Retry with exponential backoff:** the Taskiq worker retries failed extractions up to 3 times with exponential backoff (2s → 4s → 8s). This handles transient Ollama failures without hammering the LLM.
+
+**Sync fallback:** if the worker fails all retries (or hasn't processed yet), `ensure_extractions_complete()` runs the extraction synchronously before generating a briefing. This is a safety net, not the happy path. The user sees a brief loading indicator ("Loading context from your last session...") only in this rare case.
+
 ---
 
 ## 6. Architectural highlights (for ARCHITECTURE.md readers)
@@ -542,6 +574,10 @@ Ollama for LLM, faster-whisper for STT, multimodal LLM for vision. No cloud key 
 ### 6.6 Same factory + dummy pattern across all external concerns
 
 LLM, STT, storage, email, IGDB — each follows the same shape: abstract base class, real implementation, dummy implementation, factory function. Tests use dummies, prod uses real. The pattern is boring on purpose: anyone reading the codebase understands every external integration the same way after seeing the first one.
+
+### 6.7 Async-first LLM processing with sync fallback
+
+Debrief extraction is fire-and-forget: submit the debrief, end the mission, dispatch a Taskiq task, return instantly. The background worker processes the LLM call with retries and exponential backoff. If the worker fails or hasn't run by the time the data is needed (next briefing), the system falls back to synchronous extraction — the user sees a brief loading state, but never loses data. This pattern ("optimistic background processing, pessimistic on-demand fallback") avoids two failure modes: (1) blocking the user on LLM latency for a result they don't need yet, and (2) silently losing debriefs when the worker is down.
 
 ---
 

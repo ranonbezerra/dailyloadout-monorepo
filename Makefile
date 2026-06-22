@@ -112,6 +112,10 @@ api-file-sizes: ## Check API file sizes (max 300 lines)
 api-fmt: ## Format API code
 	cd $(API_DIR) && poetry run ruff format .
 
+.PHONY: worker
+worker: ## Run Taskiq worker (async debrief extraction)
+	cd $(API_DIR) && poetry run taskiq worker dailyloadout.infrastructure.tasks.debrief_extraction:broker
+
 .PHONY: api-migrate
 api-migrate: ## Run Alembic migrations
 	cd $(API_DIR) && poetry run alembic upgrade head

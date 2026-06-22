@@ -30,6 +30,20 @@ services:
       timeout: 3s
       retries: 5
 
+  taskiq-worker:
+    build:
+      context: ./packages/api
+      dockerfile: Dockerfile
+    container_name: dl-taskiq-worker
+    command: ["taskiq", "worker", "dailyloadout.infrastructure.tasks.debrief_extraction:broker"]
+    env_file: ./packages/api/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   dl_postgres_data:
   dl_redis_data:
