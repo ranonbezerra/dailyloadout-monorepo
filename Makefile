@@ -138,7 +138,7 @@ web: ## Run web dev server (vite)
 
 .PHONY: web-test
 web-test: ## Run web tests
-	cd $(WEB_DIR) && bun test
+	cd $(WEB_DIR) && bun run test
 
 .PHONY: web-lint
 web-lint: ## Lint web (biome check)
@@ -205,7 +205,7 @@ quality-web: ## Full Web quality gate
 	@echo "\n\033[1;36m══════ Web Quality Gate ══════\033[0m"
 	$(call check,Biome lint + format,  cd $(WEB_DIR) && bun run lint)
 	$(call check,TypeScript check,     cd $(WEB_DIR) && bun run tsc -b --noEmit)
-	$(call check,Vitest,               cd $(WEB_DIR) && bun test)
+	$(call check,Vitest,               cd $(WEB_DIR) && bun run test)
 	$(call check,Vite build,           cd $(WEB_DIR) && bun run build > /dev/null 2>&1)
 	@echo "\033[1;32m══════ Web: All checks passed ══════\033[0m\n"
 

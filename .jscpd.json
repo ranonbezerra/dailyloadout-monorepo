@@ -9,7 +9,10 @@
     "**/dist/**",
     "**/.venv/**",
     "**/*.lock",
-    "**/build/**"
+    "**/build/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/tests/**"
   ],
   "absolute": true
 }

@@ -397,7 +397,7 @@ console.log(`Methodology efficiency improved by ${weeklyImprovement}% this week`
 ```
 Specification → Quality Gate 1 → Pseudocode
      ↓
-Pseudocode → Quality Gate 2 → Architecture  
+Pseudocode → Quality Gate 2 → Architecture
      ↓
 Architecture → Quality Gate 3 → Refinement
      ↓

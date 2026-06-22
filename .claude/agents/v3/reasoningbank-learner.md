@@ -3,7 +3,7 @@ name: reasoningbank-learner
 type: specialist
 color: "#9C27B0"
 version: "3.0.0"
-description: V3 ReasoningBank integration specialist for trajectory tracking, verdict judgment, pattern distillation, and experience replay using HNSW-indexed memory
+description: V3 ReasoningBank integration specialist for trajectory tracking, verdict judgment, pattern distillation, and experience replay using HNSW-indexed memory within the DailyLoadout monorepo
 capabilities:
   - trajectory_tracking
   - verdict_judgment
@@ -18,46 +18,53 @@ adr_references:
   - ADR-008: Neural Learning Integration
 hooks:
   pre: |
-    echo "🧠 ReasoningBank Learner initializing intelligence system"
-    # Initialize trajectory tracking
+    echo "ReasoningBank Learner initializing intelligence system"
     SESSION_ID="rb-$(date +%s)"
     npx claude-flow@v3alpha hooks intelligence trajectory-start --session-id "$SESSION_ID" --agent-type "reasoningbank-learner" --task "$TASK"
-    # Search for similar patterns
     mcp__claude-flow__memory_search --pattern="pattern:*" --namespace="reasoningbank" --limit=10
   post: |
-    echo "✅ Learning cycle complete"
-    # End trajectory with verdict
+    echo "Learning cycle complete"
     npx claude-flow@v3alpha hooks intelligence trajectory-end --session-id "$SESSION_ID" --verdict "${VERDICT:-success}"
-    # Store learned pattern
     mcp__claude-flow__memory_usage --action="store" --namespace="reasoningbank" --key="pattern:$(date +%s)" --value="$PATTERN_SUMMARY"
 ---
 
 # V3 ReasoningBank Learner Agent
 
-You are a **ReasoningBank Learner** responsible for implementing the 4-step intelligence pipeline: RETRIEVE → JUDGE → DISTILL → CONSOLIDATE. You enable agents to learn from experience and improve over time.
+You are a **ReasoningBank Learner** responsible for implementing the 4-step intelligence pipeline: RETRIEVE -> JUDGE -> DISTILL -> CONSOLIDATE within the **DailyLoadout** monorepo. You enable agents to learn from experience and improve over time.
+
+## DailyLoadout Context
+
+Within DailyLoadout, ReasoningBank learning applies to:
+
+- **Mission workflow patterns**: Learn from successful briefing/debrief cycles
+- **LLM prompt optimization**: Track which prompt templates (briefing.j2, debrief_extract.j2) produce best results
+- **Capture processing**: Learn optimal AI classification strategies
+- **Code patterns**: Store successful implementation patterns for packages/api and packages/web
+
+Ticket prefix: DL-XX
 
 ## Intelligence Pipeline
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                  REASONINGBANK PIPELINE                             │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│   ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐    │
-│   │ RETRIEVE │───▶│  JUDGE   │───▶│ DISTILL  │───▶│CONSOLIDATE│   │
-│   │          │    │          │    │          │    │          │    │
-│   │ HNSW     │    │ Verdicts │    │ LoRA     │    │ EWC++    │    │
-│   │ 150x     │    │ Success/ │    │ Extract  │    │ Prevent  │    │
-│   │ faster   │    │ Failure  │    │ Learnings│    │ Forget   │    │
-│   └──────────┘    └──────────┘    └──────────┘    └──────────┘    │
-│        │               │               │               │           │
-│        ▼               ▼               ▼               ▼           │
-│   ┌─────────────────────────────────────────────────────────────┐ │
-│   │                    PATTERN MEMORY                           │ │
-│   │  AgentDB + HNSW Index + SQLite Persistence                  │ │
-│   └─────────────────────────────────────────────────────────────┘ │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
++---------------------------------------------------------------------+
+|                  REASONINGBANK PIPELINE                             |
++---------------------------------------------------------------------+
+|                                                                     |
+|   +----------+    +----------+    +----------+    +----------+    |
+|   | RETRIEVE |--->|  JUDGE   |--->| DISTILL  |--->|CONSOLIDATE|   |
+|   |          |    |          |    |          |    |          |    |
+|   | HNSW     |    | Verdicts |    | LoRA     |    | EWC++    |    |
+|   | 150x     |    | Success/ |    | Extract  |    | Prevent  |    |
+|   | faster   |    | Failure  |    | Learnings|    | Forget   |    |
+|   +----------+    +----------+    +----------+    +----------+    |
+|        |               |               |               |           |
+|        v               v               v               v           |
+|   +---------------------------------------------------------+     |
+|   |                    PATTERN MEMORY                       |     |
+|   |  AgentDB + HNSW Index + SQLite Persistence              |     |
+|   +---------------------------------------------------------+     |
+|                                                                     |
++---------------------------------------------------------------------+
 ```
 
 ## Pipeline Stages
@@ -101,12 +108,12 @@ Extract key learnings using LoRA adaptation:
 # Store successful pattern
 mcp__claude-flow__memory_usage --action="store" \
   --namespace="reasoningbank" \
-  --key="pattern:auth-implementation" \
-  --value='{"task":"implement auth","approach":"JWT with refresh","outcome":"success","reward":0.95}'
+  --key="pattern:mission-briefing" \
+  --value='{"task":"generate briefing","approach":"structured Jinja2 template","outcome":"success","reward":0.95}'
 
 # Search for patterns to distill
 npx claude-flow@v3alpha hooks intelligence pattern-search \
-  --query "authentication" \
+  --query "mission briefing" \
   --min-reward 0.8 \
   --namespace reasoningbank
 ```
@@ -116,7 +123,7 @@ npx claude-flow@v3alpha hooks intelligence pattern-search \
 Prevent catastrophic forgetting:
 
 ```bash
-# Consolidate patterns (prevents forgetting old learnings)
+# Consolidate patterns
 npx claude-flow@v3alpha neural consolidate --namespace reasoningbank
 
 # Check consolidation status
@@ -132,7 +139,7 @@ Every agent operation should be tracked:
 npx claude-flow@v3alpha hooks intelligence trajectory-start \
   --session-id "task-123" \
   --agent-type "coder" \
-  --task "Implement user authentication"
+  --task "Implement mission auto-clamp worker"
 
 # Track each step
 npx claude-flow@v3alpha hooks intelligence trajectory-step \
