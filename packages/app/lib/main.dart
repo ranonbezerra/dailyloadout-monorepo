@@ -19,7 +19,7 @@ Future<void> main() async {
   // Try .env first (local overrides, gitignored), fall back to .env.example.
   try {
     await dotenv.load();
-  } catch (_) {
+  } on Exception {
     await dotenv.load(fileName: '.env.example');
   }
 
