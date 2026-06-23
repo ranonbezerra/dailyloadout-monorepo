@@ -174,7 +174,6 @@ void main() {
     // LoadMoreMissions
     // ---------------------------------------------------------------
     group('LoadMoreMissions', () {
-      final page1 = MissionListResponse(items: [_missionListItem], total: 2);
       final page2Item = MissionListItem(
         publicId: 'mission-002',
         libraryEntry: _entry,
