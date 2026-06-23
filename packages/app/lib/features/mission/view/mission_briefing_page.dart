@@ -112,8 +112,9 @@ class _MissionBriefingPageState extends State<MissionBriefingPage> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Mission Briefing')),
-      body: BlocConsumer<MissionBloc, MissionState>(
-        listener: (context, state) {
+      body: SafeArea(
+        child: BlocConsumer<MissionBloc, MissionState>(
+          listener: (context, state) {
           if (state is MissionStarted) {
             context.go('/missions');
           }
@@ -128,7 +129,7 @@ class _MissionBriefingPageState extends State<MissionBriefingPage> {
               );
           }
         },
-        builder: (context, state) {
+          builder: (context, state) {
           if (state is MissionLoading) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -187,7 +188,8 @@ class _MissionBriefingPageState extends State<MissionBriefingPage> {
           }
 
           return const SizedBox.shrink();
-        },
+          },
+        ),
       ),
     );
   }

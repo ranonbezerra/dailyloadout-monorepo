@@ -2,6 +2,7 @@ import 'package:app/core/mission/mission_models.dart';
 import 'package:app/core/theme/dailyloadout_theme.dart';
 import 'package:app/features/mission/bloc/mission_bloc.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -14,10 +15,36 @@ class MissionsListPage extends StatefulWidget {
 }
 
 class _MissionsListPageState extends State<MissionsListPage> {
+  final _scrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
     context.read<MissionBloc>().add(const LoadMissions());
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController
+      ..removeListener(_onScroll)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    _maybeLoadMore();
+  }
+
+  /// Loads more missions when the user is near the bottom
+  /// or when the content doesn't fill the viewport.
+  void _maybeLoadMore() {
+    if (!_scrollController.hasClients) return;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.offset;
+    if (currentScroll >= maxScroll - 200) {
+      context.read<MissionBloc>().add(const LoadMoreMissions());
+    }
   }
 
   Future<void> _onRefresh() async {
@@ -64,22 +91,44 @@ class _MissionsListPageState extends State<MissionsListPage> {
               return const _EmptyState();
             }
 
+            // After the frame renders, check if the list
+            // doesn't fill the viewport and load more.
+            if (state.hasMore && !state.isLoadingMore) {
+              SchedulerBinding.instance.addPostFrameCallback((_) {
+                _maybeLoadMore();
+              });
+            }
+
+            // +1 for the loading indicator at the bottom
+            // when there are more pages.
+            final itemCount = state.missions.length +
+                (state.hasMore ? 1 : 0);
+
             return RefreshIndicator(
               onRefresh: _onRefresh,
               child: ListView.builder(
+                controller: _scrollController,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 8,
                 ),
-                itemCount: state.missions.length,
+                itemCount: itemCount,
                 itemBuilder: (context, index) {
+                  if (index >= state.missions.length) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    );
+                  }
                   final mission = state.missions[index];
                   return _MissionCard(
                     mission: mission,
                     onViewBriefing: () =>
-                        context.go('/missions/${mission.publicId}/briefing'),
+                        context.push('/missions/${mission.publicId}/briefing'),
                     onEndMission: () =>
-                        context.go('/missions/${mission.publicId}/debrief'),
+                        context.push('/missions/${mission.publicId}/debrief'),
                   );
                 },
               ),

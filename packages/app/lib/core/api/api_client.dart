@@ -8,6 +8,10 @@ import 'package:logger/logger.dart';
 /// re-authenticate.
 typedef OnForceLogout = void Function();
 
+/// Extended receive timeout for LLM-backed endpoints
+/// (loadout creation, briefing generation, etc.).
+const llmReceiveTimeout = Duration(seconds: 45);
+
 /// Singleton-style Dio HTTP client with auth interceptor.
 ///
 /// Automatically attaches Bearer tokens and attempts silent refresh
@@ -26,7 +30,7 @@ class ApiClient {
           BaseOptions(
             baseUrl: baseUrl,
             connectTimeout: const Duration(seconds: 10),
-            receiveTimeout: const Duration(seconds: 10),
+            receiveTimeout: const Duration(seconds: 30),
             headers: {
               'Content-Type': 'application/json',
               'Accept': 'application/json',

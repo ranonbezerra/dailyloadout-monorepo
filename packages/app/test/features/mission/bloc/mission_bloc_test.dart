@@ -171,6 +171,111 @@ void main() {
     });
 
     // ---------------------------------------------------------------
+    // LoadMoreMissions
+    // ---------------------------------------------------------------
+    group('LoadMoreMissions', () {
+      final page1 = MissionListResponse(items: [_missionListItem], total: 2);
+      final page2Item = MissionListItem(
+        publicId: 'mission-002',
+        libraryEntry: _entry,
+        missionType: 'regular',
+        startedAt: _now,
+      );
+      final page2 = MissionListResponse(items: [page2Item], total: 2);
+
+      blocTest<MissionBloc, MissionState>(
+        'appends items when current state '
+        'is MissionListLoaded with hasMore',
+        setUp: () {
+          when(
+            () => mockMissionRepository.listMissions(limit: 10, offset: 1),
+          ).thenAnswer((_) async => page2);
+        },
+        build: buildBloc,
+        seed: () => MissionListLoaded(missions: [_missionListItem], total: 2),
+        act: (bloc) => bloc.add(const LoadMoreMissions()),
+        expect: () => [
+          MissionListLoaded(
+            missions: [_missionListItem],
+            total: 2,
+            isLoadingMore: true,
+          ),
+          MissionListLoaded(
+            missions: [_missionListItem, page2Item],
+            total: 2,
+          ),
+        ],
+      );
+
+      blocTest<MissionBloc, MissionState>(
+        'does nothing when state is not MissionListLoaded',
+        build: buildBloc,
+        seed: () => const MissionInitial(),
+        act: (bloc) => bloc.add(const LoadMoreMissions()),
+        expect: () => <MissionState>[],
+      );
+
+      blocTest<MissionBloc, MissionState>(
+        'does nothing when hasMore is false',
+        build: buildBloc,
+        seed: () =>
+            MissionListLoaded(missions: [_missionListItem], total: 1),
+        act: (bloc) => bloc.add(const LoadMoreMissions()),
+        expect: () => <MissionState>[],
+      );
+
+      blocTest<MissionBloc, MissionState>(
+        'does nothing when already loading more',
+        build: buildBloc,
+        seed: () => MissionListLoaded(
+          missions: [_missionListItem],
+          total: 2,
+          isLoadingMore: true,
+        ),
+        act: (bloc) => bloc.add(const LoadMoreMissions()),
+        expect: () => <MissionState>[],
+      );
+
+      blocTest<MissionBloc, MissionState>(
+        'resets isLoadingMore and emits MissionError '
+        'on DioException',
+        setUp: () {
+          when(
+            () => mockMissionRepository.listMissions(
+              limit: any(named: 'limit'),
+              offset: any(named: 'offset'),
+            ),
+          ).thenThrow(
+            DioException(
+              requestOptions: RequestOptions(),
+              response: Response(
+                requestOptions: RequestOptions(),
+                statusCode: 500,
+                data: <String, dynamic>{'detail': 'Server error'},
+              ),
+            ),
+          );
+        },
+        build: buildBloc,
+        seed: () =>
+            MissionListLoaded(missions: [_missionListItem], total: 2),
+        act: (bloc) => bloc.add(const LoadMoreMissions()),
+        expect: () => [
+          MissionListLoaded(
+            missions: [_missionListItem],
+            total: 2,
+            isLoadingMore: true,
+          ),
+          MissionListLoaded(
+            missions: [_missionListItem],
+            total: 2,
+          ),
+          const MissionError(message: 'Server error'),
+        ],
+      );
+    });
+
+    // ---------------------------------------------------------------
     // LoadActiveMission
     // ---------------------------------------------------------------
     group('LoadActiveMission', () {

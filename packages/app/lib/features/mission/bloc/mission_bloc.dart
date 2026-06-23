@@ -7,11 +7,14 @@ import 'package:equatable/equatable.dart';
 part 'mission_event.dart';
 part 'mission_state.dart';
 
+const _pageSize = 10;
+
 class MissionBloc extends Bloc<MissionEvent, MissionState> {
   MissionBloc({required MissionRepository missionRepository})
     : _missionRepository = missionRepository,
       super(const MissionInitial()) {
     on<LoadMissions>(_onLoadMissions);
+    on<LoadMoreMissions>(_onLoadMoreMissions);
     on<LoadActiveMission>(_onLoadActiveMission);
     on<PreviewBriefing>(_onPreviewBriefing);
     on<StartMission>(_onStartMission);
@@ -31,7 +34,7 @@ class MissionBloc extends Bloc<MissionEvent, MissionState> {
 
     try {
       final response = await _missionRepository.listMissions(
-        limit: event.limit ?? 50,
+        limit: event.limit ?? _pageSize,
         offset: event.offset ?? 0,
       );
 
@@ -39,6 +42,37 @@ class MissionBloc extends Bloc<MissionEvent, MissionState> {
     } on DioException catch (e) {
       emit(MissionError(message: _extractErrorMessage(e)));
     } on Exception catch (e) {
+      emit(MissionError(message: e.toString()));
+    }
+  }
+
+  Future<void> _onLoadMoreMissions(
+    LoadMoreMissions event,
+    Emitter<MissionState> emit,
+  ) async {
+    final currentState = state;
+    if (currentState is! MissionListLoaded || !currentState.hasMore) return;
+    if (currentState.isLoadingMore) return;
+
+    emit(currentState.copyWith(isLoadingMore: true));
+
+    try {
+      final response = await _missionRepository.listMissions(
+        limit: _pageSize,
+        offset: currentState.missions.length,
+      );
+
+      emit(
+        MissionListLoaded(
+          missions: [...currentState.missions, ...response.items],
+          total: response.total,
+        ),
+      );
+    } on DioException catch (e) {
+      emit(currentState.copyWith(isLoadingMore: false));
+      emit(MissionError(message: _extractErrorMessage(e)));
+    } on Exception catch (e) {
+      emit(currentState.copyWith(isLoadingMore: false));
       emit(MissionError(message: e.toString()));
     }
   }

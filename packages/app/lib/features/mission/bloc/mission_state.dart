@@ -19,13 +19,32 @@ final class MissionLoading extends MissionState {
 
 /// Mission list has been loaded successfully.
 final class MissionListLoaded extends MissionState {
-  const MissionListLoaded({required this.missions, required this.total});
+  const MissionListLoaded({
+    required this.missions,
+    required this.total,
+    this.isLoadingMore = false,
+  });
 
   final List<MissionListItem> missions;
   final int total;
+  final bool isLoadingMore;
+
+  bool get hasMore => missions.length < total;
+
+  MissionListLoaded copyWith({
+    List<MissionListItem>? missions,
+    int? total,
+    bool? isLoadingMore,
+  }) {
+    return MissionListLoaded(
+      missions: missions ?? this.missions,
+      total: total ?? this.total,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+    );
+  }
 
   @override
-  List<Object?> get props => [missions, total];
+  List<Object?> get props => [missions, total, isLoadingMore];
 }
 
 /// Active mission has been loaded (null means no active mission).

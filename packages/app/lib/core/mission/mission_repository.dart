@@ -2,6 +2,10 @@ import 'package:app/core/api/api_client.dart';
 import 'package:app/core/mission/mission_models.dart';
 import 'package:dio/dio.dart';
 
+final _llmOptions = Options(
+  receiveTimeout: llmReceiveTimeout,
+);
+
 /// Provides high-level mission operations backed by the API.
 class MissionRepository {
   MissionRepository({required ApiClient apiClient}) : _apiClient = apiClient;
@@ -19,6 +23,7 @@ class MissionRepository {
         'library_entry_public_id': libraryEntryPublicId,
         if (positionOverride != null) 'position_override': positionOverride,
       },
+      options: _llmOptions,
     );
     return BriefingPreview.fromJson(response.data!);
   }
@@ -117,6 +122,7 @@ class MissionRepository {
     final response = await _apiClient.dio.post<Map<String, dynamic>>(
       '/v1/missions/$publicId/briefing/regenerate',
       data: {if (currentPosition != null) 'current_position': currentPosition},
+      options: _llmOptions,
     );
     return Mission.fromJson(response.data!);
   }

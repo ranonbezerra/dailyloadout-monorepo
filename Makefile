@@ -165,12 +165,12 @@ web-install: ## Install web dependencies
 # ─────────────────────────────────────────────
 
 .PHONY: app
-app: ## Run Flutter app on iOS simulator
-	cd $(APP_DIR) && $(FLUTTER) run -d ios
+app: ## Run Flutter app (uses preferred device, or: make app d=chrome)
+	cd $(APP_DIR) && $(FLUTTER) run $(if $(d),-d $(d))
 
-.PHONY: app-android
-app-android: ## Run Flutter app on Android emulator
-	cd $(APP_DIR) && $(FLUTTER) run -d android
+.PHONY: app-devices
+app-devices: ## List available Flutter devices
+	cd $(APP_DIR) && $(FLUTTER) devices
 
 .PHONY: app-test
 app-test: ## Run Flutter tests

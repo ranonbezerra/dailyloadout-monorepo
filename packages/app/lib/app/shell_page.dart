@@ -13,7 +13,8 @@ class ShellPage extends StatelessWidget {
   /// Returns the tab index that matches the current route location.
   int _currentIndex(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
-    if (location.startsWith('/missions')) return 1;
+    if (location.startsWith('/loadout')) return 1;
+    if (location.startsWith('/missions')) return 2;
     return 0; // /library is the default
   }
 
@@ -22,6 +23,8 @@ class ShellPage extends StatelessWidget {
       case 0:
         context.go('/library');
       case 1:
+        context.go('/loadout');
+      case 2:
         context.go('/missions');
     }
   }
@@ -44,7 +47,14 @@ class ShellPage extends StatelessWidget {
             icon: Icon(Icons.videogame_asset),
             label: 'Library',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.flag), label: 'Missions'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.casino),
+            label: 'Loadout',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.flag),
+            label: 'Missions',
+          ),
         ],
       ),
     );
