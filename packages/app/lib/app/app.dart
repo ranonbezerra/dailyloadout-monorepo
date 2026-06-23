@@ -4,6 +4,7 @@ import 'package:app/core/theme/dailyloadout_theme.dart';
 import 'package:app/features/auth/bloc/auth_bloc.dart';
 import 'package:app/features/capture/bloc/capture_bloc.dart';
 import 'package:app/features/library/bloc/library_bloc.dart';
+import 'package:app/features/loadout/bloc/loadout_bloc.dart';
 import 'package:app/features/mission/bloc/mission_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -15,6 +16,7 @@ class App extends StatefulWidget {
     required this.libraryBloc,
     required this.captureBloc,
     required this.missionBloc,
+    required this.loadoutBloc,
     required this.libraryRepository,
     super.key,
   });
@@ -23,6 +25,7 @@ class App extends StatefulWidget {
   final LibraryBloc libraryBloc;
   final CaptureBloc captureBloc;
   final MissionBloc missionBloc;
+  final LoadoutBloc loadoutBloc;
   final LibraryRepository libraryRepository;
 
   @override
@@ -56,6 +59,7 @@ class _AppState extends State<App> {
         BlocProvider<LibraryBloc>.value(value: widget.libraryBloc),
         BlocProvider<CaptureBloc>.value(value: widget.captureBloc),
         BlocProvider<MissionBloc>.value(value: widget.missionBloc),
+        BlocProvider<LoadoutBloc>.value(value: widget.loadoutBloc),
       ],
       child: MaterialApp.router(
         title: 'DailyLoadout',

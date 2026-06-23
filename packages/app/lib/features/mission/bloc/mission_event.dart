@@ -18,6 +18,11 @@ final class LoadMissions extends MissionEvent {
   List<Object?> get props => [limit, offset];
 }
 
+/// Dispatched to load the next page of missions.
+final class LoadMoreMissions extends MissionEvent {
+  const LoadMoreMissions();
+}
+
 /// Dispatched to load the currently active mission.
 final class LoadActiveMission extends MissionEvent {
   const LoadActiveMission();

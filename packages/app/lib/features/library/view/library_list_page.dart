@@ -97,7 +97,7 @@ class _LibraryListPageState extends State<LibraryListPage> {
 
           if (state is LibraryLoaded) {
             if (state.entries.isEmpty) {
-              return _EmptyState(onAdd: () => context.go('/library/add'));
+              return _EmptyState(onAdd: () => context.push('/library/add'));
             }
 
             return RefreshIndicator(
@@ -112,9 +112,9 @@ class _LibraryListPageState extends State<LibraryListPage> {
                   final entry = state.entries[index];
                   return _LibraryEntryCard(
                     entry: entry,
-                    onTap: () => context.go('/library/${entry.publicId}'),
+                    onTap: () => context.push('/library/${entry.publicId}'),
                     onStartMission: entry.status == 'playing'
-                        ? () => context.go(
+                        ? () => context.push(
                             '/missions/briefing?entry=${entry.publicId}',
                           )
                         : null,
@@ -133,14 +133,14 @@ class _LibraryListPageState extends State<LibraryListPage> {
         children: [
           FloatingActionButton.small(
             heroTag: 'capture_fab',
-            onPressed: () => context.go('/capture'),
+            onPressed: () => context.push('/capture'),
             tooltip: 'Quick Add',
             child: const Icon(Icons.auto_awesome),
           ),
           const SizedBox(height: 8),
           FloatingActionButton(
             heroTag: 'add_fab',
-            onPressed: () => context.go('/library/add'),
+            onPressed: () => context.push('/library/add'),
             child: const Icon(Icons.add),
           ),
         ],

@@ -14,6 +14,7 @@ import 'package:app/features/capture/view/capture_voice_page.dart';
 import 'package:app/features/library/view/add_game_page.dart';
 import 'package:app/features/library/view/library_detail_page.dart';
 import 'package:app/features/library/view/library_list_page.dart';
+import 'package:app/features/loadout/view/loadout_page.dart';
 import 'package:app/features/mission/view/mission_briefing_page.dart';
 import 'package:app/features/mission/view/mission_debrief_page.dart';
 import 'package:app/features/mission/view/missions_list_page.dart';
@@ -73,6 +74,10 @@ GoRouter createRouter(
           GoRoute(
             path: '/missions',
             builder: (context, state) => const MissionsListPage(),
+          ),
+          GoRoute(
+            path: '/loadout',
+            builder: (context, state) => const LoadoutPage(),
           ),
         ],
       ),

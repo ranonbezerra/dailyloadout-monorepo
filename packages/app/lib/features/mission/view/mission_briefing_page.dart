@@ -112,82 +112,84 @@ class _MissionBriefingPageState extends State<MissionBriefingPage> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Mission Briefing')),
-      body: BlocConsumer<MissionBloc, MissionState>(
-        listener: (context, state) {
-          if (state is MissionStarted) {
-            context.go('/missions');
-          }
-          if (state is MissionError) {
-            ScaffoldMessenger.of(context)
-              ..hideCurrentSnackBar()
-              ..showSnackBar(
-                SnackBar(
-                  content: Text(state.message),
-                  backgroundColor: theme.colorScheme.error,
+      body: SafeArea(
+        child: BlocConsumer<MissionBloc, MissionState>(
+          listener: (context, state) {
+            if (state is MissionStarted) {
+              context.go('/missions');
+            }
+            if (state is MissionError) {
+              ScaffoldMessenger.of(context)
+                ..hideCurrentSnackBar()
+                ..showSnackBar(
+                  SnackBar(
+                    content: Text(state.message),
+                    backgroundColor: theme.colorScheme.error,
+                  ),
+                );
+            }
+          },
+          builder: (context, state) {
+            if (state is MissionLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            // Preview mode: briefing preview loaded.
+            if (state is BriefingPreviewLoaded) {
+              return _buildBriefingContent(
+                context,
+                briefingText: state.preview.briefingText,
+                gameTitle: state.preview.libraryEntry.game.title,
+                platformLabel: state.preview.libraryEntry.platform.label,
+              );
+            }
+
+            // View mode: active mission loaded.
+            if (state is ActiveMissionLoaded && state.mission != null) {
+              return _buildBriefingContent(
+                context,
+                briefingText: state.mission!.briefingText,
+                gameTitle: state.mission!.libraryEntry.game.title,
+                platformLabel: state.mission!.libraryEntry.platform.label,
+              );
+            }
+
+            // View mode: mission regenerated.
+            if (state is MissionStarted) {
+              return _buildBriefingContent(
+                context,
+                briefingText: state.mission.briefingText,
+                gameTitle: state.mission.libraryEntry.game.title,
+                platformLabel: state.mission.libraryEntry.platform.label,
+              );
+            }
+
+            if (state is MissionError) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        state.message,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: theme.colorScheme.error),
+                      ),
+                      const SizedBox(height: 16),
+                      FilledButton(
+                        onPressed: () => context.pop(),
+                        child: const Text('Go Back'),
+                      ),
+                    ],
+                  ),
                 ),
               );
-          }
-        },
-        builder: (context, state) {
-          if (state is MissionLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
+            }
 
-          // Preview mode: briefing preview loaded.
-          if (state is BriefingPreviewLoaded) {
-            return _buildBriefingContent(
-              context,
-              briefingText: state.preview.briefingText,
-              gameTitle: state.preview.libraryEntry.game.title,
-              platformLabel: state.preview.libraryEntry.platform.label,
-            );
-          }
-
-          // View mode: active mission loaded.
-          if (state is ActiveMissionLoaded && state.mission != null) {
-            return _buildBriefingContent(
-              context,
-              briefingText: state.mission!.briefingText,
-              gameTitle: state.mission!.libraryEntry.game.title,
-              platformLabel: state.mission!.libraryEntry.platform.label,
-            );
-          }
-
-          // View mode: mission regenerated.
-          if (state is MissionStarted) {
-            return _buildBriefingContent(
-              context,
-              briefingText: state.mission.briefingText,
-              gameTitle: state.mission.libraryEntry.game.title,
-              platformLabel: state.mission.libraryEntry.platform.label,
-            );
-          }
-
-          if (state is MissionError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      state.message,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: theme.colorScheme.error),
-                    ),
-                    const SizedBox(height: 16),
-                    FilledButton(
-                      onPressed: () => context.pop(),
-                      child: const Text('Go Back'),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-
-          return const SizedBox.shrink();
-        },
+            return const SizedBox.shrink();
+          },
+        ),
       ),
     );
   }
