@@ -2,9 +2,11 @@ import 'package:app/app/app.dart';
 import 'package:app/core/auth/auth_repository.dart';
 import 'package:app/core/capture/capture_repository.dart';
 import 'package:app/core/library/library_repository.dart';
+import 'package:app/core/mission/mission_repository.dart';
 import 'package:app/features/auth/bloc/auth_bloc.dart';
 import 'package:app/features/capture/bloc/capture_bloc.dart';
 import 'package:app/features/library/bloc/library_bloc.dart';
+import 'package:app/features/mission/bloc/mission_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -16,18 +18,23 @@ class MockLibraryRepository extends Mock implements LibraryRepository {}
 
 class MockCaptureRepository extends Mock implements CaptureRepository {}
 
+class MockMissionRepository extends Mock implements MissionRepository {}
+
 void main() {
   late MockAuthRepository mockAuthRepository;
   late MockLibraryRepository mockLibraryRepository;
   late MockCaptureRepository mockCaptureRepository;
+  late MockMissionRepository mockMissionRepository;
   late AuthBloc authBloc;
   late LibraryBloc libraryBloc;
   late CaptureBloc captureBloc;
+  late MissionBloc missionBloc;
 
   setUp(() {
     mockAuthRepository = MockAuthRepository();
     mockLibraryRepository = MockLibraryRepository();
     mockCaptureRepository = MockCaptureRepository();
+    mockMissionRepository = MockMissionRepository();
 
     // Stub the hasTokens call that AppStarted will trigger.
     when(() => mockAuthRepository.hasTokens()).thenAnswer((_) async => false);
@@ -35,12 +42,14 @@ void main() {
     authBloc = AuthBloc(authRepository: mockAuthRepository);
     libraryBloc = LibraryBloc(libraryRepository: mockLibraryRepository);
     captureBloc = CaptureBloc(captureRepository: mockCaptureRepository);
+    missionBloc = MissionBloc(missionRepository: mockMissionRepository);
   });
 
   tearDown(() {
     authBloc.close();
     libraryBloc.close();
     captureBloc.close();
+    missionBloc.close();
   });
 
   Widget buildSubject() {
@@ -48,6 +57,7 @@ void main() {
       authBloc: authBloc,
       libraryBloc: libraryBloc,
       captureBloc: captureBloc,
+      missionBloc: missionBloc,
       libraryRepository: mockLibraryRepository,
     );
   }

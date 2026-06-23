@@ -113,6 +113,11 @@ class _LibraryListPageState extends State<LibraryListPage> {
                   return _LibraryEntryCard(
                     entry: entry,
                     onTap: () => context.go('/library/${entry.publicId}'),
+                    onStartMission: entry.status == 'playing'
+                        ? () => context.go(
+                            '/missions/briefing?entry=${entry.publicId}',
+                          )
+                        : null,
                   );
                 },
               ),
@@ -188,10 +193,15 @@ class _EmptyState extends StatelessWidget {
 }
 
 class _LibraryEntryCard extends StatelessWidget {
-  const _LibraryEntryCard({required this.entry, required this.onTap});
+  const _LibraryEntryCard({
+    required this.entry,
+    required this.onTap,
+    this.onStartMission,
+  });
 
   final LibraryEntry entry;
   final VoidCallback onTap;
+  final VoidCallback? onStartMission;
 
   @override
   Widget build(BuildContext context) {
@@ -246,6 +256,18 @@ class _LibraryEntryCard extends StatelessWidget {
                   ],
                 ),
               ),
+              if (entry.status == 'playing' && onStartMission != null)
+                IconButton(
+                  icon: const Icon(Icons.play_arrow),
+                  onPressed: onStartMission,
+                  tooltip: 'Start Mission',
+                  iconSize: 20,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 32,
+                  ),
+                ),
               const Icon(Icons.chevron_right),
             ],
           ),

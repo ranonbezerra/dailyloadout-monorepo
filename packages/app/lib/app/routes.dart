@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:app/app/shell_page.dart';
 import 'package:app/core/library/library_repository.dart';
 import 'package:app/features/auth/bloc/auth_bloc.dart';
 import 'package:app/features/auth/view/login_page.dart';
@@ -13,6 +14,9 @@ import 'package:app/features/capture/view/capture_voice_page.dart';
 import 'package:app/features/library/view/add_game_page.dart';
 import 'package:app/features/library/view/library_detail_page.dart';
 import 'package:app/features/library/view/library_list_page.dart';
+import 'package:app/features/mission/view/mission_briefing_page.dart';
+import 'package:app/features/mission/view/mission_debrief_page.dart';
+import 'package:app/features/mission/view/missions_list_page.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -49,6 +53,7 @@ GoRouter createRouter(
       return null;
     },
     routes: [
+      // ---- Auth / splash (no bottom nav) ----
       GoRoute(path: '/splash', builder: (context, state) => const SplashPage()),
       GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
       GoRoute(
@@ -56,10 +61,23 @@ GoRouter createRouter(
         builder: (context, state) => const RegisterPage(),
       ),
       GoRoute(path: '/', redirect: (context, state) => '/library'),
-      GoRoute(
-        path: '/library',
-        builder: (context, state) => const LibraryListPage(),
+
+      // ---- Shell: bottom-nav tabs (Library + Missions) ----
+      ShellRoute(
+        builder: (context, state, child) => ShellPage(child: child),
+        routes: [
+          GoRoute(
+            path: '/library',
+            builder: (context, state) => const LibraryListPage(),
+          ),
+          GoRoute(
+            path: '/missions',
+            builder: (context, state) => const MissionsListPage(),
+          ),
+        ],
       ),
+
+      // ---- Full-screen routes (no bottom nav) ----
       GoRoute(
         path: '/library/add',
         builder: (context, state) =>
@@ -92,6 +110,23 @@ GoRouter createRouter(
           capturePublicId: state.pathParameters['id']!,
           libraryRepository: libraryRepository,
         ),
+      ),
+      GoRoute(
+        path: '/missions/briefing',
+        builder: (context, state) {
+          final entryId = state.uri.queryParameters['entry'];
+          return MissionBriefingPage(libraryEntryPublicId: entryId);
+        },
+      ),
+      GoRoute(
+        path: '/missions/:id/briefing',
+        builder: (context, state) =>
+            MissionBriefingPage(missionPublicId: state.pathParameters['id']),
+      ),
+      GoRoute(
+        path: '/missions/:id/debrief',
+        builder: (context, state) =>
+            MissionDebriefPage(missionPublicId: state.pathParameters['id']!),
       ),
     ],
   );
