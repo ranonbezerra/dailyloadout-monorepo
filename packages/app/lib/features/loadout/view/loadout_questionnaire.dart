@@ -65,16 +65,11 @@ class LoadoutQuestionnaire extends StatelessWidget {
         const SizedBox(height: 24),
 
         // Time slider
-        Text(
-          'Available time',
-          style: theme.textTheme.titleSmall,
-        ),
+        Text('Available time', style: theme.textTheme.titleSmall),
         const SizedBox(height: 4),
         Text(
           formatMinutes(minutes.round()),
-          style: theme.textTheme.headlineSmall?.copyWith(
-            color: DLColors.coral,
-          ),
+          style: theme.textTheme.headlineSmall?.copyWith(color: DLColors.coral),
         ),
         Slider(
           value: minutes,
@@ -87,10 +82,7 @@ class LoadoutQuestionnaire extends StatelessWidget {
         const SizedBox(height: 16),
 
         // Mental energy picker
-        Text(
-          'Mental energy',
-          style: theme.textTheme.titleSmall,
-        ),
+        Text('Mental energy', style: theme.textTheme.titleSmall),
         const SizedBox(height: 8),
         _buildChoiceRow(
           options: _energyLevels,
@@ -105,7 +97,8 @@ class LoadoutQuestionnaire extends StatelessWidget {
           maxLength: 120,
           decoration: const InputDecoration(
             labelText: 'Context (optional)',
-            hintText: 'e.g. feeling nostalgic, '
+            hintText:
+                'e.g. feeling nostalgic, '
                 'want something story-driven...',
           ),
         ),
@@ -113,9 +106,7 @@ class LoadoutQuestionnaire extends StatelessWidget {
 
         // Multi-mode switch
         SwitchListTile(
-          title: const Text(
-            'Show multiple suggestions (up to 3)',
-          ),
+          title: const Text('Show multiple suggestions (up to 3)'),
           value: multiMode,
           onChanged: onMultiModeChanged,
           contentPadding: EdgeInsets.zero,
@@ -127,9 +118,7 @@ class LoadoutQuestionnaire extends StatelessWidget {
         if (error != null) ...[
           Text(
             error!,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: DLColors.red,
-            ),
+            style: theme.textTheme.bodyMedium?.copyWith(color: DLColors.red),
           ),
           const SizedBox(height: 12),
         ],
@@ -149,9 +138,7 @@ class LoadoutQuestionnaire extends StatelessWidget {
                     ),
                   )
                 : const Icon(Icons.casino),
-            label: Text(
-              isLoading ? 'Picking...' : 'Roll the dice',
-            ),
+            label: Text(isLoading ? 'Picking...' : 'Roll the dice'),
           ),
         ),
       ],
@@ -174,12 +161,8 @@ class LoadoutQuestionnaire extends StatelessWidget {
           onSelected: (_) => onChanged(e.key),
           selectedColor: DLColors.coral,
           labelStyle: TextStyle(
-            color: isSelected
-                ? DLColors.bg
-                : DLColors.text,
-            fontWeight: isSelected
-                ? FontWeight.w600
-                : FontWeight.normal,
+            color: isSelected ? DLColors.bg : DLColors.text,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
           ),
         );
       }).toList(),

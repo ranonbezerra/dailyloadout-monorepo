@@ -10,18 +10,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 
-class MockLoadoutBloc
-    extends MockBloc<LoadoutEvent, LoadoutState>
+class MockLoadoutBloc extends MockBloc<LoadoutEvent, LoadoutState>
     implements LoadoutBloc {}
 
 final _now = DateTime.utc(2025, 6);
 
-const _platform = Platform(
-  id: 1,
-  slug: 'ps5',
-  label: 'PS5',
-  family: 'Sony',
-);
+const _platform = Platform(id: 1, slug: 'ps5', label: 'PS5', family: 'Sony');
 
 final _game = Game(
   publicId: 'game-001',
@@ -63,12 +57,7 @@ final _loadout2 = Loadout(
       metadataSource: 'igdb',
       createdAt: _now,
     ),
-    platform: const Platform(
-      id: 2,
-      slug: 'pc',
-      label: 'PC',
-      family: 'PC',
-    ),
+    platform: const Platform(id: 2, slug: 'pc', label: 'PC', family: 'PC'),
     status: 'backlog',
     createdAt: _now,
     updatedAt: _now,
@@ -133,9 +122,7 @@ void main() {
   Widget buildSubject() {
     return BlocProvider<LoadoutBloc>.value(
       value: mockLoadoutBloc,
-      child: const MaterialApp(
-        home: LoadoutPage(),
-      ),
+      child: const MaterialApp(home: LoadoutPage()),
     );
   }
 
@@ -145,447 +132,251 @@ void main() {
     final router = GoRouter(
       initialLocation: '/loadout',
       routes: [
-        GoRoute(
-          path: '/loadout',
-          builder: (_, __) =>
-              const LoadoutPage(),
-        ),
+        GoRoute(path: '/loadout', builder: (_, __) => const LoadoutPage()),
         GoRoute(
           path: '/missions',
-          builder: (_, __) => const Scaffold(
-            body: Text('Missions stub'),
-          ),
+          builder: (_, __) => const Scaffold(body: Text('Missions stub')),
         ),
       ],
     );
 
     return BlocProvider<LoadoutBloc>.value(
       value: mockLoadoutBloc,
-      child: MaterialApp.router(
-        routerConfig: router,
-      ),
+      child: MaterialApp.router(routerConfig: router),
     );
   }
 
   group('LoadoutPage', () {
-    testWidgets(
-      'shows AppBar with Daily Loadout title',
-      (tester) async {
-        when(() => mockLoadoutBloc.state)
-            .thenReturn(const LoadoutInitial());
+    testWidgets('shows AppBar with Daily Loadout title', (tester) async {
+      when(() => mockLoadoutBloc.state).thenReturn(const LoadoutInitial());
 
-        await tester.pumpWidget(buildSubject());
+      await tester.pumpWidget(buildSubject());
 
-        expect(
-          find.descendant(
-            of: find.byType(AppBar),
-            matching: find.text('Daily Loadout'),
-          ),
-          findsOneWidget,
-        );
-      },
-    );
+      expect(
+        find.descendant(
+          of: find.byType(AppBar),
+          matching: find.text('Daily Loadout'),
+        ),
+        findsOneWidget,
+      );
+    });
 
-    testWidgets(
-      'shows mood choice chips '
-      'when LoadoutInitial',
-      (tester) async {
-        when(() => mockLoadoutBloc.state)
-            .thenReturn(const LoadoutInitial());
+    testWidgets('shows mood choice chips '
+        'when LoadoutInitial', (tester) async {
+      when(() => mockLoadoutBloc.state).thenReturn(const LoadoutInitial());
 
-        await tester.pumpWidget(buildSubject());
+      await tester.pumpWidget(buildSubject());
 
-        expect(find.text('Mood'), findsOneWidget);
-        expect(
-          find.widgetWithText(ChoiceChip, 'Chill'),
-          findsOneWidget,
-        );
-        expect(
-          find.widgetWithText(ChoiceChip, 'Focused'),
-          findsOneWidget,
-        );
-        expect(
-          find.widgetWithText(
-            ChoiceChip,
-            'Energetic',
-          ),
-          findsOneWidget,
-        );
-        expect(
-          find.widgetWithText(
-            ChoiceChip,
-            'Adventurous',
-          ),
-          findsOneWidget,
-        );
-      },
-    );
+      expect(find.text('Mood'), findsOneWidget);
+      expect(find.widgetWithText(ChoiceChip, 'Chill'), findsOneWidget);
+      expect(find.widgetWithText(ChoiceChip, 'Focused'), findsOneWidget);
+      expect(find.widgetWithText(ChoiceChip, 'Energetic'), findsOneWidget);
+      expect(find.widgetWithText(ChoiceChip, 'Adventurous'), findsOneWidget);
+    });
 
-    testWidgets(
-      'shows time Slider when LoadoutInitial',
-      (tester) async {
-        when(() => mockLoadoutBloc.state)
-            .thenReturn(const LoadoutInitial());
+    testWidgets('shows time Slider when LoadoutInitial', (tester) async {
+      when(() => mockLoadoutBloc.state).thenReturn(const LoadoutInitial());
 
-        await tester.pumpWidget(buildSubject());
+      await tester.pumpWidget(buildSubject());
 
-        expect(
-          find.text('Available time'),
-          findsOneWidget,
-        );
-        expect(
-          find.byType(Slider),
-          findsOneWidget,
-        );
-        // Default time is 60 min = "1h"
-        expect(find.text('1h'), findsAtLeast(1));
-      },
-    );
+      expect(find.text('Available time'), findsOneWidget);
+      expect(find.byType(Slider), findsOneWidget);
+      // Default time is 60 min = "1h"
+      expect(find.text('1h'), findsAtLeast(1));
+    });
 
-    testWidgets(
-      'shows mental energy choice chips '
-      'when LoadoutInitial',
-      (tester) async {
-        when(() => mockLoadoutBloc.state)
-            .thenReturn(const LoadoutInitial());
+    testWidgets('shows mental energy choice chips '
+        'when LoadoutInitial', (tester) async {
+      when(() => mockLoadoutBloc.state).thenReturn(const LoadoutInitial());
 
-        await tester.pumpWidget(buildSubject());
+      await tester.pumpWidget(buildSubject());
 
-        expect(
-          find.text('Mental energy'),
-          findsOneWidget,
-        );
-        expect(
-          find.widgetWithText(ChoiceChip, 'Low'),
-          findsOneWidget,
-        );
-        expect(
-          find.widgetWithText(ChoiceChip, 'Medium'),
-          findsOneWidget,
-        );
-        expect(
-          find.widgetWithText(ChoiceChip, 'High'),
-          findsOneWidget,
-        );
-      },
-    );
+      expect(find.text('Mental energy'), findsOneWidget);
+      expect(find.widgetWithText(ChoiceChip, 'Low'), findsOneWidget);
+      expect(find.widgetWithText(ChoiceChip, 'Medium'), findsOneWidget);
+      expect(find.widgetWithText(ChoiceChip, 'High'), findsOneWidget);
+    });
 
-    testWidgets(
-      'shows context TextFormField',
-      (tester) async {
-        when(() => mockLoadoutBloc.state)
-            .thenReturn(const LoadoutInitial());
+    testWidgets('shows context TextFormField', (tester) async {
+      when(() => mockLoadoutBloc.state).thenReturn(const LoadoutInitial());
 
-        await tester.pumpWidget(buildSubject());
+      await tester.pumpWidget(buildSubject());
 
-        expect(
-          find.byType(TextFormField),
-          findsOneWidget,
-        );
-        expect(
-          find.text('Context (optional)'),
-          findsOneWidget,
-        );
-      },
-    );
+      expect(find.byType(TextFormField), findsOneWidget);
+      expect(find.text('Context (optional)'), findsOneWidget);
+    });
 
-    testWidgets(
-      'shows "Show multiple suggestions" switch',
-      (tester) async {
-        when(() => mockLoadoutBloc.state)
-            .thenReturn(const LoadoutInitial());
+    testWidgets('shows "Show multiple suggestions" switch', (tester) async {
+      when(() => mockLoadoutBloc.state).thenReturn(const LoadoutInitial());
 
-        await tester.pumpWidget(buildSubject());
+      await tester.pumpWidget(buildSubject());
 
-        expect(
-          find.byType(SwitchListTile),
-          findsOneWidget,
-        );
-        expect(
-          find.text(
-            'Show multiple suggestions (up to 3)',
-          ),
-          findsOneWidget,
-        );
-      },
-    );
+      expect(find.byType(SwitchListTile), findsOneWidget);
+      expect(find.text('Show multiple suggestions (up to 3)'), findsOneWidget);
+    });
 
-    testWidgets(
-      'shows "Roll the dice" button '
-      'when LoadoutInitial',
-      (tester) async {
-        when(() => mockLoadoutBloc.state)
-            .thenReturn(const LoadoutInitial());
+    testWidgets('shows "Roll the dice" button '
+        'when LoadoutInitial', (tester) async {
+      when(() => mockLoadoutBloc.state).thenReturn(const LoadoutInitial());
 
-        await tester.pumpWidget(buildSubject());
+      await tester.pumpWidget(buildSubject());
 
-        expect(
-          find.text('Roll the dice'),
-          findsOneWidget,
-        );
-        expect(
-          find.byIcon(Icons.casino),
-          findsOneWidget,
-        );
-      },
-    );
+      expect(find.text('Roll the dice'), findsOneWidget);
+      expect(find.byIcon(Icons.casino), findsOneWidget);
+    });
 
-    testWidgets(
-      'shows loading view with spinner '
-      'when LoadoutLoading',
-      (tester) async {
-        when(() => mockLoadoutBloc.state)
-            .thenReturn(const LoadoutLoading());
+    testWidgets('shows loading view with spinner '
+        'when LoadoutLoading', (tester) async {
+      when(() => mockLoadoutBloc.state).thenReturn(const LoadoutLoading());
 
-        await tester.pumpWidget(buildSubject());
+      await tester.pumpWidget(buildSubject());
 
-        expect(
-          find.byType(CircularProgressIndicator),
-          findsOneWidget,
-        );
-        expect(
-          find.text('Scanning your library...'),
-          findsOneWidget,
-        );
-      },
-    );
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.text('Scanning your library...'), findsOneWidget);
+    });
 
-    testWidgets(
-      'hides questionnaire when LoadoutLoading',
-      (tester) async {
-        when(() => mockLoadoutBloc.state)
-            .thenReturn(const LoadoutLoading());
+    testWidgets('hides questionnaire when LoadoutLoading', (tester) async {
+      when(() => mockLoadoutBloc.state).thenReturn(const LoadoutLoading());
 
-        await tester.pumpWidget(buildSubject());
+      await tester.pumpWidget(buildSubject());
 
-        // Questionnaire is replaced by loading view.
-        expect(
-          find.text('Roll the dice'),
-          findsNothing,
-        );
-        expect(
-          find.text('Scanning your library...'),
-          findsOneWidget,
-        );
-      },
-    );
+      // Questionnaire is replaced by loading view.
+      expect(find.text('Roll the dice'), findsNothing);
+      expect(find.text('Scanning your library...'), findsOneWidget);
+    });
 
-    testWidgets(
-      'shows error text via builder '
-      'on LoadoutError from stream',
-      (tester) async {
-        whenListen(
-          mockLoadoutBloc,
-          Stream<LoadoutState>.fromIterable([
-            const LoadoutError(
-              message: 'Something went wrong',
-            ),
-          ]),
-          initialState: const LoadoutInitial(),
-        );
+    testWidgets('shows error text via builder '
+        'on LoadoutError from stream', (tester) async {
+      whenListen(
+        mockLoadoutBloc,
+        Stream<LoadoutState>.fromIterable([
+          const LoadoutError(message: 'Something went wrong'),
+        ]),
+        initialState: const LoadoutInitial(),
+      );
 
-        await tester.pumpWidget(buildSubject());
-        await tester.pump();
+      await tester.pumpWidget(buildSubject());
+      await tester.pump();
 
-        expect(
-          find.text('Something went wrong'),
-          findsOneWidget,
-        );
-      },
-    );
+      expect(find.text('Something went wrong'), findsOneWidget);
+    });
 
-    testWidgets(
-      'shows error text when LoadoutError '
-      'in builder',
-      (tester) async {
-        when(() => mockLoadoutBloc.state).thenReturn(
-          const LoadoutError(
-            message: 'Failed to generate loadout',
-          ),
-        );
+    testWidgets('shows error text when LoadoutError '
+        'in builder', (tester) async {
+      when(
+        () => mockLoadoutBloc.state,
+      ).thenReturn(const LoadoutError(message: 'Failed to generate loadout'));
 
-        await tester.pumpWidget(buildSubject());
+      await tester.pumpWidget(buildSubject());
 
-        expect(
-          find.text('Failed to generate loadout'),
-          findsOneWidget,
-        );
-      },
-    );
+      expect(find.text('Failed to generate loadout'), findsOneWidget);
+    });
 
-    testWidgets(
-      'shows result cards when '
-      'LoadoutResultsLoaded',
-      (tester) async {
-        whenListen(
-          mockLoadoutBloc,
-          Stream<LoadoutState>.fromIterable([
-            LoadoutResultsLoaded(
-              results: [_loadout, _loadout2],
-            ),
-          ]),
-          initialState: const LoadoutInitial(),
-        );
+    testWidgets('shows result cards when '
+        'LoadoutResultsLoaded', (tester) async {
+      whenListen(
+        mockLoadoutBloc,
+        Stream<LoadoutState>.fromIterable([
+          LoadoutResultsLoaded(results: [_loadout, _loadout2]),
+        ]),
+        initialState: const LoadoutInitial(),
+      );
 
-        await tester.pumpWidget(buildSubject());
-        await tester.pump();
+      await tester.pumpWidget(buildSubject());
+      await tester.pump();
 
-        expect(
-          find.byType(LoadoutResultCard),
-          findsNWidgets(2),
-        );
-        expect(
-          find.text('Hollow Knight'),
-          findsOneWidget,
-        );
-        expect(
-          find.text('Elden Ring'),
-          findsOneWidget,
-        );
-        expect(
-          find.text('Your picks'),
-          findsOneWidget,
-        );
-      },
-    );
+      expect(find.byType(LoadoutResultCard), findsNWidgets(2));
+      expect(find.text('Hollow Knight'), findsOneWidget);
+      expect(find.text('Elden Ring'), findsOneWidget);
+      expect(find.text('Your picks'), findsOneWidget);
+    });
 
-    testWidgets(
-      'shows questionnaire again when all '
-      'results are actioned',
-      (tester) async {
-        whenListen(
-          mockLoadoutBloc,
-          Stream<LoadoutState>.fromIterable([
-            LoadoutResultsLoaded(
-              results: [_loadout, _loadout2],
-            ),
-            LoadoutRejected(
-              loadout: _rejectedLoadout,
-            ),
-            LoadoutRejected(
-              loadout: _rejectedLoadout2,
-            ),
-          ]),
-          initialState: const LoadoutInitial(),
-        );
+    testWidgets('shows questionnaire again when all '
+        'results are actioned', (tester) async {
+      whenListen(
+        mockLoadoutBloc,
+        Stream<LoadoutState>.fromIterable([
+          LoadoutResultsLoaded(results: [_loadout, _loadout2]),
+          LoadoutRejected(loadout: _rejectedLoadout),
+          LoadoutRejected(loadout: _rejectedLoadout2),
+        ]),
+        initialState: const LoadoutInitial(),
+      );
 
-        await tester.pumpWidget(buildSubject());
-        await tester.pump();
+      await tester.pumpWidget(buildSubject());
+      await tester.pump();
 
-        // All actioned => questionnaire is shown
-        expect(
-          find.text('Mood'),
-          findsOneWidget,
-        );
-        expect(
-          find.text('Roll the dice'),
-          findsOneWidget,
-        );
-        expect(
-          find.byType(LoadoutResultCard),
-          findsNothing,
-        );
-      },
-    );
+      // All actioned => questionnaire is shown
+      expect(find.text('Mood'), findsOneWidget);
+      expect(find.text('Roll the dice'), findsOneWidget);
+      expect(find.byType(LoadoutResultCard), findsNothing);
+    });
 
-    testWidgets(
-      'shows "Roll again" button '
-      'in results view',
-      (tester) async {
-        whenListen(
-          mockLoadoutBloc,
-          Stream<LoadoutState>.fromIterable([
-            LoadoutResultsLoaded(
-              results: [_loadout],
-            ),
-          ]),
-          initialState: const LoadoutInitial(),
-        );
+    testWidgets('shows "Roll again" button '
+        'in results view', (tester) async {
+      whenListen(
+        mockLoadoutBloc,
+        Stream<LoadoutState>.fromIterable([
+          LoadoutResultsLoaded(results: [_loadout]),
+        ]),
+        initialState: const LoadoutInitial(),
+      );
 
-        await tester.pumpWidget(buildSubject());
-        await tester.pump();
+      await tester.pumpWidget(buildSubject());
+      await tester.pump();
 
-        expect(
-          find.text('Roll again'),
-          findsOneWidget,
-        );
-      },
-    );
+      expect(find.text('Roll again'), findsOneWidget);
+    });
 
-    testWidgets(
-      '"Roll again" clears results '
-      'and shows questionnaire',
-      (tester) async {
-        whenListen(
-          mockLoadoutBloc,
-          Stream<LoadoutState>.fromIterable([
-            LoadoutResultsLoaded(
-              results: [_loadout],
-            ),
-          ]),
-          initialState: const LoadoutInitial(),
-        );
+    testWidgets('"Roll again" clears results '
+        'and shows questionnaire', (tester) async {
+      whenListen(
+        mockLoadoutBloc,
+        Stream<LoadoutState>.fromIterable([
+          LoadoutResultsLoaded(results: [_loadout]),
+        ]),
+        initialState: const LoadoutInitial(),
+      );
 
-        await tester.pumpWidget(buildSubject());
-        await tester.pump();
+      await tester.pumpWidget(buildSubject());
+      await tester.pump();
 
-        await tester.tap(find.text('Roll again'));
-        await tester.pump();
+      await tester.tap(find.text('Roll again'));
+      await tester.pump();
 
-        expect(
-          find.text('Mood'),
-          findsOneWidget,
-        );
-        expect(
-          find.byType(LoadoutResultCard),
-          findsNothing,
-        );
-      },
-    );
+      expect(find.text('Mood'), findsOneWidget);
+      expect(find.byType(LoadoutResultCard), findsNothing);
+    });
 
-    testWidgets(
-      'shows SnackBar with "Mission started!" '
-      'on LoadoutAccepted via listener',
-      (tester) async {
-        whenListen(
-          mockLoadoutBloc,
-          Stream<LoadoutState>.fromIterable([
-            LoadoutResultsLoaded(
-              results: [_loadout],
-            ),
-            LoadoutAccepted(
-              loadout: _acceptedLoadout,
-            ),
-          ]),
-          initialState: const LoadoutInitial(),
-        );
+    testWidgets('shows SnackBar with "Mission started!" '
+        'on LoadoutAccepted via listener', (tester) async {
+      whenListen(
+        mockLoadoutBloc,
+        Stream<LoadoutState>.fromIterable([
+          LoadoutResultsLoaded(results: [_loadout]),
+          LoadoutAccepted(loadout: _acceptedLoadout),
+        ]),
+        initialState: const LoadoutInitial(),
+      );
 
-        await tester.pumpWidget(
-          buildRoutedSubject(),
-        );
-        // First pump processes the stream events.
-        await tester.pump();
+      await tester.pumpWidget(buildRoutedSubject());
+      // First pump processes the stream events.
+      await tester.pump();
 
-        expect(
-          find.byType(SnackBar),
-          findsOneWidget,
-        );
-        expect(
-          find.descendant(
-            of: find.byType(SnackBar),
-            matching: find.text('Mission started!'),
-          ),
-          findsOneWidget,
-        );
+      expect(find.byType(SnackBar), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(SnackBar),
+          matching: find.text('Mission started!'),
+        ),
+        findsOneWidget,
+      );
 
-        // Advance past the 800ms navigation delay
-        // so the timer fires and completes cleanly.
-        await tester.pump(
-          const Duration(seconds: 1),
-        );
-        // Let the route transition settle.
-        await tester.pumpAndSettle();
-      },
-    );
+      // Advance past the 800ms navigation delay
+      // so the timer fires and completes cleanly.
+      await tester.pump(const Duration(seconds: 1));
+      // Let the route transition settle.
+      await tester.pumpAndSettle();
+    });
   });
 }

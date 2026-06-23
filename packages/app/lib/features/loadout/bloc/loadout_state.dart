@@ -49,10 +49,7 @@ final class LoadoutRejected extends LoadoutState {
 
 /// Loadout history list has been loaded.
 final class LoadoutListLoaded extends LoadoutState {
-  const LoadoutListLoaded({
-    required this.loadouts,
-    required this.total,
-  });
+  const LoadoutListLoaded({required this.loadouts, required this.total});
 
   final List<LoadoutListItem> loadouts;
   final int total;

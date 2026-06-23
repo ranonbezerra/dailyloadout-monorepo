@@ -36,14 +36,9 @@ class _LoadoutPageState extends State<LoadoutPage> {
 
   bool get _allActioned =>
       _results.isNotEmpty &&
-      _results.every(
-        (l) =>
-            l.action == 'accepted' ||
-            l.action == 'rejected',
-      );
+      _results.every((l) => l.action == 'accepted' || l.action == 'rejected');
 
-  bool get _showResults =>
-      _results.isNotEmpty && !_allActioned;
+  bool get _showResults => _results.isNotEmpty && !_allActioned;
 
   @override
   void dispose() {
@@ -54,36 +49,30 @@ class _LoadoutPageState extends State<LoadoutPage> {
   void _onRoll() {
     final ctx = _contextController.text.trim();
     context.read<LoadoutBloc>().add(
-          CreateLoadout(
-            mood: _mood,
-            availableMinutes: _minutes.round(),
-            mentalEnergy: _mentalEnergy,
-            count: _multiMode ? 3 : 1,
-            context: ctx.isEmpty ? null : ctx,
-          ),
-        );
+      CreateLoadout(
+        mood: _mood,
+        availableMinutes: _minutes.round(),
+        mentalEnergy: _mentalEnergy,
+        count: _multiMode ? 3 : 1,
+        context: ctx.isEmpty ? null : ctx,
+      ),
+    );
   }
 
   void _onAccept(Loadout loadout) {
     setState(() => _actioningId = loadout.publicId);
-    context.read<LoadoutBloc>().add(
-          AcceptLoadout(publicId: loadout.publicId),
-        );
+    context.read<LoadoutBloc>().add(AcceptLoadout(publicId: loadout.publicId));
   }
 
   void _onReject(Loadout loadout) {
     setState(() => _actioningId = loadout.publicId);
-    context.read<LoadoutBloc>().add(
-          RejectLoadout(publicId: loadout.publicId),
-        );
+    context.read<LoadoutBloc>().add(RejectLoadout(publicId: loadout.publicId));
   }
 
   /// Replaces a loadout in the local results list
   /// after an accept/reject response.
   void _replaceInResults(Loadout updated) {
-    final idx = _results.indexWhere(
-      (l) => l.publicId == updated.publicId,
-    );
+    final idx = _results.indexWhere((l) => l.publicId == updated.publicId);
     if (idx != -1) {
       setState(() {
         _results = List.of(_results)..[idx] = updated;
@@ -93,9 +82,7 @@ class _LoadoutPageState extends State<LoadoutPage> {
   }
 
   Future<void> _navigateToMissionsAfterDelay() async {
-    await Future<void>.delayed(
-      const Duration(milliseconds: 800),
-    );
+    await Future<void>.delayed(const Duration(milliseconds: 800));
     if (!mounted) return;
     context.go('/missions');
   }
@@ -112,13 +99,9 @@ class _LoadoutPageState extends State<LoadoutPage> {
           }
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 20,
-              vertical: 16,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (_showResults)
                   _buildResults(context)
@@ -128,21 +111,13 @@ class _LoadoutPageState extends State<LoadoutPage> {
                     minutes: _minutes,
                     mentalEnergy: _mentalEnergy,
                     multiMode: _multiMode,
-                    contextController:
-                        _contextController,
+                    contextController: _contextController,
                     isLoading: false,
-                    error: state is LoadoutError
-                        ? state.message
-                        : null,
-                    onMoodChanged: (v) =>
-                        setState(() => _mood = v),
-                    onMinutesChanged: (v) =>
-                        setState(() => _minutes = v),
-                    onEnergyChanged: (v) => setState(
-                        () => _mentalEnergy = v),
-                    onMultiModeChanged: (v) =>
-                        setState(
-                            () => _multiMode = v),
+                    error: state is LoadoutError ? state.message : null,
+                    onMoodChanged: (v) => setState(() => _mood = v),
+                    onMinutesChanged: (v) => setState(() => _minutes = v),
+                    onEnergyChanged: (v) => setState(() => _mentalEnergy = v),
+                    onMultiModeChanged: (v) => setState(() => _multiMode = v),
                     onRoll: _onRoll,
                   ),
               ],
@@ -153,10 +128,7 @@ class _LoadoutPageState extends State<LoadoutPage> {
     );
   }
 
-  void _onStateChange(
-    BuildContext context,
-    LoadoutState state,
-  ) {
+  void _onStateChange(BuildContext context, LoadoutState state) {
     if (state is LoadoutResultsLoaded) {
       setState(() {
         _results = state.results;
@@ -194,18 +166,14 @@ class _LoadoutPageState extends State<LoadoutPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Your picks',
-          style: theme.textTheme.titleLarge,
-        ),
+        Text('Your picks', style: theme.textTheme.titleLarge),
         const SizedBox(height: 16),
         for (var i = 0; i < _results.length; i++)
           LoadoutResultCard(
             loadout: _results[i],
             rank: i,
             totalResults: _results.length,
-            isActioning:
-                _actioningId == _results[i].publicId,
+            isActioning: _actioningId == _results[i].publicId,
             onAccept: () => _onAccept(_results[i]),
             onReject: () => _onReject(_results[i]),
           ),
@@ -251,9 +219,7 @@ class _LoadingViewState extends State<_LoadingView> {
     super.initState();
     _timer = Timer.periodic(
       const Duration(seconds: 3),
-      (_) => setState(
-        () => _index = (_index + 1) % _messages.length,
-      ),
+      (_) => setState(() => _index = (_index + 1) % _messages.length),
     );
   }
 
@@ -268,49 +234,42 @@ class _LoadingViewState extends State<_LoadingView> {
     final theme = Theme.of(context);
 
     return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(
-              width: 48,
-              height: 48,
-              child: CircularProgressIndicator(
-                strokeWidth: 3,
-                color: DLColors.coral,
-              ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(
+            width: 48,
+            height: 48,
+            child: CircularProgressIndicator(
+              strokeWidth: 3,
+              color: DLColors.coral,
             ),
-            const SizedBox(height: 24),
-            AnimatedSwitcher(
-              duration: const Duration(
-                milliseconds: 400,
+          ),
+          const SizedBox(height: 24),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 400),
+            transitionBuilder: (child, animation) {
+              final isIncoming = child.key == ValueKey(_index);
+              final offsetTween = Tween<Offset>(
+                begin: Offset(0, isIncoming ? 0.5 : -0.5),
+                end: Offset.zero,
+              );
+              return SlideTransition(
+                position: offsetTween.animate(animation),
+                child: FadeTransition(opacity: animation, child: child),
+              );
+            },
+            child: Text(
+              _messages[_index],
+              key: ValueKey(_index),
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: DLColors.textMuted,
               ),
-              transitionBuilder: (child, animation) {
-                final isIncoming =
-                    child.key == ValueKey(_index);
-                final offsetTween = Tween<Offset>(
-                  begin: Offset(0, isIncoming ? 0.5 : -0.5),
-                  end: Offset.zero,
-                );
-                return SlideTransition(
-                  position: offsetTween.animate(animation),
-                  child: FadeTransition(
-                    opacity: animation,
-                    child: child,
-                  ),
-                );
-              },
-              child: Text(
-                _messages[_index],
-                key: ValueKey(_index),
-                style:
-                    theme.textTheme.titleMedium?.copyWith(
-                  color: DLColors.textMuted,
-                ),
-                textAlign: TextAlign.center,
-              ),
+              textAlign: TextAlign.center,
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
     );
   }
 }

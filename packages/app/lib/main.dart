@@ -40,9 +40,7 @@ Future<void> main() async {
   final libraryBloc = LibraryBloc(libraryRepository: libraryRepository);
   final captureBloc = CaptureBloc(captureRepository: captureRepository);
   final missionBloc = MissionBloc(missionRepository: missionRepository);
-  final loadoutBloc = LoadoutBloc(
-    loadoutRepository: loadoutRepository,
-  );
+  final loadoutBloc = LoadoutBloc(loadoutRepository: loadoutRepository);
 
   runApp(
     App(

@@ -2,9 +2,7 @@ import 'package:app/core/api/api_client.dart';
 import 'package:app/core/mission/mission_models.dart';
 import 'package:dio/dio.dart';
 
-final _llmOptions = Options(
-  receiveTimeout: llmReceiveTimeout,
-);
+final _llmOptions = Options(receiveTimeout: llmReceiveTimeout);
 
 /// Provides high-level mission operations backed by the API.
 class MissionRepository {

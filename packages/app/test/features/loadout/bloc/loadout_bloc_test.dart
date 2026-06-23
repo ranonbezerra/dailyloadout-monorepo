@@ -7,8 +7,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
-class MockLoadoutRepository extends Mock
-    implements LoadoutRepository {}
+class MockLoadoutRepository extends Mock implements LoadoutRepository {}
 
 // -----------------------------------------------------------------
 // Test fixtures
@@ -16,12 +15,7 @@ class MockLoadoutRepository extends Mock
 
 final _now = DateTime.utc(2025, 6);
 
-const _platform = Platform(
-  id: 1,
-  slug: 'ps5',
-  label: 'PS5',
-  family: 'sony',
-);
+const _platform = Platform(id: 1, slug: 'ps5', label: 'PS5', family: 'sony');
 
 final _game = Game(
   publicId: 'game-001',
@@ -63,10 +57,7 @@ final _loadoutListItem = LoadoutListItem(
   createdAt: _now,
 );
 
-final _listResponse = LoadoutListResponse(
-  items: [_loadoutListItem],
-  total: 1,
-);
+final _listResponse = LoadoutListResponse(items: [_loadoutListItem], total: 1);
 
 // -----------------------------------------------------------------
 // Tests
@@ -79,9 +70,8 @@ void main() {
     mockLoadoutRepository = MockLoadoutRepository();
   });
 
-  LoadoutBloc buildBloc() => LoadoutBloc(
-        loadoutRepository: mockLoadoutRepository,
-      );
+  LoadoutBloc buildBloc() =>
+      LoadoutBloc(loadoutRepository: mockLoadoutRepository);
 
   group('LoadoutBloc', () {
     test('initial state is LoadoutInitial', () {
@@ -101,10 +91,8 @@ void main() {
           when(
             () => mockLoadoutRepository.createLoadout(
               mood: any(named: 'mood'),
-              availableMinutes:
-                  any(named: 'availableMinutes'),
-              mentalEnergy:
-                  any(named: 'mentalEnergy'),
+              availableMinutes: any(named: 'availableMinutes'),
+              mentalEnergy: any(named: 'mentalEnergy'),
               count: any(named: 'count'),
               context: any(named: 'context'),
             ),
@@ -171,10 +159,8 @@ void main() {
           when(
             () => mockLoadoutRepository.createLoadout(
               mood: any(named: 'mood'),
-              availableMinutes:
-                  any(named: 'availableMinutes'),
-              mentalEnergy:
-                  any(named: 'mentalEnergy'),
+              availableMinutes: any(named: 'availableMinutes'),
+              mentalEnergy: any(named: 'mentalEnergy'),
               count: any(named: 'count'),
               context: any(named: 'context'),
             ),
@@ -184,9 +170,7 @@ void main() {
               response: Response(
                 requestOptions: RequestOptions(),
                 statusCode: 500,
-                data: <String, dynamic>{
-                  'detail': 'LLM unavailable',
-                },
+                data: <String, dynamic>{'detail': 'LLM unavailable'},
               ),
             ),
           );
@@ -212,10 +196,8 @@ void main() {
           when(
             () => mockLoadoutRepository.createLoadout(
               mood: any(named: 'mood'),
-              availableMinutes:
-                  any(named: 'availableMinutes'),
-              mentalEnergy:
-                  any(named: 'mentalEnergy'),
+              availableMinutes: any(named: 'availableMinutes'),
+              mentalEnergy: any(named: 'mentalEnergy'),
               count: any(named: 'count'),
               context: any(named: 'context'),
             ),
@@ -231,9 +213,7 @@ void main() {
         ),
         expect: () => const [
           LoadoutLoading(),
-          LoadoutError(
-            message: 'Exception: unexpected',
-          ),
+          LoadoutError(message: 'Exception: unexpected'),
         ],
       );
     });
@@ -247,16 +227,11 @@ void main() {
         'on success',
         setUp: () {
           when(
-            () => mockLoadoutRepository
-                .acceptLoadout('loadout-001'),
+            () => mockLoadoutRepository.acceptLoadout('loadout-001'),
           ).thenAnswer((_) async => _loadout);
         },
         build: buildBloc,
-        act: (bloc) => bloc.add(
-          const AcceptLoadout(
-            publicId: 'loadout-001',
-          ),
-        ),
+        act: (bloc) => bloc.add(const AcceptLoadout(publicId: 'loadout-001')),
         expect: () => [
           const LoadoutLoading(),
           LoadoutAccepted(loadout: _loadout),
@@ -267,33 +242,22 @@ void main() {
         'emits [LoadoutLoading, LoadoutError] '
         'on DioException',
         setUp: () {
-          when(
-            () => mockLoadoutRepository
-                .acceptLoadout(any()),
-          ).thenThrow(
+          when(() => mockLoadoutRepository.acceptLoadout(any())).thenThrow(
             DioException(
               requestOptions: RequestOptions(),
               response: Response(
                 requestOptions: RequestOptions(),
                 statusCode: 409,
-                data: <String, dynamic>{
-                  'detail': 'Already accepted',
-                },
+                data: <String, dynamic>{'detail': 'Already accepted'},
               ),
             ),
           );
         },
         build: buildBloc,
-        act: (bloc) => bloc.add(
-          const AcceptLoadout(
-            publicId: 'loadout-001',
-          ),
-        ),
+        act: (bloc) => bloc.add(const AcceptLoadout(publicId: 'loadout-001')),
         expect: () => const [
           LoadoutLoading(),
-          LoadoutError(
-            message: 'Already accepted',
-          ),
+          LoadoutError(message: 'Already accepted'),
         ],
       );
 
@@ -302,21 +266,14 @@ void main() {
         'on generic Exception',
         setUp: () {
           when(
-            () => mockLoadoutRepository
-                .acceptLoadout(any()),
+            () => mockLoadoutRepository.acceptLoadout(any()),
           ).thenThrow(Exception('network down'));
         },
         build: buildBloc,
-        act: (bloc) => bloc.add(
-          const AcceptLoadout(
-            publicId: 'loadout-001',
-          ),
-        ),
+        act: (bloc) => bloc.add(const AcceptLoadout(publicId: 'loadout-001')),
         expect: () => const [
           LoadoutLoading(),
-          LoadoutError(
-            message: 'Exception: network down',
-          ),
+          LoadoutError(message: 'Exception: network down'),
         ],
       );
     });
@@ -330,16 +287,11 @@ void main() {
         'on success',
         setUp: () {
           when(
-            () => mockLoadoutRepository
-                .rejectLoadout('loadout-001'),
+            () => mockLoadoutRepository.rejectLoadout('loadout-001'),
           ).thenAnswer((_) async => _loadout);
         },
         build: buildBloc,
-        act: (bloc) => bloc.add(
-          const RejectLoadout(
-            publicId: 'loadout-001',
-          ),
-        ),
+        act: (bloc) => bloc.add(const RejectLoadout(publicId: 'loadout-001')),
         expect: () => [
           const LoadoutLoading(),
           LoadoutRejected(loadout: _loadout),
@@ -350,33 +302,22 @@ void main() {
         'emits [LoadoutLoading, LoadoutError] '
         'on DioException',
         setUp: () {
-          when(
-            () => mockLoadoutRepository
-                .rejectLoadout(any()),
-          ).thenThrow(
+          when(() => mockLoadoutRepository.rejectLoadout(any())).thenThrow(
             DioException(
               requestOptions: RequestOptions(),
               response: Response(
                 requestOptions: RequestOptions(),
                 statusCode: 404,
-                data: <String, dynamic>{
-                  'detail': 'Loadout not found',
-                },
+                data: <String, dynamic>{'detail': 'Loadout not found'},
               ),
             ),
           );
         },
         build: buildBloc,
-        act: (bloc) => bloc.add(
-          const RejectLoadout(
-            publicId: 'loadout-999',
-          ),
-        ),
+        act: (bloc) => bloc.add(const RejectLoadout(publicId: 'loadout-999')),
         expect: () => const [
           LoadoutLoading(),
-          LoadoutError(
-            message: 'Loadout not found',
-          ),
+          LoadoutError(message: 'Loadout not found'),
         ],
       );
     });
@@ -394,19 +335,13 @@ void main() {
               limit: any(named: 'limit'),
               offset: any(named: 'offset'),
             ),
-          ).thenAnswer(
-            (_) async => _listResponse,
-          );
+          ).thenAnswer((_) async => _listResponse);
         },
         build: buildBloc,
-        act: (bloc) =>
-            bloc.add(const LoadLoadouts()),
+        act: (bloc) => bloc.add(const LoadLoadouts()),
         expect: () => [
           const LoadoutLoading(),
-          LoadoutListLoaded(
-            loadouts: [_loadoutListItem],
-            total: 1,
-          ),
+          LoadoutListLoaded(loadouts: [_loadoutListItem], total: 1),
         ],
       );
 
@@ -414,34 +349,18 @@ void main() {
         'passes limit and offset to repository',
         setUp: () {
           when(
-            () => mockLoadoutRepository.listLoadouts(
-              limit: 10,
-              offset: 20,
-            ),
-          ).thenAnswer(
-            (_) async => _listResponse,
-          );
+            () => mockLoadoutRepository.listLoadouts(limit: 10, offset: 20),
+          ).thenAnswer((_) async => _listResponse);
         },
         build: buildBloc,
-        act: (bloc) => bloc.add(
-          const LoadLoadouts(
-            limit: 10,
-            offset: 20,
-          ),
-        ),
+        act: (bloc) => bloc.add(const LoadLoadouts(limit: 10, offset: 20)),
         expect: () => [
           const LoadoutLoading(),
-          LoadoutListLoaded(
-            loadouts: [_loadoutListItem],
-            total: 1,
-          ),
+          LoadoutListLoaded(loadouts: [_loadoutListItem], total: 1),
         ],
         verify: (_) {
           verify(
-            () => mockLoadoutRepository.listLoadouts(
-              limit: 10,
-              offset: 20,
-            ),
+            () => mockLoadoutRepository.listLoadouts(limit: 10, offset: 20),
           ).called(1);
         },
       );
@@ -461,16 +380,13 @@ void main() {
               response: Response(
                 requestOptions: RequestOptions(),
                 statusCode: 500,
-                data: <String, dynamic>{
-                  'detail': 'Server error',
-                },
+                data: <String, dynamic>{'detail': 'Server error'},
               ),
             ),
           );
         },
         build: buildBloc,
-        act: (bloc) =>
-            bloc.add(const LoadLoadouts()),
+        act: (bloc) => bloc.add(const LoadLoadouts()),
         expect: () => const [
           LoadoutLoading(),
           LoadoutError(message: 'Server error'),
@@ -489,13 +405,10 @@ void main() {
           ).thenThrow(Exception('unexpected'));
         },
         build: buildBloc,
-        act: (bloc) =>
-            bloc.add(const LoadLoadouts()),
+        act: (bloc) => bloc.add(const LoadLoadouts()),
         expect: () => const [
           LoadoutLoading(),
-          LoadoutError(
-            message: 'Exception: unexpected',
-          ),
+          LoadoutError(message: 'Exception: unexpected'),
         ],
       );
     });
@@ -509,13 +422,11 @@ void main() {
         'with loadout on success',
         setUp: () {
           when(
-            () => mockLoadoutRepository
-                .getLatestLoadout(),
+            () => mockLoadoutRepository.getLatestLoadout(),
           ).thenAnswer((_) async => _loadout);
         },
         build: buildBloc,
-        act: (bloc) =>
-            bloc.add(const LoadLatestLoadout()),
+        act: (bloc) => bloc.add(const LoadLatestLoadout()),
         expect: () => [
           const LoadoutLoading(),
           LatestLoadoutLoaded(loadout: _loadout),
@@ -527,47 +438,34 @@ void main() {
         'with null when no pending loadout',
         setUp: () {
           when(
-            () => mockLoadoutRepository
-                .getLatestLoadout(),
+            () => mockLoadoutRepository.getLatestLoadout(),
           ).thenAnswer((_) async => null);
         },
         build: buildBloc,
-        act: (bloc) =>
-            bloc.add(const LoadLatestLoadout()),
-        expect: () => const [
-          LoadoutLoading(),
-          LatestLoadoutLoaded(),
-        ],
+        act: (bloc) => bloc.add(const LoadLatestLoadout()),
+        expect: () => const [LoadoutLoading(), LatestLoadoutLoaded()],
       );
 
       blocTest<LoadoutBloc, LoadoutState>(
         'emits [LoadoutLoading, LoadoutError] '
         'on DioException',
         setUp: () {
-          when(
-            () => mockLoadoutRepository
-                .getLatestLoadout(),
-          ).thenThrow(
+          when(() => mockLoadoutRepository.getLatestLoadout()).thenThrow(
             DioException(
               requestOptions: RequestOptions(),
               response: Response(
                 requestOptions: RequestOptions(),
                 statusCode: 500,
-                data: <String, dynamic>{
-                  'detail': 'Internal error',
-                },
+                data: <String, dynamic>{'detail': 'Internal error'},
               ),
             ),
           );
         },
         build: buildBloc,
-        act: (bloc) =>
-            bloc.add(const LoadLatestLoadout()),
+        act: (bloc) => bloc.add(const LoadLatestLoadout()),
         expect: () => const [
           LoadoutLoading(),
-          LoadoutError(
-            message: 'Internal error',
-          ),
+          LoadoutError(message: 'Internal error'),
         ],
       );
     });
@@ -575,211 +473,154 @@ void main() {
     // -------------------------------------------------------------
     // _extractErrorMessage coverage
     // -------------------------------------------------------------
-    group(
-      '_extractErrorMessage '
-      '(via DioException paths)',
-      () {
-        blocTest<LoadoutBloc, LoadoutState>(
-          'returns fallback when response is null '
-          'and message is null',
-          setUp: () {
-            when(
-              () =>
-                  mockLoadoutRepository.listLoadouts(
-                limit: any(named: 'limit'),
-                offset: any(named: 'offset'),
-              ),
-            ).thenThrow(
-              DioException(
-                requestOptions: RequestOptions(),
-              ),
-            );
-          },
-          build: buildBloc,
-          act: (bloc) =>
-              bloc.add(const LoadLoadouts()),
-          expect: () => const [
-            LoadoutLoading(),
-            LoadoutError(
-              message:
-                  'An unexpected error occurred.',
+    group('_extractErrorMessage '
+        '(via DioException paths)', () {
+      blocTest<LoadoutBloc, LoadoutState>(
+        'returns fallback when response is null '
+        'and message is null',
+        setUp: () {
+          when(
+            () => mockLoadoutRepository.listLoadouts(
+              limit: any(named: 'limit'),
+              offset: any(named: 'offset'),
             ),
-          ],
-        );
+          ).thenThrow(DioException(requestOptions: RequestOptions()));
+        },
+        build: buildBloc,
+        act: (bloc) => bloc.add(const LoadLoadouts()),
+        expect: () => const [
+          LoadoutLoading(),
+          LoadoutError(message: 'An unexpected error occurred.'),
+        ],
+      );
 
-        blocTest<LoadoutBloc, LoadoutState>(
-          'returns e.message when response data '
-          'has no detail key',
-          setUp: () {
-            when(
-              () =>
-                  mockLoadoutRepository.listLoadouts(
-                limit: any(named: 'limit'),
-                offset: any(named: 'offset'),
-              ),
-            ).thenThrow(
-              DioException(
-                requestOptions: RequestOptions(),
-                message: 'timeout exceeded',
-                response: Response(
-                  requestOptions:
-                      RequestOptions(),
-                  statusCode: 504,
-                  data: <String, dynamic>{
-                    'error': 'gateway timeout',
-                  },
-                ),
-              ),
-            );
-          },
-          build: buildBloc,
-          act: (bloc) =>
-              bloc.add(const LoadLoadouts()),
-          expect: () => const [
-            LoadoutLoading(),
-            LoadoutError(
+      blocTest<LoadoutBloc, LoadoutState>(
+        'returns e.message when response data '
+        'has no detail key',
+        setUp: () {
+          when(
+            () => mockLoadoutRepository.listLoadouts(
+              limit: any(named: 'limit'),
+              offset: any(named: 'offset'),
+            ),
+          ).thenThrow(
+            DioException(
+              requestOptions: RequestOptions(),
               message: 'timeout exceeded',
-            ),
-          ],
-        );
-
-        blocTest<LoadoutBloc, LoadoutState>(
-          'returns e.message when response data '
-          'is not a Map',
-          setUp: () {
-            when(
-              () =>
-                  mockLoadoutRepository.listLoadouts(
-                limit: any(named: 'limit'),
-                offset: any(named: 'offset'),
-              ),
-            ).thenThrow(
-              DioException(
+              response: Response(
                 requestOptions: RequestOptions(),
-                message: 'bad response',
-                response: Response(
-                  requestOptions:
-                      RequestOptions(),
-                  statusCode: 500,
-                  data: 'plain text error',
-                ),
+                statusCode: 504,
+                data: <String, dynamic>{'error': 'gateway timeout'},
               ),
-            );
-          },
-          build: buildBloc,
-          act: (bloc) =>
-              bloc.add(const LoadLoadouts()),
-          expect: () => const [
-            LoadoutLoading(),
-            LoadoutError(
+            ),
+          );
+        },
+        build: buildBloc,
+        act: (bloc) => bloc.add(const LoadLoadouts()),
+        expect: () => const [
+          LoadoutLoading(),
+          LoadoutError(message: 'timeout exceeded'),
+        ],
+      );
+
+      blocTest<LoadoutBloc, LoadoutState>(
+        'returns e.message when response data '
+        'is not a Map',
+        setUp: () {
+          when(
+            () => mockLoadoutRepository.listLoadouts(
+              limit: any(named: 'limit'),
+              offset: any(named: 'offset'),
+            ),
+          ).thenThrow(
+            DioException(
+              requestOptions: RequestOptions(),
               message: 'bad response',
-            ),
-          ],
-        );
-
-        blocTest<LoadoutBloc, LoadoutState>(
-          'returns fallback when response has '
-          'null message and non-map data',
-          setUp: () {
-            when(
-              () => mockLoadoutRepository
-                  .getLatestLoadout(),
-            ).thenThrow(
-              DioException(
+              response: Response(
                 requestOptions: RequestOptions(),
-                response: Response(
-                  requestOptions:
-                      RequestOptions(),
-                  statusCode: 502,
-                ),
+                statusCode: 500,
+                data: 'plain text error',
               ),
-            );
-          },
-          build: buildBloc,
-          act: (bloc) =>
-              bloc.add(const LoadLatestLoadout()),
-          expect: () => const [
-            LoadoutLoading(),
-            LoadoutError(
-              message:
-                  'An unexpected error occurred.',
             ),
-          ],
-        );
+          );
+        },
+        build: buildBloc,
+        act: (bloc) => bloc.add(const LoadLoadouts()),
+        expect: () => const [
+          LoadoutLoading(),
+          LoadoutError(message: 'bad response'),
+        ],
+      );
 
-        blocTest<LoadoutBloc, LoadoutState>(
-          'returns detail when response data '
-          'detail is a String',
-          setUp: () {
-            when(
-              () => mockLoadoutRepository
-                  .acceptLoadout(any()),
-            ).thenThrow(
-              DioException(
+      blocTest<LoadoutBloc, LoadoutState>(
+        'returns fallback when response has '
+        'null message and non-map data',
+        setUp: () {
+          when(() => mockLoadoutRepository.getLatestLoadout()).thenThrow(
+            DioException(
+              requestOptions: RequestOptions(),
+              response: Response(
                 requestOptions: RequestOptions(),
-                message: 'should be ignored',
-                response: Response(
-                  requestOptions:
-                      RequestOptions(),
-                  statusCode: 422,
-                  data: <String, dynamic>{
-                    'detail':
-                        'Validation failed',
-                  },
-                ),
+                statusCode: 502,
               ),
-            );
-          },
-          build: buildBloc,
-          act: (bloc) => bloc.add(
-            const AcceptLoadout(
-              publicId: 'loadout-001',
             ),
-          ),
-          expect: () => const [
-            LoadoutLoading(),
-            LoadoutError(
-              message: 'Validation failed',
-            ),
-          ],
-        );
+          );
+        },
+        build: buildBloc,
+        act: (bloc) => bloc.add(const LoadLatestLoadout()),
+        expect: () => const [
+          LoadoutLoading(),
+          LoadoutError(message: 'An unexpected error occurred.'),
+        ],
+      );
 
-        blocTest<LoadoutBloc, LoadoutState>(
-          'falls through when detail is not '
-          'a String',
-          setUp: () {
-            when(
-              () => mockLoadoutRepository
-                  .rejectLoadout(any()),
-            ).thenThrow(
-              DioException(
+      blocTest<LoadoutBloc, LoadoutState>(
+        'returns detail when response data '
+        'detail is a String',
+        setUp: () {
+          when(() => mockLoadoutRepository.acceptLoadout(any())).thenThrow(
+            DioException(
+              requestOptions: RequestOptions(),
+              message: 'should be ignored',
+              response: Response(
                 requestOptions: RequestOptions(),
-                message: 'fallback msg',
-                response: Response(
-                  requestOptions:
-                      RequestOptions(),
-                  statusCode: 422,
-                  data: <String, dynamic>{
-                    'detail': 42,
-                  },
-                ),
+                statusCode: 422,
+                data: <String, dynamic>{'detail': 'Validation failed'},
               ),
-            );
-          },
-          build: buildBloc,
-          act: (bloc) => bloc.add(
-            const RejectLoadout(
-              publicId: 'loadout-001',
             ),
-          ),
-          expect: () => const [
-            LoadoutLoading(),
-            LoadoutError(
+          );
+        },
+        build: buildBloc,
+        act: (bloc) => bloc.add(const AcceptLoadout(publicId: 'loadout-001')),
+        expect: () => const [
+          LoadoutLoading(),
+          LoadoutError(message: 'Validation failed'),
+        ],
+      );
+
+      blocTest<LoadoutBloc, LoadoutState>(
+        'falls through when detail is not '
+        'a String',
+        setUp: () {
+          when(() => mockLoadoutRepository.rejectLoadout(any())).thenThrow(
+            DioException(
+              requestOptions: RequestOptions(),
               message: 'fallback msg',
+              response: Response(
+                requestOptions: RequestOptions(),
+                statusCode: 422,
+                data: <String, dynamic>{'detail': 42},
+              ),
             ),
-          ],
-        );
-      },
-    );
+          );
+        },
+        build: buildBloc,
+        act: (bloc) => bloc.add(const RejectLoadout(publicId: 'loadout-001')),
+        expect: () => const [
+          LoadoutLoading(),
+          LoadoutError(message: 'fallback msg'),
+        ],
+      );
+    });
   });
 }

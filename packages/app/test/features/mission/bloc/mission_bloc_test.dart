@@ -200,10 +200,7 @@ void main() {
             total: 2,
             isLoadingMore: true,
           ),
-          MissionListLoaded(
-            missions: [_missionListItem, page2Item],
-            total: 2,
-          ),
+          MissionListLoaded(missions: [_missionListItem, page2Item], total: 2),
         ],
       );
 
@@ -218,8 +215,7 @@ void main() {
       blocTest<MissionBloc, MissionState>(
         'does nothing when hasMore is false',
         build: buildBloc,
-        seed: () =>
-            MissionListLoaded(missions: [_missionListItem], total: 1),
+        seed: () => MissionListLoaded(missions: [_missionListItem], total: 1),
         act: (bloc) => bloc.add(const LoadMoreMissions()),
         expect: () => <MissionState>[],
       );
@@ -257,8 +253,7 @@ void main() {
           );
         },
         build: buildBloc,
-        seed: () =>
-            MissionListLoaded(missions: [_missionListItem], total: 2),
+        seed: () => MissionListLoaded(missions: [_missionListItem], total: 2),
         act: (bloc) => bloc.add(const LoadMoreMissions()),
         expect: () => [
           MissionListLoaded(
@@ -266,10 +261,7 @@ void main() {
             total: 2,
             isLoadingMore: true,
           ),
-          MissionListLoaded(
-            missions: [_missionListItem],
-            total: 2,
-          ),
+          MissionListLoaded(missions: [_missionListItem], total: 2),
           const MissionError(message: 'Server error'),
         ],
       );

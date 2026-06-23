@@ -56,10 +56,7 @@ class LoadoutResultCard extends StatelessWidget {
           children: [
             // Rank badge
             if (_rankLabel != null) ...[
-              _RankBadge(
-                label: _rankLabel!,
-                color: _rankColor!,
-              ),
+              _RankBadge(label: _rankLabel!, color: _rankColor!),
               const SizedBox(height: 12),
             ],
 
@@ -77,16 +74,14 @@ class LoadoutResultCard extends StatelessWidget {
               spacing: 8,
               runSpacing: 4,
               children: [
-                if (platform != null)
-                  _InfoChip(label: platform.label),
+                if (platform != null) _InfoChip(label: platform.label),
                 if (entry?.status != null)
                   _InfoChip(label: _capitalize(entry!.status)),
               ],
             ),
 
             // Genre chips
-            if (game?.genres != null &&
-                game!.genres!.isNotEmpty) ...[
+            if (game?.genres != null && game!.genres!.isNotEmpty) ...[
               const SizedBox(height: 8),
               Wrap(
                 spacing: 6,
@@ -98,8 +93,7 @@ class LoadoutResultCard extends StatelessWidget {
             ],
 
             // Reasoning
-            if (loadout.reasoning != null &&
-                loadout.reasoning!.isNotEmpty) ...[
+            if (loadout.reasoning != null && loadout.reasoning!.isNotEmpty) ...[
               const SizedBox(height: 12),
               Text(
                 loadout.reasoning!,
@@ -126,11 +120,7 @@ class LoadoutResultCard extends StatelessWidget {
     if (loadout.action == 'accepted') {
       return Row(
         children: [
-          const Icon(
-            Icons.check_circle,
-            color: DLColors.green,
-            size: 20,
-          ),
+          const Icon(Icons.check_circle, color: DLColors.green, size: 20),
           const SizedBox(width: 8),
           Text(
             'Mission started!',
@@ -146,9 +136,7 @@ class LoadoutResultCard extends StatelessWidget {
     if (loadout.action == 'rejected') {
       return Text(
         'Rejected',
-        style: theme.textTheme.bodyMedium?.copyWith(
-          color: DLColors.textDim,
-        ),
+        style: theme.textTheme.bodyMedium?.copyWith(color: DLColors.textDim),
       );
     }
 
@@ -183,11 +171,7 @@ class LoadoutResultCard extends StatelessWidget {
                     ),
                   )
                 : const Icon(Icons.play_arrow),
-            label: Text(
-              isActioning
-                  ? 'Starting...'
-                  : 'Accept & Start Mission',
-            ),
+            label: Text(isActioning ? 'Starting...' : 'Accept & Start Mission'),
           ),
         ),
       ],
@@ -201,10 +185,7 @@ class LoadoutResultCard extends StatelessWidget {
 }
 
 class _RankBadge extends StatelessWidget {
-  const _RankBadge({
-    required this.label,
-    required this.color,
-  });
+  const _RankBadge({required this.label, required this.color});
 
   final String label;
   final Color color;
@@ -212,16 +193,11 @@ class _RankBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 4,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: color.withValues(alpha: 0.4),
-        ),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Text(
         label,
@@ -243,20 +219,14 @@ class _InfoChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 8,
-        vertical: 2,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         color: DLColors.surface2,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
         label,
-        style: const TextStyle(
-          color: DLColors.textMuted,
-          fontSize: 12,
-        ),
+        style: const TextStyle(color: DLColors.textMuted, fontSize: 12),
       ),
     );
   }
@@ -271,13 +241,10 @@ class _GenreChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Chip(
       label: Text(label),
-      materialTapTargetSize:
-          MaterialTapTargetSize.shrinkWrap,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       visualDensity: VisualDensity.compact,
       padding: EdgeInsets.zero,
-      labelPadding: const EdgeInsets.symmetric(
-        horizontal: 6,
-      ),
+      labelPadding: const EdgeInsets.symmetric(horizontal: 6),
     );
   }
 }

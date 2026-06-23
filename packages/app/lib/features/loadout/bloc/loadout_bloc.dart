@@ -7,12 +7,10 @@ import 'package:equatable/equatable.dart';
 part 'loadout_event.dart';
 part 'loadout_state.dart';
 
-class LoadoutBloc
-    extends Bloc<LoadoutEvent, LoadoutState> {
-  LoadoutBloc({
-    required LoadoutRepository loadoutRepository,
-  }) : _loadoutRepository = loadoutRepository,
-       super(const LoadoutInitial()) {
+class LoadoutBloc extends Bloc<LoadoutEvent, LoadoutState> {
+  LoadoutBloc({required LoadoutRepository loadoutRepository})
+    : _loadoutRepository = loadoutRepository,
+      super(const LoadoutInitial()) {
     on<CreateLoadout>(_onCreateLoadout);
     on<AcceptLoadout>(_onAcceptLoadout);
     on<RejectLoadout>(_onRejectLoadout);
@@ -29,8 +27,7 @@ class LoadoutBloc
     emit(const LoadoutLoading());
 
     try {
-      final results =
-          await _loadoutRepository.createLoadout(
+      final results = await _loadoutRepository.createLoadout(
         mood: event.mood,
         availableMinutes: event.availableMinutes,
         mentalEnergy: event.mentalEnergy,
@@ -40,11 +37,7 @@ class LoadoutBloc
 
       emit(LoadoutResultsLoaded(results: results));
     } on DioException catch (e) {
-      emit(
-        LoadoutError(
-          message: _extractErrorMessage(e),
-        ),
-      );
+      emit(LoadoutError(message: _extractErrorMessage(e)));
     } on Exception catch (e) {
       emit(LoadoutError(message: e.toString()));
     }
@@ -57,17 +50,10 @@ class LoadoutBloc
     emit(const LoadoutLoading());
 
     try {
-      final loadout =
-          await _loadoutRepository.acceptLoadout(
-        event.publicId,
-      );
+      final loadout = await _loadoutRepository.acceptLoadout(event.publicId);
       emit(LoadoutAccepted(loadout: loadout));
     } on DioException catch (e) {
-      emit(
-        LoadoutError(
-          message: _extractErrorMessage(e),
-        ),
-      );
+      emit(LoadoutError(message: _extractErrorMessage(e)));
     } on Exception catch (e) {
       emit(LoadoutError(message: e.toString()));
     }
@@ -80,17 +66,10 @@ class LoadoutBloc
     emit(const LoadoutLoading());
 
     try {
-      final loadout =
-          await _loadoutRepository.rejectLoadout(
-        event.publicId,
-      );
+      final loadout = await _loadoutRepository.rejectLoadout(event.publicId);
       emit(LoadoutRejected(loadout: loadout));
     } on DioException catch (e) {
-      emit(
-        LoadoutError(
-          message: _extractErrorMessage(e),
-        ),
-      );
+      emit(LoadoutError(message: _extractErrorMessage(e)));
     } on Exception catch (e) {
       emit(LoadoutError(message: e.toString()));
     }
@@ -103,24 +82,14 @@ class LoadoutBloc
     emit(const LoadoutLoading());
 
     try {
-      final response =
-          await _loadoutRepository.listLoadouts(
+      final response = await _loadoutRepository.listLoadouts(
         limit: event.limit ?? 20,
         offset: event.offset ?? 0,
       );
 
-      emit(
-        LoadoutListLoaded(
-          loadouts: response.items,
-          total: response.total,
-        ),
-      );
+      emit(LoadoutListLoaded(loadouts: response.items, total: response.total));
     } on DioException catch (e) {
-      emit(
-        LoadoutError(
-          message: _extractErrorMessage(e),
-        ),
-      );
+      emit(LoadoutError(message: _extractErrorMessage(e)));
     } on Exception catch (e) {
       emit(LoadoutError(message: e.toString()));
     }
@@ -133,15 +102,10 @@ class LoadoutBloc
     emit(const LoadoutLoading());
 
     try {
-      final loadout =
-          await _loadoutRepository.getLatestLoadout();
+      final loadout = await _loadoutRepository.getLatestLoadout();
       emit(LatestLoadoutLoaded(loadout: loadout));
     } on DioException catch (e) {
-      emit(
-        LoadoutError(
-          message: _extractErrorMessage(e),
-        ),
-      );
+      emit(LoadoutError(message: _extractErrorMessage(e)));
     } on Exception catch (e) {
       emit(LoadoutError(message: e.toString()));
     }
@@ -153,7 +117,6 @@ class LoadoutBloc
       final detail = data['detail'];
       if (detail is String) return detail;
     }
-    return e.message ??
-        'An unexpected error occurred.';
+    return e.message ?? 'An unexpected error occurred.';
   }
 }

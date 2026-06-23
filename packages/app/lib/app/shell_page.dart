@@ -47,14 +47,8 @@ class ShellPage extends StatelessWidget {
             icon: Icon(Icons.videogame_asset),
             label: 'Library',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.casino),
-            label: 'Loadout',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.flag),
-            label: 'Missions',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.casino), label: 'Loadout'),
+          BottomNavigationBarItem(icon: Icon(Icons.flag), label: 'Missions'),
         ],
       ),
     );

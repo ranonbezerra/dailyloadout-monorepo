@@ -101,8 +101,7 @@ class _MissionsListPageState extends State<MissionsListPage> {
 
             // +1 for the loading indicator at the bottom
             // when there are more pages.
-            final itemCount = state.missions.length +
-                (state.hasMore ? 1 : 0);
+            final itemCount = state.missions.length + (state.hasMore ? 1 : 0);
 
             return RefreshIndicator(
               onRefresh: _onRefresh,

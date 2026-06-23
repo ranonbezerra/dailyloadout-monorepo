@@ -26,21 +26,16 @@ class Loadout extends Equatable {
     return Loadout(
       publicId: json['public_id'] as String,
       libraryEntry: json['library_entry'] != null
-          ? LibraryEntry.fromJson(
-              json['library_entry'] as Map<String, dynamic>,
-            )
+          ? LibraryEntry.fromJson(json['library_entry'] as Map<String, dynamic>)
           : null,
       mood: json['mood'] as String,
-      availableMinutes:
-          json['available_minutes'] as int,
+      availableMinutes: json['available_minutes'] as int,
       mentalEnergy: json['mental_energy'] as String,
       context: json['context'] as String?,
       reasoning: json['reasoning'] as String?,
       action: json['action'] as String?,
-      createdAt:
-          DateTime.parse(json['created_at'] as String),
-      updatedAt:
-          DateTime.parse(json['updated_at'] as String),
+      createdAt: DateTime.parse(json['created_at'] as String),
+      updatedAt: DateTime.parse(json['updated_at'] as String),
     );
   }
 
@@ -83,25 +78,18 @@ class LoadoutListItem extends Equatable {
     this.action,
   });
 
-  factory LoadoutListItem.fromJson(
-    Map<String, dynamic> json,
-  ) {
+  factory LoadoutListItem.fromJson(Map<String, dynamic> json) {
     return LoadoutListItem(
       publicId: json['public_id'] as String,
       libraryEntry: json['library_entry'] != null
-          ? LibraryEntry.fromJson(
-              json['library_entry']
-                  as Map<String, dynamic>,
-            )
+          ? LibraryEntry.fromJson(json['library_entry'] as Map<String, dynamic>)
           : null,
       mood: json['mood'] as String,
-      availableMinutes:
-          json['available_minutes'] as int,
+      availableMinutes: json['available_minutes'] as int,
       mentalEnergy: json['mental_energy'] as String,
       reasoning: json['reasoning'] as String?,
       action: json['action'] as String?,
-      createdAt:
-          DateTime.parse(json['created_at'] as String),
+      createdAt: DateTime.parse(json['created_at'] as String),
     );
   }
 
@@ -129,21 +117,12 @@ class LoadoutListItem extends Equatable {
 
 /// Paginated response for loadout listings.
 class LoadoutListResponse extends Equatable {
-  const LoadoutListResponse({
-    required this.items,
-    required this.total,
-  });
+  const LoadoutListResponse({required this.items, required this.total});
 
-  factory LoadoutListResponse.fromJson(
-    Map<String, dynamic> json,
-  ) {
+  factory LoadoutListResponse.fromJson(Map<String, dynamic> json) {
     return LoadoutListResponse(
       items: (json['items'] as List<dynamic>)
-          .map(
-            (e) => LoadoutListItem.fromJson(
-              e as Map<String, dynamic>,
-            ),
-          )
+          .map((e) => LoadoutListItem.fromJson(e as Map<String, dynamic>))
           .toList(),
       total: json['total'] as int,
     );

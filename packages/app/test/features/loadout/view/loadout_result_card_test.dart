@@ -6,12 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 final _now = DateTime.utc(2025, 6);
 
-const _platform = Platform(
-  id: 1,
-  slug: 'ps5',
-  label: 'PS5',
-  family: 'Sony',
-);
+const _platform = Platform(id: 1, slug: 'ps5', label: 'PS5', family: 'Sony');
 
 final _game = Game(
   publicId: 'game-001',
@@ -101,315 +96,143 @@ void main() {
   }
 
   group('LoadoutResultCard', () {
-    testWidgets(
-      'shows game title from loadout.libraryEntry',
-      (tester) async {
-        await tester.pumpWidget(
-          buildSubject(loadout: _loadout),
-        );
+    testWidgets('shows game title from loadout.libraryEntry', (tester) async {
+      await tester.pumpWidget(buildSubject(loadout: _loadout));
 
-        expect(
-          find.text('Hollow Knight'),
-          findsOneWidget,
-        );
-      },
-    );
+      expect(find.text('Hollow Knight'), findsOneWidget);
+    });
 
-    testWidgets(
-      'shows "Unknown game" when '
-      'libraryEntry is null',
-      (tester) async {
-        await tester.pumpWidget(
-          buildSubject(loadout: _loadoutNoEntry),
-        );
+    testWidgets('shows "Unknown game" when '
+        'libraryEntry is null', (tester) async {
+      await tester.pumpWidget(buildSubject(loadout: _loadoutNoEntry));
 
-        expect(
-          find.text('Unknown game'),
-          findsOneWidget,
-        );
-      },
-    );
+      expect(find.text('Unknown game'), findsOneWidget);
+    });
 
-    testWidgets(
-      'shows platform label badge',
-      (tester) async {
-        await tester.pumpWidget(
-          buildSubject(loadout: _loadout),
-        );
+    testWidgets('shows platform label badge', (tester) async {
+      await tester.pumpWidget(buildSubject(loadout: _loadout));
 
-        expect(find.text('PS5'), findsOneWidget);
-      },
-    );
+      expect(find.text('PS5'), findsOneWidget);
+    });
 
-    testWidgets(
-      'shows status badge',
-      (tester) async {
-        await tester.pumpWidget(
-          buildSubject(loadout: _loadout),
-        );
+    testWidgets('shows status badge', (tester) async {
+      await tester.pumpWidget(buildSubject(loadout: _loadout));
 
-        // Status "playing" capitalized to "Playing"
-        expect(
-          find.text('Playing'),
-          findsOneWidget,
-        );
-      },
-    );
+      // Status "playing" capitalized to "Playing"
+      expect(find.text('Playing'), findsOneWidget);
+    });
 
-    testWidgets(
-      'shows reasoning text',
-      (tester) async {
-        await tester.pumpWidget(
-          buildSubject(loadout: _loadout),
-        );
+    testWidgets('shows reasoning text', (tester) async {
+      await tester.pumpWidget(buildSubject(loadout: _loadout));
 
-        expect(
-          find.text('Great for a relaxed session'),
-          findsOneWidget,
-        );
-      },
-    );
+      expect(find.text('Great for a relaxed session'), findsOneWidget);
+    });
 
-    testWidgets(
-      'shows genre chips when genres present',
-      (tester) async {
-        await tester.pumpWidget(
-          buildSubject(loadout: _loadout),
-        );
+    testWidgets('shows genre chips when genres present', (tester) async {
+      await tester.pumpWidget(buildSubject(loadout: _loadout));
 
-        expect(
-          find.text('Metroidvania'),
-          findsOneWidget,
-        );
-        expect(
-          find.text('Action'),
-          findsOneWidget,
-        );
-      },
-    );
+      expect(find.text('Metroidvania'), findsOneWidget);
+      expect(find.text('Action'), findsOneWidget);
+    });
 
-    testWidgets(
-      'shows "Accept & Start Mission" and '
-      '"Reject" buttons when action is null',
-      (tester) async {
-        await tester.pumpWidget(
-          buildSubject(loadout: _loadout),
-        );
+    testWidgets('shows "Accept & Start Mission" and '
+        '"Reject" buttons when action is null', (tester) async {
+      await tester.pumpWidget(buildSubject(loadout: _loadout));
 
-        expect(
-          find.text('Accept & Start Mission'),
-          findsOneWidget,
-        );
-        expect(
-          find.widgetWithText(
-            OutlinedButton,
-            'Reject',
-          ),
-          findsOneWidget,
-        );
-      },
-    );
+      expect(find.text('Accept & Start Mission'), findsOneWidget);
+      expect(find.widgetWithText(OutlinedButton, 'Reject'), findsOneWidget);
+    });
 
-    testWidgets(
-      'shows "Mission started!" text '
-      'when action is accepted',
-      (tester) async {
-        await tester.pumpWidget(
-          buildSubject(loadout: _acceptedLoadout),
-        );
+    testWidgets('shows "Mission started!" text '
+        'when action is accepted', (tester) async {
+      await tester.pumpWidget(buildSubject(loadout: _acceptedLoadout));
 
-        expect(
-          find.text('Mission started!'),
-          findsOneWidget,
-        );
-        expect(
-          find.byIcon(Icons.check_circle),
-          findsOneWidget,
-        );
-        // No action buttons visible
-        expect(
-          find.text('Accept & Start Mission'),
-          findsNothing,
-        );
-        expect(
-          find.text('Reject'),
-          findsNothing,
-        );
-      },
-    );
+      expect(find.text('Mission started!'), findsOneWidget);
+      expect(find.byIcon(Icons.check_circle), findsOneWidget);
+      // No action buttons visible
+      expect(find.text('Accept & Start Mission'), findsNothing);
+      expect(find.text('Reject'), findsNothing);
+    });
 
-    testWidgets(
-      'shows "Rejected" text '
-      'when action is rejected',
-      (tester) async {
-        await tester.pumpWidget(
-          buildSubject(loadout: _rejectedLoadout),
-        );
+    testWidgets('shows "Rejected" text '
+        'when action is rejected', (tester) async {
+      await tester.pumpWidget(buildSubject(loadout: _rejectedLoadout));
 
-        expect(
-          find.text('Rejected'),
-          findsOneWidget,
-        );
-        // No action buttons visible
-        expect(
-          find.text('Accept & Start Mission'),
-          findsNothing,
-        );
-        expect(
-          find.text('Reject'),
-          findsNothing,
-        );
-      },
-    );
+      expect(find.text('Rejected'), findsOneWidget);
+      // No action buttons visible
+      expect(find.text('Accept & Start Mission'), findsNothing);
+      expect(find.text('Reject'), findsNothing);
+    });
 
-    testWidgets(
-      'shows rank badge "Best Match" '
-      'when rank=0 and totalResults > 1',
-      (tester) async {
-        await tester.pumpWidget(
-          buildSubject(
-            loadout: _loadout,
-            totalResults: 3,
-          ),
-        );
+    testWidgets('shows rank badge "Best Match" '
+        'when rank=0 and totalResults > 1', (tester) async {
+      await tester.pumpWidget(buildSubject(loadout: _loadout, totalResults: 3));
 
-        expect(
-          find.text('Best Match'),
-          findsOneWidget,
-        );
-      },
-    );
+      expect(find.text('Best Match'), findsOneWidget);
+    });
 
-    testWidgets(
-      'shows rank badge "Great Alternative" '
-      'when rank=1 and totalResults > 1',
-      (tester) async {
-        await tester.pumpWidget(
-          buildSubject(
-            loadout: _loadout,
-            rank: 1,
-            totalResults: 3,
-          ),
-        );
+    testWidgets('shows rank badge "Great Alternative" '
+        'when rank=1 and totalResults > 1', (tester) async {
+      await tester.pumpWidget(
+        buildSubject(loadout: _loadout, rank: 1, totalResults: 3),
+      );
 
-        expect(
-          find.text('Great Alternative'),
-          findsOneWidget,
-        );
-      },
-    );
+      expect(find.text('Great Alternative'), findsOneWidget);
+    });
 
-    testWidgets(
-      'shows rank badge "Worth Considering" '
-      'when rank=2 and totalResults > 1',
-      (tester) async {
-        await tester.pumpWidget(
-          buildSubject(
-            loadout: _loadout,
-            rank: 2,
-            totalResults: 3,
-          ),
-        );
+    testWidgets('shows rank badge "Worth Considering" '
+        'when rank=2 and totalResults > 1', (tester) async {
+      await tester.pumpWidget(
+        buildSubject(loadout: _loadout, rank: 2, totalResults: 3),
+      );
 
-        expect(
-          find.text('Worth Considering'),
-          findsOneWidget,
-        );
-      },
-    );
+      expect(find.text('Worth Considering'), findsOneWidget);
+    });
 
-    testWidgets(
-      'does NOT show rank badge '
-      'when totalResults is 1',
-      (tester) async {
-        await tester.pumpWidget(
-          buildSubject(loadout: _loadout),
-        );
+    testWidgets('does NOT show rank badge '
+        'when totalResults is 1', (tester) async {
+      await tester.pumpWidget(buildSubject(loadout: _loadout));
 
-        expect(
-          find.text('Best Match'),
-          findsNothing,
-        );
-        expect(
-          find.text('Great Alternative'),
-          findsNothing,
-        );
-        expect(
-          find.text('Worth Considering'),
-          findsNothing,
-        );
-      },
-    );
+      expect(find.text('Best Match'), findsNothing);
+      expect(find.text('Great Alternative'), findsNothing);
+      expect(find.text('Worth Considering'), findsNothing);
+    });
 
-    testWidgets(
-      'shows loading state when '
-      'isActioning is true',
-      (tester) async {
-        await tester.pumpWidget(
-          buildSubject(
-            loadout: _loadout,
-            isActioning: true,
-          ),
-        );
+    testWidgets('shows loading state when '
+        'isActioning is true', (tester) async {
+      await tester.pumpWidget(
+        buildSubject(loadout: _loadout, isActioning: true),
+      );
 
-        expect(
-          find.byType(CircularProgressIndicator),
-          findsOneWidget,
-        );
-        expect(
-          find.text('Starting...'),
-          findsOneWidget,
-        );
-        // Reject button should be disabled
-        final rejectBtn = tester.widget<OutlinedButton>(
-          find.widgetWithText(
-            OutlinedButton,
-            'Reject',
-          ),
-        );
-        expect(rejectBtn.onPressed, isNull);
-      },
-    );
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.text('Starting...'), findsOneWidget);
+      // Reject button should be disabled
+      final rejectBtn = tester.widget<OutlinedButton>(
+        find.widgetWithText(OutlinedButton, 'Reject'),
+      );
+      expect(rejectBtn.onPressed, isNull);
+    });
 
-    testWidgets(
-      'accept button calls onAccept callback',
-      (tester) async {
-        var accepted = false;
-        await tester.pumpWidget(
-          buildSubject(
-            loadout: _loadout,
-            onAccept: () => accepted = true,
-          ),
-        );
+    testWidgets('accept button calls onAccept callback', (tester) async {
+      var accepted = false;
+      await tester.pumpWidget(
+        buildSubject(loadout: _loadout, onAccept: () => accepted = true),
+      );
 
-        await tester.tap(
-          find.text('Accept & Start Mission'),
-        );
+      await tester.tap(find.text('Accept & Start Mission'));
 
-        expect(accepted, isTrue);
-      },
-    );
+      expect(accepted, isTrue);
+    });
 
-    testWidgets(
-      'reject button calls onReject callback',
-      (tester) async {
-        var rejected = false;
-        await tester.pumpWidget(
-          buildSubject(
-            loadout: _loadout,
-            onReject: () => rejected = true,
-          ),
-        );
+    testWidgets('reject button calls onReject callback', (tester) async {
+      var rejected = false;
+      await tester.pumpWidget(
+        buildSubject(loadout: _loadout, onReject: () => rejected = true),
+      );
 
-        await tester.tap(
-          find.widgetWithText(
-            OutlinedButton,
-            'Reject',
-          ),
-        );
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Reject'));
 
-        expect(rejected, isTrue);
-      },
-    );
+      expect(rejected, isTrue);
+    });
   });
 }

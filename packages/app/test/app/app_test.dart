@@ -44,22 +44,13 @@ void main() {
     mockLoadoutRepository = MockLoadoutRepository();
 
     // Stub the hasTokens call that AppStarted will trigger.
-    when(() => mockAuthRepository.hasTokens())
-        .thenAnswer((_) async => false);
+    when(() => mockAuthRepository.hasTokens()).thenAnswer((_) async => false);
 
     authBloc = AuthBloc(authRepository: mockAuthRepository);
-    libraryBloc = LibraryBloc(
-      libraryRepository: mockLibraryRepository,
-    );
-    captureBloc = CaptureBloc(
-      captureRepository: mockCaptureRepository,
-    );
-    missionBloc = MissionBloc(
-      missionRepository: mockMissionRepository,
-    );
-    loadoutBloc = LoadoutBloc(
-      loadoutRepository: mockLoadoutRepository,
-    );
+    libraryBloc = LibraryBloc(libraryRepository: mockLibraryRepository);
+    captureBloc = CaptureBloc(captureRepository: mockCaptureRepository);
+    missionBloc = MissionBloc(missionRepository: mockMissionRepository);
+    loadoutBloc = LoadoutBloc(loadoutRepository: mockLoadoutRepository);
   });
 
   tearDown(() {
