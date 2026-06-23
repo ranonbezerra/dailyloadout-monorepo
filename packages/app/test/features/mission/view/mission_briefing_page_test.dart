@@ -390,5 +390,84 @@ void main() {
       expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(find.text('Hollow Knight'), findsNothing);
     });
+
+    // ---------------------------------------------------------------
+    // Deep briefing (Quick/Deep toggle + progress + cancel)
+    // ---------------------------------------------------------------
+    group('deep briefing', () {
+      testWidgets('preview mode shows the Quick/Deep toggle', (tester) async {
+        when(
+          () => missionBloc.state,
+        ).thenReturn(BriefingPreviewLoaded(preview: _samplePreview));
+
+        await tester.pumpWidget(buildPreviewSubject());
+
+        expect(find.byType(SegmentedButton<bool>), findsOneWidget);
+        expect(find.text('Quick'), findsOneWidget);
+        expect(find.text('Deep (web)'), findsOneWidget);
+      });
+
+      testWidgets('view mode does NOT show the toggle', (tester) async {
+        when(
+          () => missionBloc.state,
+        ).thenReturn(ActiveMissionLoaded(mission: _sampleMission));
+
+        await tester.pumpWidget(buildViewSubject());
+
+        expect(find.byType(SegmentedButton<bool>), findsNothing);
+      });
+
+      testWidgets('selecting Deep dispatches a deep PreviewBriefing', (
+        tester,
+      ) async {
+        when(
+          () => missionBloc.state,
+        ).thenReturn(BriefingPreviewLoaded(preview: _samplePreview));
+
+        await tester.pumpWidget(buildPreviewSubject());
+        await tester.tap(find.text('Deep (web)'));
+        await tester.pump();
+
+        verify(
+          () => missionBloc.add(
+            const PreviewBriefing(
+              libraryEntryPublicId: 'entry-1',
+              mode: 'deep',
+            ),
+          ),
+        ).called(1);
+      });
+
+      testWidgets('DeepBriefingLoading shows progress and a Cancel button', (
+        tester,
+      ) async {
+        when(() => missionBloc.state).thenReturn(const DeepBriefingLoading());
+
+        await tester.pumpWidget(buildPreviewSubject());
+
+        expect(
+          find.text('Researching the web for your briefing'),
+          findsOneWidget,
+        );
+        expect(find.byType(CircularProgressIndicator), findsOneWidget);
+        expect(find.widgetWithText(OutlinedButton, 'Cancel'), findsOneWidget);
+      });
+
+      testWidgets('Cancel during deep dispatches CancelDeepBriefing', (
+        tester,
+      ) async {
+        when(() => missionBloc.state).thenReturn(const DeepBriefingLoading());
+
+        await tester.pumpWidget(buildPreviewSubject());
+        await tester.tap(find.widgetWithText(OutlinedButton, 'Cancel'));
+        await tester.pump();
+
+        verify(
+          () => missionBloc.add(
+            const CancelDeepBriefing(libraryEntryPublicId: 'entry-1'),
+          ),
+        ).called(1);
+      });
+    });
   });
 }

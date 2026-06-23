@@ -1,0 +1,21 @@
+Write a short "previously on" recap for a player returning to the game
+**{{ context.game_title }}**. The goal is to remind them where they were and
+suggest where to go next, grounded in the search results below.
+
+Player's last known state:
+{% if context.location %}- Location: {{ context.location }}{% endif %}
+{% if context.current_quest %}- Current quest: {{ context.current_quest }}{% endif %}
+{% if context.next_action %}- Next action they noted: {{ context.next_action }}{% endif %}
+{% if context.previous_debriefs %}
+Recent session notes:
+{% for d in context.previous_debriefs %}- {{ d }}
+{% endfor %}
+{% endif %}
+
+Web research:
+{% for r in results %}- {{ r.title }}: {{ r.snippet }}
+{% endfor %}
+
+Write 2-4 sentences, warm and concise, in the second person. Suggest directions
+and areas to explore. Do not invent specific names that are not in the research
+or the player's notes.

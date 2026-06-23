@@ -3,6 +3,7 @@ import 'package:app/core/mission/mission_models.dart';
 import 'package:dio/dio.dart';
 
 final _llmOptions = Options(receiveTimeout: llmReceiveTimeout);
+final _deepLlmOptions = Options(receiveTimeout: deepBriefingReceiveTimeout);
 
 /// Provides high-level mission operations backed by the API.
 class MissionRepository {
@@ -11,17 +12,25 @@ class MissionRepository {
   final ApiClient _apiClient;
 
   /// Previews a briefing for a library entry before starting a mission.
+  ///
+  /// [mode] selects the quick single-shot briefing or the deep web-researched
+  /// one. Deep mode uses a longer receive timeout and accepts a [cancelToken]
+  /// so the user can abort the (slow) request.
   Future<BriefingPreview> previewBriefing(
     String libraryEntryPublicId, {
     String? positionOverride,
+    String mode = 'quick',
+    CancelToken? cancelToken,
   }) async {
     final response = await _apiClient.dio.post<Map<String, dynamic>>(
       '/v1/missions/preview-briefing',
       data: {
         'library_entry_public_id': libraryEntryPublicId,
+        'mode': mode,
         if (positionOverride != null) 'position_override': positionOverride,
       },
-      options: _llmOptions,
+      options: mode == 'deep' ? _deepLlmOptions : _llmOptions,
+      cancelToken: cancelToken,
     );
     return BriefingPreview.fromJson(response.data!);
   }

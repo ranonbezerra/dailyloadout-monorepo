@@ -1,6 +1,15 @@
-import { Button, Group, Modal, Stack, Text, Textarea, Title } from "@mantine/core";
+import {
+	Button,
+	Group,
+	Modal,
+	SegmentedControl,
+	Stack,
+	Text,
+	Textarea,
+	Title,
+} from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { AiBriefingOverlay } from "../components/AiBriefingOverlay";
 import {
 	usePreviewBriefing,
@@ -8,6 +17,7 @@ import {
 	useRetroactiveDebrief,
 	useStartMission,
 } from "../hooks/useMission";
+import type { BriefingMode } from "../lib/mission-api";
 import type { BriefingPreview, Mission } from "../types/mission";
 
 // ---------------------------------------------------------------------------
@@ -53,6 +63,9 @@ export function MissionBriefingModal(props: MissionBriefingModalProps) {
 	const [correction, setCorrection] = useState("");
 	const [retroactiveText, setRetroactiveText] = useState("");
 	const [currentBriefing, setCurrentBriefing] = useState<string | null>(null);
+	const [briefingMode, setBriefingMode] = useState<BriefingMode>("quick");
+	const [deepLoading, setDeepLoading] = useState(false);
+	const deepAbortRef = useRef<AbortController | null>(null);
 
 	// Preview mode hooks
 	const previewMutation = usePreviewBriefing();
@@ -73,6 +86,10 @@ export function MissionBriefingModal(props: MissionBriefingModalProps) {
 		setCorrection("");
 		setRetroactiveText("");
 		setCurrentBriefing(null);
+		setBriefingMode("quick");
+		setDeepLoading(false);
+		deepAbortRef.current?.abort();
+		deepAbortRef.current = null;
 	}
 
 	const displayBriefing = currentBriefing ?? briefingText;
@@ -146,7 +163,59 @@ export function MissionBriefingModal(props: MissionBriefingModalProps) {
 		}
 	};
 
-	const isRegenerating = isPreview ? previewMutation.isPending : regenerate.isPending;
+	const handleCancelDeep = () => {
+		deepAbortRef.current?.abort();
+		deepAbortRef.current = null;
+		setDeepLoading(false);
+		setBriefingMode("quick");
+	};
+
+	const handleSelectMode = async (value: string) => {
+		if (!isPreview) return;
+		const next = value as BriefingMode;
+		// Abort any in-flight deep request before switching.
+		deepAbortRef.current?.abort();
+		setBriefingMode(next);
+
+		if (next === "quick") {
+			// Revert to the original quick briefing from the preview.
+			deepAbortRef.current = null;
+			setDeepLoading(false);
+			setCurrentBriefing(null);
+			return;
+		}
+
+		const controller = new AbortController();
+		deepAbortRef.current = controller;
+		setDeepLoading(true);
+		try {
+			const updated = await previewMutation.mutateAsync({
+				libraryEntryPublicId: props.libraryEntryPublicId,
+				mode: "deep",
+				signal: controller.signal,
+			});
+			if (!controller.signal.aborted) {
+				setCurrentBriefing(updated.briefingText);
+			}
+		} catch (err) {
+			if (controller.signal.aborted) return; // user cancelled — stay silent
+			setBriefingMode("quick");
+			notifications.show({
+				title: "Deep briefing unavailable",
+				message: err instanceof Error ? err.message : "Falling back to the quick briefing",
+				color: "yellow",
+			});
+		} finally {
+			if (deepAbortRef.current === controller) {
+				deepAbortRef.current = null;
+				setDeepLoading(false);
+			}
+		}
+	};
+
+	const isRegenerating = isPreview
+		? previewMutation.isPending && !deepLoading
+		: regenerate.isPending;
 
 	return (
 		<Modal
@@ -216,6 +285,23 @@ export function MissionBriefingModal(props: MissionBriefingModalProps) {
 
 				{step === "briefing" && (
 					<>
+						{isPreview && (
+							<Group justify="space-between" align="center" wrap="nowrap">
+								<Text size="sm" c="dimmed">
+									Briefing depth
+								</Text>
+								<SegmentedControl
+									size="xs"
+									value={briefingMode}
+									onChange={handleSelectMode}
+									disabled={deepLoading}
+									data={[
+										{ label: "Quick", value: "quick" },
+										{ label: "Deep (web)", value: "deep" },
+									]}
+								/>
+							</Group>
+						)}
 						{displayBriefing ? (
 							<Text
 								style={{
@@ -264,6 +350,13 @@ export function MissionBriefingModal(props: MissionBriefingModalProps) {
 			<AiBriefingOverlay
 				opened={isRegenerating || retroactiveMutation.isPending}
 				gameTitle={gameTitle}
+			/>
+
+			<AiBriefingOverlay
+				opened={deepLoading}
+				gameTitle={gameTitle}
+				deep
+				onCancel={handleCancelDeep}
 			/>
 		</Modal>
 	);

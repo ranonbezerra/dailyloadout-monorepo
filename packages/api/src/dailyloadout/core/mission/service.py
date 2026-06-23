@@ -8,11 +8,16 @@ import structlog
 from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 
+from dailyloadout.config import Settings
+from dailyloadout.config import settings as default_settings
 from dailyloadout.core.mission.briefing import (
+    BriefingMode,
     build_preview,
     generate_briefing,
+    generate_briefing_for_mode,
 )
-from dailyloadout.infrastructure.db.models import Mission
+from dailyloadout.infrastructure.agent.base import AbstractBriefingAgent
+from dailyloadout.infrastructure.db.models import LibraryEntry, Mission
 from dailyloadout.infrastructure.db.repositories.library import LibraryRepository
 from dailyloadout.infrastructure.db.repositories.mission import MissionRepository
 from dailyloadout.infrastructure.llm.base import AbstractLLMClient
@@ -28,46 +33,57 @@ class MissionService:
         mission_repo: MissionRepository,
         library_repo: LibraryRepository,
         llm_client: AbstractLLMClient,
+        agent: AbstractBriefingAgent | None = None,
+        settings: Settings | None = None,
     ) -> None:
         self._mission_repo = mission_repo
         self._library_repo = library_repo
         self._llm_client = llm_client
+        self._agent = agent
+        self._settings = settings or default_settings
 
     # -- Start mission ---------------------------------------------------
 
-    async def start_mission(
-        self,
-        user_id: int,
-        library_entry_public_id: UUID,
-        briefing_text: str | None = None,
-    ) -> Mission:
-        """Start a new mission for a library entry.
-
-        If *briefing_text* is provided (from a previous preview call), the
-        LLM briefing generation step is skipped.
-        """
+    async def _load_startable_entry(
+        self, user_id: int, library_entry_public_id: UUID
+    ) -> LibraryEntry:
+        """Load an entry for start/preview; raise 404 if missing, 409 if busy."""
         entry = await self._library_repo.get_by_public_id(library_entry_public_id, user_id)
         if entry is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Library entry not found",
             )
-
-        active = await self._mission_repo.get_active_for_user(user_id)
-        if active is not None:
+        if await self._mission_repo.get_active_for_user(user_id) is not None:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="You already have an active mission. End it first.",
             )
+        return entry
+
+    async def start_mission(
+        self,
+        user_id: int,
+        library_entry_public_id: UUID,
+        briefing_text: str | None = None,
+        mode: BriefingMode = "quick",
+    ) -> Mission:
+        """Start a new mission for a library entry.
+
+        If *briefing_text* is provided, briefing generation is skipped. *mode*
+        selects the quick (default) or deep web-researched briefing.
+        """
+        entry = await self._load_startable_entry(user_id, library_entry_public_id)
 
         if briefing_text is None:
-            briefing_text = await generate_briefing(
+            briefing_text = await generate_briefing_for_mode(
                 self._mission_repo,
                 self._library_repo,
                 self._llm_client,
-                entry.id,
-                entry.game.title,
-                entry.mission_next_action,
+                self._agent,
+                self._settings,
+                entry,
+                mode,
             )
 
         try:
@@ -94,32 +110,19 @@ class MissionService:
         user_id: int,
         library_entry_public_id: UUID,
         position_override: str | None = None,
+        mode: BriefingMode = "quick",
     ) -> dict[str, object]:
-        """Generate a briefing preview without creating a mission.
-
-        Returns a dict with ``library_entry``, ``briefing_text``, and
-        ``last_session_context`` for the frontend confirmation step.
-        """
-        entry = await self._library_repo.get_by_public_id(library_entry_public_id, user_id)
-        if entry is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Library entry not found",
-            )
-
-        active = await self._mission_repo.get_active_for_user(user_id)
-        if active is not None:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="You already have an active mission. End it first.",
-            )
-
+        """Preview a briefing (quick or deep) without creating a mission."""
+        entry = await self._load_startable_entry(user_id, library_entry_public_id)
         return await build_preview(
             self._mission_repo,
             self._library_repo,
             self._llm_client,
             entry,
             position_override=position_override,
+            agent=self._agent,
+            settings=self._settings,
+            mode=mode,
         )
 
     # -- Retroactive debrief ---------------------------------------------

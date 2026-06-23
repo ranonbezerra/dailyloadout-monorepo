@@ -33,13 +33,27 @@ final class PreviewBriefing extends MissionEvent {
   const PreviewBriefing({
     required this.libraryEntryPublicId,
     this.positionOverride,
+    this.mode = 'quick',
   });
 
   final String libraryEntryPublicId;
   final String? positionOverride;
 
+  /// Briefing mode: `'quick'` (single-shot) or `'deep'` (web-researched).
+  final String mode;
+
   @override
-  List<Object?> get props => [libraryEntryPublicId, positionOverride];
+  List<Object?> get props => [libraryEntryPublicId, positionOverride, mode];
+}
+
+/// Dispatched to cancel an in-flight deep briefing request.
+final class CancelDeepBriefing extends MissionEvent {
+  const CancelDeepBriefing({required this.libraryEntryPublicId});
+
+  final String libraryEntryPublicId;
+
+  @override
+  List<Object?> get props => [libraryEntryPublicId];
 }
 
 /// Dispatched to start a new mission.

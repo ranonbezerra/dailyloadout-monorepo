@@ -1,0 +1,17 @@
+Rewrite the recap below for the game **{{ context.game_title }}** so it is
+strictly spoiler-free.
+
+Allowed: directions, area names, and general next steps the player can act on.
+Forbidden: boss names, plot twists, story outcomes, character deaths, and the
+locations of major items the player has NOT already mentioned themselves.
+
+What the player already knows (never treat these as spoilers):
+{% if context.location %}- Location: {{ context.location }}{% endif %}
+{% if context.current_quest %}- Current quest: {{ context.current_quest }}{% endif %}
+{% if context.next_action %}- Next action they noted: {{ context.next_action }}{% endif %}
+
+Recap to rewrite:
+{{ draft }}
+
+Output ONLY the rewritten recap text. Keep the helpful directions; strip the
+spoilers. If a sentence is entirely a spoiler, drop it.

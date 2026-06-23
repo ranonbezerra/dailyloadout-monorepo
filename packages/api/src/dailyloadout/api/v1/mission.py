@@ -49,6 +49,7 @@ async def start_mission(
         user_id=current_user.id,
         library_entry_public_id=body.library_entry_public_id,
         briefing_text=body.briefing_text,
+        mode=body.mode,
     )
     return MissionResponse.model_validate(mission)
 
@@ -76,6 +77,7 @@ async def preview_briefing(
         user_id=current_user.id,
         library_entry_public_id=body.library_entry_public_id,
         position_override=body.position_override,
+        mode=body.mode,
     )
     return BriefingPreviewResponse.model_validate(result)
 

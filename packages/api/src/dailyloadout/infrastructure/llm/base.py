@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import Literal
+
+LLMRole = Literal["fast", "smart"]
 
 
 @dataclass
@@ -76,4 +79,21 @@ class AbstractLLMClient(ABC):
         context: str | None = None,
     ) -> LoadoutPick:
         """Pick a game from *candidates* based on the user's current state."""
+        ...
+
+    @abstractmethod
+    async def complete(
+        self,
+        prompt: str,
+        *,
+        role: LLMRole = "fast",
+        json: bool = False,
+    ) -> str:
+        """Run a single completion for an already-rendered *prompt*.
+
+        Generic escape hatch for the deep-research agent nodes, which render
+        their own Jinja prompts. *role* selects the fast or smart model;
+        *json* requests JSON-formatted output. Returns the raw text response
+        (empty string on backend failure).
+        """
         ...

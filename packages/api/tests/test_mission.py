@@ -113,6 +113,39 @@ class TestStartMission:
         briefing = mission["briefing_text"].lower()
         assert "first mission" in briefing or "welcome" in briefing
 
+    async def test_start_deep_mode_uses_agent(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+        seed_platforms: list[dict[str, Any]],
+    ) -> None:
+        """Deep mode routes through the briefing agent (dummy in testing)."""
+        entry = await _create_library_entry(async_client, auth_headers, seed_platforms)
+        resp = await async_client.post(
+            "/v1/missions",
+            json={"library_entry_public_id": entry["public_id"], "mode": "deep"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 201, resp.text
+        mission = resp.json()
+        # DummyBriefingAgent returns a deterministic deep-research briefing.
+        assert "Previously on" in mission["briefing_text"]
+
+    async def test_start_invalid_mode_rejected(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+        seed_platforms: list[dict[str, Any]],
+    ) -> None:
+        """An unknown briefing mode fails request validation."""
+        entry = await _create_library_entry(async_client, auth_headers, seed_platforms)
+        resp = await async_client.post(
+            "/v1/missions",
+            json={"library_entry_public_id": entry["public_id"], "mode": "turbo"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+
     async def test_start_conflict_active_mission(
         self,
         async_client: AsyncClient,
@@ -1028,3 +1061,40 @@ class TestAutoClamp:
             await session.commit()
 
         assert clamped == 2
+
+
+# =====================================================================
+# Test: Deep briefing mode (preview)
+# =====================================================================
+
+
+class TestDeepBriefingPreview:
+    async def test_preview_deep_mode_returns_briefing(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+        seed_platforms: list[dict[str, Any]],
+    ) -> None:
+        """Preview with mode='deep' routes through the agent (dummy in testing)."""
+        entry = await _create_library_entry(async_client, auth_headers, seed_platforms)
+        resp = await async_client.post(
+            "/v1/missions/preview-briefing",
+            json={"library_entry_public_id": entry["public_id"], "mode": "deep"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["briefing_text"]
+
+    async def test_preview_invalid_mode_rejected(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+        seed_platforms: list[dict[str, Any]],
+    ) -> None:
+        entry = await _create_library_entry(async_client, auth_headers, seed_platforms)
+        resp = await async_client.post(
+            "/v1/missions/preview-briefing",
+            json={"library_entry_public_id": entry["public_id"], "mode": "turbo"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422

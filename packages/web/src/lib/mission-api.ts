@@ -6,15 +6,23 @@ import { snakeToCamel } from "./case-convert";
 // Preview briefing (before starting a mission)
 // ---------------------------------------------------------------------------
 
+export type BriefingMode = "quick" | "deep";
+
 export async function previewBriefing(
 	libraryEntryPublicId: string,
 	positionOverride?: string,
+	mode: BriefingMode = "quick",
+	signal?: AbortSignal,
 ): Promise<BriefingPreview> {
-	const body: Record<string, string> = { library_entry_public_id: libraryEntryPublicId };
+	const body: Record<string, string> = {
+		library_entry_public_id: libraryEntryPublicId,
+		mode,
+	};
 	if (positionOverride) body.position_override = positionOverride;
 	const raw = await apiFetch<unknown>("/v1/missions/preview-briefing", {
 		method: "POST",
 		body: JSON.stringify(body),
+		signal,
 	});
 	return snakeToCamel<BriefingPreview>(raw);
 }

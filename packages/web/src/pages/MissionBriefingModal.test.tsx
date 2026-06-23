@@ -788,4 +788,51 @@ describe("MissionBriefingModal", () => {
 			).not.toBeInTheDocument();
 		});
 	});
+
+	describe("deep briefing toggle", () => {
+		it("requests a deep briefing when switching to Deep", async () => {
+			mockPreviewMutateAsync.mockResolvedValueOnce(
+				makePreview({ briefingText: "Web-researched: head north to the next area." }),
+			);
+			renderPreviewMode();
+
+			fireEvent.click(screen.getByText("Deep (web)"));
+
+			await waitFor(() => {
+				expect(mockPreviewMutateAsync).toHaveBeenCalledWith(
+					expect.objectContaining({ mode: "deep" }),
+				);
+			});
+			expect(
+				await screen.findByText("Web-researched: head north to the next area."),
+			).toBeInTheDocument();
+		});
+
+		it("shows the toggle only in preview mode, not view mode", () => {
+			const { unmount } = renderPreviewMode();
+			expect(screen.getByText("Deep (web)")).toBeInTheDocument();
+			unmount();
+
+			renderViewMode();
+			expect(screen.queryByText("Deep (web)")).not.toBeInTheDocument();
+		});
+
+		it("reverts to the quick briefing when switching back to Quick", async () => {
+			mockPreviewMutateAsync.mockResolvedValueOnce(
+				makePreview({ briefingText: "Deep briefing content." }),
+			);
+			renderPreviewMode();
+
+			fireEvent.click(screen.getByText("Deep (web)"));
+			expect(await screen.findByText("Deep briefing content.")).toBeInTheDocument();
+
+			fireEvent.click(screen.getByText("Quick"));
+			// Original quick briefing is shown again.
+			expect(
+				screen.getByText(
+					"You are deep within the Forgotten Crossroads. Your next goal is to find the City of Tears.",
+				),
+			).toBeInTheDocument();
+		});
+	});
 });

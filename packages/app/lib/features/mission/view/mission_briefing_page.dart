@@ -106,6 +106,22 @@ class _MissionBriefingPageState extends State<MissionBriefingPage> {
     );
   }
 
+  void _onSelectMode(bool deep) {
+    context.read<MissionBloc>().add(
+      PreviewBriefing(
+        libraryEntryPublicId: widget.libraryEntryPublicId!,
+        mode: deep ? 'deep' : 'quick',
+      ),
+    );
+    setState(() => _step = _BriefingStep.briefing);
+  }
+
+  void _onCancelDeep() {
+    context.read<MissionBloc>().add(
+      CancelDeepBriefing(libraryEntryPublicId: widget.libraryEntryPublicId!),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -134,6 +150,11 @@ class _MissionBriefingPageState extends State<MissionBriefingPage> {
               return const Center(child: CircularProgressIndicator());
             }
 
+            // Deep briefing in progress: show progress + cancel.
+            if (state is DeepBriefingLoading) {
+              return _buildDeepLoading(context);
+            }
+
             // Preview mode: briefing preview loaded.
             if (state is BriefingPreviewLoaded) {
               return _buildBriefingContent(
@@ -141,6 +162,7 @@ class _MissionBriefingPageState extends State<MissionBriefingPage> {
                 briefingText: state.preview.briefingText,
                 gameTitle: state.preview.libraryEntry.game.title,
                 platformLabel: state.preview.libraryEntry.platform.label,
+                isDeep: state.isDeep,
               );
             }
 
@@ -199,6 +221,7 @@ class _MissionBriefingPageState extends State<MissionBriefingPage> {
     required String? briefingText,
     required String gameTitle,
     required String platformLabel,
+    bool isDeep = false,
   }) {
     final theme = Theme.of(context);
 
@@ -225,7 +248,7 @@ class _MissionBriefingPageState extends State<MissionBriefingPage> {
 
           // Step content
           if (_step == _BriefingStep.briefing)
-            _buildBriefingStep(context, briefingText),
+            _buildBriefingStep(context, briefingText, isDeep),
           if (_step == _BriefingStep.correct) _buildCorrectStep(context),
           if (_step == _BriefingStep.retroactive)
             _buildRetroactiveStep(context),
@@ -234,12 +257,74 @@ class _MissionBriefingPageState extends State<MissionBriefingPage> {
     );
   }
 
-  Widget _buildBriefingStep(BuildContext context, String? briefingText) {
+  Widget _buildModeToggle(BuildContext context, bool isDeep) {
+    return SegmentedButton<bool>(
+      segments: const [
+        ButtonSegment<bool>(value: false, label: Text('Quick')),
+        ButtonSegment<bool>(
+          value: true,
+          label: Text('Deep (web)'),
+          icon: Icon(Icons.travel_explore),
+        ),
+      ],
+      selected: {isDeep},
+      showSelectedIcon: false,
+      onSelectionChanged: (selection) => _onSelectMode(selection.first),
+    );
+  }
+
+  Widget _buildDeepLoading(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 24),
+            Text(
+              'Researching the web for your briefing',
+              style: theme.textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Searching for spoiler-free next steps. This can take up to a '
+              'minute.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            OutlinedButton(
+              onPressed: _onCancelDeep,
+              child: const Text('Cancel'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBriefingStep(
+    BuildContext context,
+    String? briefingText,
+    bool isDeep,
+  ) {
     final theme = Theme.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Briefing depth toggle (preview only)
+        if (_isPreview) ...[
+          _buildModeToggle(context, isDeep),
+          const SizedBox(height: 20),
+        ],
+
         // Briefing text
         if (briefingText != null && briefingText.isNotEmpty)
           Text(briefingText, style: theme.textTheme.bodyLarge)

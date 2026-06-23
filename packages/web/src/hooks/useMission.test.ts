@@ -199,7 +199,7 @@ describe("usePreviewBriefing", () => {
 
 		await result.current.mutateAsync({ libraryEntryPublicId: "entry-1" });
 
-		expect(previewBriefing).toHaveBeenCalledWith("entry-1", undefined);
+		expect(previewBriefing).toHaveBeenCalledWith("entry-1", undefined, undefined, undefined);
 	});
 
 	it("calls previewBriefing with optional positionOverride", async () => {
@@ -212,7 +212,7 @@ describe("usePreviewBriefing", () => {
 			positionOverride: "Chapter 3",
 		});
 
-		expect(previewBriefing).toHaveBeenCalledWith("entry-1", "Chapter 3");
+		expect(previewBriefing).toHaveBeenCalledWith("entry-1", "Chapter 3", undefined, undefined);
 	});
 });
 

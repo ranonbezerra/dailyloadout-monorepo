@@ -1,0 +1,53 @@
+"""State schema for the deep-research briefing LangGraph."""
+
+from __future__ import annotations
+
+from operator import add
+from typing import Annotated, Literal, TypedDict
+
+
+class SearchResultDict(TypedDict):
+    """A search result as carried in graph state (plain dict for serialization)."""
+
+    title: str
+    url: str
+    snippet: str
+
+
+class MissionContext(TypedDict, total=False):
+    """Grounding context for a briefing — the same data the quick path uses."""
+
+    game_title: str
+    location: str | None
+    current_quest: str | None
+    next_action: str | None
+    level: str | None
+    previous_debriefs: list[dict[str, object]]
+
+
+Grade = Literal["sufficient", "insufficient", "empty"]
+Source = Literal["deep_research", "quick_fallback"]
+
+
+class ResearchBriefingState(TypedDict, total=False):
+    """Working state threaded through the briefing graph."""
+
+    # --- inputs (set once at invocation) ---
+    context: MissionContext
+    deadline_ts: float  # time.monotonic() deadline; routers compare against it
+
+    # --- research loop working state ---
+    query: str
+    results: Annotated[list[SearchResultDict], add]  # reducer: accumulate across refines
+    refine_count: int
+    grade: Grade
+
+    # --- synthesis + guards ---
+    draft: str
+    filtered: str
+    overlap: float
+    suspicious: bool
+
+    # --- output ---
+    briefing: str
+    source: Source
