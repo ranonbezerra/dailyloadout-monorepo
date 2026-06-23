@@ -3,7 +3,7 @@ name = "dailyloadout"
 version = "0.1.0"
 description = "DailyLoadout API — gaming session planner powered by local LLMs"
 authors = ["Ranon Bezerra"]
-license = "MIT"
+license = "AGPL-3.0-or-later"
 packages = [{ include = "dailyloadout", from = "src" }]
 
 [tool.poetry.dependencies]

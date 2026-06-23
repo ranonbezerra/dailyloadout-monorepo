@@ -97,7 +97,7 @@ Target platforms: **iOS, Android.** Desktop users are served by the web dashboar
 - **Docker Compose** for local dev and self-hosting
 - **Ollama** as the LLM runtime
 - **GitHub Actions** for CI per package
-- **MIT** license
+- **AGPL-3.0** license
 
 ---
 

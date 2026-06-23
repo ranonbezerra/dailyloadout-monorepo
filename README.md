@@ -6,7 +6,7 @@
 
 > *Less deciding. More playing.* A personal gaming backlog manager with local AI. No streaks, no guilt, no Steam integration. Voice/photo/text capture, "previously on..." briefings before each session, and a 3-question daily loadout that picks one game for you.
 
-[![CI – API](https://img.shields.io/badge/CI-API-blue)]() [![CI – App](https://img.shields.io/badge/CI-App-blue)]() [![CI – Web](https://img.shields.io/badge/CI-Web-blue)]() [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![CI – API](https://img.shields.io/badge/CI-API-blue)]() [![CI – App](https://img.shields.io/badge/CI-App-blue)]() [![CI – Web](https://img.shields.io/badge/CI-Web-blue)]() [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 
 ---
 
@@ -78,7 +78,7 @@ Run `make help` to see all available commands.
 | `packages/app/` | Flutter 3.27+ · BLoC · go_router · dio · faster-whisper (server-side) |
 | `packages/web/` | Bun · Vite · React 19 · TypeScript · Mantine v8 · TanStack Query |
 | AI | **Ollama** (Gemma 3 4B + 12B, configurable) · **faster-whisper** local |
-| Infra | Docker Compose · GitHub Actions · MIT |
+| Infra | Docker Compose · GitHub Actions · AGPL-3.0 |
 
 Detailed architecture in [ARCHITECTURE.md](./ARCHITECTURE.md).
 
@@ -134,7 +134,7 @@ This is primarily a personal project, but PRs are welcome for bug fixes, documen
 
 ## License
 
-MIT. See [LICENSE](./LICENSE).
+AGPL-3.0. See [LICENSE](./LICENSE).
 
 ---
 

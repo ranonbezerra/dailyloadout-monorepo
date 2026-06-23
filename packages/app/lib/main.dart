@@ -4,9 +4,11 @@ import 'package:app/core/auth/auth_repository.dart';
 import 'package:app/core/auth/auth_token_store.dart';
 import 'package:app/core/capture/capture_repository.dart';
 import 'package:app/core/library/library_repository.dart';
+import 'package:app/core/mission/mission_repository.dart';
 import 'package:app/features/auth/bloc/auth_bloc.dart';
 import 'package:app/features/capture/bloc/capture_bloc.dart';
 import 'package:app/features/library/bloc/library_bloc.dart';
+import 'package:app/features/mission/bloc/mission_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -29,16 +31,19 @@ Future<void> main() async {
 
   final libraryRepository = LibraryRepository(apiClient: apiClient);
   final captureRepository = CaptureRepository(apiClient: apiClient);
+  final missionRepository = MissionRepository(apiClient: apiClient);
 
   final authBloc = AuthBloc(authRepository: authRepository);
   final libraryBloc = LibraryBloc(libraryRepository: libraryRepository);
   final captureBloc = CaptureBloc(captureRepository: captureRepository);
+  final missionBloc = MissionBloc(missionRepository: missionRepository);
 
   runApp(
     App(
       authBloc: authBloc,
       libraryBloc: libraryBloc,
       captureBloc: captureBloc,
+      missionBloc: missionBloc,
       libraryRepository: libraryRepository,
     ),
   );
