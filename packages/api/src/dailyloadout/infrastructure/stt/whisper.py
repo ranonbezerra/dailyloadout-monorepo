@@ -52,7 +52,7 @@ class WhisperSTTClient(AbstractSTTClient):
             return text, info
 
         try:
-            text, info = await asyncio.get_event_loop().run_in_executor(None, _run)
+            text, info = await asyncio.get_running_loop().run_in_executor(None, _run)
             return TranscriptionResult(
                 text=text,
                 language=info.language,

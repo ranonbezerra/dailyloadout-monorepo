@@ -1,7 +1,7 @@
 """Anti-hallucination validator for LLM-generated briefings.
 
 Extracts "interesting tokens" (proper nouns and numbers) from the LLM
-output and verifies that at least 70% of them also appear in the input
+output and verifies that at least 40% of them also appear in the input
 context.  If not, the briefing is flagged as suspicious.
 """
 

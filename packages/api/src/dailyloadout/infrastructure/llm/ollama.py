@@ -7,7 +7,7 @@ from pathlib import Path
 
 import httpx
 import structlog
-from jinja2 import Template
+from jinja2.sandbox import SandboxedEnvironment
 
 from dailyloadout.config import Settings
 
@@ -18,18 +18,20 @@ logger = structlog.get_logger()
 
 _PROMPTS_DIR = Path(__file__).resolve().parent.parent.parent / "prompts"
 
+_jinja_env = SandboxedEnvironment(autoescape=False)
 
-def _load_prompt(name: str) -> Template:
-    """Load a Jinja2 prompt template from the ``prompts/`` directory."""
+
+def _load_prompt(name: str) -> str:
+    """Load a Jinja2 prompt template source from the ``prompts/`` directory."""
     path = _PROMPTS_DIR / name
-    return Template(path.read_text(encoding="utf-8"))
+    return path.read_text(encoding="utf-8")
 
 
-_CAPTURE_PARSE_TEMPLATE = _load_prompt("capture_parse.j2")
-_CAPTURE_PARSE_VISION_TEMPLATE = _load_prompt("capture_parse_vision.j2")
-_BRIEFING_TEMPLATE = _load_prompt("briefing.j2")
-_DEBRIEF_EXTRACT_TEMPLATE = _load_prompt("debrief_extract.j2")
-_LOADOUT_PICK_TEMPLATE = _load_prompt("loadout_pick.j2")
+_CAPTURE_PARSE_SRC = _load_prompt("capture_parse.j2")
+_CAPTURE_PARSE_VISION_SRC = _load_prompt("capture_parse_vision.j2")
+_BRIEFING_SRC = _load_prompt("briefing.j2")
+_DEBRIEF_EXTRACT_SRC = _load_prompt("debrief_extract.j2")
+_LOADOUT_PICK_SRC = _load_prompt("loadout_pick.j2")
 
 
 class OllamaClient(AbstractLLMClient):
@@ -42,6 +44,13 @@ class OllamaClient(AbstractLLMClient):
         self._vision_model = settings.ollama_vision_model
         self._timeout = settings.llm_timeout_seconds
         self._max_games_per_shelf = settings.capture_max_games_per_shelf
+        self._http_client: httpx.AsyncClient | None = None
+
+    async def _get_client(self) -> httpx.AsyncClient:
+        """Return a reusable HTTP client (connection pooling)."""
+        if self._http_client is None or self._http_client.is_closed:
+            self._http_client = httpx.AsyncClient(timeout=self._timeout)
+        return self._http_client
 
     # -- shared HTTP helper ---------------------------------------------------
 
@@ -51,23 +60,23 @@ class OllamaClient(AbstractLLMClient):
         log_key: str,
     ) -> httpx.Response | None:
         """POST to Ollama ``/api/generate``. Returns *None* on HTTP error."""
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            try:
-                resp = await client.post(
-                    f"{self._base_url}/api/generate",
-                    json=payload,
-                )
-                resp.raise_for_status()
-                return resp
-            except httpx.HTTPError as exc:
-                logger.warning(log_key, error=str(exc))
-                return None
+        client = await self._get_client()
+        try:
+            resp = await client.post(
+                f"{self._base_url}/api/generate",
+                json=payload,
+            )
+            resp.raise_for_status()
+            return resp
+        except httpx.HTTPError as exc:
+            logger.warning(log_key, error=str(exc))
+            return None
 
     # -- public methods -------------------------------------------------------
 
     async def parse_capture_text(self, text: str) -> list[ExtractedGame]:
         """Extract game titles from *text* using Ollama's generate endpoint."""
-        prompt = _CAPTURE_PARSE_TEMPLATE.render(text=text)
+        prompt = _jinja_env.from_string(_CAPTURE_PARSE_SRC).render(text=text)
         payload = {
             "model": self._model,
             "prompt": prompt,
@@ -93,7 +102,7 @@ class OllamaClient(AbstractLLMClient):
 
     async def parse_capture_image(self, image_base64: str) -> list[ExtractedGame]:
         """Extract game titles from an image using Ollama's vision endpoint."""
-        prompt = _CAPTURE_PARSE_VISION_TEMPLATE.render(
+        prompt = _jinja_env.from_string(_CAPTURE_PARSE_VISION_SRC).render(
             max_games=self._max_games_per_shelf,
         )
         payload = {
@@ -136,7 +145,7 @@ class OllamaClient(AbstractLLMClient):
         position_override: str | None = None,
     ) -> str:
         """Generate a mission briefing using the smart LLM model."""
-        prompt = _BRIEFING_TEMPLATE.render(
+        prompt = _jinja_env.from_string(_BRIEFING_SRC).render(
             game_title=game_title,
             previous_debriefs=previous_debriefs,
             current_next_action=current_next_action,
@@ -161,7 +170,7 @@ class OllamaClient(AbstractLLMClient):
         debrief_text: str,
     ) -> ExtractedState:
         """Extract structured state from a debrief using the fast LLM model."""
-        prompt = _DEBRIEF_EXTRACT_TEMPLATE.render(
+        prompt = _jinja_env.from_string(_DEBRIEF_EXTRACT_SRC).render(
             game_title=game_title,
             debrief_text=debrief_text,
         )
@@ -204,7 +213,7 @@ class OllamaClient(AbstractLLMClient):
         context: str | None = None,
     ) -> LoadoutPick:
         """Pick a game from candidates using the smart LLM model."""
-        prompt = _LOADOUT_PICK_TEMPLATE.render(
+        prompt = _jinja_env.from_string(_LOADOUT_PICK_SRC).render(
             candidates=candidates,
             mood=mood,
             available_minutes=available_minutes,
@@ -222,11 +231,15 @@ class OllamaClient(AbstractLLMClient):
         if resp is None:
             raise httpx.HTTPError("Ollama loadout pick request failed")
 
-        body = resp.json()
-        raw_text = body.get("response", "")
-        parsed = json.loads(raw_text)
+        try:
+            body = resp.json()
+            raw_text = body.get("response", "")
+            parsed = json.loads(raw_text)
 
-        return LoadoutPick(
-            library_entry_public_id=str(parsed["library_entry_public_id"]),
-            reasoning=str(parsed.get("reasoning", "")),
-        )
+            return LoadoutPick(
+                library_entry_public_id=str(parsed["library_entry_public_id"]),
+                reasoning=str(parsed.get("reasoning", "")),
+            )
+        except (json.JSONDecodeError, KeyError, TypeError) as exc:
+            logger.warning("ollama_loadout_pick_parse_error", error=str(exc))
+            raise httpx.HTTPError("Failed to parse loadout pick response") from exc

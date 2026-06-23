@@ -112,6 +112,10 @@ api-file-sizes: ## Check API file sizes (max 300 lines)
 api-fmt: ## Format API code
 	cd $(API_DIR) && poetry run ruff format .
 
+.PHONY: worker
+worker: ## Run Taskiq worker (async debrief extraction)
+	cd $(API_DIR) && poetry run taskiq worker dailyloadout.infrastructure.tasks.debrief_extraction:broker
+
 .PHONY: api-migrate
 api-migrate: ## Run Alembic migrations
 	cd $(API_DIR) && poetry run alembic upgrade head
@@ -134,7 +138,7 @@ web: ## Run web dev server (vite)
 
 .PHONY: web-test
 web-test: ## Run web tests
-	cd $(WEB_DIR) && bun test
+	cd $(WEB_DIR) && bun run test
 
 .PHONY: web-lint
 web-lint: ## Lint web (biome check)
@@ -201,13 +205,14 @@ quality-web: ## Full Web quality gate
 	@echo "\n\033[1;36m══════ Web Quality Gate ══════\033[0m"
 	$(call check,Biome lint + format,  cd $(WEB_DIR) && bun run lint)
 	$(call check,TypeScript check,     cd $(WEB_DIR) && bun run tsc -b --noEmit)
-	$(call check,Vitest,               cd $(WEB_DIR) && bun test)
+	$(call check,Vitest,               cd $(WEB_DIR) && bun run test)
 	$(call check,Vite build,           cd $(WEB_DIR) && bun run build > /dev/null 2>&1)
 	@echo "\033[1;32m══════ Web: All checks passed ══════\033[0m\n"
 
 .PHONY: quality-app
 quality-app: ## Full App quality gate
 	@echo "\n\033[1;36m══════ App Quality Gate ══════\033[0m"
+	$(call check,Dart format,      cd $(APP_DIR) && $(DART) format --set-exit-if-changed .)
 	$(call check,Flutter analyze,  cd $(APP_DIR) && $(FLUTTER) analyze)
 	$(call check,Flutter test,     cd $(APP_DIR) && $(FLUTTER) test)
 	@echo "\033[1;32m══════ App: All checks passed ══════\033[0m\n"
@@ -228,6 +233,7 @@ quality: ## Run ALL quality gates (pre-commit + api + web + app)
 	$(call check,Pre-commit hooks,  pre-commit run --all-files)
 	@$(MAKE) quality-api
 	@$(MAKE) quality-web
+	@$(MAKE) quality-app
 	$(call warn,Code duplication (jscpd ≤5%),  npx jscpd --silent)
 	@echo "\033[1;32m╔══════════════════════════════════════╗\033[0m"
 	@echo "\033[1;32m║     All quality gates passed ✓       ║\033[0m"

@@ -1,0 +1,164 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(make *)",
+      "Bash(poetry *)",
+      "Bash(python3 *)",
+      "Bash(python *)",
+      "Bash(alembic *)",
+      "Bash(pytest *)",
+      "Bash(ruff *)",
+      "Bash(mypy *)",
+      "Bash(bun *)",
+      "Bash(npx *)",
+      "Bash(docker compose *)",
+      "Bash(docker exec *)",
+      "Bash(docker logs *)",
+      "Bash(docker ps *)",
+      "Bash(docker build *)",
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git checkout *)",
+      "Bash(git branch *)",
+      "Bash(git fetch *)",
+      "Bash(git pull *)",
+      "Bash(git push *)",
+      "Bash(git merge *)",
+      "Bash(git stash *)",
+      "Bash(gh *)",
+      "Bash(psql *)",
+      "Bash(ls *)",
+      "Bash(find *)",
+      "Bash(grep *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(mv *)",
+      "Bash(cp *)",
+      "Bash(mkdir *)",
+      "Bash(touch *)",
+      "Bash(wc *)",
+      "Bash(jq *)",
+      "Bash(curl *)",
+      "Bash(rtk *)",
+      "Bash(pre-commit *)",
+      "Bash(ollama *)",
+      "Bash(fvm *)",
+      "Bash(flutter *)",
+      "Bash(dart *)",
+      "mcp__linear-server__*"
+    ],
+    "deny": [
+      "Bash(git push --force*)",
+      "Bash(git push -f *)",
+      "Bash(git reset --hard *)",
+      "Bash(docker system prune *)",
+      "Bash(rm -rf /*)",
+      "Bash(sudo rm *)",
+      "Bash(DROP DATABASE *)",
+      "Bash(dropdb *)",
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./packages/api/.env)",
+      "Read(./packages/api/.env.*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_TOOL_INPUT_FILE_PATH\" | grep -qE '\\.env(\\.local|\\.production|\\.staging|\\.test)?$'; then echo 'BLOCKED: Writing to .env file. Secrets must not be hardcoded.' >&2; exit 2; fi"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "osascript -e 'display notification \"$CLAUDE_NOTIFICATION_MESSAGE\" with title \"Claude Code \\u2014 DailyLoadout\" sound name \"Glass\"' 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
+  },
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "claudeFlow": {
+    "version": "3.0.0",
+    "enabled": true,
+    "platform": {
+      "os": "darwin",
+      "arch": "arm64",
+      "shell": "zsh"
+    },
+    "modelPreferences": {
+      "default": "claude-opus-4-6",
+      "routing": "claude-haiku-4-5-20251001"
+    },
+    "agentTeams": {
+      "enabled": true,
+      "teammateMode": "auto",
+      "taskListEnabled": true,
+      "mailboxEnabled": true,
+      "coordination": {
+        "autoAssignOnIdle": true,
+        "trainPatternsOnComplete": true,
+        "notifyLeadOnComplete": true,
+        "sharedMemoryNamespace": "agent-teams"
+      }
+    },
+    "swarm": {
+      "topology": "hierarchical-mesh",
+      "maxAgents": 15
+    },
+    "memory": {
+      "backend": "hybrid",
+      "enableHNSW": true,
+      "learningBridge": {
+        "enabled": true
+      },
+      "memoryGraph": {
+        "enabled": true
+      },
+      "agentScopes": {
+        "enabled": true
+      }
+    },
+    "neural": {
+      "enabled": true
+    },
+    "daemon": {
+      "autoStart": false,
+      "workers": ["map", "audit", "optimize"],
+      "schedules": {
+        "audit": { "interval": "4h", "priority": "critical" },
+        "optimize": { "interval": "2h", "priority": "high" }
+      }
+    },
+    "learning": {
+      "enabled": true,
+      "autoTrain": true,
+      "patterns": ["coordination", "optimization", "prediction"],
+      "retention": {
+        "shortTerm": "24h",
+        "longTerm": "30d"
+      }
+    },
+    "security": {
+      "autoScan": true,
+      "scanOnEdit": true,
+      "cveCheck": true,
+      "threatModel": true
+    }
+  }
+}

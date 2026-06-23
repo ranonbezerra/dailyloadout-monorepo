@@ -507,7 +507,7 @@ class TestUpdateLibraryEntry:
             "/v1/auth/register",
             json={
                 "email": "other@example.com",
-                "password": "strongpassword123",
+                "password": "StrongPass123",
                 "display_name": "Other Player",
             },
         )

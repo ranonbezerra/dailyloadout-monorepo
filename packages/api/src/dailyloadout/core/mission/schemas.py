@@ -21,6 +21,7 @@ class MissionStartRequest(BaseModel):
     library_entry_public_id: UUID
     briefing_text: str | None = Field(
         default=None,
+        max_length=10000,
         description="Pre-generated briefing from a preview call. Skips LLM generation.",
     )
 

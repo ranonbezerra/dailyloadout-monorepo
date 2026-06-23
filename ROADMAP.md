@@ -21,9 +21,10 @@ The repository is public from Epic 0 onward. Every commit and PR is part of the 
 | 8.5 | Async Debrief (Taskiq) | Decouple LLM extraction from debrief flow |
 | 9 | Stats + Web analytics | Where the dashboard shines |
 | 10 | Polish + Launch | README final, demo GIF, announcement |
-| 11 | Deep Research Briefing | Web-augmented spoiler-free suggestions (v1.1+) |
+| 11 | Deep Research Briefing | LangGraph research graph — web-augmented, spoiler-free (v1.1+) |
+| 12 | Backlog Concierge | LangGraph tool-using conversational agent (v1.1+) |
 
-Total: **10 weekends ≈ 2.5 months** for v1.0 (assuming 8–12 productive hours per weekend). Epic 11 is a v1.1+ enhancement.
+Total: **10 weekends ≈ 2.5 months** for v1.0 (assuming 8–12 productive hours per weekend). Epics 11–12 are v1.1+ enhancements and the home for the agentic (LangGraph) work.
 
 ---
 
@@ -457,37 +458,110 @@ This is the spot that connects DailyLoadout to Freeler narratively. A recruiter 
 
 Epic 6 briefings use only the LLM's parametric knowledge and the user's own debrief data to suggest next steps. This works well for popular titles but produces vague suggestions for niche games or complex quest structures. Deep research bridging the gap between "what the user told us" and "what's actually available in the game world" would make briefings significantly more useful.
 
-### Integration: local-deep-research
+### Approach: build the research graph in LangGraph (don't just wire LDR)
 
-[local-deep-research](https://github.com/LearningCircuit/local-deep-research) is a privacy-first, local-first research agent that supports Ollama and SearXNG. It fits DailyLoadout's architecture: no cloud keys required, runs alongside the existing stack.
+[local-deep-research](https://github.com/LearningCircuit/local-deep-research) (LDR) is a privacy-first research agent on Ollama + SearXNG and a good reference — but it is itself built on LangGraph. For the showcase we build our **own** small LangGraph research graph instead of importing LDR wholesale. Same skill, but we own the graph and get a concrete "stateful agent in production" story. No cloud keys; runs alongside the existing stack.
+
+The full design (state schema, node signatures, conditional edges, ports, validators-as-nodes, mermaid diagram) lives in [docs/DEEP_RESEARCH_BRIEFING.md](./docs/DEEP_RESEARCH_BRIEFING.md). This epic tracks the implementation tasks.
+
+**Why LangGraph here (and not plain code):** the deep briefing is genuinely multi-step with a bounded refine loop, a 30–60s long-running budget, cancellation, and a quick-briefing fallback. That is exactly LangGraph's territory: durable execution, conditional edges, and (optionally) checkpointed resume. The existing single-shot `generate_briefing` stays untouched as the `quick` path and the fallback.
+
+### Module layout (hexagonal — same shape as `llm/`, `stt/`, `storage/`)
+
+```
+infrastructure/
+├── research/                # web search port
+│   ├── base.py              # AbstractResearchClient.search(query) / fetch(url)
+│   ├── searxng.py           # SearXNG client (local)
+│   ├── dummy.py             # canned results for tests
+│   └── factory.py           # RESEARCH_PROVIDER env
+└── agent/                   # the LangGraph briefing agent
+    ├── base.py              # AbstractBriefingAgent.deep_brief(req) -> BriefResult
+    ├── langgraph_agent.py   # compiles + invokes the graph
+    ├── dummy.py             # DummyBriefingAgent for tests
+    ├── factory.py           # AGENT_PROVIDER env
+    └── graph/
+        ├── state.py         # ResearchBriefingState (TypedDict)
+        ├── nodes.py         # build_query, search, grade, refine, synthesize, spoiler_filter, anti_hallucination, fallback_quick
+        └── builder.py       # StateGraph wiring + checkpointer
+```
 
 ### Tasks
 
-- [ ] Add SearXNG + local-deep-research to `docker-compose.yml`
-- [ ] New infrastructure module `infrastructure/research/` with abstract base + LDR client + dummy for tests
-- [ ] "Deep briefing" mode: opt-in per mission start (user chooses quick vs. deep)
-- [ ] Research query construction: `"{game_title} walkthrough tips after {location} {current_quest} spoiler-free"`
-- [ ] Spoiler filter prompt layer: LLM receives research results but is constrained to suggest **directions and areas**, never reveal boss names, plot twists, story events, or item locations the player hasn't mentioned
-- [ ] Latency handling: deep briefing takes 30-60s — show progress indicator, allow cancellation, fall back to quick briefing on timeout
-- [ ] Search source config: allow users to choose search engines (Wikipedia, game wikis, etc.) via settings
-- [ ] Pytest with DummyResearchClient returning canned results
-- [ ] Web: toggle in briefing modal for "Quick briefing" vs. "Deep briefing (slower, web-researched)"
+- [ ] Add `langgraph` + `langgraph-checkpoint` to API deps (LangChain not required here — nodes reuse the existing `AbstractLLMClient`)
+- [ ] Add SearXNG service to `docker-compose.yml` (local, no external search keys)
+- [ ] `infrastructure/research/`: abstract base + `SearxngResearchClient` + `DummyResearchClient` + factory
+- [ ] `infrastructure/agent/graph/state.py`: `ResearchBriefingState` TypedDict (see design doc)
+- [ ] `infrastructure/agent/graph/nodes.py`: the 8 nodes (see design doc for signatures + model roles)
+- [ ] `infrastructure/agent/graph/builder.py`: `StateGraph` wiring, conditional router, `MemorySaver` checkpointer (Postgres saver later)
+- [ ] Expose a generic `complete(prompt, role, json=False)` on the LLM port so agent nodes can render their own Jinja prompts (`prompts/research_grade.j2`, `research_refine.j2`, `briefing_research.j2`, `spoiler_filter.j2`)
+- [ ] Reuse the Epic 6 token-overlap validator as the `anti_hallucination` node (import from `core/mission`, do not duplicate)
+- [ ] `AbstractBriefingAgent` + `LangGraphBriefingAgent` + `DummyBriefingAgent` + factory
+- [ ] Wire `core/mission/service.py`: when `mode='deep'`, call the agent port wrapped in `asyncio.wait_for(deadline)`; on timeout/empty, fall back to `generate_briefing`
+- [ ] Env: `AGENT_PROVIDER`, `RESEARCH_PROVIDER`, `SEARXNG_BASE_URL`, `DEEP_BRIEFING_DEADLINE_SECONDS`, `DEEP_BRIEFING_MAX_REFINES`, `DEEP_BRIEFING_MAX_RESULTS`
+- [ ] Pytest: node unit tests (each node in isolation), graph integration test with `DummyResearchClient` + `DummyLLMClient`, fallback-on-timeout test, spoiler-leak regression test
+- [ ] Web/App: briefing modal toggle "Quick" vs "Deep (slower, web-researched)" + progress indicator + cancel button
 
 ### Definition of Done
 
-- User starts a mission with "deep briefing" selected
-- Within 60s, briefing includes web-researched suggestions grounded in the game world
-- Suggestions are spoiler-free: "explore the northwest passage" not "defeat the hidden boss there"
-- Quick briefing still works in 2-3s (default, no regression)
-- Deep briefing falls back gracefully if SearXNG/LDR is unavailable
+- User starts a mission with "deep briefing" selected; within the deadline (60s) the briefing includes web-grounded next steps
+- Suggestions are spoiler-free: "explore the northwest passage", never "defeat the hidden boss there"
+- Quick briefing still works in 2–3s (default, no regression) and is the automatic fallback
+- Graph falls back gracefully (and visibly) if SearXNG is down or the deadline is hit
+- `anti_hallucination` node runs on the deep output exactly as in Epic 6
+- Agent + research modules coverage ≥ 85% (dummies for both ports; no real LLM/search in CI)
 
 ### Technical highlight
 
-> **Spoiler-free constraint on web-augmented AI:** the research agent fetches walkthrough content that inherently contains spoilers. The briefing prompt is constrained to suggest directions and areas without revealing what the player will find. This is a two-layer filter: the research query targets "next steps" content, and the briefing prompt strips specifics. The anti-hallucination validator from Epic 6 still runs on the output.
+> **Deterministic guards as graph nodes.** The deep briefing is a LangGraph state machine where the probabilistic node (synthesize) is bracketed by deterministic ones: a bounded refine loop gated by an LLM `grade` node, a `spoiler_filter` pass, and the Epic 6 token-overlap `anti_hallucination` validator as the terminal gate. If the graph can't ground a spoiler-safe suggestion within the deadline, a conditional edge routes to the plain quick briefing. No fine-tuning — orchestration plus guards on top of a local model.
+
+In interviews: *"build a stateful, long-running agent with a refine loop, branching, and a hard correctness constraint, on a local model, with a graceful degradation path"* — concrete, not buzzword.
 
 ### Why this is a separate epic
 
-LDR integration adds Docker services (SearXNG), a new dependency stack (LangGraph/LangChain), and a hard prompt engineering problem (spoiler filtering). Mixing this into Epic 6 would risk the anchor feature's stability. Epic 6 delivers actionable briefings from LLM knowledge; Epic 10 enhances them with web research.
+It adds a Docker service (SearXNG), a new dependency (`langgraph`), two new hexagonal ports (`research/`, `agent/`), and a hard prompt-engineering problem (spoiler filtering). Folding it into Epic 6 would risk the anchor feature. Epic 6 ships actionable briefings from LLM knowledge; Epic 10 layers grounded web research on top, reusing Epic 6's validator unchanged.
+
+---
+
+## Epic 11 — Backlog Concierge (v1.1+)
+
+**Goal:** an optional, conversational, tool-using agent — the agentic evolution of Daily Loadout. Where the Loadout (Epic 7) is a rigid 3-question → 1-pick form, the Concierge is a multi-turn chat: "I've got an hour, I'm tired, what should I play?" → it calls tools over the real library and reasons across turns.
+
+### Product caveat (read before building)
+
+The product thesis is *"you don't choose, the app picks"* — zero friction, indecision killed. A chatty agent **reintroduces** that friction. So the Concierge is **not** a replacement for the one-tap Loadout; it is an opt-in "talk to the operator" mode for power users who want to discuss. The default home action stays the single-tap Loadout. If this caveat ever feels wrong in practice, cut the epic — the Loadout already covers the core need.
+
+### Why LangGraph here
+
+This is the genuinely agentic case: multi-turn, stateful (conversation threads via LangGraph persistence), tool-using (the LLM decides which tool to call), with branching (recommend / refine / compare / explain). The deterministic UUID-existence guard from Epic 7 becomes the terminal validation node.
+
+### Tools (read-only over existing repositories — no new data model)
+
+- `search_library(status, platform, genre)` — over `library_entries`
+- `get_mission_history(library_entry_public_id)` — last debriefs / `extracted_state` / `mission_next_action`
+- `get_play_stats(window)` — the Epic 8 stats endpoints
+- `estimate_session_fit(library_entry_public_id, minutes)` — heuristic fit score
+
+### Tasks
+
+- [ ] Add `langchain-ollama` (for `ChatOllama` + `bind_tools` ergonomics — tool-calling is the one place LangChain earns its keep)
+- [ ] New `OLLAMA_AGENT_MODEL` slot — **default `qwen3:8b`, not `gemma3`**: Gemma is weak at function-calling; Qwen3 is robust at tool-calling and is already a documented alternative in `docs/OLLAMA.md`
+- [ ] `infrastructure/agent/concierge/`: tool definitions (thin wrappers over existing repositories/services), graph builder, conversation-thread checkpointer
+- [ ] `core/concierge/service.py` + `api/v1/concierge.py`: a streaming chat endpoint (SSE) keyed by a thread id
+- [ ] Terminal validation node: any `library_entry_public_id` the agent recommends must exist in the user's library (reuse Epic 7's guard); reroll once, else degrade to a non-committal answer
+- [ ] App/Web: a simple chat UI gated behind a settings flag (off by default)
+- [ ] Pytest: tool unit tests, a graph test with a scripted tool-calling DummyLLM, the UUID-existence guard test
+
+### Definition of Done
+
+- Power-user can chat multi-turn and get a grounded recommendation that exists in their library
+- One-tap Loadout remains the default and is untouched
+- Tool calls only read existing data; no new tables
+- Agent never recommends a non-existent entry (guard enforced)
+
+### Technical highlight
+
+> **Tool-calling agent on a local model, with the product's guard rails intact.** The Concierge uses `ChatOllama.bind_tools` over read-only library tools, but the recommendation is still validated against the real library before it reaches the user (same UUID-existence guard as Epic 7). The harder decision is restraint: keeping it an opt-in mode so it complements, rather than fights, the zero-friction Loadout.
 
 ---
 

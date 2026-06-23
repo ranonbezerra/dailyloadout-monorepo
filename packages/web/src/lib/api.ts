@@ -109,6 +109,10 @@ export async function apiFetch<T = unknown>(path: string, options: RequestInit =
 				throw new Error(errBody || `Request failed: ${retryRes.status}`);
 			}
 
+			if (retryRes.status === 204) {
+				return undefined as T;
+			}
+
 			return retryRes.json() as Promise<T>;
 		}
 
@@ -120,6 +124,11 @@ export async function apiFetch<T = unknown>(path: string, options: RequestInit =
 	if (!res.ok) {
 		const errBody = await retryParseError(res);
 		throw new Error(errBody);
+	}
+
+	// Handle 204 No Content (and other responses with no body).
+	if (res.status === 204) {
+		return undefined as T;
 	}
 
 	return res.json() as Promise<T>;

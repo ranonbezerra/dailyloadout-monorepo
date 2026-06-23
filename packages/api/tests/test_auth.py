@@ -17,7 +17,7 @@ class TestRegister:
     async def test_register_success(self, async_client: AsyncClient) -> None:
         payload = {
             "email": "newuser@example.com",
-            "password": "securepassword",
+            "password": "SecurePass1",
             "display_name": "New User",
         }
         resp = await async_client.post("/v1/auth/register", json=payload)
@@ -31,7 +31,7 @@ class TestRegister:
     async def test_register_duplicate_email(self, async_client: AsyncClient) -> None:
         payload = {
             "email": "dupe@example.com",
-            "password": "securepassword",
+            "password": "SecurePass1",
             "display_name": "First User",
         }
         resp1 = await async_client.post("/v1/auth/register", json=payload)
@@ -43,7 +43,7 @@ class TestRegister:
     async def test_register_invalid_email(self, async_client: AsyncClient) -> None:
         payload = {
             "email": "not-an-email",
-            "password": "securepassword",
+            "password": "SecurePass1",
             "display_name": "Bad Email",
         }
         resp = await async_client.post("/v1/auth/register", json=payload)
@@ -70,7 +70,7 @@ class TestLogin:
     async def _register(self, client: AsyncClient) -> dict[str, Any]:
         payload = {
             "email": "login@example.com",
-            "password": "securepassword",
+            "password": "SecurePass1",
             "display_name": "Login User",
         }
         resp = await client.post("/v1/auth/register", json=payload)
@@ -82,7 +82,7 @@ class TestLogin:
 
         resp = await async_client.post(
             "/v1/auth/login",
-            json={"email": "login@example.com", "password": "securepassword"},
+            json={"email": "login@example.com", "password": "SecurePass1"},
         )
         assert resp.status_code == 200
         data = resp.json()
@@ -117,7 +117,7 @@ class TestRefresh:
     async def _register(self, client: AsyncClient) -> dict[str, Any]:
         payload = {
             "email": "refresh@example.com",
-            "password": "securepassword",
+            "password": "SecurePass1",
             "display_name": "Refresh User",
         }
         resp = await client.post("/v1/auth/register", json=payload)
@@ -183,7 +183,7 @@ class TestLogout:
     async def _register(self, client: AsyncClient) -> dict[str, Any]:
         payload = {
             "email": "logout@example.com",
-            "password": "securepassword",
+            "password": "SecurePass1",
             "display_name": "Logout User",
         }
         resp = await client.post("/v1/auth/register", json=payload)
@@ -254,7 +254,7 @@ class TestMe:
         """A valid JWT for a user that no longer exists returns 401."""
         payload = {
             "email": "deleted@example.com",
-            "password": "securepassword",
+            "password": "SecurePass1",
             "display_name": "Ghost",
         }
         resp = await async_client.post("/v1/auth/register", json=payload)
@@ -282,7 +282,7 @@ class TestRefreshDeletedUser:
     async def test_refresh_after_user_deleted(self, async_client: AsyncClient) -> None:
         payload = {
             "email": "gone@example.com",
-            "password": "securepassword",
+            "password": "SecurePass1",
             "display_name": "Gone User",
         }
         resp = await async_client.post("/v1/auth/register", json=payload)

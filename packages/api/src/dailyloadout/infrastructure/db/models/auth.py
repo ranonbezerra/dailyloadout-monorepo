@@ -111,4 +111,5 @@ class RefreshToken(Base):
             "user_id",
             postgresql_where=text("revoked_at IS NULL"),
         ),
+        Index("idx_refresh_tokens_user_id", "user_id"),
     )

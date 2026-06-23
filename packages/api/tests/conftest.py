@@ -118,6 +118,8 @@ _SQLITE_INCOMPATIBLE_INDEXES = {
     "idx_missions_user_active",  # partial unique (WHERE ended_at IS NULL)
     "idx_missions_entry_ended",  # DESC expression
     "idx_loadouts_user_created",  # DESC expression
+    "idx_users_email_active",  # partial (WHERE deleted_at IS NULL)
+    "idx_refresh_user_active",  # partial (WHERE revoked_at IS NULL)
 }
 
 for _table in Base.metadata.tables.values():
@@ -170,6 +172,7 @@ async def async_client() -> AsyncIterator[AsyncClient]:
     """Provide an ``httpx.AsyncClient`` wired to the FastAPI app with the
     database dependency overridden to use the in-memory SQLite engine.
     """
+    from dailyloadout.api.v1.auth import _check_login_rate, _check_register_rate
     from dailyloadout.deps import get_db
     from dailyloadout.deps.capture import (
         get_igdb_client_dep,
@@ -184,6 +187,13 @@ async def async_client() -> AsyncIterator[AsyncClient]:
     app.dependency_overrides[get_llm_client_dep] = lambda: DummyLLMClient()
     app.dependency_overrides[get_igdb_client_dep] = lambda: None
     app.dependency_overrides[get_stt_client_dep] = lambda: DummySTTClient()
+
+    # Disable rate limiting in tests to avoid false 429 responses.
+    async def _noop() -> None:
+        pass
+
+    app.dependency_overrides[_check_login_rate] = _noop
+    app.dependency_overrides[_check_register_rate] = _noop
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -204,7 +214,7 @@ async def client(async_client: AsyncClient) -> AsyncClient:
 
 _DEFAULT_USER = {
     "email": "test@example.com",
-    "password": "strongpassword123",
+    "password": "StrongPass123",
     "display_name": "Test Player",
 }
 

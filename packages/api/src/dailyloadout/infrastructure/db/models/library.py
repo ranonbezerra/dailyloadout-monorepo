@@ -114,4 +114,6 @@ class LibraryEntry(TimestampMixin, Base):
             "user_id",
             text("last_played_at DESC NULLS LAST"),
         ),
+        Index("idx_library_entries_game_id", "game_id"),
+        Index("idx_library_entries_platform_id", "platform_id"),
     )

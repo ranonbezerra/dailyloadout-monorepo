@@ -1,0 +1,207 @@
+# DailyLoadout — API Reference
+
+The DailyLoadout API is a REST API built with FastAPI. Full interactive documentation is available at runtime via the Scalar UI.
+
+---
+
+## Interactive docs
+
+Start the API and open:
+
+```
+http://localhost:8100/docs
+```
+
+This serves the [Scalar](https://scalar.com) API reference, generated from the OpenAPI spec. You can explore endpoints, see request/response schemas, and test requests directly from the browser.
+
+The raw OpenAPI spec is available at:
+
+```
+http://localhost:8100/openapi.json
+```
+
+---
+
+## Authentication
+
+All endpoints except `/health` and `/auth/*` require a Bearer token.
+
+### Register
+
+```
+POST /v1/auth/register
+Content-Type: application/json
+
+{
+  "email": "player@example.com",
+  "password": "securepassword",
+  "display_name": "Player One"
+}
+```
+
+### Login
+
+```
+POST /v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "player@example.com",
+  "password": "securepassword"
+}
+
+Response:
+{
+  "access_token": "eyJ...",
+  "refresh_token": "...",
+  "token_type": "bearer"
+}
+```
+
+### Using the token
+
+```
+Authorization: Bearer eyJ...
+```
+
+Access tokens expire in 15 minutes. Use the refresh token to obtain a new one:
+
+```
+POST /v1/auth/refresh
+Content-Type: application/json
+
+{
+  "refresh_token": "..."
+}
+```
+
+---
+
+## Endpoint groups
+
+### Health
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/health` | Returns `{"status": "ok"}` |
+
+### Auth (`/v1/auth`)
+
+| Method | Path | Description |
+|---|---|---|
+| POST | `/register` | Create account |
+| POST | `/login` | Get access + refresh tokens |
+| POST | `/refresh` | Refresh access token |
+| POST | `/logout` | Revoke refresh token |
+| GET | `/me` | Current user profile |
+
+### Library (`/v1`)
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/platforms` | List all platforms |
+| POST | `/games` | Create a game manually |
+| PATCH | `/games/{public_id}` | Update a game (e.g. genres) |
+| GET | `/games/search?q=` | Search games by title |
+| GET | `/games/genres` | List all distinct genres |
+| GET | `/library` | List user's library entries |
+| POST | `/library` | Add game to library |
+| PATCH | `/library/{public_id}` | Update library entry |
+| DELETE | `/library/{public_id}` | Delete library entry |
+
+### Captures (`/v1/captures`)
+
+| Method | Path | Description |
+|---|---|---|
+| POST | `/text` | Submit text capture |
+| POST | `/voice` | Submit voice capture (multipart) |
+| POST | `/photo` | Submit photo capture (multipart) |
+| GET | `/{public_id}` | Get capture status + candidates |
+| POST | `/{public_id}/candidates/{cid}/confirm` | Confirm a candidate |
+| POST | `/{public_id}/candidates/{cid}/reject` | Reject a candidate |
+
+### Missions (`/v1/missions`)
+
+| Method | Path | Description |
+|---|---|---|
+| POST | `/` | Start a mission |
+| GET | `/active` | Get active mission |
+| POST | `/{public_id}/debrief` | Submit debrief text |
+| POST | `/{public_id}/end` | End mission without debrief |
+| POST | `/{public_id}/briefing/preview` | Preview briefing before starting |
+| POST | `/{public_id}/briefing/regenerate` | Regenerate briefing |
+
+### Loadouts (`/v1/loadouts`)
+
+| Method | Path | Description |
+|---|---|---|
+| POST | `/` | Create loadout suggestion(s) |
+| GET | `/` | List loadouts (paginated) |
+| GET | `/latest` | Get latest pending loadout |
+| POST | `/{public_id}/accept` | Accept and start mission |
+| POST | `/{public_id}/reject` | Reject suggestion |
+
+### Stats (`/v1/stats`)
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/overview` | KPI summary (games, missions, durations) |
+| GET | `/sessions` | Recent sessions (paginated) |
+
+---
+
+## Common patterns
+
+### Pagination
+
+List endpoints accept `limit` and `offset` query parameters:
+
+```
+GET /v1/library?limit=20&offset=0
+GET /v1/stats/sessions?limit=10&offset=0
+```
+
+Responses include `total`, `limit`, and `offset` fields.
+
+### Filtering
+
+Library entries can be filtered by status:
+
+```
+GET /v1/library?status=playing
+```
+
+### Error responses
+
+Errors follow a consistent format:
+
+```json
+{
+  "detail": "Library entry not found"
+}
+```
+
+| Status | Meaning |
+|---|---|
+| 400 | Bad request (validation error) |
+| 401 | Unauthorized (missing/invalid token) |
+| 404 | Resource not found |
+| 409 | Conflict (duplicate, already exists) |
+| 422 | Unprocessable (e.g. LLM failed after retries) |
+| 429 | Rate limited (auth endpoints) |
+
+---
+
+## Rate limiting
+
+Auth endpoints (`/v1/auth/login`, `/v1/auth/register`) are rate-limited to prevent brute-force attacks. Other endpoints are not rate-limited in v1.0.
+
+---
+
+## CORS
+
+Allowed origins are configured via the `CORS_ORIGINS` environment variable. Default in development:
+
+```env
+CORS_ORIGINS=["http://localhost:3200","http://localhost:5173"]
+```

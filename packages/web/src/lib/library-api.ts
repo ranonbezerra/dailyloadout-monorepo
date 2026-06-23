@@ -8,7 +8,7 @@ import type {
 	LibraryListResponse,
 	Platform,
 } from "../types/library";
-import { apiFetch, BASE_URL, getAccessToken } from "./api";
+import { apiFetch } from "./api";
 import { camelToSnake, snakeToCamel } from "./case-convert";
 
 // ---------------------------------------------------------------------------
@@ -91,21 +91,5 @@ export async function updateEntry(
 }
 
 export async function deleteEntry(publicId: string): Promise<void> {
-	// The API returns 204 No Content. apiFetch always calls res.json() which
-	// would fail on an empty body, so we use fetch directly for this endpoint.
-	const headers: Record<string, string> = {};
-	const accessToken = getAccessToken();
-	if (accessToken) {
-		headers.Authorization = `Bearer ${accessToken}`;
-	}
-
-	const res = await fetch(`${BASE_URL}/v1/library/${publicId}`, {
-		method: "DELETE",
-		headers,
-	});
-
-	if (!res.ok) {
-		const errBody = await res.text();
-		throw new Error(errBody || `Request failed: ${res.status}`);
-	}
+	await apiFetch<void>(`/v1/library/${publicId}`, { method: "DELETE" });
 }

@@ -86,7 +86,9 @@ async def _auto_ignore_loop() -> None:
         try:
             async with async_session_factory() as session:
                 repo = LoadoutRepository(session)
-                ignored = await auto_ignore_stale_loadouts(repo, max_hours=24)
+                ignored = await auto_ignore_stale_loadouts(
+                    repo, max_hours=settings.loadout_auto_ignore_hours
+                )
                 await session.commit()
                 if ignored:
                     logger.info("auto_ignore_cycle_done", ignored=ignored)
@@ -127,8 +129,8 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=settings.cors_origins,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type"],
     )
 
     # Routers

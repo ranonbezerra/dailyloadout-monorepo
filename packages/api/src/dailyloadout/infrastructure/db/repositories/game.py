@@ -46,7 +46,8 @@ class GameRepository:
 
         Returns up to *limit* results ordered by relevance.
         """
-        pattern = f"%{query}%"
+        escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        pattern = f"%{escaped}%"
         stmt = select(Game).where(Game.title.ilike(pattern)).order_by(Game.title).limit(limit)
         result = await self._session.execute(stmt)
         return list(result.scalars().all())

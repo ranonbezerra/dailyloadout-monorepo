@@ -15,6 +15,7 @@ from dailyloadout.core.auth.schemas import (
 from dailyloadout.deps import AuthServiceDep, CurrentUserDep
 
 _login_limiter = Limiter(Rate(10, Duration.MINUTE))
+_register_limiter = Limiter(Rate(5, Duration.MINUTE))
 
 
 async def _check_login_rate(request: Request) -> None:
@@ -27,10 +28,25 @@ async def _check_login_rate(request: Request) -> None:
         )
 
 
+async def _check_register_rate(request: Request) -> None:
+    client_ip = request.client.host if request.client else "unknown"
+    allowed = _register_limiter.try_acquire(client_ip, blocking=False)
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many registration attempts. Try again later.",
+        )
+
+
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
 
 
-@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register",
+    response_model=TokenResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(_check_register_rate)],
+)
 async def register(
     body: RegisterRequest,
     auth_service: AuthServiceDep,

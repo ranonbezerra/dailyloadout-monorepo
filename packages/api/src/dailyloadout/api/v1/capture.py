@@ -119,23 +119,28 @@ async def submit_photo_capture(
         tmp.write(contents)
         image_path = tmp.name
 
-    capture = await capture_service.submit_photo(
-        user_id=current_user.id,
-        image_path=image_path,
-    )
+    try:
+        capture = await capture_service.submit_photo(
+            user_id=current_user.id,
+            image_path=image_path,
+        )
 
-    # Process inline (will become arq job later).
-    await process_capture(
-        capture=capture,
-        capture_repo=capture_repo,
-        candidate_repo=candidate_repo,
-        llm_client=llm_client,
-        igdb_client=igdb_client,
-    )
+        # Process inline (will become arq job later).
+        await process_capture(
+            capture=capture,
+            capture_repo=capture_repo,
+            candidate_repo=candidate_repo,
+            llm_client=llm_client,
+            igdb_client=igdb_client,
+        )
 
-    # Re-fetch with candidates eagerly loaded.
-    capture = await capture_service.get_capture(current_user.id, capture.public_id)
-    return CaptureResponse.model_validate(capture)
+        # Re-fetch with candidates eagerly loaded.
+        capture = await capture_service.get_capture(current_user.id, capture.public_id)
+        return CaptureResponse.model_validate(capture)
+    finally:
+        # Clean up the temp file after processing.
+        if os.path.exists(image_path):
+            os.unlink(image_path)
 
 
 @router.post(
@@ -153,7 +158,7 @@ async def transcribe_audio(
     ``POST /v1/captures/text`` endpoint with ``input_type="voice"``.
     """
     # Validate MIME type.
-    if file.content_type and not file.content_type.startswith("audio/"):
+    if not file.content_type or not file.content_type.startswith("audio/"):
         raise HTTPException(status_code=400, detail="File must be an audio file.")
 
     # Validate file size (5 MB max).

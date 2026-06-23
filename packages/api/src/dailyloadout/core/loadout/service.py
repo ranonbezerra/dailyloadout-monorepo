@@ -6,6 +6,7 @@ from uuid import UUID
 
 import structlog
 from fastapi import HTTPException, status
+from sqlalchemy.exc import IntegrityError
 
 from dailyloadout.infrastructure.db.models import Loadout
 from dailyloadout.infrastructure.db.repositories.library import LibraryRepository
@@ -222,10 +223,16 @@ class LoadoutService:
             )
 
         # Create the mission.
-        mission = await self._mission_repo.create(
-            user_id=user_id,
-            library_entry_id=loadout.library_entry_id,  # type: ignore[arg-type]
-        )
+        try:
+            mission = await self._mission_repo.create(
+                user_id=user_id,
+                library_entry_id=loadout.library_entry_id,  # type: ignore[arg-type]
+            )
+        except IntegrityError:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="You already have an active mission. End it first.",
+            ) from None
 
         # Update loadout.
         await self._loadout_repo.set_action(loadout.id, "accepted")

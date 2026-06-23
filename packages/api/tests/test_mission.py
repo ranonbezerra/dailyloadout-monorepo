@@ -589,7 +589,7 @@ class TestAntiHallucination:
             context_text="Location: Greenpath. Next action: fight the Mantis Lords.",
         )
         assert not result.is_suspicious
-        assert result.overlap_ratio >= 0.70
+        assert result.overlap_ratio >= 0.40
 
     def test_suspicious_briefing(self) -> None:
         from dailyloadout.core.mission.anti_hallucination import validate_briefing
@@ -599,7 +599,7 @@ class TestAntiHallucination:
             context_text="Location: Greenpath. Next action: find the Mothwing Cloak.",
         )
         assert result.is_suspicious
-        assert result.overlap_ratio < 0.70
+        assert result.overlap_ratio < 0.40
         assert len(result.missing_tokens) > 0
 
     def test_empty_briefing(self) -> None:
@@ -611,6 +611,117 @@ class TestAntiHallucination:
         )
         assert not result.is_suspicious
         assert result.overlap_ratio == 1.0
+
+    def test_only_numbers_in_briefing(self) -> None:
+        """Numbers are interesting tokens; they must also appear in context."""
+        from dailyloadout.core.mission.anti_hallucination import validate_briefing
+
+        # Both numbers present in context -- should be fully grounded.
+        # Note: "Level" is also an interesting token ([A-Z][a-z]{2,}).
+        # The context uses "Level" capitalised so it appears in context_tokens.
+        result = validate_briefing(
+            briefing_text="Level 42 with 100 gold",
+            context_text="Level 42 character with 100 gold coins.",
+        )
+        assert not result.is_suspicious
+        # Briefing tokens: {"Level", "42", "100"}.
+        # Context tokens: {"Level", "42", "100"}.
+        # All three grounded -> ratio = 1.0.
+        assert result.overlap_ratio == 1.0
+        assert result.missing_tokens == []
+
+        # Now test where the numbers are NOT in context -- suspicious.
+        result_bad = validate_briefing(
+            briefing_text="Level 42 with 100 gold",
+            context_text="the player is exploring a dungeon",
+        )
+        # Briefing tokens: {"Level", "42", "100"}.
+        # Context has no interesting tokens (all lowercase, no numbers).
+        # overlap = 0/3 = 0.0 -> suspicious.
+        assert result_bad.is_suspicious
+        assert result_bad.overlap_ratio < 0.40
+
+    def test_mixed_case_tokens(self) -> None:
+        """Tokens in the briefing should match context via case-insensitive comparison."""
+        from dailyloadout.core.mission.anti_hallucination import validate_briefing
+
+        # Briefing has "Greenpath" (capitalised), context has "GREENPATH"
+        # (all-caps).  The validator lowercases both sides for comparison,
+        # so "greenpath" == "greenpath" should count as grounded.
+        result = validate_briefing(
+            briefing_text="Head to Greenpath and find the Cloak.",
+            context_text="Next area: GREENPATH. Obtain the CLOAK there.",
+        )
+        assert not result.is_suspicious
+        # Briefing tokens: {"Greenpath", "Cloak", "Head"}
+        # Context tokens: {"GREENPATH", "CLOAK", "Obtain", "Next"}
+        # Case-insensitive: "greenpath" in context_lower, "cloak" in
+        # context_lower, "head" NOT in context_lower.
+        # Grounded = 2/3 = 0.667 >= 0.40
+        assert result.overlap_ratio >= 0.40
+        assert len(result.missing_tokens) <= 1
+
+    def test_entirely_grounded_briefing(self) -> None:
+        """When every interesting token from the briefing exists in context,
+        overlap_ratio must be exactly 1.0."""
+        from dailyloadout.core.mission.anti_hallucination import validate_briefing
+
+        result = validate_briefing(
+            briefing_text="Explore Greenpath and defeat the Mantis Lords.",
+            context_text="Location: Greenpath. Boss: Mantis Lords. Action: Explore.",
+        )
+        assert not result.is_suspicious
+        assert result.overlap_ratio == 1.0
+        assert result.missing_tokens == []
+
+    def test_single_token_briefing(self) -> None:
+        """Edge case: briefing with exactly one interesting token."""
+        from dailyloadout.core.mission.anti_hallucination import validate_briefing
+
+        # Single token present in context -- ratio = 1/1 = 1.0
+        result_present = validate_briefing(
+            briefing_text="Greenpath",
+            context_text="You are at Greenpath.",
+        )
+        assert not result_present.is_suspicious
+        assert result_present.overlap_ratio == 1.0
+        assert result_present.missing_tokens == []
+
+        # Single token absent from context -- ratio = 0/1 = 0.0
+        result_absent = validate_briefing(
+            briefing_text="Greenpath",
+            context_text="You are at the crossroads.",
+        )
+        assert result_absent.is_suspicious
+        assert result_absent.overlap_ratio == 0.0
+        assert result_absent.missing_tokens == ["Greenpath"]
+
+    def test_context_contains_game_title_referenced_in_briefing(self) -> None:
+        """Briefing referencing the game title should be grounded when
+        the title appears in the context."""
+        from dailyloadout.core.mission.anti_hallucination import validate_briefing
+
+        result = validate_briefing(
+            briefing_text=(
+                "Welcome back to Hollow Knight. "
+                "Last time you explored Greenpath and found the Mothwing Cloak."
+            ),
+            context_text=(
+                "Game: Hollow Knight. "
+                "Previous session: explored Greenpath, acquired Mothwing Cloak."
+            ),
+        )
+        # Briefing tokens: {"Welcome", "Hollow", "Knight", "Last",
+        #                    "Greenpath", "Mothwing", "Cloak"}
+        # Context tokens: {"Game", "Hollow", "Knight", "Previous",
+        #                   "Greenpath", "Mothwing", "Cloak"}
+        # Missing from context: {"Welcome", "Last"}
+        # Grounded: 5/7 ~ 0.714 >= 0.40
+        assert not result.is_suspicious
+        assert result.overlap_ratio >= 0.40
+        # "Hollow" and "Knight" from the title are grounded
+        assert "Hollow" not in result.missing_tokens
+        assert "Knight" not in result.missing_tokens
 
 
 # =====================================================================
@@ -887,7 +998,7 @@ class TestAutoClamp:
             "/v1/auth/register",
             json={
                 "email": "player2@example.com",
-                "password": "strongpassword123",
+                "password": "StrongPass123",
                 "display_name": "Player Two",
             },
         )

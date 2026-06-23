@@ -19,7 +19,7 @@ class CaptureTextRequest(BaseModel):
     """Body for ``POST /v1/captures/text``."""
 
     raw_text: str = Field(min_length=3, max_length=2000)
-    input_type: str = "text"
+    input_type: Literal["text", "voice"] = "text"
 
 
 class TranscribeResponse(BaseModel):

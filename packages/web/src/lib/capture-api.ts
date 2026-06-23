@@ -126,24 +126,7 @@ export async function confirmCandidate(
 }
 
 export async function rejectCandidate(captureId: string, candidateId: string): Promise<void> {
-	// The API returns 204 No Content. apiFetch always calls res.json() which
-	// would fail on an empty body, so we use fetch directly for this endpoint.
-	const headers: Record<string, string> = {};
-	const accessToken = getAccessToken();
-	if (accessToken) {
-		headers.Authorization = `Bearer ${accessToken}`;
-	}
-
-	const res = await fetch(
-		`${BASE_URL}/v1/captures/${captureId}/candidates/${candidateId}/reject`,
-		{
-			method: "POST",
-			headers,
-		},
-	);
-
-	if (!res.ok) {
-		const errBody = await res.text();
-		throw new Error(errBody || `Request failed: ${res.status}`);
-	}
+	await apiFetch<void>(`/v1/captures/${captureId}/candidates/${candidateId}/reject`, {
+		method: "POST",
+	});
 }

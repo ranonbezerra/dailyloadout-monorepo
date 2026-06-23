@@ -24,7 +24,7 @@ def _make_settings(**overrides: object) -> Settings:
 
 class TestLLMFactory:
     def test_test_env_returns_dummy(self) -> None:
-        s = _make_settings(app_env="test")
+        s = _make_settings(app_env="testing")
         client = get_llm_client(s)
         assert isinstance(client, DummyLLMClient)
 

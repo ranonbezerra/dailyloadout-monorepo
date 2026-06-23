@@ -75,3 +75,12 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+if (
+    settings.app_env not in ("development", "testing")
+    and settings.secret_key == "change-me-in-prod"
+):
+    raise RuntimeError(
+        "FATAL: secret_key is still the default value. "
+        "Set the SECRET_KEY environment variable before running in production."
+    )
