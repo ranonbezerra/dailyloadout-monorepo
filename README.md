@@ -4,7 +4,7 @@
 
 # DailyLoadout
 
-> *Less deciding. More playing.* A personal gaming backlog manager with local AI. No streaks, no guilt, no Steam integration. Voice/photo/text capture, "previously on..." briefings before each session, and a 3-question daily loadout that picks one game for you.
+> *Less deciding. More playing.* A self-hosted gaming companion and production-AI systems showcase. Voice/photo/text capture, structured mission state, "previously on..." briefings before each session, and a 3-question daily loadout that picks one game for you.
 
 [![CI – API](https://img.shields.io/badge/CI-API-blue)]() [![CI – App](https://img.shields.io/badge/CI-App-blue)]() [![CI – Web](https://img.shields.io/badge/CI-Web-blue)]() [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 
@@ -24,15 +24,25 @@ No streaks. No "X days without playing" guilt. Dropping a game is a legitimate d
 
 ---
 
-## Why this repo exists
+## Why This Repo Exists
 
-DailyLoadout is a personal app I use daily **and** my engineering showcase. The full app is open source, runs entirely on your own hardware, and uses **local LLMs via Ollama** instead of cloud APIs.
+DailyLoadout is a production-style AI application wrapped in a real product I use: a full-stack, self-hosted system for turning messy player input into structured state, recommendations, and mission briefings. It runs entirely on your own hardware and uses **local LLMs via Ollama** instead of requiring cloud APIs.
 
-Three things make this repo worth reading as code:
+This is not a prompt demo. The interesting parts are the reliability boundaries around probabilistic systems:
 
-- **Local-first AI.** No OpenAI key, no Anthropic key, no cloud bill. Ollama runs Gemma/Llama locally for parsing, briefings, and loadout reasoning. Faster-Whisper runs local for speech-to-text.
-- **Anti-hallucination as a feature.** Every LLM output is validated against context before being shown to the user. Briefings flag themselves as "suspicious" when output drifts too far from input. Loadout suggestions are validated against the user's actual library — UUIDs that don't exist trigger a reroll.
+- **Local-first AI with provider boundaries.** The API talks to an `AbstractLLMClient`; Ollama is the real local backend and `DummyLLMClient` keeps tests deterministic. Faster-Whisper handles speech-to-text locally.
+- **Structured outputs with deterministic guards.** Capture parsing, debrief extraction, and loadout picks are treated as untrusted model output. The app validates JSON shape, candidate IDs, user ownership, and context overlap before persisting or showing results.
+- **Anti-hallucination as a product feature.** Briefings are checked against the user's actual mission context. Suspicious output is flagged instead of silently trusted. Loadout suggestions must reference an existing library entry; invalid UUIDs trigger a reroll path.
 - **State machines for AI workflows.** Captures cross three systems (LLM, optional IGDB, user review). They're modeled as an explicit state machine (`queued → processing → review → committed/partially_committed/failed/cancelled`), making retries and partial commits safe.
+- **Failure handling over happy paths.** Background debrief extraction has retry/backoff behavior and synchronous fallback before briefing generation. Capture processing degrades to review/failed states instead of corrupting the library.
+
+The repo also includes versioned AI-engineering workflow files (`CLAUDE.md`, `.claude/`, `.mcp.json`) that document how agents, project conventions, review flows, and MCP tools are expected to work against this codebase.
+
+### Agentic Roadmap
+
+The next implementation track is a LangGraph-based **Deep Research Briefing**: a local SearXNG + Ollama graph that searches, grades, refines, synthesizes, spoiler-filters, and then reuses the existing anti-hallucination validator before returning a briefing. The current single-shot briefing remains the fast path and fallback.
+
+That design is documented in [docs/DEEP_RESEARCH_BRIEFING.md](./docs/DEEP_RESEARCH_BRIEFING.md) and tracked in [ROADMAP.md](./ROADMAP.md). It is intentionally documented separately because the shipped v1 path is already useful and the LangGraph path adds long-running orchestration, bounded loops, cancellation, and graceful degradation.
 
 ---
 
@@ -74,10 +84,10 @@ Run `make help` to see all available commands.
 
 | Package | Stack |
 |---|---|
-| `packages/api/` | Python 3.14 · FastAPI · Pydantic v2 · SQLAlchemy 2 async · PostgreSQL 18 · Redis · arq · Poetry |
+| `packages/api/` | Python 3.14 · FastAPI · Pydantic v2 · SQLAlchemy 2 async · PostgreSQL 18 · Redis · Taskiq · Poetry |
 | `packages/app/` | Flutter 3.27+ · BLoC · go_router · dio · faster-whisper (server-side) |
 | `packages/web/` | Bun · Vite · React 19 · TypeScript · Mantine v8 · TanStack Query |
-| AI | **Ollama** (Gemma 3 4B + 12B, configurable) · **faster-whisper** local |
+| AI | `AbstractLLMClient` port · **Ollama** backend · deterministic dummy backend for tests · **faster-whisper** local |
 | Infra | Docker Compose · GitHub Actions · AGPL-3.0 |
 
 Detailed architecture in [ARCHITECTURE.md](./ARCHITECTURE.md).
@@ -97,10 +107,17 @@ Detailed architecture in [ARCHITECTURE.md](./ARCHITECTURE.md).
 - [x] **IGDB enrichment** (optional) — cover art, genres, release dates
 - [x] **Mission lifecycle** — start a session, write a debrief at the end
 - [x] **Briefing generation** — LLM-generated "previously on..." with anti-hallucination validation
+- [x] **Structured debrief extraction** — async LLM extraction of next actions, location, quest, level, and notes
 - [x] **Daily Loadout** — 3 questions → 1 suggested game with reasoning
-- [x] **Analytics dashboard** (web) — play heatmap, genre distribution, mission timeline
+- [x] **Analytics dashboard** (web + mobile) — play heatmap, genre/platform distribution, mission timeline
 - [x] Single-user mode for personal self-hosting
 - [x] Mobile: iOS, Android
+
+### In Design / Next
+
+- [ ] **Deep Research Briefing** — LangGraph graph over local SearXNG + Ollama, with bounded search/refine loops, spoiler filtering, anti-hallucination validation, and quick-briefing fallback.
+- [ ] **Backlog Concierge** — optional tool-using conversational agent over the user's real library, preserving the same UUID validation guard as Daily Loadout.
+- [ ] **Cloud provider adapters** — the runtime is provider-shaped today; cloud LLM providers such as Bedrock belong behind the existing LLM port, not in product code.
 
 ### Out of scope (deliberate)
 
@@ -109,7 +126,7 @@ Detailed architecture in [ARCHITECTURE.md](./ARCHITECTURE.md).
 - No social features. Not a review site, not Backloggd.
 - No achievement/trophy tracking.
 
-### Future (issues are open)
+### Future
 
 - Multi-device offline sync with conflict resolution
 - Push notifications (paused game reminders)
@@ -126,9 +143,16 @@ For Ollama model configuration and hardware requirements, see [docs/OLLAMA.md](.
 
 ---
 
-## Contributing
+## Development Workflow
 
-This is primarily a personal project, but PRs are welcome for bug fixes, documentation, and the items on the "Future" list. For larger changes, open an issue first.
+This repo is built with AI-assisted engineering as a first-class workflow, not an afterthought:
+
+- `CLAUDE.md` captures project architecture, safety rules, and command conventions.
+- `.claude/agents/` contains role-specific agents for FastAPI, React, Flutter, architecture, testing, review, and release work.
+- `.claude/skills/` captures repeatable repo-specific procedures such as API testing and Alembic migrations.
+- `.mcp.json` documents MCP integration points for local development.
+
+PRs are welcome for bug fixes, documentation, and the items on the "Future" list. For larger changes, open an issue first.
 
 ---
 

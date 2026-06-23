@@ -9,6 +9,8 @@ APP_DIR := packages/app
 WEB_DIR := packages/web
 FLUTTER := fvm flutter
 DART    := fvm dart
+APP_API_URL := $(shell sed -n 's/^API_URL=//p' $(APP_DIR)/.env 2>/dev/null)
+APP_DART_DEFINES := $(if $(APP_API_URL),--dart-define=API_URL=$(APP_API_URL),)
 
 # Load root .env for infrastructure vars (ports, PG credentials)
 ifneq (,$(wildcard .env))
@@ -166,7 +168,7 @@ web-install: ## Install web dependencies
 
 .PHONY: app
 app: ## Run Flutter app (uses preferred device, or: make app d=chrome)
-	cd $(APP_DIR) && $(FLUTTER) run $(if $(d),-d $(d))
+	cd $(APP_DIR) && $(FLUTTER) run $(if $(d),-d $(d)) $(APP_DART_DEFINES)
 
 .PHONY: app-devices
 app-devices: ## List available Flutter devices

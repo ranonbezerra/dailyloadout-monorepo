@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:app/app/shell_page.dart';
 import 'package:app/core/library/library_repository.dart';
+import 'package:app/features/analytics/view/analytics_page.dart';
 import 'package:app/features/auth/bloc/auth_bloc.dart';
 import 'package:app/features/auth/view/login_page.dart';
 import 'package:app/features/auth/view/register_page.dart';
@@ -78,6 +79,10 @@ GoRouter createRouter(
           GoRoute(
             path: '/loadout',
             builder: (context, state) => const LoadoutPage(),
+          ),
+          GoRoute(
+            path: '/analytics',
+            builder: (context, state) => const AnalyticsPage(),
           ),
         ],
       ),

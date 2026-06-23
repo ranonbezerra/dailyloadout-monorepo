@@ -15,6 +15,7 @@ class ShellPage extends StatelessWidget {
     final location = GoRouterState.of(context).matchedLocation;
     if (location.startsWith('/loadout')) return 1;
     if (location.startsWith('/missions')) return 2;
+    if (location.startsWith('/analytics')) return 3;
     return 0; // /library is the default
   }
 
@@ -26,6 +27,8 @@ class ShellPage extends StatelessWidget {
         context.go('/loadout');
       case 2:
         context.go('/missions');
+      case 3:
+        context.go('/analytics');
     }
   }
 
@@ -49,6 +52,7 @@ class ShellPage extends StatelessWidget {
           ),
           BottomNavigationBarItem(icon: Icon(Icons.casino), label: 'Loadout'),
           BottomNavigationBarItem(icon: Icon(Icons.flag), label: 'Missions'),
+          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Stats'),
         ],
       ),
     );

@@ -1,9 +1,11 @@
 import 'package:app/app/app.dart';
+import 'package:app/core/analytics/analytics_repository.dart';
 import 'package:app/core/auth/auth_repository.dart';
 import 'package:app/core/capture/capture_repository.dart';
 import 'package:app/core/library/library_repository.dart';
 import 'package:app/core/loadout/loadout_repository.dart';
 import 'package:app/core/mission/mission_repository.dart';
+import 'package:app/features/analytics/bloc/analytics_bloc.dart';
 import 'package:app/features/auth/bloc/auth_bloc.dart';
 import 'package:app/features/capture/bloc/capture_bloc.dart';
 import 'package:app/features/library/bloc/library_bloc.dart';
@@ -24,17 +26,21 @@ class MockMissionRepository extends Mock implements MissionRepository {}
 
 class MockLoadoutRepository extends Mock implements LoadoutRepository {}
 
+class MockAnalyticsRepository extends Mock implements AnalyticsRepository {}
+
 void main() {
   late MockAuthRepository mockAuthRepository;
   late MockLibraryRepository mockLibraryRepository;
   late MockCaptureRepository mockCaptureRepository;
   late MockMissionRepository mockMissionRepository;
   late MockLoadoutRepository mockLoadoutRepository;
+  late MockAnalyticsRepository mockAnalyticsRepository;
   late AuthBloc authBloc;
   late LibraryBloc libraryBloc;
   late CaptureBloc captureBloc;
   late MissionBloc missionBloc;
   late LoadoutBloc loadoutBloc;
+  late AnalyticsBloc analyticsBloc;
 
   setUp(() {
     mockAuthRepository = MockAuthRepository();
@@ -42,6 +48,7 @@ void main() {
     mockCaptureRepository = MockCaptureRepository();
     mockMissionRepository = MockMissionRepository();
     mockLoadoutRepository = MockLoadoutRepository();
+    mockAnalyticsRepository = MockAnalyticsRepository();
 
     // Stub the hasTokens call that AppStarted will trigger.
     when(() => mockAuthRepository.hasTokens()).thenAnswer((_) async => false);
@@ -51,6 +58,7 @@ void main() {
     captureBloc = CaptureBloc(captureRepository: mockCaptureRepository);
     missionBloc = MissionBloc(missionRepository: mockMissionRepository);
     loadoutBloc = LoadoutBloc(loadoutRepository: mockLoadoutRepository);
+    analyticsBloc = AnalyticsBloc(analyticsRepository: mockAnalyticsRepository);
   });
 
   tearDown(() {
@@ -59,6 +67,7 @@ void main() {
     captureBloc.close();
     missionBloc.close();
     loadoutBloc.close();
+    analyticsBloc.close();
   });
 
   Widget buildSubject() {
@@ -68,6 +77,7 @@ void main() {
       captureBloc: captureBloc,
       missionBloc: missionBloc,
       loadoutBloc: loadoutBloc,
+      analyticsBloc: analyticsBloc,
       libraryRepository: mockLibraryRepository,
     );
   }
