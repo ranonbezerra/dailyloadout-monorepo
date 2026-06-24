@@ -37,6 +37,25 @@ class CandidateConfirmRequest(BaseModel):
     status: LibraryStatus = "backlog"
 
 
+class BulkConfirmRequest(BaseModel):
+    """Body for ``POST /v1/captures/{id}/candidates/bulk-confirm``.
+
+    Confirm the listed candidates onto *platform_id*; every other pending
+    candidate in the capture is rejected. Commits a whole library import at once.
+    """
+
+    confirm_public_ids: list[UUID] = Field(default_factory=list)
+    platform_id: int
+    status: LibraryStatus = "backlog"
+
+
+class BulkConfirmResponse(BaseModel):
+    """Outcome of a bulk confirm: how many were committed vs rejected."""
+
+    confirmed: int
+    rejected: int
+
+
 # ---------------------------------------------------------------------------
 # Response schemas
 # ---------------------------------------------------------------------------
@@ -111,6 +130,8 @@ CandidateStatus = Literal["pending", "confirmed", "rejected"]
 
 
 __all__ = [
+    "BulkConfirmRequest",
+    "BulkConfirmResponse",
     "CandidateConfirmRequest",
     "CandidateStatus",
     "CaptureCandidateResponse",

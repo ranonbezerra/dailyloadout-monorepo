@@ -64,6 +64,8 @@ Each gaming session is a **mission**. The app is your **tactical operator** — 
 4. **No guilt mechanics** — no streaks, no "you haven't played X days", no hours ranking. Dropping a game is a legitimate decision, not a failure.
 5. **No Steam/PSN/Nintendo integration.** Deliberate decision — APIs are restrictive, require platform login that breaks UX, and aggravate the problem (importing 200 games you never opened). Capture is manual with AI assistance.
 
+> **Metadata catalog ≠ account integration.** Bulk library import (Epic 14) lets a user *photograph* their library list and reads the text with OCR. This is **not** an account link: no Steam/PSN/Nintendo login, no playtime, achievements, or library sync via official APIs. Cleaning the extracted titles against a canonical games-metadata catalog (IGDB/RAWG) is a reference-dictionary lookup, not a connected account — a different category entirely. The user's independence from platform accounts stays intact.
+
 ### Non-goals
 
 - Not a social network. No feeds, no friends, no comments.

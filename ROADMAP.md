@@ -797,18 +797,18 @@ infrastructure/
 
 ### Tasks (spike)
 
-- [ ] `infrastructure/ocr/`: `AbstractOCRClient.extract_lines()` + `TesseractOCRClient` (with preprocessing) + `VisionOCRClient` fallback + `DummyOCRClient` + factory by `OCR_PROVIDER`
-- [ ] Image preprocessing util (grayscale, adaptive threshold, deskew, upscale) with a tunable **confidence threshold** that decides the Tesseract→vision fallback
-- [ ] `infrastructure/catalog/matcher.py`: fuzzy-match OCR lines → canonical titles via the Epic 3 IGDB client (trigram/embedding), returning match confidence; no LLM call
-- [ ] Extend the capture worker: new `input_type='library_import'` path — OCR → catalog match → emit many `capture_candidates` in one capture (raise/replace the Epic 5 limit of 12 for this path)
-- [ ] Endpoint `POST /v1/captures/library-import` (multipart, multiple images allowed); returns a capture with a batch of candidates
-- [ ] Bulk confirm endpoint: `POST /v1/captures/{public_id}/candidates/bulk-confirm` (accept a list, reject the rest) so the user commits 50–100 entries in one call
-- [ ] **Per-day import cap** (images/day) enforced on the free tier; vision-fallback calls additionally capped and usage-logged (abuse + cost guard)
-- [ ] Per-platform capture hints: small annotated assets + a platform picker (Steam/Xbox/GOG/PSN/Epic/Switch) that sets the right hint and parsing profile (`list-view` vs `purchase-history` layout)
-- [ ] App: `LibraryImportPage` — platform picker → hint screen → multi-image picker → **checkbox confirmation list** (select-all default, untick the wrong rows) → bulk confirm
-- [ ] Web: equivalent `/library/import` flow (drag-drop multiple screenshots → confirmation table)
-- [ ] Pytest: `DummyOCRClient` returning 1/40/100 lines; low-confidence path triggers the vision fallback; catalog matcher corrects a dirty title; bulk-confirm commits N entries; per-day cap returns 429
-- [ ] `PRODUCT.md`: one paragraph clarifying "metadata catalog ≠ account integration"
+- [x] `infrastructure/ocr/`: `AbstractOCRClient.extract_lines()` + `TesseractOCRClient` (preprocessing) + `VisionOCRClient` fallback + `DummyOCRClient` + factory by `OCR_PROVIDER`/`OCR_FALLBACK_PROVIDER`
+- [x] Image preprocessing (grayscale, autocontrast, upscale, binarize) with a tunable `ocr_confidence_threshold` that decides the Tesseract→vision fallback
+- [x] `infrastructure/catalog/matcher.py`: fuzzy-match (rapidfuzz) OCR lines → canonical titles via the Epic 3 IGDB client, returning match confidence; no LLM call. Dummy matcher for CI.
+- [x] New `workers/library_import_processor.py` `input_type='library_import'` path — OCR → confidence gate → catalog match → batch `capture_candidates` (cap lifted to `library_import_max_candidates`)
+- [x] Endpoint `POST /v1/captures/library-import` (multipart, multiple images) → capture with a batch of candidates
+- [x] Bulk confirm endpoint `POST /v1/captures/{public_id}/candidates/bulk-confirm` (confirm a list, reject the rest) — commits 50–100 entries in one call
+- [x] **Per-day import cap** (images/day) → 429, plus a capped+logged vision-fallback, via a reusable `usage_counters` table
+- [ ] Per-platform capture hints: small annotated assets + a platform picker (Steam/Xbox/GOG/PSN/Epic/Switch) that sets the right hint and parsing profile (`list-view` vs `purchase-history` layout) — *client phase*
+- [ ] App: `LibraryImportPage` — platform picker → hint screen → multi-image picker → **checkbox confirmation list** → bulk confirm — *client phase*
+- [ ] Web: equivalent `/library/import` flow (drag-drop multiple screenshots → confirmation table) — *client phase*
+- [x] Pytest: `DummyOCRClient` 1/40/100 lines; low-confidence triggers the vision fallback (+ cap); catalog matcher corrects a dirty title; bulk-confirm commits N + rejects the rest; per-day cap returns 429
+- [x] `PRODUCT.md`: paragraph clarifying "metadata catalog ≠ account integration"
 
 ### Definition of Done
 
