@@ -6,8 +6,9 @@ from uuid import UUID
 
 import structlog
 from fastapi import HTTPException, status
-from sqlalchemy.exc import IntegrityError
 
+from dailyloadout.core.loadout.pick import pick_one
+from dailyloadout.core.mission.start import create_mission_for_entry
 from dailyloadout.infrastructure.db.models import Loadout
 from dailyloadout.infrastructure.db.repositories.library import LibraryRepository
 from dailyloadout.infrastructure.db.repositories.loadout import LoadoutRepository
@@ -16,7 +17,7 @@ from dailyloadout.infrastructure.llm.base import AbstractLLMClient
 
 logger = structlog.get_logger()
 
-MAX_REROLLS = 1
+_ACTIVE_MISSION_DETAIL = "You already have an active mission. End it first."
 
 
 class LoadoutService:
@@ -114,8 +115,14 @@ class LoadoutService:
                 break
 
             valid_ids = {str(c["public_id"]) for c in remaining}
-            picked = await self._pick_one(
-                remaining, valid_ids, mood, available_minutes, mental_energy, context
+            picked = await pick_one(
+                self._llm_client,
+                remaining,
+                valid_ids,
+                mood,
+                available_minutes,
+                mental_energy,
+                context,
             )
 
             if picked is None:
@@ -152,55 +159,41 @@ class LoadoutService:
 
         return results
 
-    async def _pick_one(
+    async def create_and_start(
         self,
-        candidates: list[dict[str, object]],
-        valid_ids: set[str],
+        user_id: int,
         mood: str,
         available_minutes: int,
         mental_energy: str,
         context: str | None = None,
-    ) -> tuple[str, str] | None:
-        """Call LLM once (with reroll) and return (public_id, reasoning)."""
-        for attempt in range(1 + MAX_REROLLS):
-            try:
-                pick = await self._llm_client.pick_loadout_game(
-                    candidates=candidates,
-                    mood=mood,
-                    available_minutes=available_minutes,
-                    mental_energy=mental_energy,
-                    context=context,
-                )
-            except Exception:
-                logger.warning(
-                    "loadout_llm_pick_failed",
-                    exc_info=True,
-                    attempt=attempt,
-                )
-                continue
+        briefing_text: str | None = None,
+        cooldown_hours: int = 12,
+    ) -> Loadout:
+        """AI-pick one game and start a mission for it in a single step.
 
-            if pick.library_entry_public_id in valid_ids:
-                return pick.library_entry_public_id, pick.reasoning
-
-            logger.warning(
-                "loadout_invalid_uuid",
-                returned_id=pick.library_entry_public_id,
-                attempt=attempt,
+        The DECIDE=AI entrance to the unified pipeline (ROADMAP Epic 12):
+        records the Loadout decision, then accepts it through the shared
+        orchestrator (optionally with a pre-generated *briefing_text*).
+        """
+        # Fail fast before spending an LLM pick if a mission is already active.
+        if await self._mission_repo.get_active_for_user(user_id) is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=_ACTIVE_MISSION_DETAIL,
             )
-
-        return None
+        loadout = await self.create_loadout(
+            user_id, mood, available_minutes, mental_energy, context, cooldown_hours
+        )
+        return await self.accept_loadout(user_id, loadout.public_id, briefing_text=briefing_text)
 
     async def accept_loadout(
         self,
         user_id: int,
         loadout_public_id: UUID,
+        briefing_text: str | None = None,
     ) -> Loadout:
-        """Accept a loadout suggestion and start a mission.
-
-        Raises:
-            HTTPException 404: Loadout not found.
-            HTTPException 409: Loadout already actioned or active mission exists.
-        """
+        """Accept a loadout and start a mission via the shared orchestrator
+        (ROADMAP Epic 12), optionally with a pre-generated *briefing_text*."""
         loadout = await self._loadout_repo.get_by_public_id(loadout_public_id, user_id=user_id)
         if loadout is None:
             raise HTTPException(
@@ -214,31 +207,32 @@ class LoadoutService:
                 detail=f"Loadout already {loadout.action}",
             )
 
-        # Check for active mission.
-        active = await self._mission_repo.get_active_for_user(user_id)
-        if active is not None:
+        entry = loadout.library_entry
+        if entry is None:
             raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="You already have an active mission. End it first.",
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="The suggested game is no longer in your library.",
             )
 
-        # Create the mission.
-        try:
-            mission = await self._mission_repo.create(
-                user_id=user_id,
-                library_entry_id=loadout.library_entry_id,  # type: ignore[arg-type]
-            )
-        except IntegrityError:
+        # Early active-mission check for a clean 409 (orchestrator maps the DB
+        # constraint as a backstop).
+        if await self._mission_repo.get_active_for_user(user_id) is not None:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="You already have an active mission. End it first.",
-            ) from None
+                detail=_ACTIVE_MISSION_DETAIL,
+            )
 
-        # Update loadout.
+        mission = await create_mission_for_entry(
+            mission_repo=self._mission_repo,
+            library_repo=self._library_repo,
+            user_id=user_id,
+            entry=entry,
+            briefing_text=briefing_text,
+        )
+
         await self._loadout_repo.set_action(loadout.id, "accepted")
         await self._loadout_repo.set_mission(loadout.id, mission.id)
 
-        # Re-fetch for response.
         return await self._get_loadout(user_id, loadout_public_id)
 
     async def reject_loadout(

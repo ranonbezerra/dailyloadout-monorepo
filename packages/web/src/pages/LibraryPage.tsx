@@ -1,4 +1,5 @@
 import {
+	Anchor,
 	Badge,
 	Button,
 	Card,
@@ -12,10 +13,12 @@ import {
 	Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
+import { IconHistory } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { DataTable } from "mantine-datatable";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { QuickAddMenu } from "../components/QuickAddMenu";
 import {
 	useDeleteEntry,
@@ -64,6 +67,7 @@ const STATUS_OPTIONS: { value: LibraryStatus; label: string }[] = [
 const PAGE_SIZE = 50;
 
 export function LibraryPage() {
+	const navigate = useNavigate();
 	const [statusFilter, setStatusFilter] = useState("all");
 	const [expandedIds, setExpandedIds] = useState<string[]>([]);
 	const [textModalOpened, setTextModalOpened] = useState(false);
@@ -111,7 +115,18 @@ export function LibraryPage() {
 	return (
 		<Stack>
 			<Group justify="space-between">
-				<Title order={2}>Library</Title>
+				<Group gap="md" align="baseline">
+					<Title order={2}>Library</Title>
+					<Anchor
+						size="sm"
+						c="dimmed"
+						onClick={() => navigate("/captures")}
+						style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
+					>
+						<IconHistory size={14} />
+						Capture History
+					</Anchor>
+				</Group>
 				<QuickAddMenu
 					onText={() => setTextModalOpened(true)}
 					onVoice={() => setVoiceModalOpened(true)}

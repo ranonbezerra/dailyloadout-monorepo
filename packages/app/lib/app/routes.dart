@@ -21,6 +21,7 @@ import 'package:app/features/loadout/view/loadout_page.dart';
 import 'package:app/features/mission/view/mission_briefing_page.dart';
 import 'package:app/features/mission/view/mission_debrief_page.dart';
 import 'package:app/features/mission/view/missions_list_page.dart';
+import 'package:app/features/play/view/play_page.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -54,7 +55,7 @@ GoRouter createRouter(
       }
 
       // Redirect authenticated users away from auth/splash pages.
-      if (isOnAuthPage || isOnSplash) return '/library';
+      if (isOnAuthPage || isOnSplash) return '/play';
       return null;
     },
     routes: [
@@ -65,37 +66,55 @@ GoRouter createRouter(
         path: '/register',
         builder: (context, state) => const RegisterPage(),
       ),
-      GoRoute(path: '/', redirect: (context, state) => '/library'),
+      GoRoute(path: '/', redirect: (context, state) => '/play'),
 
-      // ---- Shell: bottom-nav tabs ----
+      // ---- Legacy path redirects (keep old deep links working) ----
+      GoRoute(path: '/loadout', redirect: (context, state) => '/play/loadout'),
+      GoRoute(path: '/missions', redirect: (context, state) => '/history'),
+      GoRoute(
+        path: '/concierge',
+        redirect: (context, state) => '/play/concierge',
+      ),
+
+      // ---- Shell: bottom-nav tabs (Play, Library, History, Stats) ----
       ShellRoute(
-        builder: (context, state, child) => ShellPage(
-          conciergeEnabled: featureFlags.backlogConcierge,
-          child: child,
-        ),
+        builder: (context, state, child) => ShellPage(child: child),
         routes: [
+          // Play hub and its nested surfaces.
+          GoRoute(
+            path: '/play',
+            builder: (context, state) =>
+                PlayPage(conciergeEnabled: featureFlags.backlogConcierge),
+            routes: [
+              GoRoute(
+                path: 'loadout',
+                builder: (context, state) => const LoadoutPage(),
+              ),
+              // Legacy nested path — the mission log now lives at /history.
+              GoRoute(
+                path: 'missions',
+                redirect: (context, state) => '/history',
+              ),
+              // Backlog Concierge — hidden unless the feature flag is enabled.
+              if (featureFlags.backlogConcierge)
+                GoRoute(
+                  path: 'concierge',
+                  builder: (context, state) => const ConciergePage(),
+                ),
+            ],
+          ),
           GoRoute(
             path: '/library',
             builder: (context, state) => const LibraryListPage(),
           ),
           GoRoute(
-            path: '/missions',
+            path: '/history',
             builder: (context, state) => const MissionsListPage(),
-          ),
-          GoRoute(
-            path: '/loadout',
-            builder: (context, state) => const LoadoutPage(),
           ),
           GoRoute(
             path: '/analytics',
             builder: (context, state) => const AnalyticsPage(),
           ),
-          // Backlog Concierge — hidden unless the feature flag is enabled.
-          if (featureFlags.backlogConcierge)
-            GoRoute(
-              path: '/concierge',
-              builder: (context, state) => const ConciergePage(),
-            ),
         ],
       ),
 

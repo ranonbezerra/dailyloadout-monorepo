@@ -6,7 +6,7 @@ This project follows [Conventional Commits v1.0.0](https://www.conventionalcommi
 
 ### Commit message structure
 
-```
+```text
 <type>(<scope>): <description>
 
 [optional body]
@@ -17,7 +17,7 @@ This project follows [Conventional Commits v1.0.0](https://www.conventionalcommi
 ### Types
 
 | Type | Purpose |
-|------|---------|
+| ------ | --------- |
 | `feat` | New feature |
 | `fix` | Bug fix |
 | `docs` | Documentation only |
@@ -31,7 +31,7 @@ This project follows [Conventional Commits v1.0.0](https://www.conventionalcommi
 ### Scopes
 
 | Scope | Package |
-|-------|---------|
+| ------- | --------- |
 | `api` | `packages/api/` |
 | `app` | `packages/app/` |
 | `web` | `packages/web/` |
@@ -43,13 +43,13 @@ Omit scope for cross-cutting changes (e.g., `docs: update ROADMAP.md`).
 
 Use `!` after the type/scope:
 
-```
+```text
 feat(api)!: change auth token format
 ```
 
 Or add a `BREAKING CHANGE:` footer:
 
-```
+```text
 feat(api): change auth token format
 
 BREAKING CHANGE: access tokens now use opaque format instead of JWT
@@ -57,7 +57,7 @@ BREAKING CHANGE: access tokens now use opaque format instead of JWT
 
 ### Examples
 
-```
+```text
 feat(api): add user registration endpoint
 feat(app): add login screen with AuthBloc
 fix(api): handle duplicate email on signup
@@ -70,7 +70,7 @@ chore(infra): add postgres init.sql extensions
 
 ## Branch Naming
 
-```
+```text
 epic/<number>-<slug>       # epic/1-auth
 ```
 

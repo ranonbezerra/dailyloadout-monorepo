@@ -6,6 +6,7 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockLibraryRepository extends Mock implements LibraryRepository {}
@@ -56,6 +57,11 @@ final _entryWithoutSummary = LibraryEntry(
 );
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(const UpdateEntry(publicId: 'x'));
+    registerFallbackValue(const DeleteEntry(publicId: 'x'));
+  });
+
   late MockLibraryBloc libraryBloc;
 
   setUp(() {
@@ -70,6 +76,28 @@ void main() {
     return BlocProvider<LibraryBloc>.value(
       value: libraryBloc,
       child: MaterialApp(home: LibraryDetailPage(entryPublicId: entryPublicId)),
+    );
+  }
+
+  /// Wrapper with a GoRouter so `context.go()` works after delete.
+  Widget buildRoutedSubject({String entryPublicId = 'entry-1'}) {
+    final router = GoRouter(
+      initialLocation: '/library/$entryPublicId',
+      routes: [
+        GoRoute(
+          path: '/library/:id',
+          builder: (_, __) => LibraryDetailPage(entryPublicId: entryPublicId),
+        ),
+        GoRoute(
+          path: '/library',
+          builder: (_, __) => const Scaffold(body: Text('Library stub')),
+        ),
+      ],
+    );
+
+    return BlocProvider<LibraryBloc>.value(
+      value: libraryBloc,
+      child: MaterialApp.router(routerConfig: router),
     );
   }
 
@@ -223,6 +251,86 @@ void main() {
       );
       expect(find.text('Cancel'), findsOneWidget);
       expect(find.text('Delete'), findsOneWidget);
+    });
+
+    testWidgets('save button dispatches UpdateEntry and shows SnackBar', (
+      tester,
+    ) async {
+      when(() => libraryBloc.state).thenReturn(
+        LibraryLoaded(entries: [_entryWithSummary], total: 1, hasMore: false),
+      );
+
+      await tester.pumpWidget(buildSubject());
+
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Notes'),
+        'New notes',
+      );
+      await tester.tap(find.byIcon(Icons.save));
+      await tester.pump();
+
+      verify(
+        () => libraryBloc.add(
+          const UpdateEntry(
+            publicId: 'entry-1',
+            status: 'playing',
+            notes: 'New notes',
+          ),
+        ),
+      ).called(1);
+      expect(find.text('Entry updated'), findsOneWidget);
+    });
+
+    testWidgets('cancelling delete dialog does not dispatch DeleteEntry', (
+      tester,
+    ) async {
+      when(() => libraryBloc.state).thenReturn(
+        LibraryLoaded(entries: [_entryWithSummary], total: 1, hasMore: false),
+      );
+
+      await tester.pumpWidget(buildSubject());
+
+      await tester.scrollUntilVisible(
+        find.text('Remove from Library'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Remove from Library'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      verifyNever(() => libraryBloc.add(any(that: isA<DeleteEntry>())));
+    });
+
+    testWidgets('confirming delete dispatches DeleteEntry and navigates', (
+      tester,
+    ) async {
+      when(() => libraryBloc.state).thenReturn(
+        LibraryLoaded(entries: [_entryWithSummary], total: 1, hasMore: false),
+      );
+
+      await tester.pumpWidget(buildRoutedSubject());
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.text('Remove from Library'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Remove from Library'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
+
+      verify(
+        () => libraryBloc.add(const DeleteEntry(publicId: 'entry-1')),
+      ).called(1);
+      expect(find.text('Library stub'), findsOneWidget);
     });
   });
 }

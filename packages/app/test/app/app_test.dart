@@ -65,7 +65,10 @@ void main() {
     libraryBloc = LibraryBloc(libraryRepository: mockLibraryRepository);
     captureBloc = CaptureBloc(captureRepository: mockCaptureRepository);
     missionBloc = MissionBloc(missionRepository: mockMissionRepository);
-    loadoutBloc = LoadoutBloc(loadoutRepository: mockLoadoutRepository);
+    loadoutBloc = LoadoutBloc(
+      loadoutRepository: mockLoadoutRepository,
+      missionRepository: mockMissionRepository,
+    );
     analyticsBloc = AnalyticsBloc(analyticsRepository: mockAnalyticsRepository);
     conciergeBloc = ConciergeBloc(conciergeRepository: mockConciergeRepository);
   });

@@ -37,9 +37,13 @@ class LoadoutRepository {
 
   /// Accepts a loadout suggestion and auto-starts a
   /// mission for it.
-  Future<Loadout> acceptLoadout(String publicId) async {
+  ///
+  /// When [briefingText] is provided it is forwarded to the backend so the
+  /// auto-started mission carries that briefing.
+  Future<Loadout> acceptLoadout(String publicId, {String? briefingText}) async {
     final response = await _apiClient.dio.post<Map<String, dynamic>>(
       '/v1/loadouts/$publicId/accept',
+      data: {if (briefingText != null) 'briefing_text': briefingText},
     );
     return Loadout.fromJson(response.data!);
   }

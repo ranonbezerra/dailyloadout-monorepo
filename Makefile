@@ -205,18 +205,18 @@ quality-api: ## Full API quality gate
 .PHONY: quality-web
 quality-web: ## Full Web quality gate
 	@echo "\n\033[1;36m══════ Web Quality Gate ══════\033[0m"
-	$(call check,Biome lint + format,  cd $(WEB_DIR) && bun run lint)
-	$(call check,TypeScript check,     cd $(WEB_DIR) && bun run tsc -b --noEmit)
-	$(call check,Vitest,               cd $(WEB_DIR) && bun run test)
-	$(call check,Vite build,           cd $(WEB_DIR) && bun run build > /dev/null 2>&1)
+	$(call check,Biome lint + format,    cd $(WEB_DIR) && bun run lint)
+	$(call check,TypeScript check,       cd $(WEB_DIR) && bun run tsc -b --noEmit)
+	$(call check,Vitest + coverage ≥90%, cd $(WEB_DIR) && bun run test --coverage)
+	$(call check,Vite build,             cd $(WEB_DIR) && bun run build > /dev/null 2>&1)
 	@echo "\033[1;32m══════ Web: All checks passed ══════\033[0m\n"
 
 .PHONY: quality-app
 quality-app: ## Full App quality gate
 	@echo "\n\033[1;36m══════ App Quality Gate ══════\033[0m"
-	$(call check,Dart format,      cd $(APP_DIR) && $(DART) format --set-exit-if-changed .)
-	$(call check,Flutter analyze,  cd $(APP_DIR) && $(FLUTTER) analyze)
-	$(call check,Flutter test,     cd $(APP_DIR) && $(FLUTTER) test)
+	$(call check,Dart format,             cd $(APP_DIR) && $(DART) format --set-exit-if-changed .)
+	$(call check,Flutter analyze,         cd $(APP_DIR) && $(FLUTTER) analyze)
+	$(call check,Flutter test + cov ≥90%, cd $(APP_DIR) && $(FLUTTER) test --coverage && ./tool/check_coverage.sh 90)
 	@echo "\033[1;32m══════ App: All checks passed ══════\033[0m\n"
 
 .PHONY: pre-commit

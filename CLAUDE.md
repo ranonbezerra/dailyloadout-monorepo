@@ -9,7 +9,7 @@ DailyLoadout is a gaming companion that helps players choose what to play. It co
 ## Stack
 
 | Package | Path | Stack |
-|---------|------|-------|
+| --------- | ------ | ------- |
 | API | `packages/api/` | Python 3.14, FastAPI, SQLAlchemy 2.x async, Alembic, Pydantic v2, Taskiq + Redis, Ollama LLM, faster-whisper STT |
 | Web | `packages/web/` | Bun, React 19, TypeScript, Mantine v7, TanStack Query v5, Biome |
 | App | `packages/app/` | Flutter 3.27+, Dart 3.6+, BLoC, go_router, dio |
@@ -42,12 +42,12 @@ make quality          # ALL quality gates (pre-commit + api + web)
 
 ## Architecture — Layer Discipline (strict)
 
-```
+```text
 API v1 Routers -> Core Services -> Infrastructure Repositories -> DB Models
 ```
 
 | Layer | Path | Responsibility |
-|-------|------|---------------|
+| ------- | ------ | --------------- |
 | Router | `api/v1/{domain}.py` | Parse request, validate, call service, return response. NO business logic. |
 | Service | `core/{domain}/service.py` | Business logic, orchestration. Calls repos only. NO direct DB access. |
 | Schemas | `core/{domain}/schemas.py` | Pydantic v2 request/response models |
@@ -81,7 +81,7 @@ API v1 Routers -> Core Services -> Infrastructure Repositories -> DB Models
 
 ## LLM Integration Pattern
 
-```
+```text
 Jinja2 template (prompts/*.j2)
     -> LLMClient.generate(prompt, model)
     -> Parse JSON response
@@ -97,7 +97,7 @@ Jinja2 template (prompts/*.j2)
 ## Background Jobs (Taskiq + Redis)
 
 | Task | Trigger | Purpose |
-|------|---------|---------|
+| ------ | --------- | --------- |
 | `extract_debrief_state_task` | Mission debrief submitted | Extract emotional state from debrief text via LLM |
 | `mission_auto_clamp` | Periodic | End missions older than 24h |
 | `loadout_auto_ignore` | Periodic | Ignore stale loadout suggestions |
@@ -107,6 +107,7 @@ Retry policy: exponential backoff (2s -> 4s -> 8s), max 3 retries.
 ## Quality Gates
 
 Run `make quality` before shipping. It runs:
+
 - Pre-commit hooks (detect-secrets, ruff, biome)
 - API: ruff lint + format + mypy + bandit + typos + file sizes + pytest >= 90%
 - Web: biome + tsc + vitest + vite build

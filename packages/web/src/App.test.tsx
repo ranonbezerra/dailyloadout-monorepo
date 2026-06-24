@@ -22,6 +22,7 @@ vi.mock("./contexts/AuthContext", () => ({
 	AuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
+vi.mock("./pages/PlayPage", () => ({ PlayPage: () => <div>PlayPage</div> }));
 vi.mock("./pages/LibraryPage", () => ({ LibraryPage: () => <div>LibraryPage</div> }));
 vi.mock("./pages/LoadoutPage", () => ({ LoadoutPage: () => <div>LoadoutPage</div> }));
 vi.mock("./pages/MissionsPage", () => ({ MissionsPage: () => <div>MissionsPage</div> }));
@@ -110,37 +111,56 @@ describe("App - authenticated layout", () => {
 		setAuthenticated();
 	});
 
-	it("redirects authenticated user on '/' to /library", () => {
+	it("redirects authenticated user on '/' to /play", () => {
 		renderApp(["/"]);
-		expect(screen.getByText("LibraryPage")).toBeInTheDocument();
+		expect(screen.getByText("PlayPage")).toBeInTheDocument();
 	});
 
 	it("displays the DailyLoadout brand text in the navbar", () => {
-		renderApp(["/library"]);
+		renderApp(["/play"]);
 		expect(screen.getByText("DailyLoadout")).toBeInTheDocument();
 	});
 
-	it("renders all five nav links", () => {
-		renderApp(["/library"]);
+	it("renders the primary nav links", () => {
+		renderApp(["/play"]);
+		expect(screen.getByText("Play")).toBeInTheDocument();
 		expect(screen.getByText("Library")).toBeInTheDocument();
-		expect(screen.getByText("Daily Loadout")).toBeInTheDocument();
-		expect(screen.getByText("Missions")).toBeInTheDocument();
-		expect(screen.getByText("Capture History")).toBeInTheDocument();
-		expect(screen.getByText("Analytics")).toBeInTheDocument();
+		expect(screen.getByText("History")).toBeInTheDocument();
+		expect(screen.getByText("Stats")).toBeInTheDocument();
 	});
 
 	it("renders the Sign out button", () => {
-		renderApp(["/library"]);
+		renderApp(["/play"]);
 		expect(screen.getByRole("button", { name: /sign out/i })).toBeInTheDocument();
 	});
 
-	it("renders LoadoutPage at /loadout", () => {
+	it("renders PlayPage at /play", () => {
+		renderApp(["/play"]);
+		expect(screen.getByText("PlayPage")).toBeInTheDocument();
+	});
+
+	it("renders LoadoutPage at /play/loadout", () => {
+		renderApp(["/play/loadout"]);
+		expect(screen.getByText("LoadoutPage")).toBeInTheDocument();
+	});
+
+	it("renders MissionsPage (Mission History) at /history", () => {
+		renderApp(["/history"]);
+		expect(screen.getByText("MissionsPage")).toBeInTheDocument();
+	});
+
+	it("redirects the old /loadout route to /play/loadout", () => {
 		renderApp(["/loadout"]);
 		expect(screen.getByText("LoadoutPage")).toBeInTheDocument();
 	});
 
-	it("renders MissionsPage at /missions", () => {
+	it("redirects the old /missions route to /history", () => {
 		renderApp(["/missions"]);
+		expect(screen.getByText("MissionsPage")).toBeInTheDocument();
+	});
+
+	it("redirects the old /play/missions route to /history", () => {
+		renderApp(["/play/missions"]);
 		expect(screen.getByText("MissionsPage")).toBeInTheDocument();
 	});
 
@@ -158,7 +178,7 @@ describe("App - authenticated layout", () => {
 		const logoutFn = vi.fn();
 		setAuthenticated(logoutFn);
 
-		renderApp(["/library"]);
+		renderApp(["/play"]);
 
 		const signOutButton = screen.getByRole("button", { name: /sign out/i });
 		fireEvent.click(signOutButton);
@@ -176,11 +196,24 @@ describe("App - NavLink navigation", () => {
 		setAuthenticated();
 	});
 
-	it("clicking 'Library' NavLink navigates to /library and shows LibraryPage", async () => {
-		renderApp(["/loadout"]);
+	it("clicking 'Play' NavLink navigates to /play and shows PlayPage", async () => {
+		renderApp(["/library"]);
 
-		// Verify we start at LoadoutPage
-		expect(screen.getByText("LoadoutPage")).toBeInTheDocument();
+		// Verify we start at LibraryPage
+		expect(screen.getByText("LibraryPage")).toBeInTheDocument();
+
+		fireEvent.click(screen.getByText("Play"));
+
+		await waitFor(() => {
+			expect(screen.getByText("PlayPage")).toBeInTheDocument();
+		});
+	});
+
+	it("clicking 'Library' NavLink navigates to /library and shows LibraryPage", async () => {
+		renderApp(["/play"]);
+
+		// Verify we start at PlayPage
+		expect(screen.getByText("PlayPage")).toBeInTheDocument();
 
 		fireEvent.click(screen.getByText("Library"));
 
@@ -189,49 +222,24 @@ describe("App - NavLink navigation", () => {
 		});
 	});
 
-	it("clicking 'Daily Loadout' NavLink navigates to /loadout and shows LoadoutPage", async () => {
-		renderApp(["/library"]);
+	it("clicking 'History' NavLink navigates to /history and shows the mission history", async () => {
+		renderApp(["/play"]);
 
-		// Verify we start at LibraryPage
-		expect(screen.getByText("LibraryPage")).toBeInTheDocument();
+		expect(screen.getByText("PlayPage")).toBeInTheDocument();
 
-		fireEvent.click(screen.getByText("Daily Loadout"));
-
-		await waitFor(() => {
-			expect(screen.getByText("LoadoutPage")).toBeInTheDocument();
-		});
-	});
-
-	it("clicking 'Missions' NavLink navigates to /missions and shows MissionsPage", async () => {
-		renderApp(["/library"]);
-
-		expect(screen.getByText("LibraryPage")).toBeInTheDocument();
-
-		fireEvent.click(screen.getByText("Missions"));
+		fireEvent.click(screen.getByText("History"));
 
 		await waitFor(() => {
 			expect(screen.getByText("MissionsPage")).toBeInTheDocument();
 		});
 	});
 
-	it("clicking 'Capture History' NavLink navigates to /captures and shows CapturesPage", async () => {
-		renderApp(["/library"]);
+	it("clicking 'Stats' NavLink navigates to /analytics and shows AnalyticsPage", async () => {
+		renderApp(["/play"]);
 
-		expect(screen.getByText("LibraryPage")).toBeInTheDocument();
+		expect(screen.getByText("PlayPage")).toBeInTheDocument();
 
-		fireEvent.click(screen.getByText("Capture History"));
-
-		await waitFor(() => {
-			expect(screen.getByText("CapturesPage")).toBeInTheDocument();
-		});
-	});
-
-	it("clicking 'Analytics' NavLink navigates to /analytics and shows AnalyticsPage", async () => {
-		renderApp(["/library"]);
-
-		expect(screen.getByText("LibraryPage")).toBeInTheDocument();
-
-		fireEvent.click(screen.getByText("Analytics"));
+		fireEvent.click(screen.getByText("Stats"));
 
 		await waitFor(() => {
 			expect(screen.getByText("AnalyticsPage")).toBeInTheDocument();

@@ -2,7 +2,7 @@
 
 v1 streams the *guarded* answer: the service runs the agent to completion and
 validates any recommendation, then this endpoint chunks the final text over SSE.
-Token-level streaming with an in-stream guard is a later epic (ROADMAP Epic 15).
+Token-level streaming with an in-stream guard is a later epic (ROADMAP Epic 16).
 """
 
 from __future__ import annotations

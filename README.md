@@ -1,12 +1,13 @@
-<p align="center">
-  <img src="./docs/brand/readme-hero.png" alt="DailyLoadout" width="100%" />
-</p>
-
 # DailyLoadout
+
+![DailyLoadout](./docs/brand/readme-hero.png)
 
 > *Less deciding. More playing.* A self-hosted gaming companion and production-AI systems showcase. Voice/photo/text capture, structured mission state, "previously on..." briefings before each session, and a 3-question daily loadout that picks one game for you.
 
-[![CI – API](https://img.shields.io/badge/CI-API-blue)]() [![CI – App](https://img.shields.io/badge/CI-App-blue)]() [![CI – Web](https://img.shields.io/badge/CI-Web-blue)]() [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
+[![CI – API](https://img.shields.io/badge/CI-API-blue)](https://github.com/ranonbezerra/dailyloadout-monorepo/actions/workflows/ci-api.yml)
+[![CI – App](https://img.shields.io/badge/CI-App-blue)](https://github.com/ranonbezerra/dailyloadout-monorepo/actions/workflows/ci-app.yml)
+[![CI – Web](https://img.shields.io/badge/CI-Web-blue)](https://github.com/ranonbezerra/dailyloadout-monorepo/actions/workflows/ci-web.yml)
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 
 ---
 
@@ -62,6 +63,7 @@ make up
 ```
 
 That starts:
+
 - **PostgreSQL 18** on `:5433`
 - **Redis 7** on `:6380`
 - **Ollama** on `:11434`
@@ -83,7 +85,7 @@ Run `make help` to see all available commands.
 ## Stack at a glance
 
 | Package | Stack |
-|---|---|
+| --- | --- |
 | `packages/api/` | Python 3.14 · FastAPI · Pydantic v2 · SQLAlchemy 2 async · PostgreSQL 18 · Redis · Taskiq · Poetry |
 | `packages/app/` | Flutter 3.27+ · BLoC · go_router · dio · faster-whisper (server-side) |
 | `packages/web/` | Bun · Vite · React 19 · TypeScript · Mantine v8 · TanStack Query |

@@ -265,6 +265,12 @@ describe("LibraryPage", () => {
 		expect(screen.getByRole("button", { name: "Quick Add" })).toBeInTheDocument();
 	});
 
+	it("renders a Capture History link in the header", () => {
+		renderPage();
+
+		expect(screen.getByText("Capture History")).toBeInTheDocument();
+	});
+
 	// -----------------------------------------------------------------------
 	// DataTable column rendering
 	// -----------------------------------------------------------------------

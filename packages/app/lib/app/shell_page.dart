@@ -3,43 +3,35 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 /// Shell scaffold that wraps the main authenticated pages with a
-/// [BottomNavigationBar] for tab-based navigation. The Concierge tab is only
-/// shown when [conciergeEnabled] (gated by a feature flag).
+/// [BottomNavigationBar] for tab-based navigation. The nav has four tabs: Play,
+/// Library, History, and Stats. The Loadout and Concierge surfaces live under
+/// the Play hub at `/play/*`; History is the mission log at `/history`.
 class ShellPage extends StatelessWidget {
-  const ShellPage({
-    required this.child,
-    this.conciergeEnabled = false,
-    super.key,
-  });
+  const ShellPage({required this.child, super.key});
 
   /// The current page rendered by [GoRouter] inside the shell.
   final Widget child;
 
-  /// Whether to surface the Backlog Concierge tab.
-  final bool conciergeEnabled;
-
-  /// Ordered tab definitions, with Concierge appended last when enabled.
+  /// Ordered tab definitions: Play, Library, History, Stats.
   List<_Tab> _tabs() {
     return [
+      const _Tab(path: '/play', icon: Icons.sports_esports, label: 'Play'),
       const _Tab(
         path: '/library',
         icon: Icons.videogame_asset,
         label: 'Library',
       ),
-      const _Tab(path: '/loadout', icon: Icons.casino, label: 'Loadout'),
-      const _Tab(path: '/missions', icon: Icons.flag, label: 'Missions'),
+      const _Tab(path: '/history', icon: Icons.history, label: 'History'),
       const _Tab(path: '/analytics', icon: Icons.bar_chart, label: 'Stats'),
-      if (conciergeEnabled)
-        const _Tab(
-          path: '/concierge',
-          icon: Icons.auto_awesome,
-          label: 'Concierge',
-        ),
     ];
   }
 
   int _currentIndex(BuildContext context, List<_Tab> tabs) {
     final location = GoRouterState.of(context).matchedLocation;
+    // Any `/play*` location maps to the Play tab.
+    if (location.startsWith('/play')) {
+      return tabs.indexWhere((t) => t.path == '/play');
+    }
     final index = tabs.indexWhere((t) => location.startsWith(t.path));
     return index < 0 ? 0 : index;
   }

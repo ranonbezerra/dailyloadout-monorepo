@@ -23,7 +23,7 @@ DailyLoadout is the companion that knows your backlog and hands you the right ga
 A single lit slot with a play triangle: the one game, chosen and ready. Coral means lit / chosen for now.
 
 | Asset | File | Use |
-|---|---|---|
+| --- | --- | --- |
 | Mark (color) | `docs/brand/dailyloadout-mark.svg` | Primary mark |
 | Mark (mono) | `docs/brand/dailyloadout-mark-mono.svg` | Single-color contexts |
 | Wordmark | `docs/brand/dailyloadout-wordmark.svg` | Text-only branding |
@@ -52,7 +52,7 @@ Dark-first. The base carries a faint indigo warmth (night den). Coral is the spo
 ### Core neutrals
 
 | Token | Hex | Use |
-|---|---|---|
+| --- | --- | --- |
 | `--bg` | `#121119` | App background (Midnight) |
 | `--bg-2` | `#17161F` | Secondary background |
 | `--surface` | `#1E1C28` | Cards, panels |
@@ -63,7 +63,7 @@ Dark-first. The base carries a faint indigo warmth (night den). Coral is the spo
 ### Text
 
 | Token | Hex | Use |
-|---|---|---|
+| --- | --- | --- |
 | `--text` | `#F0EDF5` | Primary text |
 | `--text-muted` | `#A39FB2` | Secondary text |
 | `--text-dim` | `#6B6679` | Tertiary, disabled |
@@ -71,7 +71,7 @@ Dark-first. The base carries a faint indigo warmth (night den). Coral is the spo
 ### Accents
 
 | Token | Hex | Use |
-|---|---|---|
+| --- | --- | --- |
 | `--coral` | `#FF5A4D` | Hero. Primary action, "playing", lit state |
 | `--coral-bright` | `#FF7A6E` | Glow, highlight, hover |
 | `--coral-deep` | `#E03E2F` | Pressed; coral-as-text on light |
@@ -83,7 +83,7 @@ Dark-first. The base carries a faint indigo warmth (night den). Coral is the spo
 ### Status colors (no-guilt mapping)
 
 | Status | Color | Note |
-|---|---|---|
+| --- | --- | --- |
 | Backlog | `#8A8699` | Neutral |
 | Playing | `--coral` | Lit / active |
 | Paused | `--violet` | Resting |
@@ -101,7 +101,7 @@ Dark-first. The base carries a faint indigo warmth (night den). Coral is the spo
 ## 4. Typography
 
 | Role | Family | Weights | Where |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Display | Outfit | 400, 500, 700 | Wordmark, headings, verdicts, big numbers |
 | Body / UI | Inter | 400, 500, 600 | All interface text and paragraphs |
 | Data (mono) | JetBrains Mono | 400, 500 | Timestamps, durations, counts (sparingly) |
@@ -121,7 +121,7 @@ Talk like the friend who knows your backlog. Concise. A little dry. Never hype, 
 ### Preferred lexicon
 
 | Prefer | Over |
-|---|---|
+| --- | --- |
 | Loadout / tonight's pick | Deploy |
 | Library / backlog | Mission log |
 | Session | Mission (in UI) |
@@ -143,7 +143,7 @@ Talk like the friend who knows your backlog. Concise. A little dry. Never hype, 
 ### Web (`packages/web/public/`)
 
 | File | Source | Purpose |
-|---|---|---|
+| --- | --- | --- |
 | `favicon.svg` | Brand mark as SVG | Modern browsers |
 | `favicon.ico` | Brand mark as ICO | Legacy browsers |
 | `og-image.png` | 1200x630 | Open Graph / Twitter card previews |
@@ -154,11 +154,12 @@ The `index.html` `<head>` includes all necessary meta tags for OG, Twitter card,
 ### Flutter app (`packages/app/`)
 
 | File | Purpose |
-|---|---|
+| --- | --- |
 | `assets/icon/app-icon.png` | 512x512 source icon |
 | Generated via `flutter_launcher_icons` | iOS/Android platform icons |
 
 To regenerate icons after changing the source:
+
 ```bash
 cd packages/app && dart run flutter_launcher_icons
 ```
@@ -170,7 +171,7 @@ Configuration is in `pubspec.yaml` under `flutter_launcher_icons:`.
 Tracked, canonical copies of brand assets for README, docs, and social:
 
 | File | Purpose |
-|---|---|
+| --- | --- |
 | `readme-hero.png` | README banner (1280x430) |
 | `readme-hero@2x.png` | Retina version |
 | `og-image.png` | Canonical OG image |

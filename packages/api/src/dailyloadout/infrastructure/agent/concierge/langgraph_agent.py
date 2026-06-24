@@ -3,7 +3,7 @@
 Uses ``ChatOllama.bind_tools`` (via ``create_react_agent``) for the tool-calling
 loop. The tool-using model defaults to ``qwen3:8b`` — Gemma is weak at
 function-calling. A shared in-memory checkpointer persists conversation threads
-across turns (upgrade to a Postgres saver in Epic 15).
+across turns (upgrade to a Postgres saver in Epic 16).
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 
 # Process-lifetime checkpointer: the agent is rebuilt per request (DI), so the
 # saver must live at module scope or multi-turn history is lost between turns.
-# Single-process only — a Postgres saver for multi-worker is ROADMAP Epic 15.
+# Single-process only — a Postgres saver for multi-worker is ROADMAP Epic 16.
 _CHECKPOINTER = MemorySaver()
 
 # Cap the context fed to the model each turn. Persistent memory replays the whole

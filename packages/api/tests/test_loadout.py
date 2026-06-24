@@ -161,6 +161,72 @@ class TestCreateLoadout:
 # =====================================================================
 
 
+class TestStartLoadout:
+    """POST /v1/loadouts/start — AI-pick + start in one step (Epic 12)."""
+
+    async def _start(
+        self,
+        client: AsyncClient,
+        headers: dict[str, str],
+        **extra: Any,
+    ) -> Any:
+        return await client.post(
+            "/v1/loadouts/start",
+            json={"mood": "chill", "available_minutes": 60, "mental_energy": "medium", **extra},
+            headers=headers,
+        )
+
+    async def test_start_picks_and_starts_mission(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+        seed_platforms: list[dict[str, Any]],
+    ) -> None:
+        await _create_library_entry(async_client, auth_headers, seed_platforms)
+
+        resp = await self._start(async_client, auth_headers)
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["action"] == "accepted"
+
+        active = (await async_client.get("/v1/missions/active", headers=auth_headers)).json()
+        assert active is not None
+        assert active["briefing_text"] is None
+
+    async def test_start_with_briefing(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+        seed_platforms: list[dict[str, Any]],
+    ) -> None:
+        await _create_library_entry(async_client, auth_headers, seed_platforms)
+
+        resp = await self._start(async_client, auth_headers, briefing_text="Resume at the gate.")
+        assert resp.status_code == 201, resp.text
+
+        active = (await async_client.get("/v1/missions/active", headers=auth_headers)).json()
+        assert active["briefing_text"] == "Resume at the gate."
+
+    async def test_start_no_eligible_games_returns_422(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        resp = await self._start(async_client, auth_headers)
+        assert resp.status_code == 422
+
+    async def test_start_with_active_mission_returns_409(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+        seed_platforms: list[dict[str, Any]],
+    ) -> None:
+        await _create_library_entry(async_client, auth_headers, seed_platforms)
+        assert (await self._start(async_client, auth_headers)).status_code == 201
+
+        # A mission is now active; a second start must be rejected.
+        assert (await self._start(async_client, auth_headers)).status_code == 409
+
+
 class TestAcceptLoadout:
     async def test_accept_creates_mission(
         self,
@@ -185,6 +251,28 @@ class TestAcceptLoadout:
         mission = resp.json()
         assert mission is not None
         assert mission["library_entry"]["public_id"] == loadout["library_entry"]["public_id"]
+
+    async def test_accept_with_briefing_starts_mission_with_briefing(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+        seed_platforms: list[dict[str, Any]],
+    ) -> None:
+        """Accepting a loadout can carry a pre-generated briefing (Epic 12)."""
+        await _create_library_entry(async_client, auth_headers, seed_platforms)
+        loadout = await _create_loadout(async_client, auth_headers)
+
+        resp = await async_client.post(
+            f"/v1/loadouts/{loadout['public_id']}/accept",
+            headers=auth_headers,
+            json={"briefing_text": "Previously on your game: you reached the gate."},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["action"] == "accepted"
+
+        resp = await async_client.get("/v1/missions/active", headers=auth_headers)
+        mission = resp.json()
+        assert mission["briefing_text"] == "Previously on your game: you reached the gate."
 
     async def test_accept_already_actioned(
         self,

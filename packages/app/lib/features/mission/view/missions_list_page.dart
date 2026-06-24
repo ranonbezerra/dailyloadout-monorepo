@@ -4,9 +4,11 @@ import 'package:app/features/mission/bloc/mission_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 
-/// Timeline of all missions.
+/// Read-only history of all missions.
+///
+/// Active-mission management (briefing / debrief) now lives on the Play page;
+/// this surface only lists past and ongoing missions.
 class MissionsListPage extends StatefulWidget {
   const MissionsListPage({super.key});
 
@@ -54,7 +56,7 @@ class _MissionsListPageState extends State<MissionsListPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Missions')),
+      appBar: AppBar(title: const Text('Mission History')),
       body: BlocBuilder<MissionBloc, MissionState>(
         builder: (context, state) {
           if (state is MissionLoading) {
@@ -122,13 +124,7 @@ class _MissionsListPageState extends State<MissionsListPage> {
                     );
                   }
                   final mission = state.missions[index];
-                  return _MissionCard(
-                    mission: mission,
-                    onViewBriefing: () =>
-                        context.push('/missions/${mission.publicId}/briefing'),
-                    onEndMission: () =>
-                        context.push('/missions/${mission.publicId}/debrief'),
-                  );
+                  return _MissionCard(mission: mission);
                 },
               ),
             );
@@ -165,8 +161,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Start a mission from your library to track '
-              'your gaming sessions.',
+              'Start one from the Play tab.',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -180,15 +175,9 @@ class _EmptyState extends StatelessWidget {
 }
 
 class _MissionCard extends StatelessWidget {
-  const _MissionCard({
-    required this.mission,
-    required this.onViewBriefing,
-    required this.onEndMission,
-  });
+  const _MissionCard({required this.mission});
 
   final MissionListItem mission;
-  final VoidCallback onViewBriefing;
-  final VoidCallback onEndMission;
 
   /// Whether this mission is currently active (no endedAt).
   bool get _isActive => mission.endedAt == null;
@@ -310,28 +299,6 @@ class _MissionCard extends StatelessWidget {
                 ),
               ],
             ),
-
-            // Action buttons for active missions
-            if (_isActive) ...[
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: onViewBriefing,
-                      child: const Text('View Briefing'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: onEndMission,
-                      child: const Text('End Mission'),
-                    ),
-                  ),
-                ],
-              ),
-            ],
           ],
         ),
       ),

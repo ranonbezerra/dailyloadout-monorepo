@@ -81,7 +81,7 @@ Serve `dist/` with nginx, Caddy, or any static file server.
 
 ### 1.6 Reverse proxy (Caddy example)
 
-```
+```caddyfile
 your-domain.com {
     handle /api/* {
         reverse_proxy localhost:8100
@@ -139,7 +139,7 @@ WantedBy=multi-user.target
 ### 2.1 Services
 
 | Service | Fly config |
-|---|---|
+| --- | --- |
 | API | `fly launch` in `packages/api/` with a `Dockerfile` |
 | Postgres | Fly Postgres (`fly postgres create`) |
 | Redis | Fly Redis (`fly redis create`) or Upstash |
@@ -224,7 +224,7 @@ poetry run uvicorn src.dailyloadout.main:app --host 0.0.0.0 --port ${PORT:-8100}
 Ollama can run on the same machine as the API or on a dedicated GPU instance.
 
 | Setup | Pros | Cons |
-|---|---|---|
+| --- | --- | --- |
 | Same machine (CPU) | Simple, no network latency | Slow inference on `gemma3:12b` |
 | Same machine (GPU) | Fast inference, simple | Requires GPU VPS (expensive) |
 | Separate GPU instance | API scales independently | Network latency, more infra |
@@ -239,7 +239,7 @@ See [OLLAMA.md](./OLLAMA.md) for model selection and hardware requirements.
 ## 5. Storage
 
 | Provider | Config | Use case |
-|---|---|---|
+| --- | --- | --- |
 | `local_fs` | `STORAGE_PROVIDER=local_fs` | Single machine, default |
 | `s3` | `STORAGE_PROVIDER=s3` + S3 env vars | Multi-instance, durable |
 

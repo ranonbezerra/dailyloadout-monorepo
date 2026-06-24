@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { useAcceptLoadout, useCreateLoadout, useRejectLoadout } from "../hooks/useLoadout";
+import { usePreviewBriefing } from "../hooks/useMission";
 import type { Loadout } from "../types/loadout";
 import { LoadoutPage } from "./LoadoutPage";
 
@@ -25,6 +26,10 @@ vi.mock("../hooks/useLoadout", () => ({
 	useRejectLoadout: vi.fn(),
 	useLoadouts: vi.fn(() => ({ data: null, isLoading: false })),
 	useLatestLoadout: vi.fn(() => ({ data: null, isLoading: false })),
+}));
+
+vi.mock("../hooks/useMission", () => ({
+	usePreviewBriefing: vi.fn(),
 }));
 
 vi.mock("@mantine/notifications", () => ({
@@ -111,6 +116,12 @@ function setDefaultMutationMocks() {
 		mutateAsync: vi.fn(),
 		isPending: false,
 	});
+	(usePreviewBriefing as Mock).mockReturnValue({
+		mutate: vi.fn(),
+		mutateAsync: vi.fn(),
+		isPending: false,
+		variables: undefined,
+	});
 }
 
 function renderPage() {
@@ -145,6 +156,12 @@ function setupCreateMockWithCapture() {
 		mutate: vi.fn(),
 		mutateAsync: vi.fn(),
 		isPending: false,
+	});
+	(usePreviewBriefing as Mock).mockReturnValue({
+		mutate: vi.fn(),
+		mutateAsync: vi.fn(),
+		isPending: false,
+		variables: undefined,
 	});
 	return mockMutate;
 }
@@ -254,6 +271,12 @@ describe("LoadoutPage", () => {
 			mutateAsync: vi.fn(),
 			isPending: false,
 		});
+		(usePreviewBriefing as Mock).mockReturnValue({
+			mutate: vi.fn(),
+			mutateAsync: vi.fn(),
+			isPending: false,
+			variables: undefined,
+		});
 
 		renderPage();
 
@@ -277,6 +300,12 @@ describe("LoadoutPage", () => {
 			mutate: vi.fn(),
 			mutateAsync: vi.fn(),
 			isPending: false,
+		});
+		(usePreviewBriefing as Mock).mockReturnValue({
+			mutate: vi.fn(),
+			mutateAsync: vi.fn(),
+			isPending: false,
+			variables: undefined,
 		});
 
 		renderPage();
@@ -421,7 +450,8 @@ describe("LoadoutPage - result cards", () => {
 
 		rollAndSetResults(mockMutate, [makeMockLoadout()]);
 
-		expect(screen.getByRole("button", { name: /Accept & Start Mission/i })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /Accept & Start/i })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /Get briefing/i })).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: /Reject/i })).toBeInTheDocument();
 	});
 
@@ -506,13 +536,16 @@ describe("LoadoutPage - accept and reject actions", () => {
 		renderPage();
 		rollAndSetResults(createMutate, [makeMockLoadout()]);
 
-		fireEvent.click(screen.getByRole("button", { name: /Accept & Start Mission/i }));
+		fireEvent.click(screen.getByRole("button", { name: /Accept & Start/i }));
 
 		expect(acceptMutate).toHaveBeenCalledTimes(1);
-		expect(acceptMutate.mock.calls[0][0]).toBe("lo-1");
+		expect(acceptMutate.mock.calls[0][0]).toEqual({
+			publicId: "lo-1",
+			briefingText: undefined,
+		});
 	});
 
-	it("updates result to accepted and navigates to /missions after accept", () => {
+	it("updates result to accepted and navigates to /play after accept", () => {
 		const createMutate = setupCreateMockWithCapture();
 		const acceptMutate = vi.fn();
 		(useAcceptLoadout as Mock).mockReturnValue({
@@ -526,7 +559,7 @@ describe("LoadoutPage - accept and reject actions", () => {
 		rollAndSetResults(createMutate, [makeMockLoadout(), makeMockLoadout2()]);
 
 		// Click Accept on the first card (there are two Accept buttons)
-		const acceptButtons = screen.getAllByRole("button", { name: /Accept & Start Mission/i });
+		const acceptButtons = screen.getAllByRole("button", { name: /Accept & Start/i });
 		fireEvent.click(acceptButtons[0]);
 
 		// Simulate accept onSuccess callback
@@ -541,7 +574,7 @@ describe("LoadoutPage - accept and reject actions", () => {
 		act(() => {
 			vi.advanceTimersByTime(600);
 		});
-		expect(mockNavigate).toHaveBeenCalledWith("/missions");
+		expect(mockNavigate).toHaveBeenCalledWith("/play");
 	});
 
 	it("calls rejectLoadout.mutate when Reject button is clicked", () => {
@@ -584,5 +617,100 @@ describe("LoadoutPage - accept and reject actions", () => {
 
 		// Since all results are now actioned, form should reappear
 		expect(screen.getByText("What's your mood?")).toBeInTheDocument();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Tests - briefing flow
+// ---------------------------------------------------------------------------
+
+describe("LoadoutPage - briefing flow", () => {
+	beforeEach(() => {
+		mockNavigate.mockClear();
+	});
+
+	it("calls previewBriefing.mutate with the library entry id when 'Get briefing' is clicked", () => {
+		const createMutate = setupCreateMockWithCapture();
+		const previewMutate = vi.fn();
+		(usePreviewBriefing as Mock).mockReturnValue({
+			mutate: previewMutate,
+			mutateAsync: vi.fn(),
+			isPending: false,
+			variables: undefined,
+		});
+
+		renderPage();
+		rollAndSetResults(createMutate, [makeMockLoadout()]);
+
+		fireEvent.click(screen.getByRole("button", { name: /Get briefing/i }));
+
+		expect(previewMutate).toHaveBeenCalledTimes(1);
+		expect(previewMutate.mock.calls[0][0]).toEqual({
+			libraryEntryPublicId: "le-1",
+			mode: "quick",
+		});
+	});
+
+	it("shows the briefing sub-card and 'Start with briefing' button once a briefing is fetched", () => {
+		const createMutate = setupCreateMockWithCapture();
+		const previewMutate = vi.fn();
+		(usePreviewBriefing as Mock).mockReturnValue({
+			mutate: previewMutate,
+			mutateAsync: vi.fn(),
+			isPending: false,
+			variables: undefined,
+		});
+
+		renderPage();
+		rollAndSetResults(createMutate, [makeMockLoadout()]);
+
+		fireEvent.click(screen.getByRole("button", { name: /Get briefing/i }));
+
+		// Simulate the preview onSuccess callback with a briefing text.
+		const onSuccess = previewMutate.mock.calls[0][1].onSuccess;
+		act(() => {
+			onSuccess({ briefingText: "Focus on collecting charms early." });
+		});
+
+		expect(screen.getByText("Briefing")).toBeInTheDocument();
+		expect(screen.getByText("Focus on collecting charms early.")).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /Start with briefing/i })).toBeInTheDocument();
+		// The pre-briefing buttons should no longer be visible.
+		expect(screen.queryByRole("button", { name: /Accept & Start/i })).not.toBeInTheDocument();
+		expect(screen.queryByRole("button", { name: /Get briefing/i })).not.toBeInTheDocument();
+	});
+
+	it("accepts with the fetched briefing text when 'Start with briefing' is clicked", () => {
+		const createMutate = setupCreateMockWithCapture();
+		const previewMutate = vi.fn();
+		const acceptMutate = vi.fn();
+		(usePreviewBriefing as Mock).mockReturnValue({
+			mutate: previewMutate,
+			mutateAsync: vi.fn(),
+			isPending: false,
+			variables: undefined,
+		});
+		(useAcceptLoadout as Mock).mockReturnValue({
+			mutate: acceptMutate,
+			mutateAsync: vi.fn(),
+			isPending: false,
+		});
+
+		renderPage();
+		rollAndSetResults(createMutate, [makeMockLoadout()]);
+
+		fireEvent.click(screen.getByRole("button", { name: /Get briefing/i }));
+		const onSuccess = previewMutate.mock.calls[0][1].onSuccess;
+		act(() => {
+			onSuccess({ briefingText: "Focus on collecting charms early." });
+		});
+
+		fireEvent.click(screen.getByRole("button", { name: /Start with briefing/i }));
+
+		expect(acceptMutate).toHaveBeenCalledTimes(1);
+		expect(acceptMutate.mock.calls[0][0]).toEqual({
+			publicId: "lo-1",
+			briefingText: "Focus on collecting charms early.",
+		});
 	});
 });

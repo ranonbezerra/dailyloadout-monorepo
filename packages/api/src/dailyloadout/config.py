@@ -55,6 +55,10 @@ class Settings(BaseSettings):
     # demands deliberation.
     concierge_agent_reasoning: bool = False
     concierge_max_tool_loops: int = 6
+    # Give the Concierge write tools (start_mission, generate_briefing,
+    # submit_retroactive_debrief, set_status) so it can drive the mission
+    # pipeline, not just recommend (ROADMAP Epic 12).
+    concierge_write_tools_enabled: bool = True
 
     # ── STT ──────────────────────────────────────────────────────────────
     stt_provider: str = "dummy"

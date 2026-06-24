@@ -12,7 +12,11 @@ export default defineConfig({
 		coverage: {
 			provider: "v8",
 			include: ["src/**/*.{ts,tsx}"],
+			// Exclude app bootstrap, type-only ambient files, and test helpers —
+			// non-logic that shouldn't count toward the coverage bar.
 			exclude: ["src/main.tsx", "src/vite-env.d.ts", "src/test/**"],
+			// Match the API gate's line-coverage bar so all packages hold ≥90%.
+			thresholds: { lines: 90 },
 		},
 	},
 });

@@ -6,7 +6,6 @@ from uuid import UUID
 
 import structlog
 from fastapi import HTTPException, status
-from sqlalchemy.exc import IntegrityError
 
 from dailyloadout.config import Settings
 from dailyloadout.config import settings as default_settings
@@ -16,6 +15,7 @@ from dailyloadout.core.mission.briefing import (
     generate_briefing,
     generate_briefing_for_mode,
 )
+from dailyloadout.core.mission.start import create_mission_for_entry
 from dailyloadout.infrastructure.agent.base import AbstractBriefingAgent
 from dailyloadout.infrastructure.db.models import LibraryEntry, Mission
 from dailyloadout.infrastructure.db.repositories.library import LibraryRepository
@@ -86,22 +86,13 @@ class MissionService:
                 mode,
             )
 
-        try:
-            mission = await self._mission_repo.create(
-                user_id=user_id,
-                library_entry_id=entry.id,
-                briefing_text=briefing_text or None,
-            )
-        except IntegrityError:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="You already have an active mission. End it first.",
-            ) from None
-
-        mission.library_entry = entry
-        await self._library_repo.update(entry, last_played_at=mission.started_at)
-
-        return mission
+        return await create_mission_for_entry(
+            mission_repo=self._mission_repo,
+            library_repo=self._library_repo,
+            user_id=user_id,
+            entry=entry,
+            briefing_text=briefing_text,
+        )
 
     # -- Preview briefing ------------------------------------------------
 

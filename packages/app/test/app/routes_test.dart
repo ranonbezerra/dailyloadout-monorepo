@@ -6,6 +6,9 @@ import 'package:app/features/auth/view/login_page.dart';
 import 'package:app/features/auth/view/splash_page.dart';
 import 'package:app/features/library/bloc/library_bloc.dart';
 import 'package:app/features/library/view/library_list_page.dart';
+import 'package:app/features/mission/bloc/mission_bloc.dart';
+import 'package:app/features/mission/view/missions_list_page.dart';
+import 'package:app/features/play/view/play_page.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -20,20 +23,26 @@ class MockAuthBloc extends MockBloc<AuthEvent, AuthState> implements AuthBloc {}
 class MockLibraryBloc extends MockBloc<LibraryEvent, LibraryState>
     implements LibraryBloc {}
 
+class MockMissionBloc extends MockBloc<MissionEvent, MissionState>
+    implements MissionBloc {}
+
 void main() {
   late MockAuthBloc authBloc;
   late MockLibraryBloc libraryBloc;
+  late MockMissionBloc missionBloc;
   late MockLibraryRepository mockLibraryRepository;
 
   setUp(() {
     authBloc = MockAuthBloc();
     libraryBloc = MockLibraryBloc();
+    missionBloc = MockMissionBloc();
     mockLibraryRepository = MockLibraryRepository();
   });
 
   tearDown(() {
     authBloc.close();
     libraryBloc.close();
+    missionBloc.close();
   });
 
   /// Creates a [MaterialApp.router] that provides the necessary BLoCs and
@@ -43,6 +52,7 @@ void main() {
       providers: [
         BlocProvider<AuthBloc>.value(value: authBloc),
         BlocProvider<LibraryBloc>.value(value: libraryBloc),
+        BlocProvider<MissionBloc>.value(value: missionBloc),
       ],
       child: MaterialApp.router(routerConfig: router),
     );
@@ -140,9 +150,7 @@ void main() {
       router.dispose();
     });
 
-    testWidgets('Authenticated + on /login redirects to /library', (
-      tester,
-    ) async {
+    testWidgets('Authenticated + on /login redirects to /play', (tester) async {
       when(() => authBloc.state).thenReturn(
         Authenticated(
           user: User(
@@ -156,7 +164,7 @@ void main() {
           ),
         ),
       );
-      when(() => libraryBloc.state).thenReturn(const LibraryInitial());
+      when(() => missionBloc.state).thenReturn(const MissionInitial());
 
       final router = createRouter(
         authBloc,
@@ -167,16 +175,16 @@ void main() {
       await tester.pumpAndSettle();
 
       // Navigate to /login; authenticated user should be redirected
-      // to /library.
+      // to /play.
       router.go('/login');
       await tester.pumpAndSettle();
 
-      expect(find.byType(LibraryListPage), findsOneWidget);
+      expect(find.byType(PlayPage), findsOneWidget);
 
       router.dispose();
     });
 
-    testWidgets('Authenticated + on /splash redirects to /library', (
+    testWidgets('Authenticated + on /splash redirects to /play', (
       tester,
     ) async {
       when(() => authBloc.state).thenReturn(
@@ -192,7 +200,7 @@ void main() {
           ),
         ),
       );
-      when(() => libraryBloc.state).thenReturn(const LibraryInitial());
+      when(() => missionBloc.state).thenReturn(const MissionInitial());
 
       final router = createRouter(
         authBloc,
@@ -202,8 +210,8 @@ void main() {
       await tester.pumpWidget(buildRoutedApp(router));
       await tester.pumpAndSettle();
 
-      // Initial location is /splash, but authenticated => /library.
-      expect(find.byType(LibraryListPage), findsOneWidget);
+      // Initial location is /splash, but authenticated => /play.
+      expect(find.byType(PlayPage), findsOneWidget);
 
       router.dispose();
     });
@@ -225,6 +233,7 @@ void main() {
         ),
       );
       when(() => libraryBloc.state).thenReturn(const LibraryInitial());
+      when(() => missionBloc.state).thenReturn(const MissionInitial());
 
       final router = createRouter(
         authBloc,
@@ -234,8 +243,8 @@ void main() {
       await tester.pumpWidget(buildRoutedApp(router));
       await tester.pumpAndSettle();
 
-      // Should have navigated to /library.
-      expect(find.byType(LibraryListPage), findsOneWidget);
+      // Should have navigated to the Play hub by default.
+      expect(find.byType(PlayPage), findsOneWidget);
 
       // Go to /library explicitly.
       router.go('/library');
@@ -246,7 +255,7 @@ void main() {
       router.dispose();
     });
 
-    testWidgets('Route / redirects to /library', (tester) async {
+    testWidgets('Route /history renders the mission history', (tester) async {
       when(() => authBloc.state).thenReturn(
         Authenticated(
           user: User(
@@ -260,7 +269,71 @@ void main() {
           ),
         ),
       );
-      when(() => libraryBloc.state).thenReturn(const LibraryInitial());
+      when(() => missionBloc.state).thenReturn(const MissionInitial());
+
+      final router = createRouter(
+        authBloc,
+        libraryRepository: mockLibraryRepository,
+      );
+
+      await tester.pumpWidget(buildRoutedApp(router));
+      await tester.pumpAndSettle();
+
+      router.go('/history');
+      await tester.pumpAndSettle();
+
+      expect(find.byType(MissionsListPage), findsOneWidget);
+
+      router.dispose();
+    });
+
+    testWidgets('Legacy /play/missions redirects to /history', (tester) async {
+      when(() => authBloc.state).thenReturn(
+        Authenticated(
+          user: User(
+            publicId: 'u1',
+            email: 'a@b.com',
+            displayName: 'Test',
+            emailVerified: true,
+            locale: 'en',
+            timezone: 'UTC',
+            createdAt: DateTime(2024),
+          ),
+        ),
+      );
+      when(() => missionBloc.state).thenReturn(const MissionInitial());
+
+      final router = createRouter(
+        authBloc,
+        libraryRepository: mockLibraryRepository,
+      );
+
+      await tester.pumpWidget(buildRoutedApp(router));
+      await tester.pumpAndSettle();
+
+      router.go('/play/missions');
+      await tester.pumpAndSettle();
+
+      expect(find.byType(MissionsListPage), findsOneWidget);
+
+      router.dispose();
+    });
+
+    testWidgets('Route / redirects to /play', (tester) async {
+      when(() => authBloc.state).thenReturn(
+        Authenticated(
+          user: User(
+            publicId: 'u1',
+            email: 'a@b.com',
+            displayName: 'Test',
+            emailVerified: true,
+            locale: 'en',
+            timezone: 'UTC',
+            createdAt: DateTime(2024),
+          ),
+        ),
+      );
+      when(() => missionBloc.state).thenReturn(const MissionInitial());
 
       final router = createRouter(
         authBloc,
@@ -274,8 +347,8 @@ void main() {
       router.go('/');
       await tester.pumpAndSettle();
 
-      // The '/' route has a redirect to '/library'.
-      expect(find.byType(LibraryListPage), findsOneWidget);
+      // The '/' route has a redirect to '/play'.
+      expect(find.byType(PlayPage), findsOneWidget);
 
       router.dispose();
     });

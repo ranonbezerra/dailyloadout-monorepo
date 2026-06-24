@@ -2,11 +2,9 @@ import { AppShell, Button, NavLink, Stack, Text } from "@mantine/core";
 import {
 	IconBooks,
 	IconChartBar,
-	IconDice3,
+	IconDeviceGamepad2,
 	IconHistory,
 	IconLogout,
-	IconMessageChatbot,
-	IconSwords,
 } from "@tabler/icons-react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -19,6 +17,7 @@ import { LibraryPage } from "./pages/LibraryPage";
 import { LoadoutPage } from "./pages/LoadoutPage";
 import { LoginPage } from "./pages/LoginPage";
 import { MissionsPage } from "./pages/MissionsPage";
+import { PlayPage } from "./pages/PlayPage";
 import { RegisterPage } from "./pages/RegisterPage";
 
 function AppLayout() {
@@ -35,43 +34,29 @@ function AppLayout() {
 							DailyLoadout
 						</Text>
 						<NavLink
+							label="Play"
+							leftSection={<IconDeviceGamepad2 size={18} />}
+							active={location.pathname.startsWith("/play")}
+							onClick={() => navigate("/play")}
+						/>
+						<NavLink
 							label="Library"
 							leftSection={<IconBooks size={18} />}
 							active={location.pathname.startsWith("/library")}
 							onClick={() => navigate("/library")}
 						/>
 						<NavLink
-							label="Daily Loadout"
-							leftSection={<IconDice3 size={18} />}
-							active={location.pathname.startsWith("/loadout")}
-							onClick={() => navigate("/loadout")}
-						/>
-						<NavLink
-							label="Missions"
-							leftSection={<IconSwords size={18} />}
-							active={location.pathname.startsWith("/missions")}
-							onClick={() => navigate("/missions")}
-						/>
-						<NavLink
-							label="Capture History"
+							label="History"
 							leftSection={<IconHistory size={18} />}
-							active={location.pathname.startsWith("/captures")}
-							onClick={() => navigate("/captures")}
+							active={location.pathname.startsWith("/history")}
+							onClick={() => navigate("/history")}
 						/>
 						<NavLink
-							label="Analytics"
+							label="Stats"
 							leftSection={<IconChartBar size={18} />}
 							active={location.pathname.startsWith("/analytics")}
 							onClick={() => navigate("/analytics")}
 						/>
-						{FEATURES.backlogConcierge && (
-							<NavLink
-								label="Concierge"
-								leftSection={<IconMessageChatbot size={18} />}
-								active={location.pathname.startsWith("/concierge")}
-								onClick={() => navigate("/concierge")}
-							/>
-						)}
 					</Stack>
 					<Button
 						variant="subtle"
@@ -87,13 +72,21 @@ function AppLayout() {
 
 			<AppShell.Main>
 				<Routes>
+					<Route path="/play" element={<PlayPage />} />
+					<Route path="/play/loadout" element={<LoadoutPage />} />
+					{FEATURES.backlogConcierge && (
+						<Route path="/play/concierge" element={<ConciergePage />} />
+					)}
 					<Route path="/library" element={<LibraryPage />} />
-					<Route path="/loadout" element={<LoadoutPage />} />
-					<Route path="/missions" element={<MissionsPage />} />
+					<Route path="/history" element={<MissionsPage />} />
 					<Route path="/captures" element={<CapturesPage />} />
 					<Route path="/analytics" element={<AnalyticsPage />} />
-					{FEATURES.backlogConcierge && <Route path="/concierge" element={<ConciergePage />} />}
-					<Route path="*" element={<Navigate to="/library" replace />} />
+					{/* Backward-compatible redirects from the old flat / nested routes. */}
+					<Route path="/loadout" element={<Navigate to="/play/loadout" replace />} />
+					<Route path="/missions" element={<Navigate to="/history" replace />} />
+					<Route path="/play/missions" element={<Navigate to="/history" replace />} />
+					<Route path="/concierge" element={<Navigate to="/play/concierge" replace />} />
+					<Route path="*" element={<Navigate to="/play" replace />} />
 				</Routes>
 			</AppShell.Main>
 		</AppShell>

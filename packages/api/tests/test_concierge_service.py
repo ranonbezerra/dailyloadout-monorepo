@@ -19,6 +19,7 @@ from dailyloadout.infrastructure.agent.concierge.dummy import DummyConciergeAgen
 from dailyloadout.infrastructure.db.repositories.library import LibraryRepository
 from dailyloadout.infrastructure.db.repositories.mission import MissionRepository
 from dailyloadout.infrastructure.db.repositories.stats import StatsRepository
+from dailyloadout.infrastructure.llm.dummy import DummyLLMClient
 from tests.conftest import _TestSessionFactory
 
 _FAKE_ID = "00000000-0000-0000-0000-000000000000"
@@ -53,6 +54,7 @@ def _service(session: Any, agent: AbstractConciergeAgent) -> ConciergeService:
         mission_repo=MissionRepository(session),
         stats_service=StatsService(StatsRepository(session)),
         agent=agent,
+        llm_client=DummyLLMClient(),
     )
 
 

@@ -9,7 +9,7 @@ DailyLoadout uses [Ollama](https://ollama.com) for all LLM inference. This docum
 DailyLoadout uses three model slots, configured via environment variables:
 
 | Slot | Default | Used for | Config var |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | **Fast** | `gemma3:4b` | Capture text parsing, debrief extraction | `OLLAMA_FAST_MODEL` |
 | **Smart** | `gemma3:12b` | Briefings, loadout reasoning | `OLLAMA_SMART_MODEL` |
 | **Vision** | `qwen3-vl:4b` | Photo capture (cover/shelf recognition) | `OLLAMA_VISION_MODEL` |
@@ -37,7 +37,7 @@ ollama pull qwen3-vl:4b
 ### CPU-only (no GPU)
 
 | Model | RAM needed | Inference speed (10s audio transcript) |
-|---|---|---|
+| --- | --- | --- |
 | `gemma3:4b` | ~4 GB | ~3-5s |
 | `gemma3:12b` | ~8 GB | ~10-20s |
 | `qwen3-vl:4b` | ~4 GB | ~5-10s per image |
@@ -47,7 +47,7 @@ A machine with 16 GB RAM can run all three models (Ollama loads/unloads as neede
 ### GPU (NVIDIA)
 
 | Model | VRAM needed | Inference speed |
-|---|---|---|
+| --- | --- | --- |
 | `gemma3:4b` | ~3 GB | <1s |
 | `gemma3:12b` | ~8 GB | ~2-4s |
 | `qwen3-vl:4b` | ~3 GB | ~2-3s per image |
@@ -59,7 +59,7 @@ An RTX 3060 (12 GB) or RTX 4060 (8 GB) handles all models comfortably. For cloud
 Ollama runs natively on Apple Silicon with Metal acceleration. Performance is between CPU and discrete GPU:
 
 | Model | Memory needed | Inference speed |
-|---|---|---|
+| --- | --- | --- |
 | `gemma3:4b` | ~4 GB unified | ~1-2s |
 | `gemma3:12b` | ~8 GB unified | ~3-6s |
 | `qwen3-vl:4b` | ~4 GB unified | ~2-4s per image |
@@ -75,7 +75,7 @@ You can swap any model slot. Some tested alternatives:
 ### Fast model alternatives
 
 | Model | Size | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `llama3.2:3b` | 3B | Good at JSON extraction, slightly less accurate |
 | `phi4-mini` | 3.8B | Strong reasoning for its size |
 | `qwen3:4b` | 4B | Good multilingual support |
@@ -83,7 +83,7 @@ You can swap any model slot. Some tested alternatives:
 ### Smart model alternatives
 
 | Model | Size | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `llama3.1:8b` | 8B | Lower VRAM, good briefing quality |
 | `qwen3:8b` | 8B | Strong reasoning, multilingual |
 | `gemma3:27b` | 27B | Best quality, needs ~16 GB VRAM |
@@ -92,7 +92,7 @@ You can swap any model slot. Some tested alternatives:
 ### Vision model alternatives
 
 | Model | Size | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `llama3.2-vision:11b` | 11B | More accurate, needs more VRAM |
 | `gemma3:12b` | 12B | Gemma 3 has vision capabilities at 12B |
 
@@ -164,7 +164,7 @@ ollama serve
 Speech-to-text uses [faster-whisper](https://github.com/SYSTRAN/faster-whisper), not Ollama. It runs in-process within the API.
 
 | Config var | Default | Options |
-|---|---|---|
+| --- | --- | --- |
 | `STT_PROVIDER` | `dummy` | `whisper_local`, `dummy` |
 | `WHISPER_MODEL_SIZE` | `base` | `tiny`, `base`, `small`, `medium` |
 | `WHISPER_DEVICE` | `cpu` | `cpu`, `cuda` |
@@ -173,7 +173,7 @@ Speech-to-text uses [faster-whisper](https://github.com/SYSTRAN/faster-whisper),
 ### Model sizes
 
 | Model | Size | Speed (10s audio, CPU) | Accuracy |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `tiny` | 39 MB | ~1s | Low |
 | `base` | 74 MB | ~2s | Good |
 | `small` | 244 MB | ~5s | Better |
@@ -188,7 +188,7 @@ The `base` model is recommended for most setups. Use `small` if transcription ac
 DailyLoadout supports an alternative LLM provider via `LLM_PROVIDER`:
 
 | Value | Backend | Requires |
-|---|---|---|
+| --- | --- | --- |
 | `ollama` | Local Ollama instance | Ollama running |
 | `dummy` | Deterministic dummy responses | Nothing (used in tests) |
 

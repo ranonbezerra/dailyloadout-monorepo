@@ -67,7 +67,7 @@ flowchart TD
 
 ## 4. Module layout
 
-```
+```text
 infrastructure/
 ├── research/                 # web search port
 │   ├── base.py               # AbstractResearchClient.search() / fetch()
@@ -153,7 +153,7 @@ discarding the first round.
 ## 6. Nodes
 
 | Node | Model role | Deterministic? | Returns |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `build_query` | none (or `fast`) | yes | `query`, `refine_count=0` |
 | `search` | none | yes (tool) | `results` (appended) |
 | `grade_results` | `fast` | LLM-gated | `grade` |

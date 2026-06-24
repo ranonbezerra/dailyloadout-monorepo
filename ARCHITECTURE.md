@@ -6,7 +6,7 @@ This document is the technical companion to [PRODUCT.md](./PRODUCT.md). It cover
 
 ## 1. Repository layout
 
-```
+```text
 dailyloadout-monorepo/
 ├── README.md
 ├── PRODUCT.md
@@ -355,7 +355,7 @@ Used by the web dashboard for the activity timeline.
 
 ## 4. API module structure
 
-```
+```text
 packages/api/
 ├── pyproject.toml
 ├── alembic.ini
@@ -431,7 +431,7 @@ packages/api/
 
 ### 5.1 Capture (any input type)
 
-```
+```text
 Client                  API                       arq worker            External
   |                      |                            |                     |
   |--POST /captures----->|                            |                     |
@@ -461,7 +461,7 @@ Client                  API                       arq worker            External
 
 ### 5.2 Briefing (anti-hallucination flow)
 
-```
+```text
 1. User taps "Start Mission" on LibraryEntry X.
 2. API validates: user has no other active mission (partial unique index).
 3. API creates mission row.
@@ -487,7 +487,7 @@ Client                  API                       arq worker            External
 
 ### 5.3 Daily Loadout (UUID validation flow)
 
-```
+```text
 1. POST /v1/loadouts {mood, available_minutes, mental_energy}
 2. API queries eligible library_entries:
        status IN ('backlog', 'playing', 'paused')
@@ -510,7 +510,7 @@ The validation step is **deterministic** layered on top of probabilistic LLM out
 
 ### 5.4 Debrief extraction (async-first with sync fallback)
 
-```
+```text
 Client                  API                     Taskiq worker          External
   |                      |                            |                     |
   |--PATCH debrief------>|                            |                     |
@@ -653,7 +653,7 @@ OTEL_EXPORTER_OTLP_ENDPOINT=
 
 ### 8.1 Local dev / self-hosting (default)
 
-```
+```text
 ┌──────────────────────────────────────────────────────┐
 │ Docker Compose (make up)                             │
 │                                                      │

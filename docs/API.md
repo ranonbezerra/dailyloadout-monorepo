@@ -8,7 +8,7 @@ The DailyLoadout API is a REST API built with FastAPI. Full interactive document
 
 Start the API and open:
 
-```
+```text
 http://localhost:8100/docs
 ```
 
@@ -16,7 +16,7 @@ This serves the [Scalar](https://scalar.com) API reference, generated from the O
 
 The raw OpenAPI spec is available at:
 
-```
+```text
 http://localhost:8100/openapi.json
 ```
 
@@ -28,7 +28,7 @@ All endpoints except `/health` and `/auth/*` require a Bearer token.
 
 ### Register
 
-```
+```http
 POST /v1/auth/register
 Content-Type: application/json
 
@@ -41,7 +41,7 @@ Content-Type: application/json
 
 ### Login
 
-```
+```http
 POST /v1/auth/login
 Content-Type: application/json
 
@@ -60,13 +60,13 @@ Response:
 
 ### Using the token
 
-```
+```http
 Authorization: Bearer eyJ...
 ```
 
 Access tokens expire in 15 minutes. Use the refresh token to obtain a new one:
 
-```
+```http
 POST /v1/auth/refresh
 Content-Type: application/json
 
@@ -82,13 +82,13 @@ Content-Type: application/json
 ### Health
 
 | Method | Path | Description |
-|---|---|---|
+| --- | --- | --- |
 | GET | `/health` | Returns `{"status": "ok"}` |
 
 ### Auth (`/v1/auth`)
 
 | Method | Path | Description |
-|---|---|---|
+| --- | --- | --- |
 | POST | `/register` | Create account |
 | POST | `/login` | Get access + refresh tokens |
 | POST | `/refresh` | Refresh access token |
@@ -98,7 +98,7 @@ Content-Type: application/json
 ### Library (`/v1`)
 
 | Method | Path | Description |
-|---|---|---|
+| --- | --- | --- |
 | GET | `/platforms` | List all platforms |
 | POST | `/games` | Create a game manually |
 | PATCH | `/games/{public_id}` | Update a game (e.g. genres) |
@@ -112,7 +112,7 @@ Content-Type: application/json
 ### Captures (`/v1/captures`)
 
 | Method | Path | Description |
-|---|---|---|
+| --- | --- | --- |
 | POST | `/text` | Submit text capture |
 | POST | `/voice` | Submit voice capture (multipart) |
 | POST | `/photo` | Submit photo capture (multipart) |
@@ -123,7 +123,7 @@ Content-Type: application/json
 ### Missions (`/v1/missions`)
 
 | Method | Path | Description |
-|---|---|---|
+| --- | --- | --- |
 | POST | `/` | Start a mission |
 | GET | `/active` | Get active mission |
 | POST | `/{public_id}/debrief` | Submit debrief text |
@@ -134,7 +134,7 @@ Content-Type: application/json
 ### Loadouts (`/v1/loadouts`)
 
 | Method | Path | Description |
-|---|---|---|
+| --- | --- | --- |
 | POST | `/` | Create loadout suggestion(s) |
 | GET | `/` | List loadouts (paginated) |
 | GET | `/latest` | Get latest pending loadout |
@@ -144,7 +144,7 @@ Content-Type: application/json
 ### Stats (`/v1/stats`)
 
 | Method | Path | Description |
-|---|---|---|
+| --- | --- | --- |
 | GET | `/overview` | KPI summary (games, missions, durations) |
 | GET | `/sessions` | Recent sessions (paginated) |
 
@@ -156,7 +156,7 @@ Content-Type: application/json
 
 List endpoints accept `limit` and `offset` query parameters:
 
-```
+```http
 GET /v1/library?limit=20&offset=0
 GET /v1/stats/sessions?limit=10&offset=0
 ```
@@ -167,7 +167,7 @@ Responses include `total`, `limit`, and `offset` fields.
 
 Library entries can be filtered by status:
 
-```
+```http
 GET /v1/library?status=playing
 ```
 
@@ -182,7 +182,7 @@ Errors follow a consistent format:
 ```
 
 | Status | Meaning |
-|---|---|
+| --- | --- |
 | 400 | Bad request (validation error) |
 | 401 | Unauthorized (missing/invalid token) |
 | 404 | Resource not found |

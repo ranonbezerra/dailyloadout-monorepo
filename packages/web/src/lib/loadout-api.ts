@@ -30,9 +30,10 @@ export async function createLoadout(
 // Accept loadout
 // ---------------------------------------------------------------------------
 
-export async function acceptLoadout(publicId: string): Promise<Loadout> {
+export async function acceptLoadout(publicId: string, briefingText?: string): Promise<Loadout> {
 	const raw = await apiFetch<unknown>(`/v1/loadouts/${publicId}/accept`, {
 		method: "POST",
+		body: briefingText ? JSON.stringify({ briefing_text: briefingText }) : undefined,
 	});
 	return snakeToCamel<Loadout>(raw);
 }
