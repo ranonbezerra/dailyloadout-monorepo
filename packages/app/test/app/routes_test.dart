@@ -7,6 +7,7 @@ import 'package:app/features/auth/view/splash_page.dart';
 import 'package:app/features/library/bloc/library_bloc.dart';
 import 'package:app/features/library/view/library_list_page.dart';
 import 'package:app/features/mission/bloc/mission_bloc.dart';
+import 'package:app/features/mission/view/missions_list_page.dart';
 import 'package:app/features/play/view/play_page.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter/material.dart';
@@ -250,6 +251,70 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(LibraryListPage), findsOneWidget);
+
+      router.dispose();
+    });
+
+    testWidgets('Route /history renders the mission history', (tester) async {
+      when(() => authBloc.state).thenReturn(
+        Authenticated(
+          user: User(
+            publicId: 'u1',
+            email: 'a@b.com',
+            displayName: 'Test',
+            emailVerified: true,
+            locale: 'en',
+            timezone: 'UTC',
+            createdAt: DateTime(2024),
+          ),
+        ),
+      );
+      when(() => missionBloc.state).thenReturn(const MissionInitial());
+
+      final router = createRouter(
+        authBloc,
+        libraryRepository: mockLibraryRepository,
+      );
+
+      await tester.pumpWidget(buildRoutedApp(router));
+      await tester.pumpAndSettle();
+
+      router.go('/history');
+      await tester.pumpAndSettle();
+
+      expect(find.byType(MissionsListPage), findsOneWidget);
+
+      router.dispose();
+    });
+
+    testWidgets('Legacy /play/missions redirects to /history', (tester) async {
+      when(() => authBloc.state).thenReturn(
+        Authenticated(
+          user: User(
+            publicId: 'u1',
+            email: 'a@b.com',
+            displayName: 'Test',
+            emailVerified: true,
+            locale: 'en',
+            timezone: 'UTC',
+            createdAt: DateTime(2024),
+          ),
+        ),
+      );
+      when(() => missionBloc.state).thenReturn(const MissionInitial());
+
+      final router = createRouter(
+        authBloc,
+        libraryRepository: mockLibraryRepository,
+      );
+
+      await tester.pumpWidget(buildRoutedApp(router));
+      await tester.pumpAndSettle();
+
+      router.go('/play/missions');
+      await tester.pumpAndSettle();
+
+      expect(find.byType(MissionsListPage), findsOneWidget);
 
       router.dispose();
     });

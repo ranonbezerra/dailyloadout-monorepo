@@ -97,8 +97,37 @@ void main() {
       const a = AcceptLoadout(publicId: 'l-1');
       const b = AcceptLoadout(publicId: 'l-1');
       expect(a, b);
-      expect(a.props, ['l-1']);
+      expect(a.props, ['l-1', null]);
       expect(a, isNot(const AcceptLoadout(publicId: 'l-2')));
+    });
+
+    test('AcceptLoadout differs when briefingText differs', () {
+      const a = AcceptLoadout(publicId: 'l-1', briefingText: 'go left');
+      const b = AcceptLoadout(publicId: 'l-1', briefingText: 'go right');
+      expect(a, isNot(b));
+      expect(a.props, ['l-1', 'go left']);
+    });
+
+    test('GenerateLoadoutBriefing supports value equality and props', () {
+      const a = GenerateLoadoutBriefing(
+        publicId: 'l-1',
+        libraryEntryPublicId: 'e-1',
+      );
+      const b = GenerateLoadoutBriefing(
+        publicId: 'l-1',
+        libraryEntryPublicId: 'e-1',
+      );
+      expect(a, b);
+      expect(a.props, ['l-1', 'e-1']);
+      expect(
+        a,
+        isNot(
+          const GenerateLoadoutBriefing(
+            publicId: 'l-1',
+            libraryEntryPublicId: 'e-2',
+          ),
+        ),
+      );
     });
 
     test('RejectLoadout supports value equality and props', () {
@@ -155,6 +184,25 @@ void main() {
       final b = LoadoutRejected(loadout: _loadout);
       expect(a, b);
       expect(a.props, [_loadout]);
+    });
+
+    test('LoadoutBriefingLoading supports value equality and props', () {
+      const a = LoadoutBriefingLoading(publicId: 'l-1');
+      const b = LoadoutBriefingLoading(publicId: 'l-1');
+      expect(a, b);
+      expect(a.props, ['l-1']);
+      expect(a, isNot(const LoadoutBriefingLoading(publicId: 'l-2')));
+    });
+
+    test('LoadoutBriefingReady supports value equality and props', () {
+      const a = LoadoutBriefingReady(publicId: 'l-1', briefingText: 'go');
+      const b = LoadoutBriefingReady(publicId: 'l-1', briefingText: 'go');
+      expect(a, b);
+      expect(a.props, ['l-1', 'go']);
+      expect(
+        a,
+        isNot(const LoadoutBriefingReady(publicId: 'l-1', briefingText: 'no')),
+      );
     });
 
     test('LoadoutListLoaded supports value equality and props', () {

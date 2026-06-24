@@ -40,46 +40,62 @@ class _PlayPageState extends State<PlayPage> {
           children: [
             BlocBuilder<MissionBloc, MissionState>(
               builder: (context, state) {
-                if (state is ActiveMissionLoaded && state.mission != null) {
-                  return _ActiveMissionCard(mission: state.mission!);
-                }
-                if (state is MissionLoading) {
-                  return const _ActiveMissionPlaceholder();
-                }
-                return const _NoActiveMissionCard();
+                final hasActiveMission =
+                    state is ActiveMissionLoaded && state.mission != null;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (hasActiveMission)
+                      _ActiveMissionCard(mission: state.mission!)
+                    else if (state is MissionLoading)
+                      const _ActiveMissionPlaceholder()
+                    else
+                      const _NoActiveMissionCard(),
+                    const SizedBox(height: 24),
+                    Text(
+                      "What's next?",
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 12),
+                    _DoorCard(
+                      icon: Icons.casino,
+                      title: "What's the move?",
+                      subtitle: 'One tap — we pick, you play.',
+                      accent: DLColors.coral,
+                      // Starting a new mission is blocked while one is active.
+                      disabledHint: hasActiveMission
+                          ? 'Finish your active mission first'
+                          : null,
+                      onTap: () => context.go('/play/loadout'),
+                    ),
+                    const SizedBox(height: 12),
+                    _DoorCard(
+                      icon: Icons.videogame_asset,
+                      title: "I'll choose",
+                      subtitle: 'Pick a game yourself.',
+                      accent: DLColors.violet,
+                      disabledHint: hasActiveMission
+                          ? 'Finish your active mission first'
+                          : null,
+                      onTap: () => context.go('/library'),
+                    ),
+                    if (widget.conciergeEnabled) ...[
+                      const SizedBox(height: 12),
+                      // The Ask door stays enabled even during an active
+                      // mission — it does not start anything.
+                      _DoorCard(
+                        icon: Icons.auto_awesome,
+                        title: 'Ask',
+                        subtitle: 'Chat about what to play.',
+                        accent: DLColors.green,
+                        onTap: () => context.go('/play/concierge'),
+                      ),
+                    ],
+                  ],
+                );
               },
             ),
-            const SizedBox(height: 24),
-            Text(
-              "What's next?",
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 12),
-            _DoorCard(
-              icon: Icons.casino,
-              title: "What's the move?",
-              subtitle: 'One tap — we pick, you play.',
-              accent: DLColors.coral,
-              onTap: () => context.go('/play/loadout'),
-            ),
-            const SizedBox(height: 12),
-            _DoorCard(
-              icon: Icons.videogame_asset,
-              title: "I'll choose",
-              subtitle: 'Pick a game yourself.',
-              accent: DLColors.violet,
-              onTap: () => context.go('/library'),
-            ),
-            if (widget.conciergeEnabled) ...[
-              const SizedBox(height: 12),
-              _DoorCard(
-                icon: Icons.auto_awesome,
-                title: 'Ask',
-                subtitle: 'Chat about what to play.',
-                accent: DLColors.green,
-                onTap: () => context.go('/play/concierge'),
-              ),
-            ],
           ],
         ),
       ),
@@ -148,15 +164,17 @@ class _ActiveMissionCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: FilledButton.icon(
-                    onPressed: () => context.go('/play/missions'),
-                    icon: const Icon(Icons.play_arrow),
-                    label: const Text('Resume'),
+                    onPressed: () =>
+                        context.push('/missions/${mission.publicId}/briefing'),
+                    icon: const Icon(Icons.article_outlined),
+                    label: const Text('Briefing'),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => context.go('/play/missions'),
+                    onPressed: () =>
+                        context.push('/missions/${mission.publicId}/debrief'),
                     child: const Text('End / Debrief'),
                   ),
                 ),
@@ -221,6 +239,9 @@ class _NoActiveMissionCard extends StatelessWidget {
 }
 
 /// A tappable "door" leading into one of the three play paths.
+///
+/// When [disabledHint] is non-null the door is greyed out and non-tappable,
+/// and the hint replaces the subtitle to explain why.
 class _DoorCard extends StatelessWidget {
   const _DoorCard({
     required this.icon,
@@ -228,6 +249,7 @@ class _DoorCard extends StatelessWidget {
     required this.subtitle,
     required this.accent,
     required this.onTap,
+    this.disabledHint,
   });
 
   final IconData icon;
@@ -235,47 +257,54 @@ class _DoorCard extends StatelessWidget {
   final String subtitle;
   final Color accent;
   final VoidCallback onTap;
+  final String? disabledHint;
+
+  bool get _isDisabled => disabledHint != null;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    final effectiveAccent = _isDisabled ? colors.onSurfaceVariant : accent;
 
-    return Card(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(12),
+    return Opacity(
+      opacity: _isDisabled ? 0.5 : 1,
+      child: Card(
+        child: InkWell(
+          onTap: _isDisabled ? null : onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: effectiveAccent.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: effectiveAccent),
                 ),
-                child: Icon(icon, color: accent),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: theme.textTheme.titleMedium),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colors.onSurfaceVariant,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: theme.textTheme.titleMedium),
+                      const SizedBox(height: 2),
+                      Text(
+                        disabledHint ?? subtitle,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              const Icon(Icons.chevron_right),
-            ],
+                Icon(_isDisabled ? Icons.lock_outline : Icons.chevron_right),
+              ],
+            ),
           ),
         ),
       ),

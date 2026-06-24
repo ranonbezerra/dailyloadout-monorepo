@@ -30,6 +30,19 @@ vi.mock("../lib/features", () => ({
 	FEATURES: { backlogConcierge: false },
 }));
 
+// The briefing/debrief modals are rendered inline on the page now. They pull
+// in their own data hooks; stub them out so this suite stays focused on the
+// PlayPage behavior and does not need a QueryClient provider.
+vi.mock("./MissionBriefingModal", () => ({
+	MissionBriefingModal: ({ mode }: { mode: string }) => (
+		<div data-testid="briefing-modal">{mode}</div>
+	),
+}));
+vi.mock("./MissionDebriefModal", () => ({
+	MissionDebriefModal: ({ mission }: { mission: unknown }) =>
+		mission ? <div data-testid="debrief-modal" /> : null,
+}));
+
 function renderPage() {
 	return render(
 		<MantineProvider>
@@ -120,17 +133,44 @@ describe("PlayPage", () => {
 		expect(screen.getByText("Your next adventure awaits")).toBeInTheDocument();
 	});
 
-	it("navigates to /play/missions from the Resume button", () => {
+	it("shows 'Briefing' and 'End / Debrief' buttons on the active mission card", () => {
 		(useActiveMission as Mock).mockReturnValue({ data: makeMission() });
 		renderPage();
-		fireEvent.click(screen.getByRole("button", { name: /resume/i }));
-		expect(mockNavigate).toHaveBeenCalledWith("/play/missions");
+		expect(screen.getByRole("button", { name: /briefing/i })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /end \/ debrief/i })).toBeInTheDocument();
+		// No Resume button anymore.
+		expect(screen.queryByRole("button", { name: /resume/i })).not.toBeInTheDocument();
 	});
 
-	it("navigates to /play/missions from the End / Debrief button", () => {
+	it("opens the briefing modal in view mode from the 'Briefing' button", () => {
 		(useActiveMission as Mock).mockReturnValue({ data: makeMission() });
 		renderPage();
+		expect(screen.queryByTestId("briefing-modal")).not.toBeInTheDocument();
+		fireEvent.click(screen.getByRole("button", { name: /briefing/i }));
+		const modal = screen.getByTestId("briefing-modal");
+		expect(modal).toBeInTheDocument();
+		expect(modal).toHaveTextContent("view");
+		// Opening the briefing does not navigate.
+		expect(mockNavigate).not.toHaveBeenCalled();
+	});
+
+	it("opens the debrief modal from the 'End / Debrief' button", () => {
+		(useActiveMission as Mock).mockReturnValue({ data: makeMission() });
+		renderPage();
+		expect(screen.queryByTestId("debrief-modal")).not.toBeInTheDocument();
 		fireEvent.click(screen.getByRole("button", { name: /end \/ debrief/i }));
-		expect(mockNavigate).toHaveBeenCalledWith("/play/missions");
+		expect(screen.getByTestId("debrief-modal")).toBeInTheDocument();
+		// Ending/debriefing does not navigate.
+		expect(mockNavigate).not.toHaveBeenCalled();
+	});
+
+	it("disables the start doors and does not navigate when a mission is active", () => {
+		(useActiveMission as Mock).mockReturnValue({ data: makeMission() });
+		renderPage();
+
+		fireEvent.click(screen.getByText("What's the move?"));
+		fireEvent.click(screen.getByText("I'll choose"));
+
+		expect(mockNavigate).not.toHaveBeenCalled();
 	});
 });

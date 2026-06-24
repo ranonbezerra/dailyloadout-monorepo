@@ -70,16 +70,13 @@ GoRouter createRouter(
 
       // ---- Legacy path redirects (keep old deep links working) ----
       GoRoute(path: '/loadout', redirect: (context, state) => '/play/loadout'),
-      GoRoute(
-        path: '/missions',
-        redirect: (context, state) => '/play/missions',
-      ),
+      GoRoute(path: '/missions', redirect: (context, state) => '/history'),
       GoRoute(
         path: '/concierge',
         redirect: (context, state) => '/play/concierge',
       ),
 
-      // ---- Shell: bottom-nav tabs (Play, Library, Stats) ----
+      // ---- Shell: bottom-nav tabs (Play, Library, History, Stats) ----
       ShellRoute(
         builder: (context, state, child) => ShellPage(child: child),
         routes: [
@@ -93,9 +90,10 @@ GoRouter createRouter(
                 path: 'loadout',
                 builder: (context, state) => const LoadoutPage(),
               ),
+              // Legacy nested path — the mission log now lives at /history.
               GoRoute(
                 path: 'missions',
-                builder: (context, state) => const MissionsListPage(),
+                redirect: (context, state) => '/history',
               ),
               // Backlog Concierge — hidden unless the feature flag is enabled.
               if (featureFlags.backlogConcierge)
@@ -108,6 +106,10 @@ GoRouter createRouter(
           GoRoute(
             path: '/library',
             builder: (context, state) => const LibraryListPage(),
+          ),
+          GoRoute(
+            path: '/history',
+            builder: (context, state) => const MissionsListPage(),
           ),
           GoRoute(
             path: '/analytics',

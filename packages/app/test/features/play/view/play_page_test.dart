@@ -94,6 +94,14 @@ void main() {
           path: '/library',
           builder: (_, __) => const Scaffold(body: Text('Library stub')),
         ),
+        GoRoute(
+          path: '/missions/:id/briefing',
+          builder: (_, __) => const Scaffold(body: Text('Briefing stub')),
+        ),
+        GoRoute(
+          path: '/missions/:id/debrief',
+          builder: (_, __) => const Scaffold(body: Text('Debrief stub')),
+        ),
       ],
     );
 
@@ -173,22 +181,24 @@ void main() {
       expect(find.text('Continue exploring Hallownest.'), findsOneWidget);
     });
 
-    testWidgets('active mission card shows Resume and End / Debrief buttons', (
-      tester,
-    ) async {
-      when(
-        () => missionBloc.state,
-      ).thenReturn(ActiveMissionLoaded(mission: _mission));
+    testWidgets(
+      'active mission card shows Briefing and End / Debrief buttons',
+      (tester) async {
+        when(
+          () => missionBloc.state,
+        ).thenReturn(ActiveMissionLoaded(mission: _mission));
 
-      await tester.pumpWidget(buildSubject());
+        await tester.pumpWidget(buildSubject());
 
-      expect(find.text('Resume'), findsOneWidget);
-      expect(find.byIcon(Icons.play_arrow), findsOneWidget);
-      expect(
-        find.widgetWithText(OutlinedButton, 'End / Debrief'),
-        findsOneWidget,
-      );
-    });
+        // Resume was removed — it had no real destination.
+        expect(find.text('Resume'), findsNothing);
+        expect(find.text('Briefing'), findsOneWidget);
+        expect(
+          find.widgetWithText(OutlinedButton, 'End / Debrief'),
+          findsOneWidget,
+        );
+      },
+    );
 
     testWidgets('active mission card hides briefing when none present', (
       tester,
@@ -203,20 +213,22 @@ void main() {
       expect(find.text('Continue exploring Hallownest.'), findsNothing);
     });
 
-    testWidgets('tapping Resume navigates to /play/missions', (tester) async {
+    testWidgets('tapping Briefing navigates to the mission briefing', (
+      tester,
+    ) async {
       when(
         () => missionBloc.state,
       ).thenReturn(ActiveMissionLoaded(mission: _mission));
 
       await tester.pumpWidget(buildSubject());
 
-      await tester.tap(find.text('Resume'));
+      await tester.tap(find.text('Briefing'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Missions stub'), findsOneWidget);
+      expect(find.text('Briefing stub'), findsOneWidget);
     });
 
-    testWidgets('tapping End / Debrief navigates to /play/missions', (
+    testWidgets('tapping End / Debrief navigates to the mission debrief', (
       tester,
     ) async {
       when(
@@ -228,7 +240,56 @@ void main() {
       await tester.tap(find.widgetWithText(OutlinedButton, 'End / Debrief'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Missions stub'), findsOneWidget);
+      expect(find.text('Debrief stub'), findsOneWidget);
+    });
+
+    testWidgets('start doors are disabled while a mission is active', (
+      tester,
+    ) async {
+      when(
+        () => missionBloc.state,
+      ).thenReturn(ActiveMissionLoaded(mission: _mission));
+
+      await tester.pumpWidget(buildSubject());
+
+      // Hint replaces the subtitle on both start doors.
+      expect(find.text('Finish your active mission first'), findsNWidgets(2));
+      expect(find.byIcon(Icons.lock_outline), findsNWidgets(2));
+
+      // Tapping the disabled door does not navigate.
+      await tester.tap(find.text("What's the move?"));
+      await tester.pumpAndSettle();
+      expect(find.text('Loadout stub'), findsNothing);
+    });
+
+    testWidgets('Ask door stays enabled while a mission is active', (
+      tester,
+    ) async {
+      when(
+        () => missionBloc.state,
+      ).thenReturn(ActiveMissionLoaded(mission: _mission));
+
+      await tester.pumpWidget(buildSubject(conciergeEnabled: true));
+
+      await tester.tap(find.text('Ask'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Concierge stub'), findsOneWidget);
+    });
+
+    testWidgets('start doors are enabled when there is no active mission', (
+      tester,
+    ) async {
+      when(() => missionBloc.state).thenReturn(const ActiveMissionLoaded());
+
+      await tester.pumpWidget(buildSubject());
+
+      expect(find.text('Finish your active mission first'), findsNothing);
+      expect(find.byIcon(Icons.lock_outline), findsNothing);
+
+      await tester.tap(find.text("What's the move?"));
+      await tester.pumpAndSettle();
+      expect(find.text('Loadout stub'), findsOneWidget);
     });
 
     testWidgets("shows What's next section with the two default doors", (

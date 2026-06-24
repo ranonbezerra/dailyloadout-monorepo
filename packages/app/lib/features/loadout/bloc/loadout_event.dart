@@ -34,13 +34,33 @@ final class CreateLoadout extends LoadoutEvent {
 }
 
 /// Dispatched to accept a loadout suggestion.
+///
+/// When [briefingText] is provided, the auto-started mission carries that
+/// briefing (see [GenerateLoadoutBriefing]).
 final class AcceptLoadout extends LoadoutEvent {
-  const AcceptLoadout({required this.publicId});
+  const AcceptLoadout({required this.publicId, this.briefingText});
 
   final String publicId;
+  final String? briefingText;
 
   @override
-  List<Object?> get props => [publicId];
+  List<Object?> get props => [publicId, briefingText];
+}
+
+/// Dispatched to generate a quick briefing for a loadout's game before
+/// starting the mission. The picked library entry is identified by
+/// [libraryEntryPublicId]; [publicId] is the loadout being actioned.
+final class GenerateLoadoutBriefing extends LoadoutEvent {
+  const GenerateLoadoutBriefing({
+    required this.publicId,
+    required this.libraryEntryPublicId,
+  });
+
+  final String publicId;
+  final String libraryEntryPublicId;
+
+  @override
+  List<Object?> get props => [publicId, libraryEntryPublicId];
 }
 
 /// Dispatched to reject a loadout suggestion.

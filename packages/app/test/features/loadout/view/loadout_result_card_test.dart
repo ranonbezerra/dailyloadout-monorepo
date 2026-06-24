@@ -76,8 +76,12 @@ void main() {
     int rank = 0,
     int totalResults = 1,
     bool isActioning = false,
+    bool isGeneratingBriefing = false,
+    String? briefingText,
     VoidCallback? onAccept,
     VoidCallback? onReject,
+    VoidCallback? onGetBriefing,
+    VoidCallback? onStartWithBriefing,
   }) {
     return MaterialApp(
       home: Scaffold(
@@ -87,8 +91,12 @@ void main() {
             rank: rank,
             totalResults: totalResults,
             isActioning: isActioning,
+            isGeneratingBriefing: isGeneratingBriefing,
+            briefingText: briefingText,
             onAccept: onAccept ?? () {},
             onReject: onReject ?? () {},
+            onGetBriefing: onGetBriefing ?? () {},
+            onStartWithBriefing: onStartWithBriefing ?? () {},
           ),
         ),
       ),
@@ -233,6 +241,72 @@ void main() {
       await tester.tap(find.widgetWithText(OutlinedButton, 'Reject'));
 
       expect(rejected, isTrue);
+    });
+
+    testWidgets('shows "Get briefing" button when no briefing yet', (
+      tester,
+    ) async {
+      await tester.pumpWidget(buildSubject(loadout: _loadout));
+
+      expect(find.text('Get briefing'), findsOneWidget);
+      expect(find.text('Accept & Start Mission'), findsOneWidget);
+    });
+
+    testWidgets('get briefing button calls onGetBriefing callback', (
+      tester,
+    ) async {
+      var requested = false;
+      await tester.pumpWidget(
+        buildSubject(loadout: _loadout, onGetBriefing: () => requested = true),
+      );
+
+      await tester.tap(find.text('Get briefing'));
+
+      expect(requested, isTrue);
+    });
+
+    testWidgets('shows "Briefing..." while generating a briefing', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        buildSubject(loadout: _loadout, isGeneratingBriefing: true),
+      );
+
+      expect(find.text('Briefing...'), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    });
+
+    testWidgets('shows briefing text and "Start with briefing" '
+        'once a briefing is present', (tester) async {
+      await tester.pumpWidget(
+        buildSubject(
+          loadout: _loadout,
+          briefingText: 'Continue toward the Erdtree.',
+        ),
+      );
+
+      expect(find.text('Continue toward the Erdtree.'), findsOneWidget);
+      expect(find.text('Start with briefing'), findsOneWidget);
+      // Get briefing is hidden once a briefing has been produced.
+      expect(find.text('Get briefing'), findsNothing);
+      expect(find.text('Accept & Start Mission'), findsNothing);
+    });
+
+    testWidgets('"Start with briefing" calls onStartWithBriefing callback', (
+      tester,
+    ) async {
+      var started = false;
+      await tester.pumpWidget(
+        buildSubject(
+          loadout: _loadout,
+          briefingText: 'Continue toward the Erdtree.',
+          onStartWithBriefing: () => started = true,
+        ),
+      );
+
+      await tester.tap(find.text('Start with briefing'));
+
+      expect(started, isTrue);
     });
   });
 }

@@ -2,7 +2,7 @@ import { MantineProvider } from "@mantine/core";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, type Mock, vi } from "vitest";
-import { useActiveMission, useMissions } from "../hooks/useMission";
+import { useMissions } from "../hooks/useMission";
 import type { MissionListItem } from "../types/mission";
 import { MissionsPage } from "./MissionsPage";
 
@@ -12,43 +12,10 @@ import { MissionsPage } from "./MissionsPage";
 
 vi.mock("../hooks/useMission", () => ({
 	useMissions: vi.fn(),
-	useActiveMission: vi.fn(),
-	useMission: vi.fn(() => ({ data: null, isLoading: false })),
-	useStartMission: vi.fn(() => ({
-		mutateAsync: vi.fn(),
-		isPending: false,
-	})),
-	useEndMission: vi.fn(() => ({
-		mutateAsync: vi.fn(),
-		isPending: false,
-	})),
-	useSubmitDebrief: vi.fn(() => ({
-		mutateAsync: vi.fn(),
-		isPending: false,
-	})),
-	usePreviewBriefing: vi.fn(() => ({
-		mutateAsync: vi.fn(),
-		isPending: false,
-	})),
-	useRegenerateBriefing: vi.fn(() => ({
-		mutateAsync: vi.fn(),
-		isPending: false,
-	})),
-	useRetroactiveDebrief: vi.fn(() => ({
-		mutateAsync: vi.fn(),
-		isPending: false,
-	})),
 }));
 
 vi.mock("@mantine/notifications", () => ({
 	notifications: { show: vi.fn() },
-}));
-
-vi.mock("./MissionBriefingModal", () => ({
-	MissionBriefingModal: () => null,
-}));
-vi.mock("./MissionDebriefModal", () => ({
-	MissionDebriefModal: () => null,
 }));
 
 // Mock mantine-datatable so rows render without needing real layout/ResizeObserver
@@ -144,16 +111,15 @@ function makeMissionItem(overrides: Partial<MissionListItem> = {}): MissionListI
 // ---------------------------------------------------------------------------
 
 describe("MissionsPage", () => {
-	it("renders the title 'Mission Timeline'", () => {
+	it("renders the title 'Mission History'", () => {
 		(useMissions as Mock).mockReturnValue({
 			data: { items: [], total: 0 },
 			isLoading: false,
 		});
-		(useActiveMission as Mock).mockReturnValue({ data: null });
 
 		renderPage();
 
-		expect(screen.getByText("Mission Timeline")).toBeInTheDocument();
+		expect(screen.getByText("Mission History")).toBeInTheDocument();
 	});
 
 	it("renders empty state when missions list is empty", () => {
@@ -161,11 +127,11 @@ describe("MissionsPage", () => {
 			data: { items: [], total: 0 },
 			isLoading: false,
 		});
-		(useActiveMission as Mock).mockReturnValue({ data: null });
 
 		renderPage();
 
 		expect(screen.getByText(/No missions yet/)).toBeInTheDocument();
+		expect(screen.getByText(/Start one from the Play page/)).toBeInTheDocument();
 	});
 
 	it("renders mission count text for single mission", () => {
@@ -175,7 +141,6 @@ describe("MissionsPage", () => {
 			data: { items, total: 1 },
 			isLoading: false,
 		});
-		(useActiveMission as Mock).mockReturnValue({ data: null });
 
 		renderPage();
 
@@ -192,7 +157,6 @@ describe("MissionsPage", () => {
 			data: { items, total: 2 },
 			isLoading: false,
 		});
-		(useActiveMission as Mock).mockReturnValue({ data: null });
 
 		renderPage();
 
@@ -230,7 +194,6 @@ describe("MissionsPage", () => {
 			data: { items, total: 2 },
 			isLoading: false,
 		});
-		(useActiveMission as Mock).mockReturnValue({ data: null });
 
 		renderPage();
 
@@ -268,7 +231,6 @@ describe("MissionsPage", () => {
 			data: { items, total: 1 },
 			isLoading: false,
 		});
-		(useActiveMission as Mock).mockReturnValue({ data: null });
 
 		renderPage();
 
@@ -282,7 +244,6 @@ describe("MissionsPage", () => {
 			data: { items, total: 1 },
 			isLoading: false,
 		});
-		(useActiveMission as Mock).mockReturnValue({ data: null });
 
 		renderPage();
 
@@ -301,7 +262,6 @@ describe("MissionsPage", () => {
 			data: { items, total: 1 },
 			isLoading: false,
 		});
-		(useActiveMission as Mock).mockReturnValue({ data: null });
 
 		renderPage();
 
@@ -320,7 +280,6 @@ describe("MissionsPage", () => {
 			data: { items, total: 1 },
 			isLoading: false,
 		});
-		(useActiveMission as Mock).mockReturnValue({ data: null });
 
 		renderPage();
 
@@ -339,7 +298,6 @@ describe("MissionsPage", () => {
 			data: { items, total: 1 },
 			isLoading: false,
 		});
-		(useActiveMission as Mock).mockReturnValue({ data: null });
 
 		renderPage();
 
@@ -358,7 +316,6 @@ describe("MissionsPage", () => {
 			data: { items, total: 1 },
 			isLoading: false,
 		});
-		(useActiveMission as Mock).mockReturnValue({ data: null });
 
 		renderPage();
 
@@ -378,7 +335,6 @@ describe("MissionsPage", () => {
 			data: { items, total: 1 },
 			isLoading: false,
 		});
-		(useActiveMission as Mock).mockReturnValue({ data: null });
 
 		renderPage();
 
@@ -398,7 +354,6 @@ describe("MissionsPage", () => {
 			data: { items, total: 1 },
 			isLoading: false,
 		});
-		(useActiveMission as Mock).mockReturnValue({ data: null });
 
 		renderPage();
 
@@ -418,86 +373,31 @@ describe("MissionsPage", () => {
 			data: { items, total: 1 },
 			isLoading: false,
 		});
-		(useActiveMission as Mock).mockReturnValue({ data: null });
 
 		renderPage();
 
 		expect(screen.getByText("2h")).toBeInTheDocument();
 	});
 
-	it("shows 'End mission' button for active missions", () => {
-		const items = [makeMissionItem({ endedVia: null })];
-
-		(useMissions as Mock).mockReturnValue({
-			data: { items, total: 1 },
-			isLoading: false,
-		});
-		(useActiveMission as Mock).mockReturnValue({ data: null });
-
-		renderPage();
-
-		expect(screen.getByRole("button", { name: "End mission" })).toBeInTheDocument();
-	});
-
-	it("does not show 'End mission' button for ended missions", () => {
+	it("does not render any action buttons (history-only page)", () => {
 		const items = [
+			makeMissionItem({ publicId: "mis-001", endedVia: null }),
 			makeMissionItem({
+				publicId: "mis-002",
 				endedVia: "debrief_completed",
 				endedAt: "2024-06-01T12:00:00Z",
 			}),
 		];
 
 		(useMissions as Mock).mockReturnValue({
-			data: { items, total: 1 },
+			data: { items, total: 2 },
 			isLoading: false,
 		});
-		(useActiveMission as Mock).mockReturnValue({ data: null });
 
 		renderPage();
 
 		expect(screen.queryByRole("button", { name: "End mission" })).not.toBeInTheDocument();
-	});
-
-	it("shows 'Briefing' button when active mission has briefingText", () => {
-		const activeMission = {
-			publicId: "mis-001",
-			briefingText: "Here is your briefing for Hollow Knight...",
-			libraryEntry: {
-				publicId: "le-001",
-				game: {
-					publicId: "game-001",
-					slug: "hollow-knight",
-					title: "Hollow Knight",
-					metadataSource: "igdb",
-					createdAt: "2024-01-01T00:00:00Z",
-				},
-				platform: { id: 1, slug: "pc", label: "PC", family: "pc" },
-				status: "playing",
-				createdAt: "2024-01-01T00:00:00Z",
-				updatedAt: "2024-01-01T00:00:00Z",
-			},
-			missionType: "regular",
-			endedVia: null,
-			startedAt: "2024-06-01T10:00:00Z",
-			endedAt: null,
-			createdAt: "2024-06-01T10:00:00Z",
-			updatedAt: "2024-06-01T10:00:00Z",
-			debriefText: null,
-			extractedState: null,
-			lastSessionContext: null,
-		};
-
-		const items = [makeMissionItem({ publicId: "mis-001", endedVia: null })];
-
-		(useMissions as Mock).mockReturnValue({
-			data: { items, total: 1 },
-			isLoading: false,
-		});
-		(useActiveMission as Mock).mockReturnValue({ data: activeMission });
-
-		renderPage();
-
-		expect(screen.getByRole("button", { name: "Briefing" })).toBeInTheDocument();
+		expect(screen.queryByRole("button", { name: "Briefing" })).not.toBeInTheDocument();
 	});
 
 	it("renders DataTable column headers", () => {
@@ -507,7 +407,6 @@ describe("MissionsPage", () => {
 			data: { items, total: 1 },
 			isLoading: false,
 		});
-		(useActiveMission as Mock).mockReturnValue({ data: null });
 
 		renderPage();
 

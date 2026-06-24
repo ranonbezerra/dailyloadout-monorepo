@@ -3,16 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 /// Shell scaffold that wraps the main authenticated pages with a
-/// [BottomNavigationBar] for tab-based navigation. The nav collapses to three
-/// tabs: Play, Library, and Stats. The Loadout, Missions, and Concierge
-/// surfaces live under the Play hub at `/play/*`.
+/// [BottomNavigationBar] for tab-based navigation. The nav has four tabs: Play,
+/// Library, History, and Stats. The Loadout and Concierge surfaces live under
+/// the Play hub at `/play/*`; History is the mission log at `/history`.
 class ShellPage extends StatelessWidget {
   const ShellPage({required this.child, super.key});
 
   /// The current page rendered by [GoRouter] inside the shell.
   final Widget child;
 
-  /// Ordered tab definitions: Play, Library, Stats.
+  /// Ordered tab definitions: Play, Library, History, Stats.
   List<_Tab> _tabs() {
     return [
       const _Tab(path: '/play', icon: Icons.sports_esports, label: 'Play'),
@@ -21,6 +21,7 @@ class ShellPage extends StatelessWidget {
         icon: Icons.videogame_asset,
         label: 'Library',
       ),
+      const _Tab(path: '/history', icon: Icons.history, label: 'History'),
       const _Tab(path: '/analytics', icon: Icons.bar_chart, label: 'Stats'),
     ];
   }

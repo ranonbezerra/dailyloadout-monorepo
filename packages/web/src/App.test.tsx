@@ -121,10 +121,11 @@ describe("App - authenticated layout", () => {
 		expect(screen.getByText("DailyLoadout")).toBeInTheDocument();
 	});
 
-	it("renders the three primary nav links", () => {
+	it("renders the primary nav links", () => {
 		renderApp(["/play"]);
 		expect(screen.getByText("Play")).toBeInTheDocument();
 		expect(screen.getByText("Library")).toBeInTheDocument();
+		expect(screen.getByText("History")).toBeInTheDocument();
 		expect(screen.getByText("Stats")).toBeInTheDocument();
 	});
 
@@ -143,8 +144,8 @@ describe("App - authenticated layout", () => {
 		expect(screen.getByText("LoadoutPage")).toBeInTheDocument();
 	});
 
-	it("renders MissionsPage at /play/missions", () => {
-		renderApp(["/play/missions"]);
+	it("renders MissionsPage (Mission History) at /history", () => {
+		renderApp(["/history"]);
 		expect(screen.getByText("MissionsPage")).toBeInTheDocument();
 	});
 
@@ -153,8 +154,13 @@ describe("App - authenticated layout", () => {
 		expect(screen.getByText("LoadoutPage")).toBeInTheDocument();
 	});
 
-	it("redirects the old /missions route to /play/missions", () => {
+	it("redirects the old /missions route to /history", () => {
 		renderApp(["/missions"]);
+		expect(screen.getByText("MissionsPage")).toBeInTheDocument();
+	});
+
+	it("redirects the old /play/missions route to /history", () => {
+		renderApp(["/play/missions"]);
 		expect(screen.getByText("MissionsPage")).toBeInTheDocument();
 	});
 
@@ -213,6 +219,18 @@ describe("App - NavLink navigation", () => {
 
 		await waitFor(() => {
 			expect(screen.getByText("LibraryPage")).toBeInTheDocument();
+		});
+	});
+
+	it("clicking 'History' NavLink navigates to /history and shows the mission history", async () => {
+		renderApp(["/play"]);
+
+		expect(screen.getByText("PlayPage")).toBeInTheDocument();
+
+		fireEvent.click(screen.getByText("History"));
+
+		await waitFor(() => {
+			expect(screen.getByText("MissionsPage")).toBeInTheDocument();
 		});
 	});
 

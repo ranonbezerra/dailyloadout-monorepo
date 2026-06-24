@@ -1,5 +1,11 @@
 import { AppShell, Button, NavLink, Stack, Text } from "@mantine/core";
-import { IconBooks, IconChartBar, IconDeviceGamepad2, IconLogout } from "@tabler/icons-react";
+import {
+	IconBooks,
+	IconChartBar,
+	IconDeviceGamepad2,
+	IconHistory,
+	IconLogout,
+} from "@tabler/icons-react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { useAuthContext } from "./contexts/AuthContext";
@@ -40,6 +46,12 @@ function AppLayout() {
 							onClick={() => navigate("/library")}
 						/>
 						<NavLink
+							label="History"
+							leftSection={<IconHistory size={18} />}
+							active={location.pathname.startsWith("/history")}
+							onClick={() => navigate("/history")}
+						/>
+						<NavLink
 							label="Stats"
 							leftSection={<IconChartBar size={18} />}
 							active={location.pathname.startsWith("/analytics")}
@@ -62,16 +74,17 @@ function AppLayout() {
 				<Routes>
 					<Route path="/play" element={<PlayPage />} />
 					<Route path="/play/loadout" element={<LoadoutPage />} />
-					<Route path="/play/missions" element={<MissionsPage />} />
 					{FEATURES.backlogConcierge && (
 						<Route path="/play/concierge" element={<ConciergePage />} />
 					)}
 					<Route path="/library" element={<LibraryPage />} />
+					<Route path="/history" element={<MissionsPage />} />
 					<Route path="/captures" element={<CapturesPage />} />
 					<Route path="/analytics" element={<AnalyticsPage />} />
-					{/* Backward-compatible redirects from the old flat routes. */}
+					{/* Backward-compatible redirects from the old flat / nested routes. */}
 					<Route path="/loadout" element={<Navigate to="/play/loadout" replace />} />
-					<Route path="/missions" element={<Navigate to="/play/missions" replace />} />
+					<Route path="/missions" element={<Navigate to="/history" replace />} />
+					<Route path="/play/missions" element={<Navigate to="/history" replace />} />
 					<Route path="/concierge" element={<Navigate to="/play/concierge" replace />} />
 					<Route path="*" element={<Navigate to="/play" replace />} />
 				</Routes>

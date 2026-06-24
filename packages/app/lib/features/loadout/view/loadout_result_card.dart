@@ -11,7 +11,11 @@ class LoadoutResultCard extends StatelessWidget {
     required this.totalResults,
     required this.onAccept,
     required this.onReject,
+    required this.onGetBriefing,
+    required this.onStartWithBriefing,
     required this.isActioning,
+    required this.isGeneratingBriefing,
+    this.briefingText,
     super.key,
   });
 
@@ -20,7 +24,19 @@ class LoadoutResultCard extends StatelessWidget {
   final int totalResults;
   final VoidCallback onAccept;
   final VoidCallback onReject;
+
+  /// Requests a quick briefing for this game.
+  final VoidCallback onGetBriefing;
+
+  /// Starts the mission carrying the generated [briefingText].
+  final VoidCallback onStartWithBriefing;
   final bool isActioning;
+
+  /// Whether a briefing is currently being generated for this card.
+  final bool isGeneratingBriefing;
+
+  /// The generated briefing text, if any has been produced yet.
+  final String? briefingText;
 
   String? get _rankLabel {
     if (totalResults <= 1) return null;
@@ -140,23 +156,91 @@ class LoadoutResultCard extends StatelessWidget {
       );
     }
 
-    return Row(
+    final hasBriefing = briefingText != null && briefingText!.isNotEmpty;
+    final busy = isActioning || isGeneratingBriefing;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: OutlinedButton(
-            onPressed: isActioning ? null : onReject,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: DLColors.red,
-              side: const BorderSide(color: DLColors.red),
+        // Generated briefing preview.
+        if (hasBriefing) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: DLColors.surface2,
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: const Text('Reject'),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.article_outlined,
+                      size: 16,
+                      color: DLColors.violet,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Briefing',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: DLColors.violet,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(briefingText!, style: theme.textTheme.bodyMedium),
+              ],
+            ),
           ),
+          const SizedBox(height: 12),
+        ],
+
+        // Secondary actions: reject + (get briefing, unless already shown).
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: busy ? null : onReject,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: DLColors.red,
+                  side: const BorderSide(color: DLColors.red),
+                ),
+                child: const Text('Reject'),
+              ),
+            ),
+            if (!hasBriefing) ...[
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: busy ? null : onGetBriefing,
+                  icon: isGeneratingBriefing
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.article_outlined, size: 18),
+                  label: Text(
+                    isGeneratingBriefing ? 'Briefing...' : 'Get briefing',
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          flex: 2,
+        const SizedBox(height: 12),
+
+        // Primary action: start (with briefing when one is present).
+        SizedBox(
+          width: double.infinity,
           child: FilledButton.icon(
-            onPressed: isActioning ? null : onAccept,
+            onPressed: busy
+                ? null
+                : (hasBriefing ? onStartWithBriefing : onAccept),
             style: FilledButton.styleFrom(
               backgroundColor: DLColors.green,
               foregroundColor: DLColors.bg,
@@ -171,7 +255,13 @@ class LoadoutResultCard extends StatelessWidget {
                     ),
                   )
                 : const Icon(Icons.play_arrow),
-            label: Text(isActioning ? 'Starting...' : 'Accept & Start Mission'),
+            label: Text(
+              isActioning
+                  ? 'Starting...'
+                  : hasBriefing
+                  ? 'Start with briefing'
+                  : 'Accept & Start Mission',
+            ),
           ),
         ),
       ],

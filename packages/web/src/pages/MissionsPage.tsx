@@ -1,12 +1,9 @@
-import { Badge, Button, Card, Group, Stack, Text, Title } from "@mantine/core";
+import { Badge, Card, Group, Stack, Text, Title } from "@mantine/core";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { DataTable } from "mantine-datatable";
-import { useState } from "react";
-import { useActiveMission, useMissions } from "../hooks/useMission";
-import type { Mission, MissionListItem } from "../types/mission";
-import { MissionBriefingModal } from "./MissionBriefingModal";
-import { MissionDebriefModal } from "./MissionDebriefModal";
+import { useMissions } from "../hooks/useMission";
+import type { MissionListItem } from "../types/mission";
 
 dayjs.extend(relativeTime);
 
@@ -38,16 +35,12 @@ function formatDuration(startedAt: string, endedAt: string | null): string {
 
 export function MissionsPage() {
 	const { data, isLoading } = useMissions({ limit: 50 });
-	const { data: activeMission } = useActiveMission();
 	const missions = data?.items ?? [];
-
-	const [briefingMission, setBriefingMission] = useState<Mission | null>(null);
-	const [debriefMission, setDebriefMission] = useState<Mission | null>(null);
 
 	return (
 		<Stack>
 			<Group justify="space-between">
-				<Title order={2}>Mission Timeline</Title>
+				<Title order={2}>Mission History</Title>
 				{data && (
 					<Text c="dimmed" size="sm">
 						{data.total} mission{data.total !== 1 ? "s" : ""} total
@@ -58,7 +51,7 @@ export function MissionsPage() {
 			{!isLoading && missions.length === 0 ? (
 				<Card withBorder p="xl">
 					<Text c="dimmed" ta="center">
-						No missions yet. Start a mission from a game in your library.
+						No missions yet. Start one from the Play page.
 					</Text>
 				</Card>
 			) : (
@@ -102,48 +95,9 @@ export function MissionsPage() {
 								</Text>
 							),
 						},
-						{
-							accessor: "actions",
-							title: "",
-							render: (mission: MissionListItem) => {
-								if (mission.endedVia !== null) return null;
-								return (
-									<Group gap="xs" wrap="nowrap">
-										{activeMission?.briefingText && (
-											<Button
-												size="xs"
-												variant="light"
-												onClick={() => setBriefingMission(activeMission)}
-											>
-												Briefing
-											</Button>
-										)}
-										<Button
-											size="xs"
-											color="teal"
-											onClick={() => {
-												if (activeMission) setDebriefMission(activeMission);
-											}}
-										>
-											End mission
-										</Button>
-									</Group>
-								);
-							},
-						},
 					]}
 				/>
 			)}
-
-			{briefingMission && (
-				<MissionBriefingModal
-					mode="view"
-					mission={briefingMission}
-					onClose={() => setBriefingMission(null)}
-					onMissionUpdated={(updated) => setBriefingMission(updated)}
-				/>
-			)}
-			<MissionDebriefModal mission={debriefMission} onClose={() => setDebriefMission(null)} />
 		</Stack>
 	);
 }

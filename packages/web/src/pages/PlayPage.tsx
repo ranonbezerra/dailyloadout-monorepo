@@ -1,26 +1,50 @@
-import { Badge, Button, Card, Group, SimpleGrid, Stack, Text, Title } from "@mantine/core";
-import { IconDice3, IconHandClick, IconMessageChatbot, IconPlayerPlay } from "@tabler/icons-react";
+import {
+	Badge,
+	Button,
+	Card,
+	Group,
+	SimpleGrid,
+	Stack,
+	Text,
+	Title,
+	Tooltip,
+} from "@mantine/core";
+import {
+	IconBook,
+	IconDice3,
+	IconFlagCheck,
+	IconHandClick,
+	IconMessageChatbot,
+} from "@tabler/icons-react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useActiveMission } from "../hooks/useMission";
 import { FEATURES } from "../lib/features";
+import { MissionBriefingModal } from "./MissionBriefingModal";
+import { MissionDebriefModal } from "./MissionDebriefModal";
 
 interface DoorCardProps {
 	title: string;
 	subtitle: string;
 	icon: React.ReactNode;
 	accent?: boolean;
+	disabled?: boolean;
 	onClick: () => void;
 }
 
-function DoorCard({ title, subtitle, icon, accent, onClick }: DoorCardProps) {
-	return (
+function DoorCard({ title, subtitle, icon, accent, disabled, onClick }: DoorCardProps) {
+	const card = (
 		<Card
 			withBorder
 			p="lg"
 			radius="md"
-			onClick={onClick}
-			style={{ cursor: "pointer", height: "100%" }}
-			bg={accent ? "var(--mantine-primary-color-light)" : undefined}
+			onClick={disabled ? undefined : onClick}
+			style={{
+				cursor: disabled ? "not-allowed" : "pointer",
+				height: "100%",
+				opacity: disabled ? 0.55 : 1,
+			}}
+			bg={accent && !disabled ? "var(--mantine-primary-color-light)" : undefined}
 		>
 			<Stack gap="sm" align="flex-start">
 				{icon}
@@ -31,11 +55,23 @@ function DoorCard({ title, subtitle, icon, accent, onClick }: DoorCardProps) {
 			</Stack>
 		</Card>
 	);
+
+	if (disabled) {
+		return (
+			<Tooltip label="Finish your active mission first" withArrow>
+				{card}
+			</Tooltip>
+		);
+	}
+	return card;
 }
 
 export function PlayPage() {
 	const navigate = useNavigate();
 	const { data: activeMission } = useActiveMission();
+	const [showBriefing, setShowBriefing] = useState(false);
+	const [showDebrief, setShowDebrief] = useState(false);
+	const hasActiveMission = Boolean(activeMission);
 
 	return (
 		<Stack maw={720} mx="auto" mt="md">
@@ -47,13 +83,11 @@ export function PlayPage() {
 			{activeMission ? (
 				<Card withBorder p="lg" radius="md">
 					<Stack gap="md">
-						<Group justify="space-between" align="flex-start">
-							<Group gap="sm">
-								<Badge color="teal" variant="dot" size="lg">
-									Mission active
-								</Badge>
-								<Title order={3}>{activeMission.libraryEntry.game.title}</Title>
-							</Group>
+						<Group gap="sm">
+							<Badge color="teal" variant="dot" size="lg">
+								Mission active
+							</Badge>
+							<Title order={3}>{activeMission.libraryEntry.game.title}</Title>
 						</Group>
 
 						{activeMission.briefingText && (
@@ -66,12 +100,17 @@ export function PlayPage() {
 
 						<Group>
 							<Button
-								leftSection={<IconPlayerPlay size={18} />}
-								onClick={() => navigate("/play/missions")}
+								leftSection={<IconBook size={18} />}
+								variant="light"
+								onClick={() => setShowBriefing(true)}
 							>
-								Resume
+								Briefing
 							</Button>
-							<Button variant="outline" color="teal" onClick={() => navigate("/play/missions")}>
+							<Button
+								leftSection={<IconFlagCheck size={18} />}
+								color="teal"
+								onClick={() => setShowDebrief(true)}
+							>
 								End / Debrief
 							</Button>
 						</Group>
@@ -91,12 +130,14 @@ export function PlayPage() {
 					subtitle="One tap — we pick, you play."
 					icon={<IconDice3 size={28} />}
 					accent
+					disabled={hasActiveMission}
 					onClick={() => navigate("/play/loadout")}
 				/>
 				<DoorCard
 					title="I'll choose"
 					subtitle="Pick a game yourself."
 					icon={<IconHandClick size={28} />}
+					disabled={hasActiveMission}
 					onClick={() => navigate("/library")}
 				/>
 				{FEATURES.backlogConcierge && (
@@ -108,6 +149,18 @@ export function PlayPage() {
 					/>
 				)}
 			</SimpleGrid>
+
+			{showBriefing && activeMission && (
+				<MissionBriefingModal
+					mode="view"
+					mission={activeMission}
+					onClose={() => setShowBriefing(false)}
+				/>
+			)}
+			<MissionDebriefModal
+				mission={showDebrief ? (activeMission ?? null) : null}
+				onClose={() => setShowDebrief(false)}
+			/>
 		</Stack>
 	);
 }

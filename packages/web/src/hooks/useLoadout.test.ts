@@ -168,9 +168,22 @@ describe("useAcceptLoadout", () => {
 			wrapper: createWrapper(),
 		});
 
-		await result.current.mutateAsync("loadout-1");
+		await result.current.mutateAsync({ publicId: "loadout-1" });
 
-		expect(acceptLoadout).toHaveBeenCalledWith("loadout-1");
+		expect(acceptLoadout).toHaveBeenCalledWith("loadout-1", undefined);
+	});
+
+	it("forwards an optional briefingText", async () => {
+		const { result } = renderHook(() => useAcceptLoadout(), {
+			wrapper: createWrapper(),
+		});
+
+		await result.current.mutateAsync({
+			publicId: "loadout-1",
+			briefingText: "Resume at the gate.",
+		});
+
+		expect(acceptLoadout).toHaveBeenCalledWith("loadout-1", "Resume at the gate.");
 	});
 });
 

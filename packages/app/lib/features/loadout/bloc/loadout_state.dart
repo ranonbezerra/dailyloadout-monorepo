@@ -47,6 +47,30 @@ final class LoadoutRejected extends LoadoutState {
   List<Object?> get props => [loadout];
 }
 
+/// A quick briefing is being generated for the loadout [publicId].
+final class LoadoutBriefingLoading extends LoadoutState {
+  const LoadoutBriefingLoading({required this.publicId});
+
+  final String publicId;
+
+  @override
+  List<Object?> get props => [publicId];
+}
+
+/// A quick briefing has been generated for the loadout [publicId].
+final class LoadoutBriefingReady extends LoadoutState {
+  const LoadoutBriefingReady({
+    required this.publicId,
+    required this.briefingText,
+  });
+
+  final String publicId;
+  final String briefingText;
+
+  @override
+  List<Object?> get props => [publicId, briefingText];
+}
+
 /// Loadout history list has been loaded.
 final class LoadoutListLoaded extends LoadoutState {
   const LoadoutListLoaded({required this.loadouts, required this.total});

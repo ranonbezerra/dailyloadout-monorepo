@@ -143,6 +143,7 @@ void main() {
       await tester.pumpWidget(buildSubject());
 
       expect(find.text('No missions yet.'), findsOneWidget);
+      expect(find.text('Start one from the Play tab.'), findsOneWidget);
       expect(find.byIcon(Icons.rocket_launch_outlined), findsOneWidget);
     });
 
@@ -175,7 +176,7 @@ void main() {
       expect(find.text('Elden Ring'), findsOneWidget);
     });
 
-    testWidgets('active mission card shows View Briefing and End Mission', (
+    testWidgets('active mission card is read-only (no action buttons)', (
       tester,
     ) async {
       when(
@@ -184,11 +185,11 @@ void main() {
 
       await tester.pumpWidget(buildSubject());
 
-      expect(
-        find.widgetWithText(OutlinedButton, 'View Briefing'),
-        findsOneWidget,
-      );
-      expect(find.widgetWithText(FilledButton, 'End Mission'), findsOneWidget);
+      // History is read-only — active-mission actions live on the Play page.
+      expect(find.text('View Briefing'), findsNothing);
+      expect(find.text('End Mission'), findsNothing);
+      expect(find.byType(OutlinedButton), findsNothing);
+      expect(find.byType(FilledButton), findsNothing);
     });
 
     testWidgets('ended mission card does NOT show action buttons', (
@@ -324,7 +325,7 @@ void main() {
       expect(find.text('Retry'), findsNothing);
     });
 
-    testWidgets('shows AppBar with Missions title', (tester) async {
+    testWidgets('shows AppBar with Mission History title', (tester) async {
       when(() => missionBloc.state).thenReturn(const MissionInitial());
 
       await tester.pumpWidget(buildSubject());
@@ -332,7 +333,7 @@ void main() {
       expect(
         find.descendant(
           of: find.byType(AppBar),
-          matching: find.text('Missions'),
+          matching: find.text('Mission History'),
         ),
         findsOneWidget,
       );

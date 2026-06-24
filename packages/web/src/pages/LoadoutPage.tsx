@@ -13,10 +13,11 @@ import {
 	TextInput,
 	Title,
 } from "@mantine/core";
-import { IconCheck, IconDice3, IconX } from "@tabler/icons-react";
+import { IconBook, IconCheck, IconDice3, IconX } from "@tabler/icons-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAcceptLoadout, useCreateLoadout, useRejectLoadout } from "../hooks/useLoadout";
+import { usePreviewBriefing } from "../hooks/useMission";
 import type { Loadout, LoadoutMood, MentalEnergy } from "../types/loadout";
 
 const MOOD_OPTIONS: { value: LoadoutMood; label: string }[] = [
@@ -47,6 +48,9 @@ function LoadoutResultCard({
 	loadout,
 	rank,
 	totalResults,
+	briefingText,
+	isPreviewing,
+	onGetBriefing,
 	onAccept,
 	onReject,
 	isActioning,
@@ -54,7 +58,10 @@ function LoadoutResultCard({
 	loadout: Loadout;
 	rank: number;
 	totalResults: number;
-	onAccept: () => void;
+	briefingText?: string;
+	isPreviewing: boolean;
+	onGetBriefing: () => void;
+	onAccept: (briefingText?: string) => void;
 	onReject: () => void;
 	isActioning: boolean;
 }) {
@@ -113,25 +120,59 @@ function LoadoutResultCard({
 						Rejected
 					</Text>
 				) : (
-					<Group grow>
-						<Button
-							color="green"
-							leftSection={<IconCheck size={18} />}
-							onClick={onAccept}
-							loading={isActioning}
-						>
-							Accept & Start Mission
-						</Button>
-						<Button
-							variant="outline"
-							color="red"
-							leftSection={<IconX size={18} />}
-							onClick={onReject}
-							loading={isActioning}
-						>
-							Reject
-						</Button>
-					</Group>
+					<Stack gap="sm">
+						{briefingText && (
+							<Card withBorder p="sm" radius="sm">
+								<Text size="sm" fw={500} mb={4}>
+									Briefing
+								</Text>
+								<Text size="sm" c="dimmed">
+									{briefingText}
+								</Text>
+							</Card>
+						)}
+						<Group grow>
+							{briefingText ? (
+								<Button
+									color="green"
+									leftSection={<IconCheck size={18} />}
+									onClick={() => onAccept(briefingText)}
+									loading={isActioning}
+								>
+									Start with briefing
+								</Button>
+							) : (
+								<>
+									<Button
+										color="green"
+										leftSection={<IconCheck size={18} />}
+										onClick={() => onAccept()}
+										loading={isActioning}
+									>
+										Accept & Start
+									</Button>
+									<Button
+										variant="light"
+										leftSection={<IconBook size={18} />}
+										onClick={onGetBriefing}
+										loading={isPreviewing}
+										disabled={isActioning || !loadout.libraryEntry}
+									>
+										Get briefing
+									</Button>
+								</>
+							)}
+							<Button
+								variant="outline"
+								color="red"
+								leftSection={<IconX size={18} />}
+								onClick={onReject}
+								loading={isActioning}
+							>
+								Reject
+							</Button>
+						</Group>
+					</Stack>
 				)}
 			</Stack>
 		</Card>
@@ -148,13 +189,16 @@ export function LoadoutPage() {
 	const [context, setContext] = useState("");
 	const [multiMode, setMultiMode] = useState(false);
 	const [results, setResults] = useState<Loadout[]>([]);
+	const [briefings, setBriefings] = useState<Record<string, string>>({});
 
 	const createLoadout = useCreateLoadout();
 	const acceptLoadout = useAcceptLoadout();
 	const rejectLoadout = useRejectLoadout();
+	const previewBriefing = usePreviewBriefing();
 
 	const handleRoll = () => {
 		setResults([]);
+		setBriefings({});
 		createLoadout.mutate(
 			{
 				mood,
@@ -167,13 +211,34 @@ export function LoadoutPage() {
 		);
 	};
 
-	const handleAccept = (publicId: string) => {
-		acceptLoadout.mutate(publicId, {
-			onSuccess: (data) => {
-				setResults((prev) => prev.map((r) => (r.publicId === data.publicId ? data : r)));
-				setTimeout(() => navigate("/missions"), 600);
+	const handleGetBriefing = (loadout: Loadout) => {
+		const entryId = loadout.libraryEntry?.publicId;
+		if (!entryId) return;
+		previewBriefing.mutate(
+			{ libraryEntryPublicId: entryId, mode: "quick" },
+			{
+				onSuccess: (preview) => {
+					if (preview.briefingText) {
+						setBriefings((prev) => ({
+							...prev,
+							[loadout.publicId]: preview.briefingText as string,
+						}));
+					}
+				},
 			},
-		});
+		);
+	};
+
+	const handleAccept = (publicId: string, briefingText?: string) => {
+		acceptLoadout.mutate(
+			{ publicId, briefingText },
+			{
+				onSuccess: (data) => {
+					setResults((prev) => prev.map((r) => (r.publicId === data.publicId ? data : r)));
+					setTimeout(() => navigate("/play"), 600);
+				},
+			},
+		);
 	};
 
 	const handleReject = (publicId: string) => {
@@ -285,7 +350,13 @@ export function LoadoutPage() {
 						loadout={loadout}
 						rank={index}
 						totalResults={results.length}
-						onAccept={() => handleAccept(loadout.publicId)}
+						briefingText={briefings[loadout.publicId]}
+						isPreviewing={
+							previewBriefing.isPending &&
+							previewBriefing.variables?.libraryEntryPublicId === loadout.libraryEntry?.publicId
+						}
+						onGetBriefing={() => handleGetBriefing(loadout)}
+						onAccept={(briefingText) => handleAccept(loadout.publicId, briefingText)}
 						onReject={() => handleReject(loadout.publicId)}
 						isActioning={isActioning}
 					/>

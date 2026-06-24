@@ -117,6 +117,9 @@ void main() {
     );
     registerFallbackValue(const AcceptLoadout(publicId: 'x'));
     registerFallbackValue(const RejectLoadout(publicId: 'x'));
+    registerFallbackValue(
+      const GenerateLoadoutBriefing(publicId: 'x', libraryEntryPublicId: 'y'),
+    );
   });
 
   late MockLoadoutBloc mockLoadoutBloc;
@@ -146,8 +149,8 @@ void main() {
       routes: [
         GoRoute(path: '/loadout', builder: (_, __) => const LoadoutPage()),
         GoRoute(
-          path: '/missions',
-          builder: (_, __) => const Scaffold(body: Text('Missions stub')),
+          path: '/play',
+          builder: (_, __) => const Scaffold(body: Text('Play stub')),
         ),
       ],
     );
@@ -454,6 +457,106 @@ void main() {
       verify(
         () => mockLoadoutBloc.add(const RejectLoadout(publicId: 'loadout-001')),
       ).called(1);
+    });
+
+    testWidgets('Get briefing dispatches GenerateLoadoutBriefing', (
+      tester,
+    ) async {
+      whenListen(
+        mockLoadoutBloc,
+        Stream<LoadoutState>.fromIterable([
+          LoadoutResultsLoaded(results: [_loadout]),
+        ]),
+        initialState: const LoadoutInitial(),
+      );
+
+      await tester.pumpWidget(buildSubject());
+      await tester.pump();
+
+      await tester.tap(find.text('Get briefing'));
+      await tester.pump();
+
+      verify(
+        () => mockLoadoutBloc.add(
+          const GenerateLoadoutBriefing(
+            publicId: 'loadout-001',
+            libraryEntryPublicId: 'lib-001',
+          ),
+        ),
+      ).called(1);
+    });
+
+    testWidgets('renders briefing and "Start with briefing" '
+        'after LoadoutBriefingReady', (tester) async {
+      whenListen(
+        mockLoadoutBloc,
+        Stream<LoadoutState>.fromIterable([
+          LoadoutResultsLoaded(results: [_loadout]),
+          const LoadoutBriefingReady(
+            publicId: 'loadout-001',
+            briefingText: 'Push toward the next checkpoint.',
+          ),
+        ]),
+        initialState: const LoadoutInitial(),
+      );
+
+      await tester.pumpWidget(buildSubject());
+      await tester.pump();
+
+      expect(find.text('Push toward the next checkpoint.'), findsOneWidget);
+      expect(find.text('Start with briefing'), findsOneWidget);
+    });
+
+    testWidgets('"Start with briefing" dispatches AcceptLoadout '
+        'with the briefing text', (tester) async {
+      whenListen(
+        mockLoadoutBloc,
+        Stream<LoadoutState>.fromIterable([
+          LoadoutResultsLoaded(results: [_loadout]),
+          const LoadoutBriefingReady(
+            publicId: 'loadout-001',
+            briefingText: 'Push toward the next checkpoint.',
+          ),
+        ]),
+        initialState: const LoadoutInitial(),
+      );
+
+      await tester.pumpWidget(buildRoutedSubject());
+      await tester.pump();
+
+      await tester.tap(find.text('Start with briefing'));
+      await tester.pump();
+
+      verify(
+        () => mockLoadoutBloc.add(
+          const AcceptLoadout(
+            publicId: 'loadout-001',
+            briefingText: 'Push toward the next checkpoint.',
+          ),
+        ),
+      ).called(1);
+    });
+
+    testWidgets('navigates to /play after a mission is accepted', (
+      tester,
+    ) async {
+      whenListen(
+        mockLoadoutBloc,
+        Stream<LoadoutState>.fromIterable([
+          LoadoutResultsLoaded(results: [_loadout]),
+          LoadoutAccepted(loadout: _acceptedLoadout),
+        ]),
+        initialState: const LoadoutInitial(),
+      );
+
+      await tester.pumpWidget(buildRoutedSubject());
+      await tester.pump();
+
+      // Advance past the 800ms navigation delay.
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Play stub'), findsOneWidget);
     });
   });
 }

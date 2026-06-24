@@ -161,8 +161,10 @@ void main() {
   });
 
   group('acceptLoadout', () {
-    test('posts to accept path and parses Loadout', () async {
-      when(() => dio.post<Map<String, dynamic>>(any())).thenAnswer(
+    test('posts to accept path with empty body and parses Loadout', () async {
+      when(
+        () => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')),
+      ).thenAnswer(
         (_) async =>
             _response('/v1/loadouts/loadout-001/accept', _loadoutJson()),
       );
@@ -170,9 +172,37 @@ void main() {
       final loadout = await repository.acceptLoadout('loadout-001');
 
       expect(loadout.publicId, 'loadout-001');
-      verify(
-        () => dio.post<Map<String, dynamic>>('/v1/loadouts/loadout-001/accept'),
-      ).called(1);
+      final captured = verify(
+        () => dio.post<Map<String, dynamic>>(
+          '/v1/loadouts/loadout-001/accept',
+          data: captureAny(named: 'data'),
+        ),
+      ).captured;
+      final body = captured[0] as Map<String, dynamic>;
+      expect(body.containsKey('briefing_text'), isFalse);
+    });
+
+    test('includes briefing_text in body when provided', () async {
+      when(
+        () => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')),
+      ).thenAnswer(
+        (_) async =>
+            _response('/v1/loadouts/loadout-001/accept', _loadoutJson()),
+      );
+
+      await repository.acceptLoadout(
+        'loadout-001',
+        briefingText: 'Head to the catacombs.',
+      );
+
+      final captured = verify(
+        () => dio.post<Map<String, dynamic>>(
+          '/v1/loadouts/loadout-001/accept',
+          data: captureAny(named: 'data'),
+        ),
+      ).captured;
+      final body = captured[0] as Map<String, dynamic>;
+      expect(body['briefing_text'], 'Head to the catacombs.');
     });
   });
 

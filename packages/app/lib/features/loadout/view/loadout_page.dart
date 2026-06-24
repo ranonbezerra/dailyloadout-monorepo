@@ -29,6 +29,12 @@ class _LoadoutPageState extends State<LoadoutPage> {
   // Tracks which loadout is currently being actioned
   String? _actioningId;
 
+  // Tracks which loadout is currently generating a briefing.
+  String? _briefingId;
+
+  // Generated briefing text keyed by loadout public id.
+  final Map<String, String> _briefings = {};
+
   // Keeps a local copy of results so we can update
   // individual items after accept / reject without
   // losing the full list.
@@ -69,6 +75,28 @@ class _LoadoutPageState extends State<LoadoutPage> {
     context.read<LoadoutBloc>().add(RejectLoadout(publicId: loadout.publicId));
   }
 
+  void _onGetBriefing(Loadout loadout) {
+    final entryId = loadout.libraryEntry?.publicId;
+    if (entryId == null) return;
+    setState(() => _briefingId = loadout.publicId);
+    context.read<LoadoutBloc>().add(
+      GenerateLoadoutBriefing(
+        publicId: loadout.publicId,
+        libraryEntryPublicId: entryId,
+      ),
+    );
+  }
+
+  void _onStartWithBriefing(Loadout loadout) {
+    setState(() => _actioningId = loadout.publicId);
+    context.read<LoadoutBloc>().add(
+      AcceptLoadout(
+        publicId: loadout.publicId,
+        briefingText: _briefings[loadout.publicId],
+      ),
+    );
+  }
+
   /// Replaces a loadout in the local results list
   /// after an accept/reject response.
   void _replaceInResults(Loadout updated) {
@@ -81,10 +109,10 @@ class _LoadoutPageState extends State<LoadoutPage> {
     }
   }
 
-  Future<void> _navigateToMissionsAfterDelay() async {
+  Future<void> _navigateToPlayHubAfterDelay() async {
     await Future<void>.delayed(const Duration(milliseconds: 800));
     if (!mounted) return;
-    context.go('/missions');
+    context.go('/play');
   }
 
   @override
@@ -146,15 +174,26 @@ class _LoadoutPageState extends State<LoadoutPage> {
             backgroundColor: DLColors.green,
           ),
         );
-      _navigateToMissionsAfterDelay();
+      _navigateToPlayHubAfterDelay();
     }
 
     if (state is LoadoutRejected) {
       _replaceInResults(state.loadout);
     }
 
-    if (state is LoadoutError && _actioningId != null) {
-      setState(() => _actioningId = null);
+    if (state is LoadoutBriefingReady) {
+      setState(() {
+        _briefings[state.publicId] = state.briefingText;
+        _briefingId = null;
+      });
+    }
+
+    if (state is LoadoutError &&
+        (_actioningId != null || _briefingId != null)) {
+      setState(() {
+        _actioningId = null;
+        _briefingId = null;
+      });
     }
   }
 
@@ -174,8 +213,12 @@ class _LoadoutPageState extends State<LoadoutPage> {
             rank: i,
             totalResults: _results.length,
             isActioning: _actioningId == _results[i].publicId,
+            isGeneratingBriefing: _briefingId == _results[i].publicId,
+            briefingText: _briefings[_results[i].publicId],
             onAccept: () => _onAccept(_results[i]),
             onReject: () => _onReject(_results[i]),
+            onGetBriefing: () => _onGetBriefing(_results[i]),
+            onStartWithBriefing: () => _onStartWithBriefing(_results[i]),
           ),
         const SizedBox(height: 16),
         Center(

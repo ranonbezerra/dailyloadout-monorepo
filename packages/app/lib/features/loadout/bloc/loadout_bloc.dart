@@ -1,5 +1,6 @@
 import 'package:app/core/loadout/loadout_models.dart';
 import 'package:app/core/loadout/loadout_repository.dart';
+import 'package:app/core/mission/mission_repository.dart';
 import 'package:bloc/bloc.dart';
 import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
@@ -8,17 +9,22 @@ part 'loadout_event.dart';
 part 'loadout_state.dart';
 
 class LoadoutBloc extends Bloc<LoadoutEvent, LoadoutState> {
-  LoadoutBloc({required LoadoutRepository loadoutRepository})
-    : _loadoutRepository = loadoutRepository,
-      super(const LoadoutInitial()) {
+  LoadoutBloc({
+    required LoadoutRepository loadoutRepository,
+    required MissionRepository missionRepository,
+  }) : _loadoutRepository = loadoutRepository,
+       _missionRepository = missionRepository,
+       super(const LoadoutInitial()) {
     on<CreateLoadout>(_onCreateLoadout);
     on<AcceptLoadout>(_onAcceptLoadout);
     on<RejectLoadout>(_onRejectLoadout);
+    on<GenerateLoadoutBriefing>(_onGenerateLoadoutBriefing);
     on<LoadLoadouts>(_onLoadLoadouts);
     on<LoadLatestLoadout>(_onLoadLatestLoadout);
   }
 
   final LoadoutRepository _loadoutRepository;
+  final MissionRepository _missionRepository;
 
   Future<void> _onCreateLoadout(
     CreateLoadout event,
@@ -50,8 +56,34 @@ class LoadoutBloc extends Bloc<LoadoutEvent, LoadoutState> {
     emit(const LoadoutLoading());
 
     try {
-      final loadout = await _loadoutRepository.acceptLoadout(event.publicId);
+      final loadout = await _loadoutRepository.acceptLoadout(
+        event.publicId,
+        briefingText: event.briefingText,
+      );
       emit(LoadoutAccepted(loadout: loadout));
+    } on DioException catch (e) {
+      emit(LoadoutError(message: _extractErrorMessage(e)));
+    } on Exception catch (e) {
+      emit(LoadoutError(message: e.toString()));
+    }
+  }
+
+  Future<void> _onGenerateLoadoutBriefing(
+    GenerateLoadoutBriefing event,
+    Emitter<LoadoutState> emit,
+  ) async {
+    emit(LoadoutBriefingLoading(publicId: event.publicId));
+
+    try {
+      final preview = await _missionRepository.previewBriefing(
+        event.libraryEntryPublicId,
+      );
+      emit(
+        LoadoutBriefingReady(
+          publicId: event.publicId,
+          briefingText: preview.briefingText ?? '',
+        ),
+      );
     } on DioException catch (e) {
       emit(LoadoutError(message: _extractErrorMessage(e)));
     } on Exception catch (e) {
