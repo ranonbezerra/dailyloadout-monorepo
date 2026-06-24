@@ -17,6 +17,7 @@ class MissionBloc extends Bloc<MissionEvent, MissionState> {
     on<LoadMoreMissions>(_onLoadMoreMissions);
     on<LoadActiveMission>(_onLoadActiveMission);
     on<PreviewBriefing>(_onPreviewBriefing);
+    on<CancelDeepBriefing>(_onCancelDeepBriefing);
     on<StartMission>(_onStartMission);
     on<SubmitDebrief>(_onSubmitDebrief);
     on<EndMission>(_onEndMission);
@@ -25,6 +26,9 @@ class MissionBloc extends Bloc<MissionEvent, MissionState> {
   }
 
   final MissionRepository _missionRepository;
+
+  /// Active cancel token for an in-flight deep briefing request, if any.
+  CancelToken? _deepCancelToken;
 
   Future<void> _onLoadMissions(
     LoadMissions event,
@@ -97,12 +101,50 @@ class MissionBloc extends Bloc<MissionEvent, MissionState> {
     PreviewBriefing event,
     Emitter<MissionState> emit,
   ) async {
-    emit(const MissionLoading());
+    final isDeep = event.mode == 'deep';
+    if (isDeep) {
+      _deepCancelToken = CancelToken();
+      emit(const DeepBriefingLoading());
+    } else {
+      emit(const MissionLoading());
+    }
 
     try {
       final preview = await _missionRepository.previewBriefing(
         event.libraryEntryPublicId,
         positionOverride: event.positionOverride,
+        mode: event.mode,
+        cancelToken: isDeep ? _deepCancelToken : null,
+      );
+      emit(BriefingPreviewLoaded(preview: preview, isDeep: isDeep));
+    } on DioException catch (e) {
+      if (CancelToken.isCancel(e)) {
+        // User cancelled the deep request -- fall back to the quick briefing.
+        await _emitQuickPreview(event.libraryEntryPublicId, emit);
+        return;
+      }
+      emit(MissionError(message: _extractErrorMessage(e)));
+    } on Exception catch (e) {
+      emit(MissionError(message: e.toString()));
+    } finally {
+      if (isDeep) _deepCancelToken = null;
+    }
+  }
+
+  Future<void> _onCancelDeepBriefing(
+    CancelDeepBriefing event,
+    Emitter<MissionState> emit,
+  ) async {
+    _deepCancelToken?.cancel('cancelled_by_user');
+  }
+
+  Future<void> _emitQuickPreview(
+    String libraryEntryPublicId,
+    Emitter<MissionState> emit,
+  ) async {
+    try {
+      final preview = await _missionRepository.previewBriefing(
+        libraryEntryPublicId,
       );
       emit(BriefingPreviewLoaded(preview: preview));
     } on DioException catch (e) {

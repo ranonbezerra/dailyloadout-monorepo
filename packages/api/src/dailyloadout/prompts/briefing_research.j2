@@ -1,0 +1,44 @@
+Write a short "previously on" recap for a player returning to {{ context.game_title }}.
+Remind them where they were, then give specific next steps for this session,
+grounded in their own notes and the reference material below.
+
+Player's last known state:
+{% if context.location %}- Location: {{ context.location }}{% endif %}
+{% if context.current_quest %}- Current quest: {{ context.current_quest }}{% endif %}
+{% if context.next_action %}- Next action they noted: {{ context.next_action }}{% endif %}
+{% if context.level %}- Level/progress: {{ context.level }}{% endif %}
+{% if context.previous_debriefs %}
+Recent session notes (the player's own words — anchor the recap to these):
+{% for d in context.previous_debriefs %}- {{ d }}
+{% endfor %}
+{% endif %}
+
+{% if pages %}
+Reference material (use for concrete area names and directions):
+{% for p in pages %}--- {{ p.title }} ---
+{{ p.content }}
+{% endfor %}
+{% else %}
+Reference material:
+{% for r in results %}- {{ r.title }}: {{ r.snippet }}
+{% endfor %}
+{% endif %}
+
+Output PLAIN TEXT only. No Markdown: no asterisks, no bold, no headings, no
+numbered sections, no tables. Use exactly this shape:
+
+Previously on {{ context.game_title }}: <1-2 sentences, anchored to their notes>
+
+What you could do this session:
+- <a specific next step: name a real area, direction, objective, or ability>
+- <another specific step>
+- <another, optional>
+
+Rules:
+- Be concrete and specific ("head east past the fountain to the locked door"),
+  not vague ("keep exploring").
+- Only use area/ability names that appear in the reference material or the
+  player's notes — never invent.
+- Write ONLY about the in-game world. Never mention guides, walkthroughs, wikis,
+  websites, checklists, IGN, "the source", or that any search was done.
+- A later step removes spoilers, so favor being concrete here.

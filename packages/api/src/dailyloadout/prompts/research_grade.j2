@@ -1,0 +1,19 @@
+You are grading whether a set of web search results contains enough concrete,
+spoiler-free information to write a "previously on" recap that helps a player
+resume the game **{{ context.game_title }}**.
+
+Player's last known state:
+{% if context.location %}- Location: {{ context.location }}{% endif %}
+{% if context.current_quest %}- Current quest: {{ context.current_quest }}{% endif %}
+{% if context.next_action %}- Next action they noted: {{ context.next_action }}{% endif %}
+
+Search query used: {{ query }}
+
+Results:
+{% for r in results %}- {{ r.title }}: {{ r.snippet }}
+{% endfor %}
+
+Decide if these results are enough to suggest where to go or what to do next,
+without inventing facts. Output JSON only, no prose:
+{"grade": "sufficient"}  if the results clearly cover the player's situation
+{"grade": "insufficient"}  if they are off-topic, too vague, or missing the area

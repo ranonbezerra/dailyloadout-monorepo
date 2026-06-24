@@ -88,7 +88,8 @@ describe("previewBriefing", () => {
 
 		expect(mockApiFetch).toHaveBeenCalledWith("/v1/missions/preview-briefing", {
 			method: "POST",
-			body: JSON.stringify({ library_entry_public_id: "le1" }),
+			body: JSON.stringify({ library_entry_public_id: "le1", mode: "quick" }),
+			signal: undefined,
 		});
 		expect(result.briefingText).toBe("Start from the beginning");
 		expect(result.libraryEntry.publicId).toBe("le1");
@@ -121,10 +122,42 @@ describe("previewBriefing", () => {
 			method: "POST",
 			body: JSON.stringify({
 				library_entry_public_id: "le1",
+				mode: "quick",
 				position_override: "Elysium",
 			}),
+			signal: undefined,
 		});
 		expect(result.lastSessionContext).not.toBeNull();
+	});
+
+	it("sends mode=deep and forwards the abort signal", async () => {
+		mockApiFetch.mockResolvedValueOnce({
+			library_entry: {
+				public_id: "le1",
+				game: {
+					public_id: "g1",
+					title: "Hades",
+					slug: "hades",
+					metadata_source: "igdb",
+					created_at: "2024-01-01",
+				},
+				platform: { id: 1, slug: "pc", label: "PC", family: "computer" },
+				status: "playing",
+				created_at: "2024-01-01",
+				updated_at: "2024-01-01",
+			},
+			briefing_text: "Web-researched recap",
+			last_session_context: null,
+		});
+		const controller = new AbortController();
+
+		await previewBriefing("le1", undefined, "deep", controller.signal);
+
+		expect(mockApiFetch).toHaveBeenCalledWith("/v1/missions/preview-briefing", {
+			method: "POST",
+			body: JSON.stringify({ library_entry_public_id: "le1", mode: "deep" }),
+			signal: controller.signal,
+		});
 	});
 });
 

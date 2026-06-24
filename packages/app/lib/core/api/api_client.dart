@@ -12,6 +12,10 @@ typedef OnForceLogout = void Function();
 /// (loadout creation, briefing generation, etc.).
 const llmReceiveTimeout = Duration(seconds: 45);
 
+/// Longer receive timeout for the deep web-researched briefing, which runs a
+/// multi-step research graph (server deadline ~60s plus a small margin).
+const deepBriefingReceiveTimeout = Duration(seconds: 75);
+
 /// Singleton-style Dio HTTP client with auth interceptor.
 ///
 /// Automatically attaches Bearer tokens and attempts silent refresh

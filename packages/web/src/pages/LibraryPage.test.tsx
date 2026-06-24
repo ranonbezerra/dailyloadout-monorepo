@@ -58,7 +58,10 @@ vi.mock("./CaptureTextModal", () => ({ CaptureTextModal: () => null }));
 vi.mock("./CaptureVoiceModal", () => ({ CaptureVoiceModal: () => null }));
 vi.mock("./CapturePhotoModal", () => ({ CapturePhotoModal: () => null }));
 vi.mock("./CaptureReviewModal", () => ({ CaptureReviewModal: () => null }));
-vi.mock("./MissionBriefingModal", () => ({ MissionBriefingModal: () => null }));
+vi.mock("./MissionBriefingModal", () => ({
+	MissionBriefingModal: ({ mode }: { mode: string }) =>
+		mode === "preview" ? <div data-testid="briefing-preview-modal" /> : null,
+}));
 vi.mock("./MissionDebriefModal", () => ({ MissionDebriefModal: () => null }));
 vi.mock("../components/QuickAddMenu", () => ({
 	QuickAddMenu: () => <button type="button">Quick Add</button>,
@@ -624,17 +627,7 @@ describe("LibraryPage", () => {
 		});
 	});
 
-	it("calls previewBriefing when Start Mission button is clicked", async () => {
-		const mockPreviewAsync = vi.fn().mockResolvedValue({
-			libraryEntry: makeEntry(),
-			briefingText: "Preview text",
-			lastSessionContext: null,
-		});
-		(usePreviewBriefing as Mock).mockReturnValue({
-			mutateAsync: mockPreviewAsync,
-			isPending: false,
-		});
-
+	it("opens the briefing modal when Start Mission is clicked (no pre-fetch)", async () => {
 		const entry = makeEntry();
 		(useLibrary as Mock).mockReturnValue({
 			data: { items: [entry], total: 1, limit: 50, offset: 0 },
@@ -644,48 +637,10 @@ describe("LibraryPage", () => {
 
 		renderPage();
 
-		const startBtn = screen.getByRole("button", { name: "Start Mission" });
-		await act(async () => {
-			fireEvent.click(startBtn);
-		});
-
-		await waitFor(() => {
-			expect(mockPreviewAsync).toHaveBeenCalledWith({
-				libraryEntryPublicId: "entry-1",
-			});
-		});
-	});
-
-	it("shows notification on previewBriefing error", async () => {
-		const { notifications } = await import("@mantine/notifications");
-		const mockPreviewAsync = vi.fn().mockRejectedValue(new Error("Network error"));
-		(usePreviewBriefing as Mock).mockReturnValue({
-			mutateAsync: mockPreviewAsync,
-			isPending: false,
-		});
-
-		const entry = makeEntry();
-		(useLibrary as Mock).mockReturnValue({
-			data: { items: [entry], total: 1, limit: 50, offset: 0 },
-			isLoading: false,
-		});
-		(useActiveMission as Mock).mockReturnValue({ data: null });
-
-		renderPage();
-
-		const startBtn = screen.getByRole("button", { name: "Start Mission" });
-		await act(async () => {
-			fireEvent.click(startBtn);
-		});
-
-		await waitFor(() => {
-			expect(notifications.show).toHaveBeenCalledWith(
-				expect.objectContaining({
-					title: "Cannot start mission",
-					color: "red",
-				}),
-			);
-		});
+		expect(screen.queryByTestId("briefing-preview-modal")).not.toBeInTheDocument();
+		fireEvent.click(screen.getByRole("button", { name: "Start Mission" }));
+		// The modal opens at its mode-choice step; the briefing is fetched inside it.
+		expect(await screen.findByTestId("briefing-preview-modal")).toBeInTheDocument();
 	});
 
 	it("shows notification on update success", async () => {

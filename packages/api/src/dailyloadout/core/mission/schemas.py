@@ -24,6 +24,10 @@ class MissionStartRequest(BaseModel):
         max_length=10000,
         description="Pre-generated briefing from a preview call. Skips LLM generation.",
     )
+    mode: Literal["quick", "deep"] = Field(
+        default="quick",
+        description="Briefing mode: 'quick' (single-shot) or 'deep' (web-researched).",
+    )
 
 
 class BriefingPreviewRequest(BaseModel):
@@ -34,6 +38,10 @@ class BriefingPreviewRequest(BaseModel):
         default=None,
         max_length=2000,
         description="Optional player-provided correction of their current in-game position.",
+    )
+    mode: Literal["quick", "deep"] = Field(
+        default="quick",
+        description="Briefing mode: 'quick' (single-shot) or 'deep' (web-researched).",
     )
 
 

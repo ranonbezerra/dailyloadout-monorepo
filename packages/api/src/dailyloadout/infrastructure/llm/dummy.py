@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from uuid import uuid4
 
-from .base import AbstractLLMClient, ExtractedGame, ExtractedState, LoadoutPick
+from .base import AbstractLLMClient, ExtractedGame, ExtractedState, LLMRole, LoadoutPick
 
 # Well-known titles used for deterministic test matching.
 _KNOWN_TITLES: list[tuple[str, re.Pattern[str]]] = [
@@ -133,3 +133,31 @@ class DummyLLMClient(AbstractLLMClient):
             library_entry_public_id=str(candidates[0]["public_id"]),
             reasoning=f"Picked {candidates[0]['game_title']} because it fits your {mood} mood.",
         )
+
+    async def complete(
+        self,
+        prompt: str,
+        *,
+        role: LLMRole = "fast",
+        json: bool = False,
+    ) -> str:
+        """Return canned text keyed by markers embedded in the agent prompts.
+
+        Matches the literal phrases used in the deep-briefing prompt templates
+        so the graph runs deterministically in tests. Grade defaults to
+        ``sufficient`` (happy path); tests needing the refine/exhausted paths
+        use a purpose-built fake that scripts grade responses.
+        """
+        lowered = prompt.lower()
+        if "reformulate the search query" in lowered:
+            return "refined query: next area directions spoiler-free"
+        if "clean up the recap" in lowered:
+            return "Head toward the next area and finish your current objective."
+        if '"grade"' in lowered:
+            return '{"grade": "sufficient"}'
+        if "previously on" in lowered:
+            return (
+                "Previously on your adventure: you were exploring. "
+                "Head west to continue toward your objective."
+            )
+        return "ok"

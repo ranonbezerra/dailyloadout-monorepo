@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+	type BriefingMode,
 	endMission,
 	getActiveMission,
 	getMission,
@@ -50,8 +51,13 @@ export function useActiveMission() {
 
 export function usePreviewBriefing() {
 	return useMutation({
-		mutationFn: (vars: { libraryEntryPublicId: string; positionOverride?: string }) =>
-			previewBriefing(vars.libraryEntryPublicId, vars.positionOverride),
+		mutationFn: (vars: {
+			libraryEntryPublicId: string;
+			positionOverride?: string;
+			mode?: BriefingMode;
+			signal?: AbortSignal;
+		}) =>
+			previewBriefing(vars.libraryEntryPublicId, vars.positionOverride, vars.mode, vars.signal),
 	});
 }
 

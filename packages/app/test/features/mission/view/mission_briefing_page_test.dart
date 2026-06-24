@@ -108,18 +108,15 @@ void main() {
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
     });
 
-    testWidgets('preview mode dispatches PreviewBriefing on init', (
-      tester,
-    ) async {
+    testWidgets('preview mode shows the mode-choice screen on init '
+        '(does not fetch yet)', (tester) async {
       when(() => missionBloc.state).thenReturn(const MissionInitial());
 
       await tester.pumpWidget(buildPreviewSubject());
 
-      verify(
-        () => missionBloc.add(
-          const PreviewBriefing(libraryEntryPublicId: 'entry-1'),
-        ),
-      ).called(1);
+      expect(find.text('How should we prepare your briefing?'), findsOneWidget);
+      expect(find.text('Quick briefing'), findsOneWidget);
+      expect(find.text('Deep briefing (web)'), findsOneWidget);
     });
 
     testWidgets('view mode dispatches LoadActiveMission on init', (
@@ -154,7 +151,7 @@ void main() {
       expect(find.text('PC'), findsOneWidget);
     });
 
-    testWidgets('preview mode shows Got it let us go and Cancel buttons', (
+    testWidgets('preview briefing shows Got it and Update, no Cancel', (
       tester,
     ) async {
       when(
@@ -167,22 +164,23 @@ void main() {
         find.widgetWithText(FilledButton, "Got it, let's go"),
         findsOneWidget,
       );
-      expect(find.widgetWithText(OutlinedButton, 'Cancel'), findsOneWidget);
+      expect(
+        find.widgetWithText(TextButton, 'Update this briefing'),
+        findsOneWidget,
+      );
+      expect(find.widgetWithText(OutlinedButton, 'Cancel'), findsNothing);
     });
 
-    testWidgets('preview mode shows I played without registering link', (
-      tester,
-    ) async {
+    testWidgets('preview briefing merges the fixers behind Update '
+        '(no direct fix buttons)', (tester) async {
       when(
         () => missionBloc.state,
       ).thenReturn(BriefingPreviewLoaded(preview: _samplePreview));
 
       await tester.pumpWidget(buildPreviewSubject());
 
-      expect(
-        find.widgetWithText(TextButton, 'I played without registering'),
-        findsOneWidget,
-      );
+      expect(find.text('I played without registering'), findsNothing);
+      expect(find.text("That's not right"), findsNothing);
     });
 
     testWidgets('view mode shows briefing from ActiveMissionLoaded', (
@@ -248,7 +246,7 @@ void main() {
       expect(find.textContaining('No briefing available'), findsOneWidget);
     });
 
-    testWidgets('That is not right button switches to correct step', (
+    testWidgets('Update → Correct my position opens the correction step', (
       tester,
     ) async {
       when(
@@ -257,7 +255,11 @@ void main() {
 
       await tester.pumpWidget(buildPreviewSubject());
 
-      await tester.tap(find.widgetWithText(TextButton, "That's not right"));
+      await tester.tap(find.widgetWithText(TextButton, 'Update this briefing'));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.widgetWithText(OutlinedButton, 'Correct my current position'),
+      );
       await tester.pumpAndSettle();
 
       expect(find.byType(TextFormField), findsOneWidget);
@@ -265,26 +267,13 @@ void main() {
         find.widgetWithText(FilledButton, 'Update & regenerate'),
         findsOneWidget,
       );
-      expect(find.widgetWithText(TextButton, 'Back'), findsOneWidget);
-    });
-
-    testWidgets('correct step shows explanatory text', (tester) async {
-      when(
-        () => missionBloc.state,
-      ).thenReturn(BriefingPreviewLoaded(preview: _samplePreview));
-
-      await tester.pumpWidget(buildPreviewSubject());
-
-      await tester.tap(find.widgetWithText(TextButton, "That's not right"));
-      await tester.pumpAndSettle();
-
       expect(
         find.textContaining('Tell us where you actually are'),
         findsOneWidget,
       );
     });
 
-    testWidgets('I played without registering switches to retroactive step', (
+    testWidgets('Update → Log a session opens the retroactive step', (
       tester,
     ) async {
       when(
@@ -293,8 +282,10 @@ void main() {
 
       await tester.pumpWidget(buildPreviewSubject());
 
+      await tester.tap(find.widgetWithText(TextButton, 'Update this briefing'));
+      await tester.pumpAndSettle();
       await tester.tap(
-        find.widgetWithText(TextButton, 'I played without registering'),
+        find.widgetWithText(OutlinedButton, "Log a session I didn't register"),
       );
       await tester.pumpAndSettle();
 
@@ -303,28 +294,13 @@ void main() {
         find.widgetWithText(FilledButton, 'Record session'),
         findsOneWidget,
       );
-      expect(find.widgetWithText(TextButton, 'Back'), findsOneWidget);
-    });
-
-    testWidgets('retroactive step shows explanatory text', (tester) async {
-      when(
-        () => missionBloc.state,
-      ).thenReturn(BriefingPreviewLoaded(preview: _samplePreview));
-
-      await tester.pumpWidget(buildPreviewSubject());
-
-      await tester.tap(
-        find.widgetWithText(TextButton, 'I played without registering'),
-      );
-      await tester.pumpAndSettle();
-
       expect(
         find.textContaining('Tell us what happened in that unregistered'),
         findsOneWidget,
       );
     });
 
-    testWidgets('Back button in correct step returns to briefing step', (
+    testWidgets('Back from the correction step returns to the briefing', (
       tester,
     ) async {
       when(
@@ -333,15 +309,19 @@ void main() {
 
       await tester.pumpWidget(buildPreviewSubject());
 
-      // Go to correct step.
-      await tester.tap(find.widgetWithText(TextButton, "That's not right"));
+      await tester.tap(find.widgetWithText(TextButton, 'Update this briefing'));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.widgetWithText(OutlinedButton, 'Correct my current position'),
+      );
       await tester.pumpAndSettle();
 
-      // Go back.
+      // Back: correct → update, then update → briefing.
+      await tester.tap(find.widgetWithText(TextButton, 'Back'));
+      await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(TextButton, 'Back'));
       await tester.pumpAndSettle();
 
-      // Should see briefing content again.
       expect(find.text('Welcome back to Hallownest!'), findsOneWidget);
       expect(find.text('Update & regenerate'), findsNothing);
     });
@@ -382,13 +362,103 @@ void main() {
       expect(find.widgetWithText(FilledButton, 'Go Back'), findsOneWidget);
     });
 
-    testWidgets('shows SizedBox.shrink for MissionInitial', (tester) async {
+    testWidgets('view mode MissionInitial renders nothing (shrink)', (
+      tester,
+    ) async {
       when(() => missionBloc.state).thenReturn(const MissionInitial());
 
-      await tester.pumpWidget(buildPreviewSubject());
+      await tester.pumpWidget(buildViewSubject());
 
       expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(find.text('Hollow Knight'), findsNothing);
+      expect(find.text('Quick briefing'), findsNothing);
+    });
+
+    // ---------------------------------------------------------------
+    // Deep briefing (mode choice + progress + cancel)
+    // ---------------------------------------------------------------
+    group('deep briefing', () {
+      testWidgets('view mode does NOT show the mode-choice cards', (
+        tester,
+      ) async {
+        when(
+          () => missionBloc.state,
+        ).thenReturn(ActiveMissionLoaded(mission: _sampleMission));
+
+        await tester.pumpWidget(buildViewSubject());
+
+        expect(find.text('Quick briefing'), findsNothing);
+        expect(find.text('Deep briefing (web)'), findsNothing);
+      });
+
+      testWidgets('choosing Quick dispatches a quick PreviewBriefing', (
+        tester,
+      ) async {
+        when(() => missionBloc.state).thenReturn(const MissionInitial());
+
+        await tester.pumpWidget(buildPreviewSubject());
+        await tester.tap(find.text('Quick briefing'));
+        await tester.pump();
+
+        verify(
+          () => missionBloc.add(
+            const PreviewBriefing(
+              libraryEntryPublicId: 'entry-1',
+              // mode defaults to 'quick'
+            ),
+          ),
+        ).called(1);
+      });
+
+      testWidgets('choosing Deep dispatches a deep PreviewBriefing', (
+        tester,
+      ) async {
+        when(() => missionBloc.state).thenReturn(const MissionInitial());
+
+        await tester.pumpWidget(buildPreviewSubject());
+        await tester.tap(find.text('Deep briefing (web)'));
+        await tester.pump();
+
+        verify(
+          () => missionBloc.add(
+            const PreviewBriefing(
+              libraryEntryPublicId: 'entry-1',
+              mode: 'deep',
+            ),
+          ),
+        ).called(1);
+      });
+
+      testWidgets('DeepBriefingLoading shows progress and a Cancel button', (
+        tester,
+      ) async {
+        when(() => missionBloc.state).thenReturn(const DeepBriefingLoading());
+
+        await tester.pumpWidget(buildPreviewSubject());
+
+        expect(
+          find.text('Researching the web for your briefing'),
+          findsOneWidget,
+        );
+        expect(find.byType(CircularProgressIndicator), findsOneWidget);
+        expect(find.widgetWithText(OutlinedButton, 'Cancel'), findsOneWidget);
+      });
+
+      testWidgets('Cancel during deep dispatches CancelDeepBriefing', (
+        tester,
+      ) async {
+        when(() => missionBloc.state).thenReturn(const DeepBriefingLoading());
+
+        await tester.pumpWidget(buildPreviewSubject());
+        await tester.tap(find.widgetWithText(OutlinedButton, 'Cancel'));
+        await tester.pump();
+
+        verify(
+          () => missionBloc.add(
+            const CancelDeepBriefing(libraryEntryPublicId: 'entry-1'),
+          ),
+        ).called(1);
+      });
     });
   });
 }

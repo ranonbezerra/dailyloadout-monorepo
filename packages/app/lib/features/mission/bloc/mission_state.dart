@@ -59,12 +59,20 @@ final class ActiveMissionLoaded extends MissionState {
 
 /// Briefing preview has been loaded successfully.
 final class BriefingPreviewLoaded extends MissionState {
-  const BriefingPreviewLoaded({required this.preview});
+  const BriefingPreviewLoaded({required this.preview, this.isDeep = false});
 
   final BriefingPreview preview;
 
+  /// Whether this preview came from the deep web-researched path.
+  final bool isDeep;
+
   @override
-  List<Object?> get props => [preview];
+  List<Object?> get props => [preview, isDeep];
+}
+
+/// A deep (web-researched) briefing is generating; UI shows progress + cancel.
+final class DeepBriefingLoading extends MissionState {
+  const DeepBriefingLoading();
 }
 
 /// A mission has been started successfully.

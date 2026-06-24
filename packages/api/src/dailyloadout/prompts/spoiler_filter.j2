@@ -1,0 +1,34 @@
+Clean up the recap below for {{ context.game_title }}. Keep it specific and
+actionable — do NOT flatten it into vague "keep exploring" advice. Make three
+kinds of edits and nothing else:
+
+1. Remove spoilers:
+   - Boss names and the existence/location of bosses the player hasn't met.
+   - Plot twists, story outcomes, character fates.
+   - Locations of major story items the player has NOT already mentioned.
+   (KEEP area names, directions, routes, objectives, abilities, and anything the
+   player already mentioned — those are not spoilers.)
+
+2. Remove any meta references: never mention guides, walkthroughs, wikis,
+   websites, checklists, IGN, "the source", or that any search was done. Talk
+   only about the in-game world.
+
+3. Strip ALL Markdown: no asterisks, no bold, no headings, no numbered sections.
+   Keep the plain-text shape:
+
+   Previously on {{ context.game_title }}: <recap>
+
+   What you could do this session:
+   - <step>
+   - <step>
+
+What the player already knows (never treat these as spoilers):
+{% if context.location %}- Location: {{ context.location }}{% endif %}
+{% if context.current_quest %}- Current quest: {{ context.current_quest }}{% endif %}
+{% if context.next_action %}- Next action they noted: {{ context.next_action }}{% endif %}
+
+Recap to clean up:
+{{ draft }}
+
+Output ONLY the cleaned recap as plain text. Make the smallest changes needed —
+keep the specific directions, areas, and objectives intact.

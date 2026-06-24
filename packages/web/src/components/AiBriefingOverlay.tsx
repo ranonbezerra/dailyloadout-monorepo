@@ -1,9 +1,13 @@
-import { Box, Loader, Modal, Stack, Text } from "@mantine/core";
+import { Box, Button, Loader, Modal, Stack, Text } from "@mantine/core";
 import { IconBrain } from "@tabler/icons-react";
 
 interface AiBriefingOverlayProps {
 	opened: boolean;
 	gameTitle?: string;
+	/** When set, the overlay describes a slower web-researched (deep) briefing. */
+	deep?: boolean;
+	/** When set, a Cancel button is shown that aborts the in-flight request. */
+	onCancel?: () => void;
 }
 
 const shimmerKeyframes = `
@@ -13,7 +17,7 @@ const shimmerKeyframes = `
 }
 `;
 
-export function AiBriefingOverlay({ opened, gameTitle }: AiBriefingOverlayProps) {
+export function AiBriefingOverlay({ opened, gameTitle, deep, onCancel }: AiBriefingOverlayProps) {
 	return (
 		<Modal
 			opened={opened}
@@ -60,12 +64,14 @@ export function AiBriefingOverlay({ opened, gameTitle }: AiBriefingOverlayProps)
 				{/* Text */}
 				<Stack align="center" gap={4}>
 					<Text fw={600} size="sm">
-						AI is preparing your briefing
+						{deep ? "Researching the web for your briefing" : "AI is preparing your briefing"}
 					</Text>
 					<Text size="sm" c="dimmed" ta="center">
-						{gameTitle
-							? `Analyzing your previous sessions in ${gameTitle} to craft a personalized briefing.`
-							: "Analyzing your previous sessions to craft a personalized briefing."}
+						{deep
+							? `Searching the web and your past sessions${gameTitle ? ` in ${gameTitle}` : ""} for spoiler-free next steps. This can take up to a minute.`
+							: gameTitle
+								? `Analyzing your previous sessions in ${gameTitle} to craft a personalized briefing.`
+								: "Analyzing your previous sessions to craft a personalized briefing."}
 					</Text>
 				</Stack>
 
@@ -89,6 +95,12 @@ export function AiBriefingOverlay({ opened, gameTitle }: AiBriefingOverlayProps)
 						}}
 					/>
 				</Box>
+
+				{onCancel && (
+					<Button variant="subtle" color="gray" size="xs" onClick={onCancel}>
+						Cancel
+					</Button>
+				)}
 			</Stack>
 		</Modal>
 	);

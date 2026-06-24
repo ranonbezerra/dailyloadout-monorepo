@@ -488,19 +488,19 @@ infrastructure/
 
 ### Tasks
 
-- [ ] Add `langgraph` + `langgraph-checkpoint` to API deps (LangChain not required here — nodes reuse the existing `AbstractLLMClient`)
-- [ ] Add SearXNG service to `docker-compose.yml` (local, no external search keys)
-- [ ] `infrastructure/research/`: abstract base + `SearxngResearchClient` + `DummyResearchClient` + factory
-- [ ] `infrastructure/agent/graph/state.py`: `ResearchBriefingState` TypedDict (see design doc)
-- [ ] `infrastructure/agent/graph/nodes.py`: the 8 nodes (see design doc for signatures + model roles)
-- [ ] `infrastructure/agent/graph/builder.py`: `StateGraph` wiring, conditional router, `MemorySaver` checkpointer (Postgres saver later)
-- [ ] Expose a generic `complete(prompt, role, json=False)` on the LLM port so agent nodes can render their own Jinja prompts (`prompts/research_grade.j2`, `research_refine.j2`, `briefing_research.j2`, `spoiler_filter.j2`)
-- [ ] Reuse the Epic 6 token-overlap validator as the `anti_hallucination` node (import from `core/mission`, do not duplicate)
-- [ ] `AbstractBriefingAgent` + `LangGraphBriefingAgent` + `DummyBriefingAgent` + factory
-- [ ] Wire `core/mission/service.py`: when `mode='deep'`, call the agent port wrapped in `asyncio.wait_for(deadline)`; on timeout/empty, fall back to `generate_briefing`
-- [ ] Env: `AGENT_PROVIDER`, `RESEARCH_PROVIDER`, `SEARXNG_BASE_URL`, `DEEP_BRIEFING_DEADLINE_SECONDS`, `DEEP_BRIEFING_MAX_REFINES`, `DEEP_BRIEFING_MAX_RESULTS`
-- [ ] Pytest: node unit tests (each node in isolation), graph integration test with `DummyResearchClient` + `DummyLLMClient`, fallback-on-timeout test, spoiler-leak regression test
-- [ ] Web/App: briefing modal toggle "Quick" vs "Deep (slower, web-researched)" + progress indicator + cancel button
+- [x] Add `langgraph` + `langgraph-checkpoint` to API deps (LangChain not required here — nodes reuse the existing `AbstractLLMClient`)
+- [x] Add SearXNG service to `docker-compose.yml` (local, no external search keys)
+- [x] `infrastructure/research/`: abstract base + `SearxngResearchClient` + `DummyResearchClient` + factory
+- [x] `infrastructure/agent/graph/state.py`: `ResearchBriefingState` TypedDict (see design doc)
+- [x] `infrastructure/agent/graph/nodes.py`: the 8 nodes (see design doc for signatures + model roles)
+- [x] `infrastructure/agent/graph/builder.py`: `StateGraph` wiring, conditional router, `MemorySaver` checkpointer (Postgres saver later)
+- [x] Expose a generic `complete(prompt, role, json=False)` on the LLM port so agent nodes can render their own Jinja prompts (`prompts/research_grade.j2`, `research_refine.j2`, `briefing_research.j2`, `spoiler_filter.j2`)
+- [x] Reuse the Epic 6 token-overlap validator as the `anti_hallucination` node (import from `core/mission`, do not duplicate)
+- [x] `AbstractBriefingAgent` + `LangGraphBriefingAgent` + `DummyBriefingAgent` + factory
+- [x] Wire `core/mission/service.py`: when `mode='deep'`, call the agent port wrapped in `asyncio.wait_for(deadline)`; on timeout/empty, fall back to `generate_briefing`
+- [x] Env: `AGENT_PROVIDER`, `RESEARCH_PROVIDER`, `SEARXNG_BASE_URL`, `DEEP_BRIEFING_DEADLINE_SECONDS`, `DEEP_BRIEFING_MAX_REFINES`, `DEEP_BRIEFING_MAX_RESULTS`
+- [x] Pytest: node unit tests (each node in isolation), graph integration test with `DummyResearchClient` + `DummyLLMClient`, fallback-on-timeout test, spoiler-leak regression test
+- [x] Web/App: briefing modal toggle "Quick" vs "Deep (slower, web-researched)" + progress indicator + cancel button
 
 ### Definition of Done
 
@@ -562,6 +562,215 @@ This is the genuinely agentic case: multi-turn, stateful (conversation threads v
 ### Technical highlight
 
 > **Tool-calling agent on a local model, with the product's guard rails intact.** The Concierge uses `ChatOllama.bind_tools` over read-only library tools, but the recommendation is still validated against the real library before it reaches the user (same UUID-existence guard as Epic 7). The harder decision is restraint: keeping it an opt-in mode so it complements, rather than fights, the zero-friction Loadout.
+
+---
+
+## Epic 12 — Firecrawl research provider (evaluate, v1.1+)
+
+**Goal:** evaluate [Firecrawl](https://www.firecrawl.dev/) as a research source for the Deep Research Briefing (Epic 10) — as a reliability fallback for SearXNG, a page-scrape enrichment step, or the **primary** search/scrape in the hosted build — without disturbing the self-host default.
+
+**Status:** not committed. This is a *spike-then-decide* epic — build a small adapter behind the existing port, A/B the briefing quality, then keep or drop it. Its ranking depends on the deployment target (see Epic 13).
+
+### Context
+
+Epic 10's research layer is a hexagonal port (`infrastructure/research/`, `AbstractResearchClient.search()`), with SearXNG as the local, zero-key default and `dummy` for tests. The graph currently grounds `synthesize` on SearXNG **snippets** only — it never fetches page bodies. Firecrawl's real value-add is **scraping** (URL → clean LLM-ready markdown), not search (its `/search` is just an upstream wrapper). Two distinct uses, evaluated separately.
+
+### The dual-distribution model (decides Firecrawl's ranking)
+
+Because LLM and research both live behind ports (Epic 13), one codebase ships two configurations selected by env. Firecrawl's role flips depending on which build you're optimizing:
+
+| Build | LLM | Research | Firecrawl's role |
+|---|---|---|---|
+| **Self-host / OSS** | Ollama (local) | SearXNG (local) | optional fallback only; SearXNG stays default |
+| **Hosted / production** | Bedrock / Vertex (Epic 13) | **Firecrawl** | sensible **primary** — once you're paying for cloud inference, SearXNG's "free + local" edge is gone and its ops cost (rate-limits, captchas, IP reputation) becomes a liability |
+
+So the local-first objection that keeps Firecrawl optional only holds for the self-host build. In the hosted build, Firecrawl-as-primary (with SearXNG as fallback) is the natural choice. SearXNG **remains the default** for the OSS distribution; Firecrawl is opt-in via `RESEARCH_PROVIDER`/a flag either way.
+
+### Option A — reliability fallback
+
+A composite `FallbackResearchClient` wrapping primary (SearXNG) + secondary (Firecrawl) behind the same port — no graph changes. Decide the trigger policy: fall back on hard failure (HTTP error/timeout) **and/or empty results**, immediately or after N retries-with-backoff (the "after K attempts" knob). Note this sits *above* the existing degrade-to-quick fallback: it keeps the **deep** path alive when SearXNG flakes instead of dropping to the quick briefing.
+
+### Option B — scrape enrichment (higher value)
+
+SearXNG finds URLs → Firecrawl `/scrape` turns the top 1–2 into markdown → richer `synthesize` grounding. This is where briefing quality actually jumps (snippets are thin). **Risk to measure:** scraping full walkthrough pages increases spoiler surface (boss names, plot beats) — exactly what `spoiler_filter` + the overlap guard must catch. Gate behind a flag and add a spoiler-leak regression test before adopting.
+
+### Tasks (spike)
+
+- [ ] Add `firecrawl-py` as an **optional** dependency; env: `RESEARCH_PROVIDER=firecrawl` (or `FALLBACK_RESEARCH_PROVIDER`), `FIRECRAWL_API_KEY`, `FIRECRAWL_BASE_URL` (for self-hosted)
+- [ ] `FirecrawlResearchClient(AbstractResearchClient)` + `DummyFirecrawlResearchClient`; wire into the research factory
+- [ ] (Option A) `FallbackResearchClient` composite with a configurable trigger policy (failure and/or empty; immediate vs N-retries)
+- [ ] (Option B) optional `scrape()` step in the `search`/`synthesize` path, flag-gated, with a **spoiler-leak regression test** on scraped content
+- [ ] A/B: compare deep-briefing quality (snippets-only vs scrape-enriched) on a handful of real games; record the verdict in this epic
+- [ ] Decide: adopt as opt-in provider, adopt scrape step, or drop — keep SearXNG the default either way
+
+### Definition of Done
+
+- A working `RESEARCH_PROVIDER=firecrawl` (and/or fallback) behind the port, defaults unchanged (SearXNG/dummy)
+- Documented verdict: measured quality delta, spoiler-safety result, and a keep/drop recommendation
+- If kept: tests at parity with the SearXNG provider; if scrape is enabled, the spoiler-leak regression passes
+- No regression to the local-first, zero-key default path
+
+### Technical highlight
+
+> **A provider you can adopt without a rewrite — or walk away from.** Because web search and scraping live behind one port with a dummy default, evaluating a cloud/self-hosted scraper is a contained spike: add an adapter, A/B the briefing quality, keep or delete. The interesting tension is product, not plumbing — richer scraped content improves grounding but enlarges the spoiler surface the deterministic guards have to defend.
+
+---
+
+## Epic 13 — Cloud LLM adapters: Bedrock / Vertex (evaluate, v1.1+)
+
+**Goal:** add cloud LLM providers behind the existing `AbstractLLMClient` port so the project can ship a **hosted** distribution (cloud inference) alongside the **self-host** one (local Ollama), choosing per deployment via `LLM_PROVIDER`. Keep Ollama the default for the OSS build; `dummy` stays the test default.
+
+**Status:** not committed. Spike-then-decide — the README already lists "cloud provider adapters belong behind the existing LLM port" as planned. The actual provider choice (Bedrock-with-Claude vs an open-source/self-hosted model) is the user's, and **turns mostly on cost vs. volume** (see below). This epic is the prerequisite that makes Firecrawl-as-primary (Epic 12) sensible.
+
+### Context
+
+Everything LLM-shaped already goes through `infrastructure/llm/` (`AbstractLLMClient`, `OllamaClient`, `DummyLLMClient`, factory by `LLM_PROVIDER`), including the `complete(prompt, *, role, json)` method the deep-research agent (Epic 10) relies on. Cloud providers are new implementations of that port — product code, the graph, and the guards don't change. This is the designed evolution path, not a pivot.
+
+### The fast/smart split becomes a tuning lever
+
+Our two model roles map cleanly onto cloud tiers — a cheap tier for the frequent calls, a premium tier only where output quality is user-visible. On **Claude via Bedrock** (model IDs carry an `anthropic.` prefix):
+
+| Role | Used by | Bedrock-Claude model |
+|---|---|---|
+| `fast` | `grade`, `refine`, debrief extraction, captures | `anthropic.claude-haiku-4-5` |
+| `smart` | `synthesize`, `spoiler_filter`, quick briefing, loadout pick | `anthropic.claude-sonnet-4-6` |
+| (optional max-quality `smart`) | briefings only, if quality demands | `anthropic.claude-opus-4-8` |
+
+Vertex/Gemini has an equivalent Flash (cheap) / Pro (premium) split.
+
+### Hosted vs. self-host — the actual decision
+
+A deep briefing fires up to ~4 LLM calls (`grade` → `refine`×0–2 → `synthesize` → `spoiler_filter`); a quick briefing is one `smart` call. The build decision turns on volume and operational appetite, not on any single number:
+
+- **At personal / low volume:** a cloud provider is pay-per-use with **zero infra/ops/GPU burden** — typically the lower total cost. A self-hosted open-source model only comes out ahead once a dedicated GPU's fixed running cost is justified by sustained volume.
+- **At scale / multi-tenant:** a self-hosted OSS model on owned/rented GPU can win on marginal cost and keeps data local — at the cost of ops, capacity planning, and quality tuning.
+- So: **cloud for launch and low volume; revisit OSS-local only if volume (or data-locality requirements) justify the fixed cost.** The ports make this an env flag, not a rewrite — you can start cloud and migrate later. Run the numbers privately before committing.
+
+### API-shape work for the adapter (not just a URL swap)
+
+- Use the Anthropic SDK's `AnthropicBedrock` / `AnthropicVertex` clients (Python `anthropic[bedrock]` / `[vertex]`); Gemini-on-Vertex would be its own client.
+- **No `temperature`/`top_p`/`top_k`** on current Claude (Opus 4.7/4.8, Fable) — adaptive thinking only. Don't port Ollama's sampling knobs.
+- **JSON mode differs:** Ollama uses `format: "json"`; Claude uses `output_config.format` (json_schema) or a `strict` tool. Our `complete(json=True)` abstraction holds — the adapter implements JSON-mode its own way.
+- Bedrock-Claude lacks server-side tools, Managed Agents, and the Files API — **irrelevant here**, since our LangGraph agent only uses plain `messages`.
+- **Prompt caching** to amortize the repeated system/context across the ~4 calls per deep briefing — a real cost lever on cloud.
+
+### Tasks (spike)
+
+- [ ] Add `anthropic[bedrock]` (and/or `[vertex]` / a Gemini client) as **optional** deps
+- [ ] `BedrockLLMClient(AbstractLLMClient)` (and/or `VertexLLMClient`) implementing all methods incl. `complete(prompt, role, json)`; map `role`→tier; JSON via `output_config.format`/strict tools; adaptive thinking
+- [ ] Extend the LLM factory: `LLM_PROVIDER=bedrock|vertex|ollama|dummy`; env for creds (AWS region/IAM or GCP project/location/service account), per-tier model IDs
+- [ ] Cost guardrails: per-user/day token budget cap + structured usage logging; prompt caching on the deep-research context
+- [ ] Tests with a mocked cloud client (no real cloud calls in CI; `dummy` stays the CI default)
+- [ ] Decision write-up: measured per-briefing cost on cloud Claude vs estimated OSS-local TCO at expected volume → keep/which-provider recommendation
+
+### Definition of Done
+
+- `LLM_PROVIDER=bedrock` (or `vertex`) works end-to-end for captures, briefings (quick + deep), loadout, and debrief extraction; Ollama remains the OSS default; `dummy` still used in tests
+- All `AbstractLLMClient` methods implemented on the new provider, including `complete()` with JSON mode and adaptive thinking
+- A documented cost comparison and a provider recommendation tied to expected volume
+- No regression to the local-first default path; test coverage at parity with the Ollama client
+
+### Technical highlight
+
+> **Inference is an env flag, not a rewrite — and the model tier is a cost dial.** Because every LLM call goes through one port with `fast`/`smart` roles, swapping Ollama for Bedrock/Vertex is a new adapter plus config, and the role split doubles as a cost lever: cheap tier (Haiku/Flash) for the frequent `grade`/`refine`/extraction calls, premium tier (Sonnet/Opus/Pro) only where output quality is user-visible. The same codebase ships self-hosted (zero keys) and hosted (cloud inference) from one set of ports.
+
+---
+
+## Epic 14 — Frictionless Library Import: platform screenshot ingestion (v1.1+)
+
+**Goal:** make bulk onboarding nearly frictionless — a user populates 50–100 games in one shot by photographing (or screenshotting) their existing library from the major platforms, with the per-import cost driven toward ~zero. Extends Epic 5 (photo capture) from "a shelf of a few games" into "my whole Steam/PSN/Xbox/Switch/GOG/Epic library at once."
+
+**Status:** not committed. Spike-then-decide, like Epics 12–13. The platform-aware parsing and the local-first OCR path are each independently shippable; descope to "Steam list-view only" if the weekend runs short.
+
+### Context
+
+The single biggest onboarding cliff is the empty library. Epic 5 added multimodal photo capture (covers + shelves, limit 12), but bulk import has a different shape: dozens of titles in one frame, and the **expensive, one-time** moment in a user's lifecycle. Library *additions* are free and unlimited across all tiers (only `deep briefing` is gated to Pro, and free tier is one briefing + one loadout/day), so the import path is pure CAC, not COGS — but only if it stays cheap. The cost spike here is OCR/vision, **not Whisper**: nobody dictates 100 games by voice, so STT (Epic 4) never enters this path. The thing that quietly turns cents into dollars is **retry from low accuracy** — bad extraction → user re-shoots and re-runs → multiplies both cost and friction. So accuracy is simultaneously the cost control and the friction control; they are the same problem.
+
+### The decisive insight: text source beats image recognition
+
+Most platform libraries *default* to a **cover-art grid**, and cover art is stylized logo, not clean text — exactly what OCR and vision models fumble (and hallucinate) on, especially for niche titles. Every major platform also exposes a **clean text representation** of the same list. Steering the user to that view before they capture turns a hard image-recognition problem into a trivial text-reading one — the single largest lever on accuracy, cost, and friction at once. This is UX, not ML.
+
+For some platforms the cleanest text source is the **web account / purchase-history page**, not a console or launcher screenshot — worth guiding per platform:
+
+| Platform | Best clean-text source | Notes |
+|---|---|---|
+| Steam | Library → **list view** (left rail, vertical titles) | gold standard; near-perfect text extraction |
+| Xbox | My games & apps / Full library → **list/details view** | titles render as text rows |
+| GOG | GOG Galaxy **list view**, or web library list | clean text either way |
+| PSN / PS5 | Game Library grid (title under tile), or **PS App** list | console grid is OK; web/app account list is cleaner |
+| Epic | Launcher library is grid-only; **Account → Transactions** (web) is text | guide to the web purchase history for clean text |
+| Nintendo Switch / Switch 2 | console is icon-grid (worst case); **Nintendo Account → Purchase history** (web) is text | strongly prefer the web purchase-history page over a console capture |
+
+**Onboarding takeaway:** ship a per-platform capture hint (a small annotated screenshot per platform) that says "switch to list view" or "open your purchase history" *before* the camera/upload step. One instruction collapses the hardest cases.
+
+### Pipeline (local-first, cloud only as low-confidence fallback)
+
+```
+platform hint → user captures list-view / purchase-history screenshot(s)
+   → local OCR (Tesseract + preprocessing)         [free, on the VPS]
+   → confidence check ──low──► cloud vision model    [cents, capped]
+   → fuzzy-match each line against canonical catalog  [no LLM, ~free]
+   → checkbox confirmation list (user unticks the 3–4 wrong ones)
+   → bulk-create library_entries
+```
+
+- **Local OCR first.** Tesseract with image preprocessing (grayscale, threshold, deskew, upscale) handles clean list-view text well at zero API cost — it just costs VPS CPU, run through the Taskiq worker so it never blocks a request (same discipline as Whisper in Epic 4).
+- **Cloud vision only as fallback.** When local OCR confidence is low (grid art, glare, handwriting-grade noise), fall back to a cheap vision model for that image only, behind a per-day cap. Abuse (someone using us as a free OCR service or burning the vision budget with mass uploads) then costs CPU, not an open API tab.
+- **Catalog fuzzy-match, not LLM.** Extracted lines are dirty (`Sid Meier's Civ VI`, OCR swaps `l`/`I`). Normalize and error-correct by fuzzy-matching against a canonical games catalog (reuse the **Epic 3 IGDB** client; RAWG or a local snapshot as alternates) — string distance / trigram / embeddings, no model call. This is where most "wrong title" errors die for free.
+- **Confirmation over perfection.** Don't chase 100% extraction. Present a checkbox list of what was parsed; the user unticks the few wrong rows and taps confirm. Confirmation costs zero tokens and makes 95%-accurate extraction feel reliable.
+
+### Does this violate the no-API-integration principle? No.
+
+The product rule is **no account sync** with Steam/PSN/Nintendo (no playtime, achievements, or library-sync via official APIs) — a deliberate independence choice. A **canonical games-metadata catalog** (IGDB/RAWG) is a reference database, not an account link: different category entirely. We read a *screenshot the user took*, then clean the strings against a metadata dictionary. No platform account is ever connected. Worth a sentence in `PRODUCT.md` so the distinction is explicit.
+
+### Module layout (hexagonal — same shape as `llm/`, `stt/`, `research/`)
+
+```
+infrastructure/
+├── ocr/                     # new port: image → text lines
+│   ├── base.py              # AbstractOCRClient.extract_lines(image) -> list[OcrLine] (text, confidence, bbox)
+│   ├── tesseract.py         # local Tesseract + preprocessing (default)
+│   ├── vision.py            # cloud vision fallback (reuses the Epic 13 LLM port where applicable)
+│   ├── dummy.py             # canned lines for tests
+│   └── factory.py           # OCR_PROVIDER env
+└── catalog/                 # title normalization (reuses IGDB client from Epic 3)
+    ├── matcher.py           # fuzzy match line -> canonical game (trigram/embedding), confidence score
+    └── dummy.py
+```
+
+### Tasks (spike)
+
+- [ ] `infrastructure/ocr/`: `AbstractOCRClient.extract_lines()` + `TesseractOCRClient` (with preprocessing) + `VisionOCRClient` fallback + `DummyOCRClient` + factory by `OCR_PROVIDER`
+- [ ] Image preprocessing util (grayscale, adaptive threshold, deskew, upscale) with a tunable **confidence threshold** that decides the Tesseract→vision fallback
+- [ ] `infrastructure/catalog/matcher.py`: fuzzy-match OCR lines → canonical titles via the Epic 3 IGDB client (trigram/embedding), returning match confidence; no LLM call
+- [ ] Extend the capture worker: new `input_type='library_import'` path — OCR → catalog match → emit many `capture_candidates` in one capture (raise/replace the Epic 5 limit of 12 for this path)
+- [ ] Endpoint `POST /v1/captures/library-import` (multipart, multiple images allowed); returns a capture with a batch of candidates
+- [ ] Bulk confirm endpoint: `POST /v1/captures/{public_id}/candidates/bulk-confirm` (accept a list, reject the rest) so the user commits 50–100 entries in one call
+- [ ] **Per-day import cap** (images/day) enforced on the free tier; vision-fallback calls additionally capped and usage-logged (abuse + cost guard)
+- [ ] Per-platform capture hints: small annotated assets + a platform picker (Steam/Xbox/GOG/PSN/Epic/Switch) that sets the right hint and parsing profile (`list-view` vs `purchase-history` layout)
+- [ ] App: `LibraryImportPage` — platform picker → hint screen → multi-image picker → **checkbox confirmation list** (select-all default, untick the wrong rows) → bulk confirm
+- [ ] Web: equivalent `/library/import` flow (drag-drop multiple screenshots → confirmation table)
+- [ ] Pytest: `DummyOCRClient` returning 1/40/100 lines; low-confidence path triggers the vision fallback; catalog matcher corrects a dirty title; bulk-confirm commits N entries; per-day cap returns 429
+- [ ] `PRODUCT.md`: one paragraph clarifying "metadata catalog ≠ account integration"
+
+### Definition of Done
+
+- User picks "Steam", follows the list-view hint, uploads 2–3 screenshots, and within the import budget sees a checkbox list of ~50–100 parsed titles
+- Unticking a few wrong rows and confirming bulk-creates the rest as `library_entries` in one action
+- Clean list-view captures resolve entirely on **local OCR** (no cloud call); only noisy/grid captures hit the capped vision fallback
+- Catalog fuzzy-match corrects common OCR errors without an LLM call
+- Free-tier import cap enforced; vision-fallback usage logged and capped
+- No official platform account is ever linked (principle intact); OCR + catalog modules coverage ≥ 85% (dummies for both ports; no real OCR/vision/IGDB in CI)
+
+### Technical highlight
+
+> **Local-first ingestion with a cloud fallback you rarely pay for.** Bulk library import routes clean list-view text through local Tesseract (CPU, zero API cost) and only escalates noisy images to a capped cloud vision model. Dirty titles are repaired by deterministic fuzzy-matching against a canonical catalog — no LLM in the loop — and the user confirms a checkbox list rather than trusting perfect extraction. The hardest part is product, not ML: a per-platform "switch to list view / open purchase history" nudge converts an image-recognition problem into a text-reading one, which is what actually drives cost and friction to near zero.
+
+In interviews: *"minimize a one-time high-cost operation by pushing work to a free local path, escalating to paid compute only on a measured confidence signal, with deterministic post-correction and a human-in-the-loop confirm"* — concrete cost-engineering, not a model pick.
+
+### Why this is a separate epic
+
+It adds a new hexagonal port (`ocr/`), a catalog-matching layer, a batch capture/confirm flow, and a per-platform UX surface — none of which belong inside Epic 5's single-photo path. It also carries the product-principle nuance (metadata catalog vs account integration) and the abuse/cost guards, which deserve their own scrutiny rather than being smuggled into capture.
 
 ---
 

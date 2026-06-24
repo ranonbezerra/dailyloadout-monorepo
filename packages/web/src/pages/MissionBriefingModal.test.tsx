@@ -86,8 +86,11 @@ import type { BriefingPreview, Mission } from "../types/mission";
 import { MissionBriefingModal } from "./MissionBriefingModal";
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Factories
 // ---------------------------------------------------------------------------
+
+const QUICK_TEXT =
+	"You are deep within the Forgotten Crossroads. Your next goal is to find the City of Tears.";
 
 function makeEntry(overrides: Partial<LibraryEntry> = {}): LibraryEntry {
 	return {
@@ -115,8 +118,7 @@ function makeEntry(overrides: Partial<LibraryEntry> = {}): LibraryEntry {
 function makePreview(overrides: Partial<BriefingPreview> = {}): BriefingPreview {
 	return {
 		libraryEntry: makeEntry(),
-		briefingText:
-			"You are deep within the Forgotten Crossroads. Your next goal is to find the City of Tears.",
+		briefingText: QUICK_TEXT,
 		lastSessionContext: null,
 		...overrides,
 	};
@@ -150,13 +152,12 @@ const mockRegenerateMutateAsync = vi.fn();
 const mockRetroactiveMutateAsync = vi.fn();
 
 // ---------------------------------------------------------------------------
-// Render helpers
+// Render + navigation helpers
 // ---------------------------------------------------------------------------
 
 interface PreviewOverrides {
 	libraryEntryPublicId?: string;
 	onConfirm?: (mission: Mission) => void;
-	onPreviewUpdated?: (preview: BriefingPreview) => void;
 	onClose?: () => void;
 }
 
@@ -166,23 +167,18 @@ interface ViewOverrides {
 }
 
 function renderPreviewMode(
-	preview: BriefingPreview = makePreview(),
+	libraryEntry: LibraryEntry = makeEntry(),
 	overrides: PreviewOverrides = {},
 ) {
-	const onConfirm = overrides.onConfirm ?? vi.fn();
-	const onPreviewUpdated = overrides.onPreviewUpdated ?? vi.fn();
-	const onClose = overrides.onClose ?? vi.fn();
-
 	return render(
 		<MantineProvider>
 			<MemoryRouter>
 				<MissionBriefingModal
 					mode="preview"
-					preview={preview}
-					libraryEntryPublicId={overrides.libraryEntryPublicId ?? preview.libraryEntry.publicId}
-					onConfirm={onConfirm}
-					onPreviewUpdated={onPreviewUpdated}
-					onClose={onClose}
+					libraryEntry={libraryEntry}
+					libraryEntryPublicId={overrides.libraryEntryPublicId ?? libraryEntry.publicId}
+					onConfirm={overrides.onConfirm ?? vi.fn()}
+					onClose={overrides.onClose ?? vi.fn()}
 				/>
 			</MemoryRouter>
 		</MantineProvider>,
@@ -190,21 +186,38 @@ function renderPreviewMode(
 }
 
 function renderViewMode(mission: Mission = makeMission(), overrides: ViewOverrides = {}) {
-	const onClose = overrides.onClose ?? vi.fn();
-	const onMissionUpdated = overrides.onMissionUpdated ?? vi.fn();
-
 	return render(
 		<MantineProvider>
 			<MemoryRouter>
 				<MissionBriefingModal
 					mode="view"
 					mission={mission}
-					onClose={onClose}
-					onMissionUpdated={onMissionUpdated}
+					onClose={overrides.onClose ?? vi.fn()}
+					onMissionUpdated={overrides.onMissionUpdated ?? vi.fn()}
 				/>
 			</MemoryRouter>
 		</MantineProvider>,
 	);
+}
+
+// Render preview mode and choose Quick → lands on the briefing step.
+async function renderPreviewBriefing(libraryEntry?: LibraryEntry, overrides?: PreviewOverrides) {
+	const result = renderPreviewMode(libraryEntry, overrides);
+	fireEvent.click(screen.getByText("⚡ Quick briefing"));
+	await screen.findByText(QUICK_TEXT);
+	return result;
+}
+
+function openUpdate() {
+	fireEvent.click(screen.getByRole("button", { name: "Update this briefing" }));
+}
+function openCorrection() {
+	openUpdate();
+	fireEvent.click(screen.getByRole("button", { name: "Correct my current position" }));
+}
+function openRetroactive() {
+	openUpdate();
+	fireEvent.click(screen.getByRole("button", { name: "Log a session I didn't register" }));
 }
 
 // ---------------------------------------------------------------------------
@@ -217,6 +230,9 @@ beforeEach(() => {
 	mockRegenerateMutateAsync.mockReset();
 	mockRetroactiveMutateAsync.mockReset();
 	vi.clearAllMocks();
+
+	mockPreviewMutateAsync.mockResolvedValue(makePreview());
+	mockStartMutateAsync.mockResolvedValue(makeMission());
 
 	(usePreviewBriefing as Mock).mockReturnValue({
 		mutateAsync: mockPreviewMutateAsync,
@@ -241,90 +257,78 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 
 describe("MissionBriefingModal", () => {
-	describe("preview mode", () => {
-		it("renders the briefing text", () => {
+	describe("preview mode — choose briefing", () => {
+		it("shows the two briefing-mode buttons on open", () => {
 			renderPreviewMode();
-
-			expect(
-				screen.getByText(
-					"You are deep within the Forgotten Crossroads. Your next goal is to find the City of Tears.",
-				),
-			).toBeInTheDocument();
+			expect(screen.getByText("⚡ Quick briefing")).toBeInTheDocument();
+			expect(screen.getByText("🔎 Deep briefing (web)")).toBeInTheDocument();
 		});
 
-		it("shows the game title in the modal title", () => {
+		it("shows the game title and platform", () => {
 			renderPreviewMode();
-
 			expect(screen.getByText(/Mission Briefing: Hollow Knight/)).toBeInTheDocument();
-		});
-
-		it("shows the platform label", () => {
-			renderPreviewMode();
-
 			expect(screen.getByText("PC")).toBeInTheDocument();
 		});
 
-		it('shows "I played without registering" button', () => {
+		it("does NOT fetch a briefing until a mode is chosen", () => {
 			renderPreviewMode();
+			expect(mockPreviewMutateAsync).not.toHaveBeenCalled();
+		});
 
+		it("choosing Quick fetches and shows the quick briefing", async () => {
+			renderPreviewMode();
+			fireEvent.click(screen.getByText("⚡ Quick briefing"));
+
+			await waitFor(() => {
+				expect(mockPreviewMutateAsync).toHaveBeenCalledWith(
+					expect.objectContaining({ libraryEntryPublicId: "entry-1", mode: "quick" }),
+				);
+			});
+			expect(await screen.findByText(QUICK_TEXT)).toBeInTheDocument();
+		});
+
+		it("choosing Deep fetches the deep briefing", async () => {
+			mockPreviewMutateAsync.mockResolvedValueOnce(
+				makePreview({ briefingText: "Web-researched: head north to the next area." }),
+			);
+			renderPreviewMode();
+			fireEvent.click(screen.getByText("🔎 Deep briefing (web)"));
+
+			await waitFor(() => {
+				expect(mockPreviewMutateAsync).toHaveBeenCalledWith(
+					expect.objectContaining({ mode: "deep" }),
+				);
+			});
 			expect(
-				screen.getByRole("button", { name: "I played without registering" }),
+				await screen.findByText("Web-researched: head north to the next area."),
 			).toBeInTheDocument();
 		});
 
-		it('shows "That\'s not right" button', () => {
+		it("shows the no-briefing message when the fetched briefing is empty", async () => {
+			mockPreviewMutateAsync.mockResolvedValueOnce(makePreview({ briefingText: null }));
 			renderPreviewMode();
+			fireEvent.click(screen.getByText("⚡ Quick briefing"));
 
-			expect(screen.getByRole("button", { name: "That's not right" })).toBeInTheDocument();
+			expect(await screen.findByText(/No briefing available/)).toBeInTheDocument();
 		});
+	});
 
-		it('shows "Got it, let\'s go" button', () => {
-			renderPreviewMode();
-
+	describe("preview mode — briefing actions", () => {
+		it("shows 'Got it' and 'Update this briefing', and no Cancel", async () => {
+			await renderPreviewBriefing();
 			expect(screen.getByRole("button", { name: "Got it, let's go" })).toBeInTheDocument();
+			expect(screen.getByRole("button", { name: "Update this briefing" })).toBeInTheDocument();
+			expect(screen.queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument();
 		});
 
-		it('shows "Cancel" button', () => {
-			renderPreviewMode();
-
-			expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
-		});
-
-		it("shows no briefing message when briefingText is null", () => {
-			const preview = makePreview({ briefingText: null });
-
-			renderPreviewMode(preview);
-
-			expect(screen.getByText(/No briefing available/)).toBeInTheDocument();
-		});
-
-		it('"That\'s not right" opens correction form', () => {
-			renderPreviewMode();
-
-			fireEvent.click(screen.getByRole("button", { name: "That's not right" }));
-
-			// Correction form should appear with textarea and Update button
+		it("'Update this briefing' opens the fix menu with both options", async () => {
+			await renderPreviewBriefing();
+			openUpdate();
 			expect(
-				screen.getByText("Tell us where you actually are so we can adjust the briefing:"),
+				screen.getByRole("button", { name: "Correct my current position" }),
 			).toBeInTheDocument();
-			expect(screen.getByPlaceholderText(/I'm actually in City of Tears/)).toBeInTheDocument();
-			expect(screen.getByRole("button", { name: "Update & regenerate" })).toBeInTheDocument();
-			expect(screen.getByRole("button", { name: "Back" })).toBeInTheDocument();
-		});
-
-		it('"I played without registering" opens retroactive form', () => {
-			renderPreviewMode();
-
-			fireEvent.click(screen.getByRole("button", { name: "I played without registering" }));
-
 			expect(
-				screen.getByText(
-					"Tell us what happened in that unregistered session so we can update your briefing:",
-				),
-			).toBeInTheDocument();
-			expect(screen.getByPlaceholderText(/I played for a couple hours/)).toBeInTheDocument();
-			expect(
-				screen.getByRole("button", { name: "Record session & update briefing" }),
+				screen.getByRole("button", { name: "Log a session I didn't register" }),
 			).toBeInTheDocument();
 		});
 	});
@@ -332,57 +336,37 @@ describe("MissionBriefingModal", () => {
 	describe("view mode", () => {
 		it("renders the briefing text", () => {
 			renderViewMode();
-
 			expect(
 				screen.getByText("Continue exploring the City of Tears. Look for the Soul Master."),
 			).toBeInTheDocument();
 		});
 
-		it("shows the game title in the modal title", () => {
+		it("shows the game title", () => {
 			renderViewMode();
-
 			expect(screen.getByText(/Mission Briefing: Hollow Knight/)).toBeInTheDocument();
 		});
 
-		it('does NOT show "I played without registering" button', () => {
+		it("does NOT show the mode-choice buttons", () => {
 			renderViewMode();
-
-			expect(
-				screen.queryByRole("button", { name: "I played without registering" }),
-			).not.toBeInTheDocument();
+			expect(screen.queryByText("⚡ Quick briefing")).not.toBeInTheDocument();
+			expect(screen.queryByText("🔎 Deep briefing (web)")).not.toBeInTheDocument();
 		});
 
-		it('shows "That\'s not right" button', () => {
+		it("shows 'That's not right' and 'Got it', no Cancel", () => {
 			renderViewMode();
-
 			expect(screen.getByRole("button", { name: "That's not right" })).toBeInTheDocument();
-		});
-
-		it('shows "Got it, let\'s go" button', () => {
-			renderViewMode();
-
 			expect(screen.getByRole("button", { name: "Got it, let's go" })).toBeInTheDocument();
-		});
-
-		it('does NOT show "Cancel" button (view mode just has single close button)', () => {
-			renderViewMode();
-
 			expect(screen.queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument();
 		});
 
 		it("shows no briefing message when briefingText is null", () => {
-			const mission = makeMission({ briefingText: null });
-
-			renderViewMode(mission);
-
+			renderViewMode(makeMission({ briefingText: null }));
 			expect(screen.getByText(/No briefing available/)).toBeInTheDocument();
 		});
 
-		it('"That\'s not right" opens correction form in view mode', () => {
+		it("'That's not right' opens the correction form", () => {
 			renderViewMode();
-
 			fireEvent.click(screen.getByRole("button", { name: "That's not right" }));
-
 			expect(
 				screen.getByText("Tell us where you actually are so we can adjust the briefing:"),
 			).toBeInTheDocument();
@@ -391,53 +375,28 @@ describe("MissionBriefingModal", () => {
 	});
 
 	describe("correction flow", () => {
-		it("update button is disabled when correction text is empty", () => {
-			renderPreviewMode();
-
-			fireEvent.click(screen.getByRole("button", { name: "That's not right" }));
-
-			const updateBtn = screen.getByRole("button", { name: "Update & regenerate" });
-			expect(updateBtn).toBeDisabled();
+		it("update button is disabled when correction text is empty", async () => {
+			await renderPreviewBriefing();
+			openCorrection();
+			expect(screen.getByRole("button", { name: "Update & regenerate" })).toBeDisabled();
 		});
 
-		it("back button returns to briefing step", () => {
-			renderPreviewMode();
+		it("Back returns through the fix menu to the briefing", async () => {
+			await renderPreviewBriefing();
+			openCorrection();
+			expect(screen.queryByText(QUICK_TEXT)).not.toBeInTheDocument();
 
-			fireEvent.click(screen.getByRole("button", { name: "That's not right" }));
-
-			// Briefing text should not be visible in correction step
-			expect(
-				screen.queryByText(
-					"You are deep within the Forgotten Crossroads. Your next goal is to find the City of Tears.",
-				),
-			).not.toBeInTheDocument();
-
-			fireEvent.click(screen.getByRole("button", { name: "Back" }));
-
-			// Briefing text should be visible again
-			expect(
-				screen.getByText(
-					"You are deep within the Forgotten Crossroads. Your next goal is to find the City of Tears.",
-				),
-			).toBeInTheDocument();
+			fireEvent.click(screen.getByRole("button", { name: "Back" })); // correct → update
+			fireEvent.click(screen.getByRole("button", { name: "Back" })); // update → briefing
+			expect(screen.getByText(QUICK_TEXT)).toBeInTheDocument();
 		});
 
 		it("preview: correction calls previewMutation with positionOverride", async () => {
-			const updatedPreview = makePreview({
-				briefingText: "Updated briefing after correction.",
+			await renderPreviewBriefing();
+			openCorrection();
+			fireEvent.change(screen.getByPlaceholderText(/I'm actually in City of Tears/), {
+				target: { value: "I'm in City of Tears" },
 			});
-			mockPreviewMutateAsync.mockResolvedValue(updatedPreview);
-
-			renderPreviewMode();
-
-			// Open correction form
-			fireEvent.click(screen.getByRole("button", { name: "That's not right" }));
-
-			// Type correction
-			const textarea = screen.getByPlaceholderText(/I'm actually in City of Tears/);
-			fireEvent.change(textarea, { target: { value: "I'm in City of Tears" } });
-
-			// Click update
 			fireEvent.click(screen.getByRole("button", { name: "Update & regenerate" }));
 
 			await waitFor(() => {
@@ -449,15 +408,12 @@ describe("MissionBriefingModal", () => {
 		});
 
 		it("preview: correction error shows notification", async () => {
-			mockPreviewMutateAsync.mockRejectedValue(new Error("Network failure"));
-
-			renderPreviewMode();
-
-			fireEvent.click(screen.getByRole("button", { name: "That's not right" }));
-
-			const textarea = screen.getByPlaceholderText(/I'm actually in City of Tears/);
-			fireEvent.change(textarea, { target: { value: "I'm in City of Tears" } });
-
+			await renderPreviewBriefing();
+			mockPreviewMutateAsync.mockRejectedValueOnce(new Error("Network failure"));
+			openCorrection();
+			fireEvent.change(screen.getByPlaceholderText(/I'm actually in City of Tears/), {
+				target: { value: "I'm in City of Tears" },
+			});
 			fireEvent.click(screen.getByRole("button", { name: "Update & regenerate" }));
 
 			await waitFor(() => {
@@ -472,15 +428,12 @@ describe("MissionBriefingModal", () => {
 		});
 
 		it("preview: correction with non-Error rejection shows fallback message", async () => {
-			mockPreviewMutateAsync.mockRejectedValue("string error");
-
-			renderPreviewMode();
-
-			fireEvent.click(screen.getByRole("button", { name: "That's not right" }));
-
-			const textarea = screen.getByPlaceholderText(/I'm actually in City of Tears/);
-			fireEvent.change(textarea, { target: { value: "I'm in City of Tears" } });
-
+			await renderPreviewBriefing();
+			mockPreviewMutateAsync.mockRejectedValueOnce("string error");
+			openCorrection();
+			fireEvent.change(screen.getByPlaceholderText(/I'm actually in City of Tears/), {
+				target: { value: "I'm in City of Tears" },
+			});
 			fireEvent.click(screen.getByRole("button", { name: "Update & regenerate" }));
 
 			await waitFor(() => {
@@ -495,19 +448,15 @@ describe("MissionBriefingModal", () => {
 		});
 
 		it("view: correction calls regenerate with publicId and currentPosition", async () => {
-			const updatedMission = makeMission({
-				briefingText: "Regenerated view briefing.",
-			});
+			const updatedMission = makeMission({ briefingText: "Regenerated view briefing." });
 			mockRegenerateMutateAsync.mockResolvedValue(updatedMission);
 			const onMissionUpdated = vi.fn();
 
 			renderViewMode(makeMission(), { onMissionUpdated });
-
 			fireEvent.click(screen.getByRole("button", { name: "That's not right" }));
-
-			const textarea = screen.getByPlaceholderText(/I'm actually in City of Tears/);
-			fireEvent.change(textarea, { target: { value: "I'm at the Soul Master" } });
-
+			fireEvent.change(screen.getByPlaceholderText(/I'm actually in City of Tears/), {
+				target: { value: "I'm at the Soul Master" },
+			});
 			fireEvent.click(screen.getByRole("button", { name: "Update & regenerate" }));
 
 			await waitFor(() => {
@@ -516,7 +465,6 @@ describe("MissionBriefingModal", () => {
 					currentPosition: "I'm at the Soul Master",
 				});
 			});
-
 			await waitFor(() => {
 				expect(onMissionUpdated).toHaveBeenCalledWith(updatedMission);
 			});
@@ -524,47 +472,23 @@ describe("MissionBriefingModal", () => {
 	});
 
 	describe("retroactive flow", () => {
-		it("record button is disabled when retroactive text is empty", () => {
-			renderPreviewMode();
-
-			fireEvent.click(screen.getByRole("button", { name: "I played without registering" }));
-
-			const recordBtn = screen.getByRole("button", {
-				name: "Record session & update briefing",
-			});
-			expect(recordBtn).toBeDisabled();
-		});
-
-		it("back button returns to briefing step from retroactive", () => {
-			renderPreviewMode();
-
-			fireEvent.click(screen.getByRole("button", { name: "I played without registering" }));
-
-			fireEvent.click(screen.getByRole("button", { name: "Back" }));
-
-			// Briefing text should be visible again
+		it("record button is disabled when retroactive text is empty", async () => {
+			await renderPreviewBriefing();
+			openRetroactive();
 			expect(
-				screen.getByText(
-					"You are deep within the Forgotten Crossroads. Your next goal is to find the City of Tears.",
-				),
-			).toBeInTheDocument();
+				screen.getByRole("button", { name: "Record session & update briefing" }),
+			).toBeDisabled();
 		});
 
 		it("preview: retroactive submit calls retroactiveMutation", async () => {
-			const updatedPreview = makePreview({
-				briefingText: "Updated after retroactive session.",
-			});
-			mockRetroactiveMutateAsync.mockResolvedValue(updatedPreview);
-
-			renderPreviewMode();
-
-			fireEvent.click(screen.getByRole("button", { name: "I played without registering" }));
-
-			const textarea = screen.getByPlaceholderText(/I played for a couple hours/);
-			fireEvent.change(textarea, {
+			mockRetroactiveMutateAsync.mockResolvedValue(
+				makePreview({ briefingText: "Updated after retroactive session." }),
+			);
+			await renderPreviewBriefing();
+			openRetroactive();
+			fireEvent.change(screen.getByPlaceholderText(/I played for a couple hours/), {
 				target: { value: "I beat the Soul Master and got the Desolate Dive" },
 			});
-
 			fireEvent.click(screen.getByRole("button", { name: "Record session & update briefing" }));
 
 			await waitFor(() => {
@@ -576,27 +500,20 @@ describe("MissionBriefingModal", () => {
 		});
 
 		it("preview: successful retroactive shows success notification", async () => {
-			const updatedPreview = makePreview({
-				briefingText: "Updated after retroactive session.",
-			});
-			mockRetroactiveMutateAsync.mockResolvedValue(updatedPreview);
-
-			renderPreviewMode();
-
-			fireEvent.click(screen.getByRole("button", { name: "I played without registering" }));
-
-			const textarea = screen.getByPlaceholderText(/I played for a couple hours/);
-			fireEvent.change(textarea, {
+			mockRetroactiveMutateAsync.mockResolvedValue(
+				makePreview({ briefingText: "Updated after retroactive session." }),
+			);
+			await renderPreviewBriefing();
+			openRetroactive();
+			fireEvent.change(screen.getByPlaceholderText(/I played for a couple hours/), {
 				target: { value: "I beat the Soul Master" },
 			});
-
 			fireEvent.click(screen.getByRole("button", { name: "Record session & update briefing" }));
 
 			await waitFor(() => {
 				expect(notifications.show).toHaveBeenCalledWith(
 					expect.objectContaining({
 						title: "Session recorded",
-						message: "Your unregistered session has been saved. The briefing has been updated.",
 						color: "teal",
 					}),
 				);
@@ -605,16 +522,11 @@ describe("MissionBriefingModal", () => {
 
 		it("preview: retroactive error shows error notification", async () => {
 			mockRetroactiveMutateAsync.mockRejectedValue(new Error("Session recording failed"));
-
-			renderPreviewMode();
-
-			fireEvent.click(screen.getByRole("button", { name: "I played without registering" }));
-
-			const textarea = screen.getByPlaceholderText(/I played for a couple hours/);
-			fireEvent.change(textarea, {
+			await renderPreviewBriefing();
+			openRetroactive();
+			fireEvent.change(screen.getByPlaceholderText(/I played for a couple hours/), {
 				target: { value: "I beat the Soul Master" },
 			});
-
 			fireEvent.click(screen.getByRole("button", { name: "Record session & update briefing" }));
 
 			await waitFor(() => {
@@ -630,16 +542,11 @@ describe("MissionBriefingModal", () => {
 
 		it("preview: retroactive with non-Error rejection shows fallback message", async () => {
 			mockRetroactiveMutateAsync.mockRejectedValue({ code: 500 });
-
-			renderPreviewMode();
-
-			fireEvent.click(screen.getByRole("button", { name: "I played without registering" }));
-
-			const textarea = screen.getByPlaceholderText(/I played for a couple hours/);
-			fireEvent.change(textarea, {
+			await renderPreviewBriefing();
+			openRetroactive();
+			fireEvent.change(screen.getByPlaceholderText(/I played for a couple hours/), {
 				target: { value: "I beat the Soul Master" },
 			});
-
 			fireEvent.click(screen.getByRole("button", { name: "Record session & update briefing" }));
 
 			await waitFor(() => {
@@ -655,33 +562,28 @@ describe("MissionBriefingModal", () => {
 	});
 
 	describe("confirm start", () => {
-		it("preview: 'Got it, let's go' calls startMission.mutateAsync", async () => {
+		it("preview: 'Got it, let's go' calls startMission with the briefing", async () => {
+			const onConfirm = vi.fn();
 			const mission = makeMission();
 			mockStartMutateAsync.mockResolvedValue(mission);
-			const onConfirm = vi.fn();
 
-			renderPreviewMode(makePreview(), { onConfirm });
-
+			await renderPreviewBriefing(makeEntry(), { onConfirm });
 			fireEvent.click(screen.getByRole("button", { name: "Got it, let's go" }));
 
 			await waitFor(() => {
 				expect(mockStartMutateAsync).toHaveBeenCalledWith({
 					libraryEntryPublicId: "entry-1",
-					briefingText:
-						"You are deep within the Forgotten Crossroads. Your next goal is to find the City of Tears.",
+					briefingText: QUICK_TEXT,
 				});
 			});
-
 			await waitFor(() => {
 				expect(onConfirm).toHaveBeenCalledWith(mission);
 			});
 		});
 
 		it("preview: startMission error shows notification", async () => {
-			mockStartMutateAsync.mockRejectedValue(new Error("Server error"));
-
-			renderPreviewMode();
-
+			await renderPreviewBriefing();
+			mockStartMutateAsync.mockRejectedValueOnce(new Error("Server error"));
 			fireEvent.click(screen.getByRole("button", { name: "Got it, let's go" }));
 
 			await waitFor(() => {
@@ -696,10 +598,8 @@ describe("MissionBriefingModal", () => {
 		});
 
 		it("preview: startMission with non-Error rejection shows fallback message", async () => {
-			mockStartMutateAsync.mockRejectedValue(42);
-
-			renderPreviewMode();
-
+			await renderPreviewBriefing();
+			mockStartMutateAsync.mockRejectedValueOnce(42);
 			fireEvent.click(screen.getByRole("button", { name: "Got it, let's go" }));
 
 			await waitFor(() => {
@@ -713,16 +613,13 @@ describe("MissionBriefingModal", () => {
 			});
 		});
 
-		it("preview: startMission with null briefingText passes undefined", async () => {
-			const mission = makeMission();
-			mockStartMutateAsync.mockResolvedValue(mission);
-			const onConfirm = vi.fn();
-			const preview = makePreview({ briefingText: null });
-
-			renderPreviewMode(preview, { onConfirm });
+		it("preview: null briefing passes undefined to startMission", async () => {
+			mockPreviewMutateAsync.mockResolvedValueOnce(makePreview({ briefingText: null }));
+			renderPreviewMode();
+			fireEvent.click(screen.getByText("⚡ Quick briefing"));
+			await screen.findByText(/No briefing available/);
 
 			fireEvent.click(screen.getByRole("button", { name: "Got it, let's go" }));
-
 			await waitFor(() => {
 				expect(mockStartMutateAsync).toHaveBeenCalledWith({
 					libraryEntryPublicId: "entry-1",
@@ -733,56 +630,42 @@ describe("MissionBriefingModal", () => {
 	});
 
 	describe("key change resets state", () => {
-		it("resets correction state when libraryEntryPublicId changes", () => {
-			const preview1 = makePreview();
+		it("resets to the mode-choice step when libraryEntry changes", async () => {
 			const { rerender } = render(
 				<MantineProvider>
 					<MemoryRouter>
 						<MissionBriefingModal
 							mode="preview"
-							preview={preview1}
+							libraryEntry={makeEntry()}
 							libraryEntryPublicId="entry-1"
 							onConfirm={vi.fn()}
-							onPreviewUpdated={vi.fn()}
 							onClose={vi.fn()}
 						/>
 					</MemoryRouter>
 				</MantineProvider>,
 			);
 
-			// Navigate to correction step and type something
-			fireEvent.click(screen.getByRole("button", { name: "That's not right" }));
-			const textarea = screen.getByPlaceholderText(/I'm actually in City of Tears/);
-			fireEvent.change(textarea, { target: { value: "Some correction" } });
-
-			// Verify we are on the correction step
+			fireEvent.click(screen.getByText("⚡ Quick briefing"));
+			await screen.findByText(QUICK_TEXT);
+			openCorrection();
 			expect(screen.getByRole("button", { name: "Update & regenerate" })).toBeInTheDocument();
-
-			// Re-render with a different libraryEntryPublicId
-			const preview2 = makePreview({
-				libraryEntry: makeEntry({ publicId: "entry-2" }),
-				briefingText: "A different briefing for entry 2.",
-			});
 
 			rerender(
 				<MantineProvider>
 					<MemoryRouter>
 						<MissionBriefingModal
 							mode="preview"
-							preview={preview2}
+							libraryEntry={makeEntry({ publicId: "entry-2" })}
 							libraryEntryPublicId="entry-2"
 							onConfirm={vi.fn()}
-							onPreviewUpdated={vi.fn()}
 							onClose={vi.fn()}
 						/>
 					</MemoryRouter>
 				</MantineProvider>,
 			);
 
-			// Should be back on briefing step showing the new briefing text
-			expect(screen.getByText("A different briefing for entry 2.")).toBeInTheDocument();
-
-			// Correction form should not be visible
+			// Back at the mode-choice step; the correction form is gone.
+			expect(screen.getByText("⚡ Quick briefing")).toBeInTheDocument();
 			expect(
 				screen.queryByRole("button", { name: "Update & regenerate" }),
 			).not.toBeInTheDocument();

@@ -32,6 +32,18 @@ class Settings(BaseSettings):
     ollama_vision_model: str = "qwen3-vl:4b"
     llm_timeout_seconds: int = 60
 
+    # ── Agent / Deep Research Briefing (Epic 10) ─────────────────────────
+    agent_provider: str = "dummy"  # langgraph | dummy
+    research_provider: str = "dummy"  # searxng | dummy
+    searxng_base_url: str = "http://localhost:8888"
+    deep_briefing_deadline_seconds: int = 60
+    deep_briefing_max_refines: int = 2
+    deep_briefing_max_results: int = 6
+    # Scrape the top-N result URLs into full text for richer synthesis grounding.
+    # 0 = snippets only (cheaper/faster, less specific). Trade-off: scraping adds
+    # latency + tokens and enlarges the spoiler surface the filter must catch.
+    deep_briefing_scrape_top_n: int = 2
+
     # ── STT ──────────────────────────────────────────────────────────────
     stt_provider: str = "dummy"
     whisper_model_size: str = "base"

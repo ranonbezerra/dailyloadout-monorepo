@@ -11,7 +11,7 @@ from jinja2.sandbox import SandboxedEnvironment
 
 from dailyloadout.config import Settings
 
-from .base import AbstractLLMClient, ExtractedGame, ExtractedState, LoadoutPick
+from .base import AbstractLLMClient, ExtractedGame, ExtractedState, LLMRole, LoadoutPick
 from .parsers import _extract_json, _parse_game_list
 
 logger = structlog.get_logger()
@@ -243,3 +243,27 @@ class OllamaClient(AbstractLLMClient):
         except (json.JSONDecodeError, KeyError, TypeError) as exc:
             logger.warning("ollama_loadout_pick_parse_error", error=str(exc))
             raise httpx.HTTPError("Failed to parse loadout pick response") from exc
+
+    async def complete(
+        self,
+        prompt: str,
+        *,
+        role: LLMRole = "fast",
+        json: bool = False,
+    ) -> str:
+        """Run a single completion for a pre-rendered *prompt*."""
+        model = self._smart_model if role == "smart" else self._model
+        payload: dict[str, object] = {
+            "model": model,
+            "prompt": prompt,
+            "stream": False,
+        }
+        if json:
+            payload["format"] = "json"
+
+        resp = await self._call_generate(payload, "ollama_complete_failed")
+        if resp is None:
+            return ""
+
+        body: dict[str, str] = resp.json()
+        return body.get("response", "").strip()

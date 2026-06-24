@@ -4,13 +4,17 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 /// Step enum that controls which section of the briefing page is shown.
-enum _BriefingStep { briefing, correct, retroactive }
+///
+/// In preview mode the user first picks quick vs deep ([chooseMode]); the
+/// briefing is only fetched after that choice. [update] is a small menu that
+/// merges the two "fix the briefing" actions.
+enum _BriefingStep { chooseMode, briefing, update, correct, retroactive }
 
 /// Briefing preview / view page.
 ///
 /// **Preview mode** — receives [libraryEntryPublicId] (before starting a
-/// mission). Shows the generated briefing and allows corrections, retroactive
-/// debrief, or starting the mission.
+/// mission). Lets the user choose a briefing mode, review it, correct it, log a
+/// past session, or start the mission.
 ///
 /// **View mode** — receives [missionPublicId] (for an active mission). Shows
 /// the briefing and allows corrections via regeneration.
@@ -35,7 +39,7 @@ class MissionBriefingPage extends StatefulWidget {
 }
 
 class _MissionBriefingPageState extends State<MissionBriefingPage> {
-  _BriefingStep _step = _BriefingStep.briefing;
+  late _BriefingStep _step;
   final _correctionController = TextEditingController();
   final _retroactiveController = TextEditingController();
 
@@ -45,10 +49,10 @@ class _MissionBriefingPageState extends State<MissionBriefingPage> {
   void initState() {
     super.initState();
     if (_isPreview) {
-      context.read<MissionBloc>().add(
-        PreviewBriefing(libraryEntryPublicId: widget.libraryEntryPublicId!),
-      );
+      // Don't fetch anything yet — wait for the user to pick quick vs deep.
+      _step = _BriefingStep.chooseMode;
     } else {
+      _step = _BriefingStep.briefing;
       context.read<MissionBloc>().add(const LoadActiveMission());
     }
   }
@@ -58,6 +62,22 @@ class _MissionBriefingPageState extends State<MissionBriefingPage> {
     _correctionController.dispose();
     _retroactiveController.dispose();
     super.dispose();
+  }
+
+  void _onSelectMode(bool deep) {
+    context.read<MissionBloc>().add(
+      PreviewBriefing(
+        libraryEntryPublicId: widget.libraryEntryPublicId!,
+        mode: deep ? 'deep' : 'quick',
+      ),
+    );
+    setState(() => _step = _BriefingStep.briefing);
+  }
+
+  void _onCancelDeep() {
+    context.read<MissionBloc>().add(
+      CancelDeepBriefing(libraryEntryPublicId: widget.libraryEntryPublicId!),
+    );
   }
 
   void _onCorrect() {
@@ -130,8 +150,18 @@ class _MissionBriefingPageState extends State<MissionBriefingPage> {
             }
           },
           builder: (context, state) {
+            // Preview mode, before a briefing mode is chosen.
+            if (_isPreview && state is MissionInitial) {
+              return _buildChooseMode(context);
+            }
+
             if (state is MissionLoading) {
               return const Center(child: CircularProgressIndicator());
+            }
+
+            // Deep briefing in progress: show progress + cancel.
+            if (state is DeepBriefingLoading) {
+              return _buildDeepLoading(context);
             }
 
             // Preview mode: briefing preview loaded.
@@ -194,6 +224,128 @@ class _MissionBriefingPageState extends State<MissionBriefingPage> {
     );
   }
 
+  // -- Mode choice ----------------------------------------------------------
+
+  Widget _buildChooseMode(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'How should we prepare your briefing?',
+            style: theme.textTheme.titleMedium,
+          ),
+          const SizedBox(height: 16),
+          _modeCard(
+            context,
+            icon: Icons.bolt,
+            title: 'Quick briefing',
+            subtitle:
+                'Instant — built from your own past sessions. Recommended.',
+            onTap: () => _onSelectMode(false),
+          ),
+          const SizedBox(height: 12),
+          _modeCard(
+            context,
+            icon: Icons.travel_explore,
+            title: 'Deep briefing (web)',
+            subtitle:
+                'Searches the web for spoiler-free next steps. Takes up to a '
+                'minute.',
+            onTap: () => _onSelectMode(true),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _modeCard(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(icon, size: 28, color: theme.colorScheme.primary),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDeepLoading(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 24),
+            Text(
+              'Researching the web for your briefing',
+              style: theme.textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Searching for spoiler-free next steps. This can take up to a '
+              'minute.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            OutlinedButton(
+              onPressed: _onCancelDeep,
+              child: const Text('Cancel'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // -- Briefing content -----------------------------------------------------
+
   Widget _buildBriefingContent(
     BuildContext context, {
     required String? briefingText,
@@ -223,12 +375,15 @@ class _MissionBriefingPageState extends State<MissionBriefingPage> {
           ),
           const SizedBox(height: 24),
 
-          // Step content
-          if (_step == _BriefingStep.briefing)
+          // Step content (a loaded briefing defaults to the briefing step).
+          if (_step == _BriefingStep.update)
+            _buildUpdateStep(context)
+          else if (_step == _BriefingStep.correct)
+            _buildCorrectStep(context)
+          else if (_step == _BriefingStep.retroactive)
+            _buildRetroactiveStep(context)
+          else
             _buildBriefingStep(context, briefingText),
-          if (_step == _BriefingStep.correct) _buildCorrectStep(context),
-          if (_step == _BriefingStep.retroactive)
-            _buildRetroactiveStep(context),
         ],
       ),
     );
@@ -240,7 +395,6 @@ class _MissionBriefingPageState extends State<MissionBriefingPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Briefing text
         if (briefingText != null && briefingText.isNotEmpty)
           Text(briefingText, style: theme.textTheme.bodyLarge)
         else
@@ -254,53 +408,67 @@ class _MissionBriefingPageState extends State<MissionBriefingPage> {
           ),
         const SizedBox(height: 32),
 
-        // Action buttons
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            if (_isPreview)
-              TextButton(
-                onPressed: () =>
-                    setState(() => _step = _BriefingStep.retroactive),
-                child: const Text('I played without registering'),
-              ),
-            TextButton(
-              onPressed: () => setState(() => _step = _BriefingStep.correct),
-              child: const Text("That's not right"),
-            ),
-          ],
+        // Secondary action: one entry point for fixing the briefing.
+        Align(
+          alignment: Alignment.centerLeft,
+          child: _isPreview
+              ? TextButton(
+                  onPressed: () => setState(() => _step = _BriefingStep.update),
+                  child: const Text('Update this briefing'),
+                )
+              : TextButton(
+                  onPressed: () =>
+                      setState(() => _step = _BriefingStep.correct),
+                  child: const Text("That's not right"),
+                ),
         ),
         const SizedBox(height: 16),
 
-        // Primary actions
-        if (_isPreview) ...[
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => context.pop(),
-                  child: const Text('Cancel'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton(
-                  onPressed: () => _onStartMission(briefingText),
-                  child: const Text("Got it, let's go"),
-                ),
-              ),
-            ],
+        // Primary action
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton(
+            onPressed: _isPreview
+                ? () => _onStartMission(briefingText)
+                : () => context.pop(),
+            child: Text(_isPreview ? "Got it, let's go" : 'Got it'),
           ),
-        ] else ...[
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: () => context.pop(),
-              child: const Text('Got it'),
-            ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildUpdateStep(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('What would you like to fix?', style: theme.textTheme.bodyMedium),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: () => setState(() => _step = _BriefingStep.correct),
+            child: const Text('Correct my current position'),
           ),
-        ],
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: () => setState(() => _step = _BriefingStep.retroactive),
+            child: const Text("Log a session I didn't register"),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton(
+            onPressed: () => setState(() => _step = _BriefingStep.briefing),
+            child: const Text('Back'),
+          ),
+        ),
       ],
     );
   }
@@ -332,7 +500,11 @@ class _MissionBriefingPageState extends State<MissionBriefingPage> {
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             TextButton(
-              onPressed: () => setState(() => _step = _BriefingStep.briefing),
+              onPressed: () => setState(
+                () => _step = _isPreview
+                    ? _BriefingStep.update
+                    : _BriefingStep.briefing,
+              ),
               child: const Text('Back'),
             ),
             const SizedBox(width: 8),
@@ -374,7 +546,7 @@ class _MissionBriefingPageState extends State<MissionBriefingPage> {
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             TextButton(
-              onPressed: () => setState(() => _step = _BriefingStep.briefing),
+              onPressed: () => setState(() => _step = _BriefingStep.update),
               child: const Text('Back'),
             ),
             const SizedBox(width: 8),

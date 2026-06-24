@@ -403,6 +403,74 @@ void main() {
           MissionError(message: 'Entry not found'),
         ],
       );
+
+      blocTest<MissionBloc, MissionState>(
+        'deep mode emits [DeepBriefingLoading, '
+        'BriefingPreviewLoaded(isDeep)]',
+        setUp: () {
+          when(
+            () => mockMissionRepository.previewBriefing(
+              'lib-001',
+              mode: 'deep',
+              cancelToken: any(named: 'cancelToken'),
+            ),
+          ).thenAnswer((_) async => _preview);
+        },
+        build: buildBloc,
+        act: (bloc) => bloc.add(
+          const PreviewBriefing(libraryEntryPublicId: 'lib-001', mode: 'deep'),
+        ),
+        expect: () => [
+          const DeepBriefingLoading(),
+          BriefingPreviewLoaded(preview: _preview, isDeep: true),
+        ],
+        verify: (_) {
+          verify(
+            () => mockMissionRepository.previewBriefing(
+              'lib-001',
+              mode: 'deep',
+              cancelToken: any(named: 'cancelToken'),
+            ),
+          ).called(1);
+        },
+      );
+
+      blocTest<MissionBloc, MissionState>(
+        'deep cancellation falls back to the quick briefing',
+        setUp: () {
+          when(
+            () => mockMissionRepository.previewBriefing(
+              'lib-001',
+              mode: 'deep',
+              cancelToken: any(named: 'cancelToken'),
+            ),
+          ).thenThrow(
+            DioException(
+              requestOptions: RequestOptions(),
+              type: DioExceptionType.cancel,
+            ),
+          );
+          when(
+            () => mockMissionRepository.previewBriefing('lib-001'),
+          ).thenAnswer((_) async => _preview);
+        },
+        build: buildBloc,
+        act: (bloc) => bloc.add(
+          const PreviewBriefing(libraryEntryPublicId: 'lib-001', mode: 'deep'),
+        ),
+        expect: () => [
+          const DeepBriefingLoading(),
+          BriefingPreviewLoaded(preview: _preview),
+        ],
+      );
+
+      blocTest<MissionBloc, MissionState>(
+        'CancelDeepBriefing is a no-op when nothing is in flight',
+        build: buildBloc,
+        act: (bloc) =>
+            bloc.add(const CancelDeepBriefing(libraryEntryPublicId: 'lib-001')),
+        expect: () => <MissionState>[],
+      );
     });
 
     // ---------------------------------------------------------------
