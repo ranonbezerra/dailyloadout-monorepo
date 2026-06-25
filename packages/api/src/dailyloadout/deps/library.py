@@ -4,7 +4,9 @@ from typing import Annotated
 
 from fastapi import Depends
 
+from dailyloadout.config import settings
 from dailyloadout.core.library.service import LibraryService
+from dailyloadout.infrastructure.cache.factory import get_cache
 from dailyloadout.infrastructure.db.repositories.game import GameRepository
 from dailyloadout.infrastructure.db.repositories.library import LibraryRepository
 from dailyloadout.infrastructure.db.repositories.platform import PlatformRepository
@@ -43,7 +45,13 @@ def get_library_service(
     platform_repo: PlatformRepoDep,
 ) -> LibraryService:
     """Provide a ``LibraryService`` wired to the current repositories."""
-    return LibraryService(game_repo, library_repo, platform_repo)
+    return LibraryService(
+        game_repo,
+        library_repo,
+        platform_repo,
+        cache=get_cache(settings),
+        reference_ttl_seconds=settings.reference_cache_ttl_seconds,
+    )
 
 
 LibraryServiceDep = Annotated[LibraryService, Depends(get_library_service)]

@@ -82,6 +82,10 @@ api-test-cov: ## Run API tests with coverage (fail under 80%)
 igdb-check: ## Smoke-test the live IGDB client (make igdb-check q="Hollow Knight")
 	cd $(API_DIR) && poetry run python scripts/check_igdb.py "$(or $(q),Hollow Knight)"
 
+.PHONY: cache-stats
+cache-stats: ## Show per-namespace cache hit/miss rates from the running API
+	@curl -s http://localhost:$${API_PORT:-8100}/v1/cache/stats | python3 -m json.tool
+
 .PHONY: api-lint
 api-lint: ## Lint API (ruff check)
 	cd $(API_DIR) && poetry run ruff check .

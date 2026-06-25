@@ -325,10 +325,14 @@ class TestAgents:
         assert isinstance(agent, DummyBriefingAgent)
 
     def test_factory_langgraph(self) -> None:
+        # The langgraph agent is wrapped in the Epic 18 briefing cache.
+        from dailyloadout.infrastructure.agent.cached import CachedBriefingAgent
+
         agent = get_briefing_agent(
             Settings(agent_provider="langgraph", research_provider="dummy"), DummyLLMClient()
         )
-        assert isinstance(agent, LangGraphBriefingAgent)
+        assert isinstance(agent, CachedBriefingAgent)
+        assert isinstance(agent._inner, LangGraphBriefingAgent)
 
     def test_factory_unknown_raises(self) -> None:
         with pytest.raises(ValueError, match="Unknown agent provider"):

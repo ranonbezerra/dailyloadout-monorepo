@@ -10,6 +10,7 @@ from fastapi.responses import HTMLResponse
 from scalar_fastapi import get_scalar_api_reference
 
 from dailyloadout.api.v1.auth import router as auth_router
+from dailyloadout.api.v1.cache import router as cache_router
 from dailyloadout.api.v1.capture import router as capture_router
 from dailyloadout.api.v1.concierge import router as concierge_router
 from dailyloadout.api.v1.library import router as library_router
@@ -138,6 +139,7 @@ def create_app() -> FastAPI:
 
     # Routers
     application.include_router(auth_router)
+    application.include_router(cache_router)
     application.include_router(capture_router)
     application.include_router(library_import_router)
     application.include_router(library_router)
