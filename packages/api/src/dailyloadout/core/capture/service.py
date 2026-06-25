@@ -5,9 +5,13 @@ from __future__ import annotations
 import re
 from uuid import UUID
 
-from fastapi import HTTPException, status
-
-from dailyloadout.infrastructure.db.models import Capture, CaptureCandidate, Game, LibraryEntry
+from dailyloadout.core.cache.invalidation import invalidate_user_stats
+from dailyloadout.infrastructure.db.models import (
+    Capture,
+    CaptureCandidate,
+    Game,
+    LibraryEntry,
+)
 from dailyloadout.infrastructure.db.repositories.capture import (
     CaptureCandidateRepository,
     CaptureRepository,
@@ -15,6 +19,7 @@ from dailyloadout.infrastructure.db.repositories.capture import (
 from dailyloadout.infrastructure.db.repositories.game import GameRepository
 from dailyloadout.infrastructure.db.repositories.library import LibraryRepository
 from dailyloadout.infrastructure.db.repositories.platform import PlatformRepository
+from fastapi import HTTPException, status
 
 
 def _slugify(title: str) -> str:
@@ -84,9 +89,7 @@ class CaptureService:
         offset: int = 0,
     ) -> tuple[list[Capture], int]:
         """Return the user's captures along with the total count."""
-        captures = await self._capture_repo.list_for_user(
-            user_id, status=status_filter, limit=limit, offset=offset
-        )
+        captures = await self._capture_repo.list_for_user(user_id, status=status_filter, limit=limit, offset=offset)
         total = await self._capture_repo.count_for_user(user_id, status=status_filter)
         return captures, total
 
@@ -148,10 +151,9 @@ class CaptureService:
         entry.platform = platform
 
         # Mark candidate as confirmed.
-        await self._candidate_repo.update_status(
-            candidate.id, "confirmed", matched_game_id=game.id
-        )
+        await self._candidate_repo.update_status(candidate.id, "confirmed", matched_game_id=game.id)
         await self._resolve_capture_status(capture.id)
+        await invalidate_user_stats(user_id)
 
         return entry
 
@@ -229,12 +231,12 @@ class CaptureService:
                     platform_id=platform_id,
                     status=library_status,
                 )
-            await self._candidate_repo.update_status(
-                candidate.id, "confirmed", matched_game_id=game.id
-            )
+            await self._candidate_repo.update_status(candidate.id, "confirmed", matched_game_id=game.id)
             confirmed += 1
 
         await self._resolve_capture_status(capture.id)
+        if confirmed:
+            await invalidate_user_stats(user_id)
         return confirmed, rejected
 
     async def reject_candidate(

@@ -174,3 +174,66 @@ async def test_concierge_set_status_busts_stats(spy_cache: SpyCache) -> None:
     )
     assert "completed" in msg
     assert spy_cache.busted == [stats_namespace(5)]
+
+
+# ── Capture confirm (creates library entries) ────────────────────────────
+
+
+class _Candidate:
+    def __init__(self) -> None:
+        self.id = 1
+        self.capture_id = 1
+        self.status = "pending"
+        self.title = "Hades"
+        self.igdb_id = None
+        self.igdb_title = None
+        self.igdb_summary = None
+        self.igdb_cover_url = None
+        self.igdb_first_release_date = None
+        self.igdb_genres = None
+
+
+class _CaptureRepo:
+    async def get_by_public_id(self, public_id: Any, user_id: int) -> Any:
+        return type("C", (), {"id": 1})()
+
+    async def update_status(self, capture_id: int, status: str) -> None:
+        return None
+
+
+class _CandidateRepo:
+    def __init__(self) -> None:
+        self._candidate = _Candidate()
+
+    async def get_by_public_id(self, public_id: Any) -> _Candidate:
+        return self._candidate
+
+    async def update_status(self, candidate_id: int, status: str, **kwargs: Any) -> None:
+        self._candidate.status = status
+
+    async def get_all_for_capture(self, capture_id: int) -> list[_Candidate]:
+        return [self._candidate]
+
+
+class _CaptureGameRepo:
+    async def get_by_slug(self, slug: str) -> Any:
+        return None
+
+    async def create(self, **kwargs: Any) -> Any:
+        return type("G", (), {"id": 1})()
+
+
+async def test_capture_confirm_busts_stats(spy_cache: SpyCache) -> None:
+    from dailyloadout.core.capture.service import CaptureService
+
+    service = CaptureService(
+        _CaptureRepo(),  # type: ignore[arg-type]
+        _CandidateRepo(),  # type: ignore[arg-type]
+        _CaptureGameRepo(),  # type: ignore[arg-type]
+        _LibRepo(),  # type: ignore[arg-type]
+        _PlatformRepo(),  # type: ignore[arg-type]
+    )
+
+    await service.confirm_candidate(5, uuid4(), uuid4(), platform_id=1)
+
+    assert spy_cache.busted == [stats_namespace(5)]
