@@ -14,6 +14,7 @@ import 'package:app/features/auth/bloc/auth_bloc.dart';
 import 'package:app/features/capture/bloc/capture_bloc.dart';
 import 'package:app/features/concierge/bloc/concierge_bloc.dart';
 import 'package:app/features/library/bloc/library_bloc.dart';
+import 'package:app/features/library_import/bloc/library_import_bloc.dart';
 import 'package:app/features/loadout/bloc/loadout_bloc.dart';
 import 'package:app/features/mission/bloc/mission_bloc.dart';
 import 'package:flutter/material.dart';
@@ -55,6 +56,9 @@ Future<void> main() async {
   final authBloc = AuthBloc(authRepository: authRepository);
   final libraryBloc = LibraryBloc(libraryRepository: libraryRepository);
   final captureBloc = CaptureBloc(captureRepository: captureRepository);
+  final libraryImportBloc = LibraryImportBloc(
+    captureRepository: captureRepository,
+  );
   final missionBloc = MissionBloc(missionRepository: missionRepository);
   final loadoutBloc = LoadoutBloc(
     loadoutRepository: loadoutRepository,
@@ -68,6 +72,7 @@ Future<void> main() async {
       authBloc: authBloc,
       libraryBloc: libraryBloc,
       captureBloc: captureBloc,
+      libraryImportBloc: libraryImportBloc,
       missionBloc: missionBloc,
       loadoutBloc: loadoutBloc,
       analyticsBloc: analyticsBloc,

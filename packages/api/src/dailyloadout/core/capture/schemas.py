@@ -37,6 +37,36 @@ class CandidateConfirmRequest(BaseModel):
     status: LibraryStatus = "backlog"
 
 
+class BulkConfirmRequest(BaseModel):
+    """Body for ``POST /v1/captures/{id}/candidates/bulk-confirm``.
+
+    Confirm the listed candidates onto *platform_id*; every other pending
+    candidate in the capture is rejected. Commits a whole library import at once.
+
+    *title_overrides* maps a candidate's ``public_id`` to a corrected title — for
+    fixing OCR mistakes before committing. An overridden candidate is committed
+    as a user-authored title (its prior catalog match is dropped).
+    """
+
+    confirm_public_ids: list[UUID] = Field(default_factory=list)
+    platform_id: int
+    status: LibraryStatus = "backlog"
+    title_overrides: dict[UUID, str] = Field(default_factory=dict)
+
+
+class BulkConfirmResponse(BaseModel):
+    """Outcome of a bulk confirm: how many were committed vs rejected."""
+
+    confirmed: int
+    rejected: int
+
+
+class DuplicatesResponse(BaseModel):
+    """Candidate ``public_id``s already in the library for a given platform."""
+
+    duplicate_public_ids: list[UUID] = Field(default_factory=list)
+
+
 # ---------------------------------------------------------------------------
 # Response schemas
 # ---------------------------------------------------------------------------
@@ -111,6 +141,8 @@ CandidateStatus = Literal["pending", "confirmed", "rejected"]
 
 
 __all__ = [
+    "BulkConfirmRequest",
+    "BulkConfirmResponse",
     "CandidateConfirmRequest",
     "CandidateStatus",
     "CaptureCandidateResponse",
@@ -119,5 +151,6 @@ __all__ = [
     "CaptureResponse",
     "CaptureStatus",
     "CaptureTextRequest",
+    "DuplicatesResponse",
     "TranscribeResponse",
 ]

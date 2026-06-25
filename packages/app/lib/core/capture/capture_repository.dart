@@ -53,6 +53,52 @@ class CaptureRepository {
     return Capture.fromJson(response.data!);
   }
 
+  /// Uploads one or more library screenshots for bulk game extraction.
+  ///
+  /// Each image is attached under the repeated multipart field `files`.
+  /// Returns the created [Capture] with its extracted candidates.
+  Future<Capture> submitLibraryImport(List<String> imagePaths) async {
+    final fileEntries = <MapEntry<String, MultipartFile>>[];
+    for (final path in imagePaths) {
+      fileEntries.add(
+        MapEntry(
+          'files',
+          await MultipartFile.fromFile(
+            path,
+            contentType: DioMediaType('image', 'jpeg'),
+          ),
+        ),
+      );
+    }
+    final formData = FormData()..files.addAll(fileEntries);
+
+    final response = await _apiClient.dio.post<Map<String, dynamic>>(
+      '/v1/captures/library-import',
+      data: formData,
+    );
+    return Capture.fromJson(response.data!);
+  }
+
+  /// Confirms multiple candidates from a capture in one request.
+  ///
+  /// Returns the number of confirmed and rejected candidates.
+  Future<BulkConfirmResult> bulkConfirmCandidates(
+    String captureId,
+    List<String> confirmPublicIds,
+    int platformId, {
+    String status = 'backlog',
+  }) async {
+    final response = await _apiClient.dio.post<Map<String, dynamic>>(
+      '/v1/captures/$captureId/candidates/bulk-confirm',
+      data: {
+        'confirm_public_ids': confirmPublicIds,
+        'platform_id': platformId,
+        'status': status,
+      },
+    );
+    return BulkConfirmResult.fromJson(response.data!);
+  }
+
   /// Lists the current user's captures.
   Future<CaptureListResponse> listCaptures({
     String? status,

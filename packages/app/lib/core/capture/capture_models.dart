@@ -106,6 +106,24 @@ class Capture extends Equatable {
   ];
 }
 
+/// Result of a bulk candidate confirmation.
+class BulkConfirmResult extends Equatable {
+  const BulkConfirmResult({required this.confirmed, required this.rejected});
+
+  factory BulkConfirmResult.fromJson(Map<String, dynamic> json) {
+    return BulkConfirmResult(
+      confirmed: json['confirmed'] as int,
+      rejected: json['rejected'] as int,
+    );
+  }
+
+  final int confirmed;
+  final int rejected;
+
+  @override
+  List<Object?> get props => [confirmed, rejected];
+}
+
 /// Result of transcribing an audio file.
 class TranscribeResult extends Equatable {
   const TranscribeResult({

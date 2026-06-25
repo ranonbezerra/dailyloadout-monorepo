@@ -9,9 +9,10 @@ import { QuickAddMenu } from "./QuickAddMenu";
 
 function makeProps() {
 	return {
+		onManual: vi.fn(),
 		onText: vi.fn(),
 		onVoice: vi.fn(),
-		onPhoto: vi.fn(),
+		onImage: vi.fn(),
 	};
 }
 
@@ -37,7 +38,7 @@ async function openMenu() {
 	fireEvent.click(screen.getByRole("button", { name: /quick add/i }));
 	// Wait until the dropdown text is in the DOM
 	await waitFor(() => {
-		expect(screen.getByText("Text")).toBeInTheDocument();
+		expect(screen.getByText("Add manually")).toBeInTheDocument();
 	});
 }
 
@@ -60,34 +61,45 @@ describe("QuickAddMenu", () => {
 		renderMenu();
 
 		// Menu items should not be visible initially
-		expect(screen.queryByText("Text")).not.toBeInTheDocument();
+		expect(screen.queryByText("Add manually")).not.toBeInTheDocument();
 
 		await openMenu();
 
-		expect(screen.getByText("Text")).toBeInTheDocument();
+		expect(screen.getByText("Add manually")).toBeInTheDocument();
+		expect(screen.getByText("Describe in text")).toBeInTheDocument();
 		expect(screen.getByText("Voice")).toBeInTheDocument();
-		expect(screen.getByText("Photo")).toBeInTheDocument();
+		expect(screen.getByText("Photo or screenshot")).toBeInTheDocument();
 	});
 
-	it("menu shows Text, Voice, and Photo items when opened", async () => {
+	it("shows the manual and AI-capture options when opened", async () => {
 		renderMenu();
 		await openMenu();
 
-		// Verify all three menu item labels are in the DOM
-		for (const label of ["Text", "Voice", "Photo"]) {
+		for (const label of ["Add manually", "Describe in text", "Voice", "Photo or screenshot"]) {
 			expect(screen.getByText(label)).toBeInTheDocument();
 		}
 	});
 
-	it("clicking Text calls onText", async () => {
+	it("clicking Add manually calls onManual", async () => {
 		const { props } = renderMenu();
 		await openMenu();
 
-		fireEvent.click(screen.getByText("Text"));
+		fireEvent.click(screen.getByText("Add manually"));
+
+		expect(props.onManual).toHaveBeenCalledOnce();
+		expect(props.onText).not.toHaveBeenCalled();
+	});
+
+	it("clicking Describe in text calls onText", async () => {
+		const { props } = renderMenu();
+		await openMenu();
+
+		fireEvent.click(screen.getByText("Describe in text"));
 
 		expect(props.onText).toHaveBeenCalledOnce();
+		expect(props.onManual).not.toHaveBeenCalled();
 		expect(props.onVoice).not.toHaveBeenCalled();
-		expect(props.onPhoto).not.toHaveBeenCalled();
+		expect(props.onImage).not.toHaveBeenCalled();
 	});
 
 	it("clicking Voice calls onVoice", async () => {
@@ -98,16 +110,16 @@ describe("QuickAddMenu", () => {
 
 		expect(props.onVoice).toHaveBeenCalledOnce();
 		expect(props.onText).not.toHaveBeenCalled();
-		expect(props.onPhoto).not.toHaveBeenCalled();
+		expect(props.onImage).not.toHaveBeenCalled();
 	});
 
-	it("clicking Photo calls onPhoto", async () => {
+	it("clicking Photo or screenshot calls onImage", async () => {
 		const { props } = renderMenu();
 		await openMenu();
 
-		fireEvent.click(screen.getByText("Photo"));
+		fireEvent.click(screen.getByText("Photo or screenshot"));
 
-		expect(props.onPhoto).toHaveBeenCalledOnce();
+		expect(props.onImage).toHaveBeenCalledOnce();
 		expect(props.onText).not.toHaveBeenCalled();
 		expect(props.onVoice).not.toHaveBeenCalled();
 	});

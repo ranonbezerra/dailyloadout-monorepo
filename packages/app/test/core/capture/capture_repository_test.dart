@@ -277,6 +277,139 @@ void main() {
     });
   });
 
+  group('submitLibraryImport', () {
+    test('posts repeated files form data and parses candidates', () async {
+      final tmp1 = File('${Directory.systemTemp.path}/dl_lib_1.jpg')
+        ..writeAsBytesSync(<int>[255, 216, 255]);
+      final tmp2 = File('${Directory.systemTemp.path}/dl_lib_2.jpg')
+        ..writeAsBytesSync(<int>[255, 216, 255]);
+      addTearDown(() {
+        if (tmp1.existsSync()) tmp1.deleteSync();
+        if (tmp2.existsSync()) tmp2.deleteSync();
+      });
+
+      final json = _captureJson()
+        ..['input_type'] = 'library_import'
+        ..['candidates'] = <Map<String, dynamic>>[
+          {
+            'public_id': 'cand-1',
+            'title': 'Elden Ring',
+            'igdb_title': 'Elden Ring',
+            'igdb_cover_url': 'https://img/eldenring.jpg',
+            'status': 'pending',
+          },
+          {'public_id': 'cand-2', 'title': 'Hades', 'status': 'pending'},
+        ];
+
+      when(
+        () => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')),
+      ).thenAnswer((_) async => _response('/v1/captures/library-import', json));
+
+      final capture = await repository.submitLibraryImport([
+        tmp1.path,
+        tmp2.path,
+      ]);
+
+      expect(capture, isA<Capture>());
+      expect(capture.candidates, hasLength(2));
+      expect(capture.candidates.first.title, 'Elden Ring');
+      expect(capture.candidates.first.igdbTitle, 'Elden Ring');
+
+      final captured = verify(
+        () => dio.post<Map<String, dynamic>>(
+          captureAny(),
+          data: captureAny(named: 'data'),
+        ),
+      ).captured;
+      expect(captured[0], '/v1/captures/library-import');
+      final form = captured[1] as FormData;
+      // Both images attached under the repeated "files" field.
+      expect(form.files.where((e) => e.key == 'files'), hasLength(2));
+    });
+
+    test('rethrows DioException (e.g. 429 daily cap)', () async {
+      when(
+        () => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')),
+      ).thenThrow(
+        DioException(
+          requestOptions: RequestOptions(path: '/v1/captures/library-import'),
+          response: Response<dynamic>(
+            requestOptions: RequestOptions(),
+            statusCode: 429,
+            data: <String, dynamic>{'detail': 'Daily cap reached'},
+          ),
+        ),
+      );
+
+      final tmp = File('${Directory.systemTemp.path}/dl_lib_err.jpg')
+        ..writeAsBytesSync(<int>[255, 216, 255]);
+      addTearDown(() {
+        if (tmp.existsSync()) tmp.deleteSync();
+      });
+
+      expect(
+        () => repository.submitLibraryImport([tmp.path]),
+        throwsA(isA<DioException>()),
+      );
+    });
+  });
+
+  group('bulkConfirmCandidates', () {
+    test('posts the right body to the right path and parses result', () async {
+      when(
+        () => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')),
+      ).thenAnswer(
+        (_) async => _response(
+          '/v1/captures/cap-001/candidates/bulk-confirm',
+          <String, dynamic>{'confirmed': 3, 'rejected': 1},
+        ),
+      );
+
+      final result = await repository.bulkConfirmCandidates(
+        'cap-001',
+        ['cand-1', 'cand-2', 'cand-3'],
+        48,
+        status: 'playing',
+      );
+
+      expect(result.confirmed, 3);
+      expect(result.rejected, 1);
+
+      final captured = verify(
+        () => dio.post<Map<String, dynamic>>(
+          captureAny(),
+          data: captureAny(named: 'data'),
+        ),
+      ).captured;
+      expect(captured[0], '/v1/captures/cap-001/candidates/bulk-confirm');
+      final body = captured[1] as Map<String, dynamic>;
+      expect(body['confirm_public_ids'], ['cand-1', 'cand-2', 'cand-3']);
+      expect(body['platform_id'], 48);
+      expect(body['status'], 'playing');
+    });
+
+    test('defaults status to backlog', () async {
+      when(
+        () => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')),
+      ).thenAnswer(
+        (_) async => _response(
+          '/v1/captures/cap-001/candidates/bulk-confirm',
+          <String, dynamic>{'confirmed': 1, 'rejected': 0},
+        ),
+      );
+
+      await repository.bulkConfirmCandidates('cap-001', ['cand-1'], 1);
+
+      final captured = verify(
+        () => dio.post<Map<String, dynamic>>(
+          any(),
+          data: captureAny(named: 'data'),
+        ),
+      ).captured;
+      expect((captured[0] as Map)['status'], 'backlog');
+    });
+  });
+
   group('rejectCandidate', () {
     test('posts to reject path', () async {
       when(() => dio.post<void>(any())).thenAnswer(

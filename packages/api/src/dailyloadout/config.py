@@ -66,6 +66,20 @@ class Settings(BaseSettings):
     whisper_device: str = "cpu"
     whisper_compute_type: str = "int8"
 
+    # ── OCR / library import (Epic 14) ───────────────────────────────────
+    ocr_provider: str = "tesseract"  # tesseract | dummy
+    # Low-confidence fallback to the vision model; "none" disables it.
+    ocr_fallback_provider: str = "vision"  # vision | none
+    # Below this mean line confidence, escalate the image to the vision fallback.
+    ocr_confidence_threshold: float = 0.6
+    # Fuzzy-match cutoff for accepting an OCR line as a canonical game.
+    catalog_match_min_score: float = 0.6
+    # Bulk-import path replaces the single-shelf cap of 12.
+    library_import_max_candidates: int = 200
+    # Free-tier abuse/cost guards (per user, per UTC day).
+    library_import_images_per_day: int = 10
+    library_import_vision_fallbacks_per_day: int = 20
+
     # ── Storage ──────────────────────────────────────────────────────────
     storage_provider: str = "local_fs"
     storage_local_path: str = "/var/lib/dailyloadout/uploads"

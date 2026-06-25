@@ -2,6 +2,11 @@ FROM python:3.14-slim
 
 WORKDIR /app
 
+# tesseract-ocr: local OCR for the library-import path (Epic 14).
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y tesseract-ocr \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN pip install --no-cache-dir poetry \
     && poetry config virtualenvs.create false
 

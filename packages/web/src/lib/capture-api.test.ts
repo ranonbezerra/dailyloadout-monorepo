@@ -9,10 +9,12 @@ vi.mock("./api", () => ({
 
 import { apiFetch, getAccessToken } from "./api";
 import {
+	bulkConfirmCandidates,
 	confirmCandidate,
 	getCapture,
 	listCaptures,
 	rejectCandidate,
+	submitLibraryImport,
 	submitPhotoCapture,
 	submitTextCapture,
 	transcribeAudio,
@@ -293,6 +295,147 @@ describe("submitPhotoCapture", () => {
 
 		const callArgs = mockFetch.mock.calls[0];
 		expect(callArgs[1].headers).not.toHaveProperty("Authorization");
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Bulk library import (multipart)
+// ---------------------------------------------------------------------------
+
+describe("submitLibraryImport", () => {
+	it("appends each file under the 'files' field and POSTs to library-import", async () => {
+		const mockFetch = vi.fn().mockResolvedValueOnce({
+			ok: true,
+			json: () =>
+				Promise.resolve({
+					public_id: "cap-import-1",
+					input_type: "library_import",
+					raw_text: null,
+					status: "review",
+					error_message: null,
+					candidates: [
+						{
+							public_id: "cand1",
+							title: "Hades",
+							platform_hint: null,
+							igdb_title: "Hades",
+							igdb_cover_url: null,
+							igdb_summary: null,
+							igdb_genres: [],
+							confidence: 0.9,
+							status: "pending",
+							matched_game: null,
+						},
+					],
+					created_at: "2024-01-01",
+					updated_at: "2024-01-01",
+				}),
+		});
+		globalThis.fetch = mockFetch;
+
+		const files = [
+			new File(["a"], "shot1.png", { type: "image/png" }),
+			new File(["b"], "shot2.png", { type: "image/png" }),
+		];
+		const result = await submitLibraryImport(files);
+
+		expect(mockFetch).toHaveBeenCalledWith(
+			expect.stringContaining("/v1/captures/library-import"),
+			expect.objectContaining({ method: "POST" }),
+		);
+
+		const callArgs = mockFetch.mock.calls[0];
+		const body = callArgs[1].body as FormData;
+		expect(body).toBeInstanceOf(FormData);
+		expect(body.getAll("files")).toHaveLength(2);
+		expect(callArgs[1].headers).toHaveProperty("Authorization", "Bearer test-token");
+
+		expect(result.publicId).toBe("cap-import-1");
+		expect(result.candidates[0].igdbTitle).toBe("Hades");
+	});
+
+	it("throws on non-ok response with error body", async () => {
+		globalThis.fetch = vi.fn().mockResolvedValueOnce({
+			ok: false,
+			status: 429,
+			text: () => Promise.resolve("Daily cap reached"),
+		});
+
+		await expect(
+			submitLibraryImport([new File(["x"], "a.png", { type: "image/png" })]),
+		).rejects.toThrow("Daily cap reached");
+	});
+
+	it("throws with status code when error body is empty", async () => {
+		globalThis.fetch = vi.fn().mockResolvedValueOnce({
+			ok: false,
+			status: 400,
+			text: () => Promise.resolve(""),
+		});
+
+		await expect(
+			submitLibraryImport([new File(["x"], "a.png", { type: "image/png" })]),
+		).rejects.toThrow("Library import failed: 400");
+	});
+
+	it("omits Authorization header when no access token", async () => {
+		mockGetAccessToken.mockReturnValueOnce(null);
+
+		const mockFetch = vi.fn().mockResolvedValueOnce({
+			ok: true,
+			json: () =>
+				Promise.resolve({
+					public_id: "cap-import-2",
+					input_type: "library_import",
+					raw_text: null,
+					status: "queued",
+					error_message: null,
+					candidates: [],
+					created_at: "2024-01-01",
+					updated_at: "2024-01-01",
+				}),
+		});
+		globalThis.fetch = mockFetch;
+
+		await submitLibraryImport([new File(["x"], "a.png", { type: "image/png" })]);
+
+		const callArgs = mockFetch.mock.calls[0];
+		expect(callArgs[1].headers).not.toHaveProperty("Authorization");
+	});
+});
+
+describe("bulkConfirmCandidates", () => {
+	it("POSTs confirm ids, platform, and default status", async () => {
+		mockApiFetch.mockResolvedValueOnce({ confirmed: 2, rejected: 1 });
+
+		const result = await bulkConfirmCandidates("cap1", ["c1", "c2"], 3);
+
+		expect(mockApiFetch).toHaveBeenCalledWith("/v1/captures/cap1/candidates/bulk-confirm", {
+			method: "POST",
+			body: JSON.stringify({
+				confirm_public_ids: ["c1", "c2"],
+				platform_id: 3,
+				status: "backlog",
+				title_overrides: {},
+			}),
+		});
+		expect(result).toEqual({ confirmed: 2, rejected: 1 });
+	});
+
+	it("uses a custom status when provided", async () => {
+		mockApiFetch.mockResolvedValueOnce({ confirmed: 1, rejected: 0 });
+
+		await bulkConfirmCandidates("cap1", ["c1"], 5, "playing");
+
+		expect(mockApiFetch).toHaveBeenCalledWith("/v1/captures/cap1/candidates/bulk-confirm", {
+			method: "POST",
+			body: JSON.stringify({
+				confirm_public_ids: ["c1"],
+				platform_id: 5,
+				status: "playing",
+				title_overrides: {},
+			}),
+		});
 	});
 });
 

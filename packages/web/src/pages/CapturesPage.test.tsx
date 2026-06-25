@@ -40,6 +40,9 @@ vi.mock("@mantine/notifications", () => ({
 }));
 
 // Mock child modals to avoid rendering them and pulling in extra dependencies
+vi.mock("./AddGameModal", () => ({
+	AddGameModal: () => null,
+}));
 vi.mock("./CaptureTextModal", () => ({
 	CaptureTextModal: () => null,
 }));

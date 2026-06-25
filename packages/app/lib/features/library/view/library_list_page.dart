@@ -138,6 +138,13 @@ class _LibraryListPageState extends State<LibraryListPage> {
             child: const Icon(Icons.auto_awesome),
           ),
           const SizedBox(height: 8),
+          FloatingActionButton.small(
+            heroTag: 'import_fab',
+            onPressed: () => context.push('/library/import'),
+            tooltip: 'Import from screenshots',
+            child: const Icon(Icons.collections),
+          ),
+          const SizedBox(height: 8),
           FloatingActionButton(
             heroTag: 'add_fab',
             onPressed: () => context.push('/library/add'),

@@ -54,6 +54,7 @@ vi.mock("@mantine/core", async () => {
 	};
 });
 
+vi.mock("./AddGameModal", () => ({ AddGameModal: () => null }));
 vi.mock("./CaptureTextModal", () => ({ CaptureTextModal: () => null }));
 vi.mock("./CaptureVoiceModal", () => ({ CaptureVoiceModal: () => null }));
 vi.mock("./CapturePhotoModal", () => ({ CapturePhotoModal: () => null }));

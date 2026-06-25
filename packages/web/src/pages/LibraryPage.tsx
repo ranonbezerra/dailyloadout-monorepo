@@ -30,10 +30,12 @@ import {
 import { useActiveMission } from "../hooks/useMission";
 import type { LibraryEntry, LibraryStatus } from "../types/library";
 import type { Mission } from "../types/mission";
+import { AddGameModal } from "./AddGameModal";
 import { CapturePhotoModal } from "./CapturePhotoModal";
 import { CaptureReviewModal } from "./CaptureReviewModal";
 import { CaptureTextModal } from "./CaptureTextModal";
 import { CaptureVoiceModal } from "./CaptureVoiceModal";
+import { ImageSourceModal } from "./ImageSourceModal";
 import { MissionBriefingModal } from "./MissionBriefingModal";
 import { MissionDebriefModal } from "./MissionDebriefModal";
 
@@ -70,9 +72,11 @@ export function LibraryPage() {
 	const navigate = useNavigate();
 	const [statusFilter, setStatusFilter] = useState("all");
 	const [expandedIds, setExpandedIds] = useState<string[]>([]);
+	const [manualModalOpened, setManualModalOpened] = useState(false);
 	const [textModalOpened, setTextModalOpened] = useState(false);
 	const [voiceModalOpened, setVoiceModalOpened] = useState(false);
 	const [photoModalOpened, setPhotoModalOpened] = useState(false);
+	const [imageChooserOpened, setImageChooserOpened] = useState(false);
 	const [reviewCaptureId, setReviewCaptureId] = useState<string | null>(null);
 
 	// View mode: viewing an existing mission's briefing
@@ -128,9 +132,10 @@ export function LibraryPage() {
 					</Anchor>
 				</Group>
 				<QuickAddMenu
+					onManual={() => setManualModalOpened(true)}
 					onText={() => setTextModalOpened(true)}
 					onVoice={() => setVoiceModalOpened(true)}
-					onPhoto={() => setPhotoModalOpened(true)}
+					onImage={() => setImageChooserOpened(true)}
 				/>
 			</Group>
 
@@ -286,6 +291,15 @@ export function LibraryPage() {
 					}}
 				/>
 			)}
+
+			<AddGameModal opened={manualModalOpened} onClose={() => setManualModalOpened(false)} />
+
+			<ImageSourceModal
+				opened={imageChooserOpened}
+				onClose={() => setImageChooserOpened(false)}
+				onPhoto={() => setPhotoModalOpened(true)}
+				onScreenshots={() => navigate("/library/import")}
+			/>
 
 			<CaptureTextModal
 				opened={textModalOpened}

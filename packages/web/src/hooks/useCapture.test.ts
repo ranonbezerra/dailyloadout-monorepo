@@ -75,6 +75,8 @@ vi.mock("../lib/capture-api", () => ({
 	getCapture: vi.fn(() => Promise.resolve(mockCapture)),
 	submitTextCapture: vi.fn(() => Promise.resolve(mockCapture)),
 	submitPhotoCapture: vi.fn(() => Promise.resolve(mockCapture)),
+	submitLibraryImport: vi.fn(() => Promise.resolve(mockCapture)),
+	bulkConfirmCandidates: vi.fn(() => Promise.resolve({ confirmed: 1, rejected: 0 })),
 	transcribeAudio: vi.fn(() =>
 		Promise.resolve({ text: "Elden Ring", language: "en", durationSeconds: 2.5 }),
 	),
@@ -83,18 +85,22 @@ vi.mock("../lib/capture-api", () => ({
 }));
 
 import {
+	bulkConfirmCandidates,
 	confirmCandidate,
 	getCapture,
 	listCaptures,
 	rejectCandidate,
+	submitLibraryImport,
 	submitPhotoCapture,
 	submitTextCapture,
 } from "../lib/capture-api";
 import {
+	useBulkConfirmCandidates,
 	useCapture,
 	useCaptures,
 	useConfirmCandidate,
 	useRejectCandidate,
+	useSubmitLibraryImport,
 	useSubmitPhotoCapture,
 	useSubmitTextCapture,
 } from "./useCapture";
@@ -188,6 +194,56 @@ describe("useSubmitPhotoCapture", () => {
 		await result.current.mutateAsync(file);
 
 		expect(submitPhotoCapture).toHaveBeenCalledWith(file);
+	});
+});
+
+describe("useSubmitLibraryImport", () => {
+	it("calls submitLibraryImport with the files array", async () => {
+		const { result } = renderHook(() => useSubmitLibraryImport(), {
+			wrapper: createWrapper(),
+		});
+
+		const files = [new File(["a"], "a.png", { type: "image/png" })];
+		await result.current.mutateAsync(files);
+
+		expect(submitLibraryImport).toHaveBeenCalledWith(files);
+	});
+});
+
+describe("useBulkConfirmCandidates", () => {
+	it("calls bulkConfirmCandidates with all args", async () => {
+		const { result } = renderHook(() => useBulkConfirmCandidates(), {
+			wrapper: createWrapper(),
+		});
+
+		await result.current.mutateAsync({
+			captureId: "cap-1",
+			confirmPublicIds: ["c1", "c2"],
+			platformId: 3,
+			status: "backlog",
+		});
+
+		expect(bulkConfirmCandidates).toHaveBeenCalledWith(
+			"cap-1",
+			["c1", "c2"],
+			3,
+			"backlog",
+			undefined,
+		);
+	});
+
+	it("calls bulkConfirmCandidates without optional status", async () => {
+		const { result } = renderHook(() => useBulkConfirmCandidates(), {
+			wrapper: createWrapper(),
+		});
+
+		await result.current.mutateAsync({
+			captureId: "cap-1",
+			confirmPublicIds: ["c1"],
+			platformId: 4,
+		});
+
+		expect(bulkConfirmCandidates).toHaveBeenCalledWith("cap-1", ["c1"], 4, undefined, undefined);
 	});
 });
 

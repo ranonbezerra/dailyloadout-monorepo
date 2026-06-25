@@ -80,6 +80,68 @@ export async function submitPhotoCapture(imageFile: File): Promise<Capture> {
 }
 
 // ---------------------------------------------------------------------------
+// Bulk library import (multipart, multiple images)
+// ---------------------------------------------------------------------------
+
+export async function submitLibraryImport(files: File[]): Promise<Capture> {
+	const formData = new FormData();
+	for (const file of files) {
+		formData.append("files", file);
+	}
+
+	const headers: Record<string, string> = {};
+	const accessToken = getAccessToken();
+	if (accessToken) {
+		headers.Authorization = `Bearer ${accessToken}`;
+	}
+
+	const res = await fetch(`${BASE_URL}/v1/captures/library-import`, {
+		method: "POST",
+		headers,
+		body: formData,
+	});
+
+	if (!res.ok) {
+		const errBody = await res.text();
+		throw new Error(errBody || `Library import failed: ${res.status}`);
+	}
+
+	const raw = await res.json();
+	return snakeToCamel<Capture>(raw);
+}
+
+export async function bulkConfirmCandidates(
+	captureId: string,
+	confirmPublicIds: string[],
+	platformId: number,
+	status: LibraryStatus = "backlog",
+	titleOverrides: Record<string, string> = {},
+): Promise<{ confirmed: number; rejected: number }> {
+	const raw = await apiFetch<unknown>(`/v1/captures/${captureId}/candidates/bulk-confirm`, {
+		method: "POST",
+		body: JSON.stringify({
+			confirm_public_ids: confirmPublicIds,
+			platform_id: platformId,
+			status,
+			title_overrides: titleOverrides,
+		}),
+	});
+	return snakeToCamel<{ confirmed: number; rejected: number }>(raw);
+}
+
+/** Candidate public_ids already in the library for the given platform. */
+export async function checkCandidateDuplicates(
+	captureId: string,
+	platformId: number,
+): Promise<string[]> {
+	const raw = await apiFetch<unknown>(
+		`/v1/captures/${captureId}/candidates/duplicates?platform_id=${platformId}`,
+	);
+	const parsed = snakeToCamel<{ duplicatePublicIds: string[] }>(raw);
+	return parsed.duplicatePublicIds;
+}
+
+// ---------------------------------------------------------------------------
 // Capture listing and detail
 // ---------------------------------------------------------------------------
 

@@ -13,6 +13,7 @@ from dailyloadout.api.v1.auth import router as auth_router
 from dailyloadout.api.v1.capture import router as capture_router
 from dailyloadout.api.v1.concierge import router as concierge_router
 from dailyloadout.api.v1.library import router as library_router
+from dailyloadout.api.v1.library_import import router as library_import_router
 from dailyloadout.api.v1.loadout import router as loadout_router
 from dailyloadout.api.v1.mission import router as mission_router
 from dailyloadout.api.v1.stats import router as stats_router
@@ -137,6 +138,7 @@ def create_app() -> FastAPI:
     # Routers
     application.include_router(auth_router)
     application.include_router(capture_router)
+    application.include_router(library_import_router)
     application.include_router(library_router)
     application.include_router(mission_router)
     application.include_router(loadout_router)

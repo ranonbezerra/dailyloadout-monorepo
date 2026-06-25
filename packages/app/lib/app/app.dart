@@ -7,6 +7,7 @@ import 'package:app/features/auth/bloc/auth_bloc.dart';
 import 'package:app/features/capture/bloc/capture_bloc.dart';
 import 'package:app/features/concierge/bloc/concierge_bloc.dart';
 import 'package:app/features/library/bloc/library_bloc.dart';
+import 'package:app/features/library_import/bloc/library_import_bloc.dart';
 import 'package:app/features/loadout/bloc/loadout_bloc.dart';
 import 'package:app/features/mission/bloc/mission_bloc.dart';
 import 'package:flutter/material.dart';
@@ -18,6 +19,7 @@ class App extends StatefulWidget {
     required this.authBloc,
     required this.libraryBloc,
     required this.captureBloc,
+    required this.libraryImportBloc,
     required this.missionBloc,
     required this.loadoutBloc,
     required this.analyticsBloc,
@@ -30,6 +32,7 @@ class App extends StatefulWidget {
   final AuthBloc authBloc;
   final LibraryBloc libraryBloc;
   final CaptureBloc captureBloc;
+  final LibraryImportBloc libraryImportBloc;
   final MissionBloc missionBloc;
   final LoadoutBloc loadoutBloc;
   final AnalyticsBloc analyticsBloc;
@@ -68,6 +71,7 @@ class _AppState extends State<App> {
         BlocProvider<AuthBloc>.value(value: widget.authBloc),
         BlocProvider<LibraryBloc>.value(value: widget.libraryBloc),
         BlocProvider<CaptureBloc>.value(value: widget.captureBloc),
+        BlocProvider<LibraryImportBloc>.value(value: widget.libraryImportBloc),
         BlocProvider<MissionBloc>.value(value: widget.missionBloc),
         BlocProvider<LoadoutBloc>.value(value: widget.loadoutBloc),
         BlocProvider<AnalyticsBloc>.value(value: widget.analyticsBloc),

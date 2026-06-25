@@ -7,7 +7,7 @@ from uuid import UUID
 
 from fastapi import HTTPException, status
 
-from dailyloadout.infrastructure.db.models import Capture, LibraryEntry
+from dailyloadout.infrastructure.db.models import Capture, CaptureCandidate, Game, LibraryEntry
 from dailyloadout.infrastructure.db.repositories.capture import (
     CaptureCandidateRepository,
     CaptureRepository,
@@ -129,30 +129,7 @@ class CaptureService:
                 detail="Platform not found",
             )
 
-        # Get or create the game.
-        game = None
-        if candidate.igdb_id is not None:
-            game = await self._game_repo.get_by_igdb_id(candidate.igdb_id)
-
-        if game is None:
-            title = candidate.igdb_title or candidate.title
-            slug = _slugify(title)
-
-            # Ensure slug uniqueness.
-            existing = await self._game_repo.get_by_slug(slug)
-            if existing is not None:
-                game = existing
-            else:
-                game = await self._game_repo.create(
-                    slug=slug,
-                    title=title,
-                    metadata_source="igdb" if candidate.igdb_id else "capture",
-                    igdb_id=candidate.igdb_id,
-                    summary=candidate.igdb_summary,
-                    cover_url=candidate.igdb_cover_url,
-                    first_release_date=candidate.igdb_first_release_date,
-                    genres=candidate.igdb_genres,
-                )
+        game = await self._get_or_create_game(candidate)
 
         # Check for duplicate library entry.
         if await self._library_repo.exists(user_id, game.id, platform_id):
@@ -177,6 +154,88 @@ class CaptureService:
         await self._resolve_capture_status(capture.id)
 
         return entry
+
+    async def _get_or_create_game(self, candidate: CaptureCandidate) -> Game:
+        """Resolve a candidate to a ``Game`` row, creating it if needed."""
+        if candidate.igdb_id is not None:
+            game = await self._game_repo.get_by_igdb_id(candidate.igdb_id)
+            if game is not None:
+                return game
+
+        title = candidate.igdb_title or candidate.title
+        slug = _slugify(title)
+        existing = await self._game_repo.get_by_slug(slug)
+        if existing is not None:
+            return existing
+
+        return await self._game_repo.create(
+            slug=slug,
+            title=title,
+            metadata_source="igdb" if candidate.igdb_id else "capture",
+            igdb_id=candidate.igdb_id,
+            summary=candidate.igdb_summary,
+            cover_url=candidate.igdb_cover_url,
+            first_release_date=candidate.igdb_first_release_date,
+            genres=candidate.igdb_genres,
+        )
+
+    async def bulk_confirm_candidates(
+        self,
+        user_id: int,
+        capture_public_id: UUID,
+        confirm_public_ids: list[UUID],
+        platform_id: int,
+        library_status: str = "backlog",
+        title_overrides: dict[UUID, str] | None = None,
+    ) -> tuple[int, int]:
+        """Confirm the listed candidates and reject the rest, in one call.
+
+        Returns ``(confirmed, rejected)`` counts. Duplicate library entries are
+        treated as already-imported (counted as confirmed), not an error, so a
+        bulk import of 50-100 titles never aborts midway.
+        """
+        capture = await self.get_capture(user_id, capture_public_id)
+        platform = await self._platform_repo.get_by_id(platform_id)
+        if platform is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Platform not found",
+            )
+
+        confirm_set = set(confirm_public_ids)
+        overrides = title_overrides or {}
+        candidates = await self._candidate_repo.get_all_for_capture(capture.id)
+        confirmed = 0
+        rejected = 0
+
+        for candidate in candidates:
+            if candidate.status != "pending":
+                continue
+            if candidate.public_id not in confirm_set:
+                await self._candidate_repo.update_status(candidate.id, "rejected")
+                rejected += 1
+                continue
+
+            # Apply a user-corrected title (drops the stale catalog match).
+            new_title = (overrides.get(candidate.public_id) or "").strip()
+            if new_title and new_title != candidate.title:
+                await self._candidate_repo.set_title(candidate.id, new_title)
+
+            game = await self._get_or_create_game(candidate)
+            if not await self._library_repo.exists(user_id, game.id, platform_id):
+                await self._library_repo.create(
+                    user_id=user_id,
+                    game_id=game.id,
+                    platform_id=platform_id,
+                    status=library_status,
+                )
+            await self._candidate_repo.update_status(
+                candidate.id, "confirmed", matched_game_id=game.id
+            )
+            confirmed += 1
+
+        await self._resolve_capture_status(capture.id)
+        return confirmed, rejected
 
     async def reject_candidate(
         self,

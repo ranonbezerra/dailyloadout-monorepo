@@ -31,6 +31,8 @@ scalar-fastapi = "^1.8.2"
 faster-whisper = "^1.2.1"
 pillow = "^12.2.0"
 pillow-heif = "^1.4.0"
+pytesseract = "^0.3.13"
+rapidfuzz = "^3.10.0"
 langgraph = "*"
 langgraph-checkpoint = "*"
 langchain-ollama = "*"
@@ -107,6 +109,11 @@ omit = [
     "src/dailyloadout/infrastructure/llm/ollama.py",
     "src/dailyloadout/infrastructure/igdb/client.py",
     "src/dailyloadout/infrastructure/stt/whisper.py",
+    # OCR adapters: local Tesseract needs the binary; the vision fallback wraps
+    # the LLM vision API. Both are external-service adapters, integration-tested
+    # only — the escalation/cap business logic is tested in the import processor.
+    "src/dailyloadout/infrastructure/ocr/tesseract.py",
+    "src/dailyloadout/infrastructure/ocr/vision.py",
     # ChatOllama tool-calling path — exercised only with a real model, not in CI.
     "src/dailyloadout/infrastructure/agent/concierge/langgraph_agent.py",
 ]

@@ -13,6 +13,7 @@ import { FEATURES } from "./lib/features";
 import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { CapturesPage } from "./pages/CapturesPage";
 import { ConciergePage } from "./pages/ConciergePage";
+import { LibraryImportPage } from "./pages/LibraryImportPage";
 import { LibraryPage } from "./pages/LibraryPage";
 import { LoadoutPage } from "./pages/LoadoutPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -78,6 +79,7 @@ function AppLayout() {
 						<Route path="/play/concierge" element={<ConciergePage />} />
 					)}
 					<Route path="/library" element={<LibraryPage />} />
+					<Route path="/library/import" element={<LibraryImportPage />} />
 					<Route path="/history" element={<MissionsPage />} />
 					<Route path="/captures" element={<CapturesPage />} />
 					<Route path="/analytics" element={<AnalyticsPage />} />
