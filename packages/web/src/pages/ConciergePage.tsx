@@ -1,9 +1,9 @@
 import {
 	ActionIcon,
 	Box,
+	Button,
 	Card,
 	Group,
-	Loader,
 	Paper,
 	ScrollArea,
 	Stack,
@@ -11,10 +11,19 @@ import {
 	TextInput,
 	Title,
 } from "@mantine/core";
-import { IconSend, IconSparkles } from "@tabler/icons-react";
+import {
+	IconPlayerPlay,
+	IconPlayerStop,
+	IconSearch,
+	IconSend,
+	IconSparkles,
+} from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useConcierge } from "../hooks/useConcierge";
+import { useLibraryEntry } from "../hooks/useLibrary";
 import type { ChatMessage } from "../types/concierge";
+import { MissionBriefingModal } from "./MissionBriefingModal";
 
 const typingKeyframes = `
 @keyframes conciergeBlink {
@@ -24,6 +33,18 @@ const typingKeyframes = `
 `;
 
 const TYPING_DOTS = ["dot-0", "dot-1", "dot-2"];
+
+// Friendly labels for the tool affordance shown while the agent works.
+const TOOL_LABELS: Record<string, string> = {
+	search_library: "searching your library",
+	get_mission_history: "recalling your last session",
+	get_play_stats: "checking your stats",
+	estimate_session_fit: "sizing up the session",
+	start_mission: "starting your mission",
+	generate_briefing: "writing a briefing",
+	submit_retroactive_debrief: "logging your session",
+	set_status: "updating your library",
+};
 
 function TypingDots() {
 	return (
@@ -45,18 +66,32 @@ function TypingDots() {
 	);
 }
 
-function MessageBubble({ message }: { message: ChatMessage }) {
+function MessageBubble({ message, onPlay }: { message: ChatMessage; onPlay: () => void }) {
 	const isUser = message.role === "user";
-	const isPending = message.role === "assistant" && message.text === "";
+	const isPending = message.role === "assistant" && message.text === "" && !message.recommendation;
 	return (
 		<Group justify={isUser ? "flex-end" : "flex-start"} align="flex-start" wrap="nowrap">
 			<Card withBorder radius="lg" py="xs" px="md" maw="80%" bg={isUser ? "blue.9" : undefined}>
 				{isPending ? (
 					<TypingDots />
 				) : (
-					<Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
-						{message.text}
-					</Text>
+					<Stack gap="xs">
+						{message.text && (
+							<Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
+								{message.text}
+							</Text>
+						)}
+						{message.recommendation && (
+							<Button
+								size="xs"
+								radius="md"
+								leftSection={<IconPlayerPlay size={14} />}
+								onClick={onPlay}
+							>
+								Play {message.recommendation.title}
+							</Button>
+						)}
+					</Stack>
 				)}
 			</Card>
 		</Group>
@@ -64,8 +99,13 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 }
 
 export function ConciergePage() {
-	const { messages, isStreaming, error, send } = useConcierge();
+	const { messages, isStreaming, activeTool, error, send, cancel } = useConcierge();
 	const [input, setInput] = useState("");
+	// The recommended library entry the user tapped "Play" on — opens the
+	// briefing-choice dialog once the full entry loads.
+	const [playEntryId, setPlayEntryId] = useState<string | null>(null);
+	const { data: playEntry } = useLibraryEntry(playEntryId);
+	const navigate = useNavigate();
 	const viewport = useRef<HTMLDivElement>(null);
 
 	// Keep the latest message in view as the reply streams in. `messages` is the
@@ -108,10 +148,20 @@ export function ConciergePage() {
 						</Paper>
 					)}
 					{messages.map((message, i) => (
-						// Order-stable list that only ever grows; index key is safe here.
-						// biome-ignore lint/suspicious/noArrayIndexKey: append-only chat log
-						<MessageBubble key={i} message={message} />
+						<MessageBubble
+							// Order-stable, append-only chat log — index key is safe here.
+							// biome-ignore lint/suspicious/noArrayIndexKey: append-only chat log
+							key={i}
+							message={message}
+							onPlay={() => setPlayEntryId(message.recommendation?.id ?? null)}
+						/>
 					))}
+					{activeTool && (
+						<Group gap={6} c="dimmed" px="xs" aria-label="Concierge tool activity">
+							<IconSearch size={14} />
+							<Text size="xs">{TOOL_LABELS[activeTool] ?? activeTool}…</Text>
+						</Group>
+					)}
 				</Stack>
 			</ScrollArea>
 
@@ -135,7 +185,14 @@ export function ConciergePage() {
 					disabled={isStreaming}
 					rightSection={
 						isStreaming ? (
-							<Loader size="xs" />
+							<ActionIcon
+								variant="subtle"
+								color="red"
+								onClick={cancel}
+								aria-label="Stop generating"
+							>
+								<IconPlayerStop size={18} />
+							</ActionIcon>
 						) : (
 							<ActionIcon
 								variant="subtle"
@@ -149,6 +206,19 @@ export function ConciergePage() {
 					}
 				/>
 			</Box>
+
+			{playEntryId && playEntry && (
+				<MissionBriefingModal
+					mode="preview"
+					libraryEntry={playEntry}
+					libraryEntryPublicId={playEntryId}
+					onConfirm={() => {
+						setPlayEntryId(null);
+						navigate("/play"); // land on the now-active mission
+					}}
+					onClose={() => setPlayEntryId(null)}
+				/>
+			)}
 		</Stack>
 	);
 }

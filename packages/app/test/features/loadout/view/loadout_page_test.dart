@@ -429,7 +429,7 @@ void main() {
       await tester.pumpWidget(buildRoutedSubject());
       await tester.pump();
 
-      await tester.tap(find.text('Accept & Start Mission'));
+      await tester.tap(find.text('Just play'));
       await tester.pump();
 
       verify(
@@ -459,7 +459,7 @@ void main() {
       ).called(1);
     });
 
-    testWidgets('Get briefing dispatches GenerateLoadoutBriefing', (
+    testWidgets('Quick briefing dispatches GenerateLoadoutBriefing (quick)', (
       tester,
     ) async {
       whenListen(
@@ -473,7 +473,35 @@ void main() {
       await tester.pumpWidget(buildSubject());
       await tester.pump();
 
-      await tester.tap(find.text('Get briefing'));
+      await tester.tap(find.text('Quick briefing'));
+      await tester.pump();
+
+      verify(
+        () => mockLoadoutBloc.add(
+          // mode defaults to 'quick'
+          const GenerateLoadoutBriefing(
+            publicId: 'loadout-001',
+            libraryEntryPublicId: 'lib-001',
+          ),
+        ),
+      ).called(1);
+    });
+
+    testWidgets('Deep briefing dispatches GenerateLoadoutBriefing (deep)', (
+      tester,
+    ) async {
+      whenListen(
+        mockLoadoutBloc,
+        Stream<LoadoutState>.fromIterable([
+          LoadoutResultsLoaded(results: [_loadout]),
+        ]),
+        initialState: const LoadoutInitial(),
+      );
+
+      await tester.pumpWidget(buildSubject());
+      await tester.pump();
+
+      await tester.tap(find.text('Deep briefing'));
       await tester.pump();
 
       verify(
@@ -481,6 +509,7 @@ void main() {
           const GenerateLoadoutBriefing(
             publicId: 'loadout-001',
             libraryEntryPublicId: 'lib-001',
+            mode: 'deep',
           ),
         ),
       ).called(1);

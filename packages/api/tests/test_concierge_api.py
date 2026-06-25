@@ -54,11 +54,13 @@ async def test_chat_streams_guarded_reply(
     assert "text/event-stream" in resp.headers["content-type"]
 
     events = _parse_sse(resp.text)
-    deltas = "".join(e["delta"] for e in events if "delta" in e)
+    tokens = "".join(e["token"] for e in events if "token" in e)
     done = [e for e in events if e.get("done")]
+    recs = [e["recommendation"] for e in events if "recommendation" in e]
 
-    assert "give this a go" in deltas
-    assert "RECOMMEND" not in deltas
+    assert "give this a go" in tokens
+    assert "RECOMMEND" not in tokens  # marker withheld from the prose stream
+    assert len(recs) == 1  # surfaced as a validated recommendation event instead
     assert len(done) == 1
     assert done[0]["thread_id"]  # server-issued thread id for the next turn
 
@@ -128,9 +130,9 @@ async def test_chat_times_out_without_hanging(
     monkeypatch.setattr(concierge_module, "_REPLY_TIMEOUT_SECONDS", 0.05)
 
     class _SlowService:
-        async def reply(self, **_: object) -> str:
+        async def reply_stream(self, **_: object) -> Any:
             await asyncio.sleep(5)
-            return "too late"
+            yield {"token": "too late"}
 
     app.dependency_overrides[get_concierge_service] = _SlowService
     try:

@@ -1,8 +1,11 @@
 """Backlog Concierge chat endpoint (Server-Sent Events).
 
-v1 streams the *guarded* answer: the service runs the agent to completion and
-validates any recommendation, then this endpoint chunks the final text over SSE.
-Token-level streaming with an in-stream guard is a later epic (ROADMAP Epic 16).
+Streams a turn as typed events as it is generated (ROADMAP Epic 16): ``token``
+(prose, live), ``tool`` (a tool call starting/finishing), ``recommendation`` (a
+*validated* pick), ``degrade`` (the pick failed the library guard), and a final
+``done``. The trailing ``RECOMMEND`` marker is withheld and validated before any
+recommendation reaches the client, so a non-existent game can never surface as a
+real pick mid-stream.
 """
 
 from __future__ import annotations
@@ -30,21 +33,12 @@ _ERROR_MESSAGE = "The concierge is unavailable right now. Please try again in a 
 _TIMEOUT_MESSAGE = "That took too long, so I stopped. Please try asking again."
 
 # Hard ceiling on a single turn. A local multi-tool run is normally well under
-# this; the timeout exists so a stalled/looping agent can never hang the stream
-# (which would otherwise wedge the client's loading state indefinitely).
+# this; the timeout exists so a stalled/looping agent can never hang the stream.
 _REPLY_TIMEOUT_SECONDS = 90.0
 
 
 def _sse(payload: dict[str, object]) -> str:
     return f"data: {json.dumps(payload)}\n\n"
-
-
-def _word_chunks(text: str) -> list[str]:
-    """Split into word-sized chunks (spaces preserved) for a typing effect."""
-    if not text:
-        return []
-    words = text.split(" ")
-    return [w if i == len(words) - 1 else w + " " for i, w in enumerate(words)]
 
 
 @router.post("/chat")
@@ -53,20 +47,19 @@ async def chat(
     current_user: CurrentUserDep,
     concierge_service: ConciergeServiceDep,
 ) -> StreamingResponse:
-    """Stream a guarded concierge reply as Server-Sent Events."""
+    """Stream a guarded concierge reply as typed Server-Sent Events."""
     thread_id = body.thread_id or uuid4().hex
 
     async def event_stream() -> AsyncIterator[str]:
         try:
-            text = await asyncio.wait_for(
-                concierge_service.reply(
+            async with asyncio.timeout(_REPLY_TIMEOUT_SECONDS):
+                async for payload in concierge_service.reply_stream(
                     user_id=current_user.id,
                     user_created_at=current_user.created_at,
                     thread_id=thread_id,
                     message=body.message,
-                ),
-                timeout=_REPLY_TIMEOUT_SECONDS,
-            )
+                ):
+                    yield _sse(payload)
         except TimeoutError:
             # Bound the turn so a stalled/looping agent can't hang the stream.
             logger.warning(
@@ -75,18 +68,17 @@ async def chat(
                 thread_id,
             )
             yield _sse({"error": _TIMEOUT_MESSAGE})
-            yield _sse({"done": True, "thread_id": thread_id})
-            return
+        except asyncio.CancelledError:
+            # Client disconnected mid-turn — let the cancellation propagate so
+            # the agent run is torn down rather than left orphaned.
+            logger.info("Concierge stream cancelled (thread %s)", thread_id)
+            raise
         except Exception:
             # Never crash the stream — surface a clean error event instead of an
             # ASGI traceback (e.g. the LLM/model is unavailable).
             logger.exception("Concierge reply failed for thread %s", thread_id)
             yield _sse({"error": _ERROR_MESSAGE})
-            yield _sse({"done": True, "thread_id": thread_id})
-            return
 
-        for chunk in _word_chunks(text):
-            yield _sse({"delta": chunk})
         yield _sse({"done": True, "thread_id": thread_id})
 
     return StreamingResponse(

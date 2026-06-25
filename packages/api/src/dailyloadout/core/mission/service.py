@@ -68,15 +68,17 @@ class MissionService:
         library_entry_public_id: UUID,
         briefing_text: str | None = None,
         mode: BriefingMode = "quick",
+        skip_briefing: bool = False,
     ) -> Mission:
         """Start a new mission for a library entry.
 
-        If *briefing_text* is provided, briefing generation is skipped. *mode*
-        selects the quick (default) or deep web-researched briefing.
+        If *briefing_text* is provided, it's used as-is. If *skip_briefing* is
+        set, the mission starts with no briefing at all (the "just play" path).
+        Otherwise a briefing is generated in *mode* (quick or deep).
         """
         entry = await self._load_startable_entry(user_id, library_entry_public_id)
 
-        if briefing_text is None:
+        if briefing_text is None and not skip_briefing:
             briefing_text = await generate_briefing_for_mode(
                 self._mission_repo,
                 self._library_repo,

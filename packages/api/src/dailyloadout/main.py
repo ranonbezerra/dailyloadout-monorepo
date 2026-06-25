@@ -106,6 +106,18 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     if settings.single_user_mode:
         await _ensure_single_user()
 
+    # Preload Ollama models in the background so the first request isn't cold.
+    if settings.llm_provider == "ollama" and settings.ollama_warmup_models:
+        from dailyloadout.infrastructure.llm.warmup import warm_ollama_models
+
+        asyncio.create_task(  # noqa: RUF006 - fire-and-forget; best-effort warmup
+            warm_ollama_models(
+                base_url=settings.ollama_base_url,
+                models=settings.ollama_warmup_models,
+                keep_alive=settings.ollama_warmup_keep_alive,
+            )
+        )
+
     # Start periodic background tasks.
     clamp_task = asyncio.create_task(_auto_clamp_loop())
     ignore_task = asyncio.create_task(_auto_ignore_loop())

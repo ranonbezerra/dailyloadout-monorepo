@@ -45,7 +45,17 @@ void main() {
         ConciergeStatus.streaming,
         't-1',
         'oops',
+        null,
       ]);
+    });
+
+    test('copyWith sets and clears the active tool', () {
+      const base = ConciergeState();
+      final running = base.copyWith(activeTool: 'search_library');
+      expect(running.activeTool, 'search_library');
+      // A plain copyWith keeps it; clearActiveTool resets it.
+      expect(running.copyWith(threadId: 't').activeTool, 'search_library');
+      expect(running.copyWith(clearActiveTool: true).activeTool, isNull);
     });
 
     test('copyWith updates provided fields and clears errorMessage', () {

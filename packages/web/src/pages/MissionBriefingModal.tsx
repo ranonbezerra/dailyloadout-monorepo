@@ -214,6 +214,23 @@ export function MissionBriefingModal(props: MissionBriefingModalProps) {
 		}
 	};
 
+	const handleSkipBriefing = async () => {
+		if (!isPreview) return;
+		try {
+			const mission = await startMission.mutateAsync({
+				libraryEntryPublicId: props.libraryEntryPublicId,
+				skipBriefing: true,
+			});
+			props.onConfirm(mission);
+		} catch (err) {
+			notifications.show({
+				title: "Cannot start mission",
+				message: err instanceof Error ? err.message : "An unexpected error occurred",
+				color: "red",
+			});
+		}
+	};
+
 	const isRegenerating = isPreview
 		? previewMutation.isPending && !deepLoading
 		: regenerate.isPending;
@@ -266,6 +283,22 @@ export function MissionBriefingModal(props: MissionBriefingModalProps) {
 								<Text fw={600}>🔎 Deep briefing (web)</Text>
 								<Text size="sm" c="dimmed">
 									Searches the web for spoiler-free next steps. Takes up to a minute.
+								</Text>
+							</Stack>
+						</Button>
+						<Button
+							variant="default"
+							fullWidth
+							justify="flex-start"
+							py="md"
+							styles={choiceButtonStyles}
+							onClick={handleSkipBriefing}
+							loading={startMission.isPending}
+						>
+							<Stack gap={2} align="flex-start">
+								<Text fw={600}>▶️ Just play</Text>
+								<Text size="sm" c="dimmed">
+									Skip the briefing and start the mission right away.
 								</Text>
 							</Stack>
 						</Button>

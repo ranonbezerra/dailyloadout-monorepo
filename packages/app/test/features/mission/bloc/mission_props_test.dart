@@ -98,11 +98,19 @@ void main() {
       const a = StartMission(libraryEntryPublicId: 'lib-1', briefingText: 'go');
       const b = StartMission(libraryEntryPublicId: 'lib-1', briefingText: 'go');
       expect(a, b);
-      expect(a.props, ['lib-1', 'go']);
+      expect(a.props, ['lib-1', 'go', false]);
       expect(const StartMission(libraryEntryPublicId: 'lib-1').props, [
         'lib-1',
         null,
+        false,
       ]);
+      expect(
+        const StartMission(
+          libraryEntryPublicId: 'lib-1',
+          skipBriefing: true,
+        ).props,
+        ['lib-1', null, true],
+      );
     });
 
     test('SubmitDebrief supports value equality and props', () {

@@ -45,6 +45,15 @@ class Settings(BaseSettings):
     ollama_smart_model: str = "gemma3:12b"
     ollama_vision_model: str = "qwen3-vl:4b"
     llm_timeout_seconds: int = 60
+    # Preload these Ollama models in the background on startup so the first real
+    # request isn't a slow cold-load (the concierge agent especially). Empty =
+    # disabled. Local example: '["qwen2.5:7b-instruct"]'. Only runs when
+    # LLM_PROVIDER=ollama.
+    ollama_warmup_models: list[str] = []
+    # How long warmed models stay resident after idle. Default frees the RAM
+    # after 30 min; set '-1' to pin them loaded indefinitely (always fast, but
+    # holds the memory).
+    ollama_warmup_keep_alive: str = "30m"
 
     # ── Agent / Deep Research Briefing (Epic 10) ─────────────────────────
     agent_provider: str = "dummy"  # langgraph | dummy
@@ -69,6 +78,11 @@ class Settings(BaseSettings):
     # demands deliberation.
     concierge_agent_reasoning: bool = False
     concierge_max_tool_loops: int = 6
+    # Where conversation threads are checkpointed (ROADMAP Epic 16). 'postgres'
+    # persists them to the existing DB so chats survive restarts; 'memory' keeps
+    # them in-process (lost on restart). Falls back to memory if Postgres init
+    # fails. Only used by the langgraph provider.
+    concierge_checkpointer: str = "postgres"
     # Give the Concierge write tools (start_mission, generate_briefing,
     # submit_retroactive_debrief, set_status) so it can drive the mission
     # pipeline, not just recommend (ROADMAP Epic 12).

@@ -5,6 +5,7 @@ import {
 	deleteEntry,
 	fetchGameGenres,
 	fetchLibrary,
+	fetchLibraryEntry,
 	fetchPlatforms,
 	searchGames,
 	updateEntry,
@@ -59,6 +60,14 @@ export function useLibrary(params?: { status?: string; limit?: number; offset?: 
 	return useQuery({
 		queryKey: [...LIBRARY_KEY, params],
 		queryFn: () => fetchLibrary(params),
+	});
+}
+
+export function useLibraryEntry(publicId: string | null) {
+	return useQuery({
+		queryKey: [...LIBRARY_KEY, "entry", publicId],
+		queryFn: () => fetchLibraryEntry(publicId as string),
+		enabled: publicId !== null,
 	});
 }
 

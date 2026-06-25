@@ -100,6 +100,24 @@ class TestStartMission:
         # First mission — no prior debriefs, but briefing should still be generated.
         assert mission["briefing_text"] is not None
 
+    async def test_start_skip_briefing(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+        seed_platforms: list[dict[str, Any]],
+    ) -> None:
+        """The 'just play' path starts with no briefing and generates none."""
+        entry = await _create_library_entry(async_client, auth_headers, seed_platforms)
+        resp = await async_client.post(
+            "/v1/missions",
+            json={"library_entry_public_id": entry["public_id"], "skip_briefing": True},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 201, resp.text
+        mission = resp.json()
+        assert mission["ended_at"] is None
+        assert mission["briefing_text"] is None  # no briefing generated
+
     async def test_start_first_mission_briefing(
         self,
         async_client: AsyncClient,

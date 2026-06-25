@@ -13,11 +13,12 @@ import {
 	TextInput,
 	Title,
 } from "@mantine/core";
-import { IconBook, IconCheck, IconDice3, IconX } from "@tabler/icons-react";
+import { IconBolt, IconCheck, IconDice3, IconSearch, IconX } from "@tabler/icons-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAcceptLoadout, useCreateLoadout, useRejectLoadout } from "../hooks/useLoadout";
 import { usePreviewBriefing } from "../hooks/useMission";
+import type { BriefingMode } from "../lib/mission-api";
 import type { Loadout, LoadoutMood, MentalEnergy } from "../types/loadout";
 
 const MOOD_OPTIONS: { value: LoadoutMood; label: string }[] = [
@@ -60,7 +61,7 @@ function LoadoutResultCard({
 	totalResults: number;
 	briefingText?: string;
 	isPreviewing: boolean;
-	onGetBriefing: () => void;
+	onGetBriefing: (mode: BriefingMode) => void;
 	onAccept: (briefingText?: string) => void;
 	onReject: () => void;
 	isActioning: boolean;
@@ -131,8 +132,8 @@ function LoadoutResultCard({
 								</Text>
 							</Card>
 						)}
-						<Group grow>
-							{briefingText ? (
+						{briefingText ? (
+							<Group grow>
 								<Button
 									color="green"
 									leftSection={<IconCheck size={18} />}
@@ -141,37 +142,59 @@ function LoadoutResultCard({
 								>
 									Start with briefing
 								</Button>
-							) : (
-								<>
+								<Button
+									variant="outline"
+									color="red"
+									leftSection={<IconX size={18} />}
+									onClick={onReject}
+									loading={isActioning}
+								>
+									Reject
+								</Button>
+							</Group>
+						) : (
+							<Stack gap="sm">
+								<Group grow>
+									<Button
+										variant="light"
+										leftSection={<IconBolt size={18} />}
+										onClick={() => onGetBriefing("quick")}
+										loading={isPreviewing}
+										disabled={isActioning || !loadout.libraryEntry}
+									>
+										Quick briefing
+									</Button>
+									<Button
+										variant="light"
+										leftSection={<IconSearch size={18} />}
+										onClick={() => onGetBriefing("deep")}
+										loading={isPreviewing}
+										disabled={isActioning || !loadout.libraryEntry}
+									>
+										Deep briefing
+									</Button>
+								</Group>
+								<Group grow>
 									<Button
 										color="green"
 										leftSection={<IconCheck size={18} />}
 										onClick={() => onAccept()}
 										loading={isActioning}
 									>
-										Accept & Start
+										Just play
 									</Button>
 									<Button
-										variant="light"
-										leftSection={<IconBook size={18} />}
-										onClick={onGetBriefing}
-										loading={isPreviewing}
-										disabled={isActioning || !loadout.libraryEntry}
+										variant="outline"
+										color="red"
+										leftSection={<IconX size={18} />}
+										onClick={onReject}
+										loading={isActioning}
 									>
-										Get briefing
+										Reject
 									</Button>
-								</>
-							)}
-							<Button
-								variant="outline"
-								color="red"
-								leftSection={<IconX size={18} />}
-								onClick={onReject}
-								loading={isActioning}
-							>
-								Reject
-							</Button>
-						</Group>
+								</Group>
+							</Stack>
+						)}
 					</Stack>
 				)}
 			</Stack>
@@ -211,11 +234,11 @@ export function LoadoutPage() {
 		);
 	};
 
-	const handleGetBriefing = (loadout: Loadout) => {
+	const handleGetBriefing = (loadout: Loadout, mode: BriefingMode) => {
 		const entryId = loadout.libraryEntry?.publicId;
 		if (!entryId) return;
 		previewBriefing.mutate(
-			{ libraryEntryPublicId: entryId, mode: "quick" },
+			{ libraryEntryPublicId: entryId, mode },
 			{
 				onSuccess: (preview) => {
 					if (preview.briefingText) {
@@ -355,7 +378,7 @@ export function LoadoutPage() {
 							previewBriefing.isPending &&
 							previewBriefing.variables?.libraryEntryPublicId === loadout.libraryEntry?.publicId
 						}
-						onGetBriefing={() => handleGetBriefing(loadout)}
+						onGetBriefing={(mode) => handleGetBriefing(loadout, mode)}
 						onAccept={(briefingText) => handleAccept(loadout.publicId, briefingText)}
 						onReject={() => handleReject(loadout.publicId)}
 						isActioning={isActioning}

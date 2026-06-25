@@ -224,7 +224,7 @@ describe("useStartMission", () => {
 
 		await result.current.mutateAsync({ libraryEntryPublicId: "entry-1" });
 
-		expect(startMission).toHaveBeenCalledWith("entry-1", undefined);
+		expect(startMission).toHaveBeenCalledWith("entry-1", undefined, undefined);
 	});
 
 	it("calls startMission with optional briefingText", async () => {
@@ -237,7 +237,17 @@ describe("useStartMission", () => {
 			briefingText: "Custom briefing",
 		});
 
-		expect(startMission).toHaveBeenCalledWith("entry-1", "Custom briefing");
+		expect(startMission).toHaveBeenCalledWith("entry-1", "Custom briefing", undefined);
+	});
+
+	it("passes skipBriefing through to start with no briefing", async () => {
+		const { result } = renderHook(() => useStartMission(), {
+			wrapper: createWrapper(),
+		});
+
+		await result.current.mutateAsync({ libraryEntryPublicId: "entry-1", skipBriefing: true });
+
+		expect(startMission).toHaveBeenCalledWith("entry-1", undefined, true);
 	});
 });
 

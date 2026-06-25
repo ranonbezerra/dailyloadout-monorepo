@@ -36,6 +36,9 @@ rapidfuzz = "^3.10.0"
 langgraph = "*"
 langgraph-checkpoint = "*"
 langchain-ollama = "*"
+langgraph-checkpoint-postgres = "^3.1.0"
+psycopg-pool = "^3.3.1"
+psycopg = {extras = ["binary"], version = "^3.3.4"}
 
 [tool.poetry.extras]
 sentry = ["sentry-sdk"]

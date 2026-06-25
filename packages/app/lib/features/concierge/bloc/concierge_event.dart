@@ -16,3 +16,8 @@ final class SendConciergeMessage extends ConciergeEvent {
   @override
   List<Object?> get props => [message];
 }
+
+/// Cancel the in-flight turn mid-stream, keeping the partial reply.
+final class CancelConciergeStream extends ConciergeEvent {
+  const CancelConciergeStream();
+}

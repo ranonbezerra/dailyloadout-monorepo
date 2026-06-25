@@ -52,9 +52,11 @@ export async function submitRetroactiveDebrief(
 export async function startMission(
 	libraryEntryPublicId: string,
 	briefingText?: string,
+	skipBriefing?: boolean,
 ): Promise<Mission> {
-	const body: Record<string, string> = { library_entry_public_id: libraryEntryPublicId };
+	const body: Record<string, unknown> = { library_entry_public_id: libraryEntryPublicId };
 	if (briefingText) body.briefing_text = briefingText;
+	if (skipBriefing) body.skip_briefing = true;
 	const raw = await apiFetch<unknown>("/v1/missions", {
 		method: "POST",
 		body: JSON.stringify(body),

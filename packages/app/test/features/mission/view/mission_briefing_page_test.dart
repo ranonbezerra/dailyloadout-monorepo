@@ -410,6 +410,25 @@ void main() {
         ).called(1);
       });
 
+      testWidgets('choosing Just play starts the mission with no briefing', (
+        tester,
+      ) async {
+        when(() => missionBloc.state).thenReturn(const MissionInitial());
+
+        await tester.pumpWidget(buildPreviewSubject());
+        await tester.tap(find.text('Just play'));
+        await tester.pump();
+
+        verify(
+          () => missionBloc.add(
+            const StartMission(
+              libraryEntryPublicId: 'entry-1',
+              skipBriefing: true,
+            ),
+          ),
+        ).called(1);
+      });
+
       testWidgets('choosing Deep dispatches a deep PreviewBriefing', (
         tester,
       ) async {

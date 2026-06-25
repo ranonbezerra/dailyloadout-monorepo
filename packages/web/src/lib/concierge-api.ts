@@ -2,10 +2,10 @@ import type { ConciergeEvent } from "../types/concierge";
 import { BASE_URL, getAccessToken } from "./api";
 
 // ---------------------------------------------------------------------------
-// Backlog Concierge chat — consumes the SSE endpoint as an async generator.
-//
-// The endpoint streams `data: {"delta": "..."}` events while the guarded reply
-// is chunked out, then a final `data: {"done": true, "thread_id": "..."}`.
+// Backlog Concierge chat — consumes the SSE endpoint as an async generator
+// (ROADMAP Epic 16). The endpoint streams typed events as the turn generates:
+// `token` (prose), `tool` (+`phase`), `recommendation`, `degrade`, `error`,
+// then a final `done` carrying the `thread_id` for the next turn.
 // ---------------------------------------------------------------------------
 
 export async function* streamConcierge(

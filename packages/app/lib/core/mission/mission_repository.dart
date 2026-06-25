@@ -51,15 +51,20 @@ class MissionRepository {
   }
 
   /// Starts a new mission for a library entry.
+  ///
+  /// Pass [skipBriefing] to start with no briefing at all (the "just play"
+  /// path) — otherwise, with no [briefingText], the backend generates one.
   Future<Mission> startMission(
     String libraryEntryPublicId, {
     String? briefingText,
+    bool skipBriefing = false,
   }) async {
     final response = await _apiClient.dio.post<Map<String, dynamic>>(
       '/v1/missions',
       data: {
         'library_entry_public_id': libraryEntryPublicId,
         if (briefingText != null) 'briefing_text': briefingText,
+        if (skipBriefing) 'skip_briefing': true,
       },
     );
     return Mission.fromJson(response.data!);

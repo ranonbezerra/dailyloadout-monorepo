@@ -78,8 +78,11 @@ export function useStartMission() {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: (vars: { libraryEntryPublicId: string; briefingText?: string }) =>
-			startMission(vars.libraryEntryPublicId, vars.briefingText),
+		mutationFn: (vars: {
+			libraryEntryPublicId: string;
+			briefingText?: string;
+			skipBriefing?: boolean;
+		}) => startMission(vars.libraryEntryPublicId, vars.briefingText, vars.skipBriefing),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: MISSIONS_KEY });
 			queryClient.invalidateQueries({ queryKey: LIBRARY_KEY });

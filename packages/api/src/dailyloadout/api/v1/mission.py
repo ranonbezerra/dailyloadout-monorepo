@@ -50,6 +50,7 @@ async def start_mission(
         library_entry_public_id=body.library_entry_public_id,
         briefing_text=body.briefing_text,
         mode=body.mode,
+        skip_briefing=body.skip_briefing,
     )
     return MissionResponse.model_validate(mission)
 

@@ -34,14 +34,15 @@ void main() {
       () => dio.post<ResponseBody>(
         any(),
         data: any(named: 'data'),
+        cancelToken: any(named: 'cancelToken'),
         options: any(named: 'options'),
       ),
     ).thenAnswer(
       (_) async => Response(
         requestOptions: RequestOptions(path: '/v1/concierge/chat'),
         data: _sseBody([
-          'data: {"delta": "Play "}\n\n',
-          'data: {"delta": "Hades."}\n\n',
+          'data: {"token": "Play "}\n\n',
+          'data: {"token": "Hades."}\n\n',
           'data: {"done": true, "thread_id": "t1"}\n\n',
         ]),
       ),
@@ -50,8 +51,8 @@ void main() {
     final deltas = await repository.streamChat(message: 'hi').toList();
 
     expect(deltas, [
-      const ConciergeDelta(delta: 'Play '),
-      const ConciergeDelta(delta: 'Hades.'),
+      const ConciergeDelta(token: 'Play '),
+      const ConciergeDelta(token: 'Hades.'),
       const ConciergeDelta(done: true, threadId: 't1'),
     ]);
   });
@@ -61,17 +62,18 @@ void main() {
       () => dio.post<ResponseBody>(
         any(),
         data: any(named: 'data'),
+        cancelToken: any(named: 'cancelToken'),
         options: any(named: 'options'),
       ),
     ).thenAnswer(
       (_) async => Response(
         requestOptions: RequestOptions(path: '/v1/concierge/chat'),
-        data: _sseBody([': keep-alive\n', '\n', 'data: {"delta": "Hi"}\n\n']),
+        data: _sseBody([': keep-alive\n', '\n', 'data: {"token": "Hi"}\n\n']),
       ),
     );
 
     final deltas = await repository.streamChat(message: 'hi').toList();
 
-    expect(deltas, [const ConciergeDelta(delta: 'Hi')]);
+    expect(deltas, [const ConciergeDelta(token: 'Hi')]);
   });
 }
