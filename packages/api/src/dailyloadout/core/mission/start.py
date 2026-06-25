@@ -11,6 +11,7 @@ from __future__ import annotations
 from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 
+from dailyloadout.core.cache.invalidation import invalidate_user_stats
 from dailyloadout.infrastructure.db.models import LibraryEntry, Mission
 from dailyloadout.infrastructure.db.repositories.library import LibraryRepository
 from dailyloadout.infrastructure.db.repositories.mission import MissionRepository
@@ -31,6 +32,10 @@ async def create_mission_for_entry(
     Maps the one-active-mission DB constraint to a clean 409 and stamps the
     entry's ``last_played_at``. Callers load the entry and run any pre-checks
     (e.g. an early active-mission check to avoid wasting an LLM briefing call).
+
+    This is the single seam every start path funnels through (direct start,
+    accepted Loadout, Concierge), so invalidating the user's stats here covers
+    them all.
     """
     try:
         mission = await mission_repo.create(
@@ -46,4 +51,5 @@ async def create_mission_for_entry(
 
     mission.library_entry = entry
     await library_repo.update(entry, last_played_at=mission.started_at)
+    await invalidate_user_stats(user_id)
     return mission

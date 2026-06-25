@@ -46,7 +46,13 @@ def get_mission_service(
     agent: BriefingAgentDep,
 ) -> MissionService:
     """Provide a ``MissionService`` wired to the current dependencies."""
-    return MissionService(mission_repo, library_repo, llm_client, agent=agent, settings=settings)
+    return MissionService(
+        mission_repo,
+        library_repo,
+        llm_client,
+        agent=agent,
+        settings=settings,
+    )
 
 
 MissionServiceDep = Annotated[MissionService, Depends(get_mission_service)]

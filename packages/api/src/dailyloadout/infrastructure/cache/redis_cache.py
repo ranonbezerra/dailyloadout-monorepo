@@ -41,3 +41,18 @@ class RedisCache(AbstractCache):
             await self._redis.set(key, json.dumps(value), ex=ttl_seconds)
         except Exception:
             logger.warning("cache_set_failed", key=key, exc_info=True)
+
+    async def delete(self, key: str) -> None:
+        try:
+            await self._redis.delete(key)
+        except Exception:
+            logger.warning("cache_delete_failed", key=key, exc_info=True)
+
+    async def delete_namespace(self, prefix: str) -> None:
+        # SCAN (not KEYS) so a large keyspace never blocks Redis; the match is
+        # scoped to *prefix* so the bust stays inside one namespace.
+        try:
+            async for key in self._redis.scan_iter(match=f"{prefix}*", count=500):
+                await self._redis.delete(key)
+        except Exception:
+            logger.warning("cache_delete_namespace_failed", prefix=prefix, exc_info=True)

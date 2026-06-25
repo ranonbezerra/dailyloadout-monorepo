@@ -9,6 +9,7 @@ from fastapi import HTTPException, status
 
 from dailyloadout.config import Settings
 from dailyloadout.config import settings as default_settings
+from dailyloadout.core.cache.invalidation import invalidate_user_stats
 from dailyloadout.core.mission.briefing import (
     BriefingMode,
     build_preview,
@@ -160,6 +161,7 @@ class MissionService:
             debrief_text=debrief_text,
             extracted_state=extracted_state,
         )
+        await invalidate_user_stats(user_id)
 
         return await build_preview(
             self._mission_repo,
@@ -217,6 +219,7 @@ class MissionService:
 
         await self._mission_repo.set_debrief(mission.id, debrief_text)
         await self._mission_repo.end_mission(mission.id, ended_via="debrief_completed")
+        await invalidate_user_stats(user_id)
 
         game_title = mission.library_entry.game.title
         try:
@@ -252,6 +255,7 @@ class MissionService:
             )
 
         await self._mission_repo.end_mission(mission.id, ended_via=ended_via)
+        await invalidate_user_stats(user_id)
         return await self.get_mission(user_id, mission_public_id)
 
     # -- Regenerate briefing ---------------------------------------------

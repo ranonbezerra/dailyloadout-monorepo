@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6380/0"
     # Best-effort caching (IGDB lookups, etc.); off => NullCache (Epic 17).
     cache_enabled: bool = True
+    # Per-user stats are recomputed on every dashboard load; cache them briefly
+    # and bust on mission start/end/debrief (ROADMAP Epic 18). 5 minutes.
+    stats_cache_ttl_seconds: int = 300
 
     # ── Single-user mode ─────────────────────────────────────────────────
     single_user_mode: bool = False

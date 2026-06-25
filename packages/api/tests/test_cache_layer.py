@@ -1,0 +1,195 @@
+"""Unit tests for the cache layer (ROADMAP Epic 18).
+
+Exercises the read-through helper, single-flight stampede protection, the
+per-namespace counters, the key/namespace builders, and the user-stats
+invalidation map — all with an in-memory fake cache (no Redis).
+"""
+
+from __future__ import annotations
+
+import asyncio
+from typing import Any
+
+from dailyloadout.core.cache.invalidation import invalidate_user_stats
+from dailyloadout.infrastructure.cache.keys import (
+    digest,
+    stats_key,
+    stats_namespace,
+)
+from dailyloadout.infrastructure.cache.layer import (
+    cache_stats,
+    cached_call,
+    reset_cache_stats,
+)
+
+
+class FakeCache:
+    """In-memory AbstractCache for tests (ignores TTL)."""
+
+    def __init__(self) -> None:
+        self.store: dict[str, Any] = {}
+
+    async def get_json(self, key: str) -> Any | None:
+        return self.store.get(key)
+
+    async def set_json(self, key: str, value: Any, ttl_seconds: int) -> None:
+        self.store[key] = value
+
+    async def delete(self, key: str) -> None:
+        self.store.pop(key, None)
+
+    async def delete_namespace(self, prefix: str) -> None:
+        for key in [k for k in self.store if k.startswith(prefix)]:
+            del self.store[key]
+
+
+# ── Key builders ─────────────────────────────────────────────────────────
+
+
+def test_stats_key_embeds_user_and_params() -> None:
+    assert stats_key(42, "overview") == "stats:42:overview"
+    assert stats_key(42, "heatmap", None, None) == "stats:42:heatmap:_:_"
+    assert stats_key(7, "timeline", 20, 0) == "stats:7:timeline:20:0"
+
+
+def test_stats_namespace_is_user_scoped() -> None:
+    assert stats_namespace(42) == "stats:42:"
+    # Every key for a user falls under their namespace prefix.
+    assert stats_key(42, "overview").startswith(stats_namespace(42))
+    # ...and never under a different user's namespace.
+    assert not stats_key(42, "overview").startswith(stats_namespace(43))
+
+
+def test_digest_is_stable_and_order_independent() -> None:
+    assert digest({"a": 1, "b": 2}) == digest({"b": 2, "a": 1})
+    assert digest({"a": 1}) != digest({"a": 2})
+
+
+# ── Read-through + counters ──────────────────────────────────────────────
+
+
+async def test_miss_then_hit_counts_correctly() -> None:
+    reset_cache_stats()
+    cache = FakeCache()
+    calls = 0
+
+    async def compute() -> dict[str, int]:
+        nonlocal calls
+        calls += 1
+        return {"v": 1}
+
+    first = await cached_call(cache=cache, key="k", ttl_seconds=10, namespace="t", compute=compute)
+    second = await cached_call(
+        cache=cache, key="k", ttl_seconds=10, namespace="t", compute=compute
+    )
+
+    assert first == second == {"v": 1}
+    assert calls == 1  # second call served from cache
+    assert cache_stats()["t"] == {"hit": 1, "miss": 1}
+
+
+async def test_skip_cache_always_computes() -> None:
+    cache = FakeCache()
+    calls = 0
+
+    async def compute() -> int:
+        nonlocal calls
+        calls += 1
+        return calls
+
+    a = await cached_call(
+        cache=cache, key="k", ttl_seconds=10, namespace="t", compute=compute, skip_cache=True
+    )
+    b = await cached_call(
+        cache=cache, key="k", ttl_seconds=10, namespace="t", compute=compute, skip_cache=True
+    )
+    assert (a, b) == (1, 2)
+    assert "k" not in cache.store  # nothing was written
+
+
+async def test_loads_dumps_round_trip() -> None:
+    cache = FakeCache()
+
+    async def compute() -> dict[str, int]:
+        return {"n": 5}
+
+    # Store a dumped form, reconstruct a tagged object on read.
+    await cached_call(
+        cache=cache,
+        key="k",
+        ttl_seconds=10,
+        namespace="t",
+        compute=compute,
+        dumps=lambda v: {"wrapped": v},
+    )
+    assert cache.store["k"] == {"wrapped": {"n": 5}}
+
+    out = await cached_call(
+        cache=cache,
+        key="k",
+        ttl_seconds=10,
+        namespace="t",
+        compute=compute,
+        loads=lambda raw: raw["wrapped"],
+    )
+    assert out == {"n": 5}
+
+
+async def test_single_flight_collapses_concurrent_misses() -> None:
+    cache = FakeCache()
+    calls = 0
+    release = asyncio.Event()
+
+    async def compute() -> dict[str, int]:
+        nonlocal calls
+        calls += 1
+        await release.wait()  # hold the leader so the others pile up
+        return {"v": 1}
+
+    async def run() -> dict[str, int]:
+        return await cached_call(
+            cache=cache, key="hot", ttl_seconds=10, namespace="t", compute=compute
+        )
+
+    tasks = [asyncio.create_task(run()) for _ in range(5)]
+    await asyncio.sleep(0.01)  # let all five reach the single-flight gate
+    release.set()
+    results = await asyncio.gather(*tasks)
+
+    assert calls == 1  # only the leader computed
+    assert all(r == {"v": 1} for r in results)
+
+
+# ── Invalidation ─────────────────────────────────────────────────────────
+
+
+async def test_invalidate_user_stats_only_busts_that_user() -> None:
+    cache = FakeCache()
+    cache.store[stats_key(1, "overview")] = {"a": 1}
+    cache.store[stats_key(1, "timeline", 20, 0)] = {"b": 2}
+    cache.store[stats_key(2, "overview")] = {"c": 3}
+
+    await invalidate_user_stats(1, cache=cache)
+
+    # User 1's whole slice is gone; user 2 is untouched (no cross-user leak).
+    assert stats_key(1, "overview") not in cache.store
+    assert stats_key(1, "timeline", 20, 0) not in cache.store
+    assert stats_key(2, "overview") in cache.store
+
+
+async def test_invalidation_forces_recompute() -> None:
+    cache = FakeCache()
+    calls = 0
+
+    async def compute() -> dict[str, int]:
+        nonlocal calls
+        calls += 1
+        return {"n": calls}
+
+    key = stats_key(1, "overview")
+    a = await cached_call(cache=cache, key=key, ttl_seconds=10, namespace="stats", compute=compute)
+    await invalidate_user_stats(1, cache=cache)
+    b = await cached_call(cache=cache, key=key, ttl_seconds=10, namespace="stats", compute=compute)
+
+    assert a == {"n": 1}
+    assert b == {"n": 2}  # recomputed after the bust
