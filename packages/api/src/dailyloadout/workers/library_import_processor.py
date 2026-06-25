@@ -8,6 +8,7 @@ confirm. No LLM is in the matching loop — only the optional vision OCR fallbac
 
 from __future__ import annotations
 
+import re
 from datetime import date
 
 import structlog
@@ -29,6 +30,23 @@ IMAGES_KEY = "library_import_images"
 
 _MIN_LINE_LENGTH = 2
 
+# Strip leading/trailing symbol noise — list rows often have a platform/launcher
+# icon to the left of the title that OCR misreads as a stray glyph (e.g. "▶",
+# "•", "©") or a lone separator. Keeps inner punctuation (S.T.A.L.K.E.R.).
+_EDGE_NOISE = re.compile(r"^[^0-9A-Za-z]+|[^0-9A-Za-z]+$")
+# A lone leading single character followed by a space is almost always an icon
+# artifact, not part of the title (real one-letter prefixes are rare and the
+# user can edit). Only strip when what's left still has real words.
+_LEADING_GLYPH = re.compile(r"^\S\s+(?=\S)")
+
+
+def _clean_title(text: str) -> str:
+    """Remove leading/trailing icon/symbol noise from an OCR line."""
+    cleaned = _EDGE_NOISE.sub("", text).strip()
+    stripped = _LEADING_GLYPH.sub("", cleaned).strip()
+    # Don't let aggressive stripping erase the whole title.
+    return stripped if len(stripped) >= _MIN_LINE_LENGTH else cleaned
+
 
 def _is_meaningful(text: str) -> bool:
     """Drop junk lines: too short, or with no letters (counts, prices, icons)."""
@@ -37,11 +55,11 @@ def _is_meaningful(text: str) -> bool:
 
 
 def _dedupe(lines: list[OcrLine], limit: int) -> list[str]:
-    """Order-preserving dedupe of meaningful line texts, capped at *limit*."""
+    """Clean, filter, and order-preserving-dedupe line texts, capped at *limit*."""
     seen: set[str] = set()
     titles: list[str] = []
     for line in lines:
-        text = line.text.strip()
+        text = _clean_title(line.text)
         if not _is_meaningful(text):
             continue
         key = text.lower()

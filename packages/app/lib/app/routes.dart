@@ -17,6 +17,7 @@ import 'package:app/features/concierge/view/concierge_page.dart';
 import 'package:app/features/library/view/add_game_page.dart';
 import 'package:app/features/library/view/library_detail_page.dart';
 import 'package:app/features/library/view/library_list_page.dart';
+import 'package:app/features/library_import/view/library_import_page.dart';
 import 'package:app/features/loadout/view/loadout_page.dart';
 import 'package:app/features/mission/view/mission_briefing_page.dart';
 import 'package:app/features/mission/view/mission_debrief_page.dart';
@@ -123,6 +124,11 @@ GoRouter createRouter(
         path: '/library/add',
         builder: (context, state) =>
             AddGamePage(libraryRepository: libraryRepository),
+      ),
+      GoRoute(
+        path: '/library/import',
+        builder: (context, state) =>
+            LibraryImportPage(libraryRepository: libraryRepository),
       ),
       GoRoute(
         path: '/library/:id',

@@ -9,13 +9,15 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, UploadFile, status
+from fastapi import APIRouter, HTTPException, Query, UploadFile, status
 
 from dailyloadout.config import settings
+from dailyloadout.core.capture.duplicates import find_duplicate_candidate_ids
 from dailyloadout.core.capture.schemas import (
     BulkConfirmRequest,
     BulkConfirmResponse,
     CaptureResponse,
+    DuplicatesResponse,
 )
 from dailyloadout.deps import CurrentUserDep
 from dailyloadout.deps.capture import (
@@ -23,6 +25,7 @@ from dailyloadout.deps.capture import (
     CaptureRepoDep,
     CaptureServiceDep,
 )
+from dailyloadout.deps.library import GameRepoDep, LibraryRepoDep
 from dailyloadout.deps.ocr import (
     CatalogMatcherDep,
     OCRClientDep,
@@ -102,6 +105,34 @@ async def submit_library_import(
     return CaptureResponse.model_validate(capture)
 
 
+@router.get(
+    "/{public_id}/candidates/duplicates",
+    response_model=DuplicatesResponse,
+)
+async def check_candidate_duplicates(
+    public_id: UUID,
+    current_user: CurrentUserDep,
+    capture_service: CaptureServiceDep,
+    game_repo: GameRepoDep,
+    library_repo: LibraryRepoDep,
+    platform_id: int = Query(...),
+) -> DuplicatesResponse:
+    """List candidates already in the user's library for *platform_id*.
+
+    Advisory only — lets the import UI warn before adding. The same game on a
+    different platform is not flagged.
+    """
+    capture = await capture_service.get_capture(current_user.id, public_id)
+    duplicate_ids = await find_duplicate_candidate_ids(
+        candidates=capture.candidates,
+        game_repo=game_repo,
+        library_repo=library_repo,
+        user_id=current_user.id,
+        platform_id=platform_id,
+    )
+    return DuplicatesResponse(duplicate_public_ids=duplicate_ids)
+
+
 @router.post(
     "/{public_id}/candidates/bulk-confirm",
     response_model=BulkConfirmResponse,
@@ -124,5 +155,6 @@ async def bulk_confirm_candidates(
         confirm_public_ids=body.confirm_public_ids,
         platform_id=body.platform_id,
         library_status=body.status,
+        title_overrides=body.title_overrides,
     )
     return BulkConfirmResponse(confirmed=confirmed, rejected=rejected)

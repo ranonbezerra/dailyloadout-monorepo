@@ -131,6 +131,7 @@ export function LibraryPage() {
 					onText={() => setTextModalOpened(true)}
 					onVoice={() => setVoiceModalOpened(true)}
 					onPhoto={() => setPhotoModalOpened(true)}
+					onImport={() => navigate("/library/import")}
 				/>
 			</Group>
 

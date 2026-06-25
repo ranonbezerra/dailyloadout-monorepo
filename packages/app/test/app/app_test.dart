@@ -12,6 +12,7 @@ import 'package:app/features/auth/bloc/auth_bloc.dart';
 import 'package:app/features/capture/bloc/capture_bloc.dart';
 import 'package:app/features/concierge/bloc/concierge_bloc.dart';
 import 'package:app/features/library/bloc/library_bloc.dart';
+import 'package:app/features/library_import/bloc/library_import_bloc.dart';
 import 'package:app/features/loadout/bloc/loadout_bloc.dart';
 import 'package:app/features/mission/bloc/mission_bloc.dart';
 import 'package:flutter/material.dart';
@@ -44,6 +45,7 @@ void main() {
   late AuthBloc authBloc;
   late LibraryBloc libraryBloc;
   late CaptureBloc captureBloc;
+  late LibraryImportBloc libraryImportBloc;
   late MissionBloc missionBloc;
   late LoadoutBloc loadoutBloc;
   late AnalyticsBloc analyticsBloc;
@@ -64,6 +66,9 @@ void main() {
     authBloc = AuthBloc(authRepository: mockAuthRepository);
     libraryBloc = LibraryBloc(libraryRepository: mockLibraryRepository);
     captureBloc = CaptureBloc(captureRepository: mockCaptureRepository);
+    libraryImportBloc = LibraryImportBloc(
+      captureRepository: mockCaptureRepository,
+    );
     missionBloc = MissionBloc(missionRepository: mockMissionRepository);
     loadoutBloc = LoadoutBloc(
       loadoutRepository: mockLoadoutRepository,
@@ -77,6 +82,7 @@ void main() {
     authBloc.close();
     libraryBloc.close();
     captureBloc.close();
+    libraryImportBloc.close();
     missionBloc.close();
     loadoutBloc.close();
     analyticsBloc.close();
@@ -88,6 +94,7 @@ void main() {
       authBloc: authBloc,
       libraryBloc: libraryBloc,
       captureBloc: captureBloc,
+      libraryImportBloc: libraryImportBloc,
       missionBloc: missionBloc,
       loadoutBloc: loadoutBloc,
       analyticsBloc: analyticsBloc,

@@ -150,15 +150,16 @@ void main() {
       },
     );
 
-    testWidgets('FABs are present (capture and add)', (tester) async {
+    testWidgets('FABs are present (capture, import, and add)', (tester) async {
       when(
         () => libraryBloc.state,
       ).thenReturn(const LibraryLoaded(entries: [], total: 0, hasMore: false));
 
       await tester.pumpWidget(buildSubject());
 
-      expect(find.byType(FloatingActionButton), findsNWidgets(2));
+      expect(find.byType(FloatingActionButton), findsNWidgets(3));
       expect(find.byIcon(Icons.auto_awesome), findsOneWidget);
+      expect(find.byIcon(Icons.collections), findsOneWidget);
 
       // The add icon exists both in the FAB and the empty state button,
       // so verify it specifically within a FloatingActionButton.

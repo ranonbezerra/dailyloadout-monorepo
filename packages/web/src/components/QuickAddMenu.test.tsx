@@ -12,6 +12,7 @@ function makeProps() {
 		onText: vi.fn(),
 		onVoice: vi.fn(),
 		onPhoto: vi.fn(),
+		onImport: vi.fn(),
 	};
 }
 
@@ -110,5 +111,15 @@ describe("QuickAddMenu", () => {
 		expect(props.onPhoto).toHaveBeenCalledOnce();
 		expect(props.onText).not.toHaveBeenCalled();
 		expect(props.onVoice).not.toHaveBeenCalled();
+	});
+
+	it("clicking Import from screenshots calls onImport", async () => {
+		const { props } = renderMenu();
+		await openMenu();
+
+		fireEvent.click(screen.getByText("Import from screenshots"));
+
+		expect(props.onImport).toHaveBeenCalledOnce();
+		expect(props.onText).not.toHaveBeenCalled();
 	});
 });

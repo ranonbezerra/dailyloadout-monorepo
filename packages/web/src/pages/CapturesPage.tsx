@@ -2,6 +2,7 @@ import { Badge, Button, Group, Skeleton, Stack, Text, Title } from "@mantine/cor
 import dayjs from "dayjs";
 import { DataTable } from "mantine-datatable";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { QuickAddMenu } from "../components/QuickAddMenu";
 import { useCaptures } from "../hooks/useCapture";
 import type { CaptureListItem } from "../types/capture";
@@ -39,6 +40,7 @@ function getCaptureDescription(capture: CaptureListItem): {
 }
 
 export function CapturesPage() {
+	const navigate = useNavigate();
 	const [statusFilter, setStatusFilter] = useState("all");
 	const [textModalOpened, setTextModalOpened] = useState(false);
 	const [voiceModalOpened, setVoiceModalOpened] = useState(false);
@@ -73,6 +75,7 @@ export function CapturesPage() {
 					onText={() => setTextModalOpened(true)}
 					onVoice={() => setVoiceModalOpened(true)}
 					onPhoto={() => setPhotoModalOpened(true)}
+					onImport={() => navigate("/library/import")}
 				/>
 			</Group>
 

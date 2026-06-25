@@ -130,6 +130,37 @@ async def test_processor_respects_vision_fallback_cap() -> None:
         assert {c.title for c in candidates} == {"Kept Title"}
 
 
+async def test_clean_title_strips_icon_noise() -> None:
+    from dailyloadout.workers.library_import_processor import _clean_title
+
+    assert _clean_title("▶ Hollow Knight") == "Hollow Knight"
+    assert _clean_title("• Celeste") == "Celeste"
+    assert _clean_title("  Hades  ") == "Hades"
+    assert _clean_title("O Hollow Knight") == "Hollow Knight"  # icon misread as a letter
+    # Inner punctuation is preserved.
+    assert _clean_title("S.T.A.L.K.E.R.") == "S.T.A.L.K.E.R"
+
+
+async def test_processor_cleans_icon_prefixed_titles() -> None:
+    async with _TestSessionFactory() as session:
+        user_id, capture = await _seed_user_and_capture(session)
+        await process_library_import(
+            capture,
+            ["▶ Unknown Indie Game".encode()],
+            user_id=user_id,
+            today=date(2026, 6, 24),
+            capture_repo=CaptureRepository(session),
+            candidate_repo=CaptureCandidateRepository(session),
+            usage_repo=UsageCounterRepository(session),
+            ocr_client=DummyOCRClient(),
+            ocr_fallback_client=None,
+            catalog_matcher=DummyCatalogMatcher(),
+            settings=settings,
+        )
+        candidates = await CaptureCandidateRepository(session).get_all_for_capture(capture.id)
+        assert {c.title for c in candidates} == {"Unknown Indie Game"}
+
+
 async def test_processor_no_titles_marks_review() -> None:
     async with _TestSessionFactory() as session:
         user_id, capture = await _seed_user_and_capture(session)
@@ -234,6 +265,92 @@ class TestLibraryImportEndpoint:
         # The two confirmed games are now in the library.
         library = (await async_client.get("/v1/library", headers=auth_headers)).json()
         assert library["total"] == 2
+
+    async def test_bulk_confirm_applies_title_override(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+        seed_platforms: list[dict[str, Any]],
+    ) -> None:
+        imported = (
+            await async_client.post(
+                "/v1/captures/library-import",
+                files=_image_files("Celeste"),
+                headers=auth_headers,
+            )
+        ).json()
+        candidate = imported["candidates"][0]
+
+        resp = await async_client.post(
+            f"/v1/captures/{imported['public_id']}/candidates/bulk-confirm",
+            json={
+                "confirm_public_ids": [candidate["public_id"]],
+                "platform_id": seed_platforms[0]["id"],
+                "title_overrides": {candidate["public_id"]: "Celeste Classic"},
+            },
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["confirmed"] == 1
+
+        library = (await async_client.get("/v1/library", headers=auth_headers)).json()
+        titles = {item["game"]["title"] for item in library["items"]}
+        assert "Celeste Classic" in titles
+
+    async def test_duplicates_flags_already_owned_games(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+        seed_platforms: list[dict[str, Any]],
+    ) -> None:
+        platform_a = seed_platforms[0]["id"]
+        platform_b = seed_platforms[1]["id"]
+
+        # Import + commit "Hades" on platform A.
+        first = (
+            await async_client.post(
+                "/v1/captures/library-import",
+                files=_image_files("Hades"),
+                headers=auth_headers,
+            )
+        ).json()
+        await async_client.post(
+            f"/v1/captures/{first['public_id']}/candidates/bulk-confirm",
+            json={
+                "confirm_public_ids": [first["candidates"][0]["public_id"]],
+                "platform_id": platform_a,
+            },
+            headers=auth_headers,
+        )
+
+        # A second import containing "Hades" again.
+        second = (
+            await async_client.post(
+                "/v1/captures/library-import",
+                files=_image_files("Hades\nCeleste"),
+                headers=auth_headers,
+            )
+        ).json()
+        hades = next(c for c in second["candidates"] if c["title"] == "Hades")
+
+        # On platform A it's a duplicate; on platform B it isn't.
+        dup_a = (
+            await async_client.get(
+                f"/v1/captures/{second['public_id']}/candidates/duplicates",
+                params={"platform_id": platform_a},
+                headers=auth_headers,
+            )
+        ).json()
+        assert dup_a["duplicate_public_ids"] == [hades["public_id"]]
+
+        dup_b = (
+            await async_client.get(
+                f"/v1/captures/{second['public_id']}/candidates/duplicates",
+                params={"platform_id": platform_b},
+                headers=auth_headers,
+            )
+        ).json()
+        assert dup_b["duplicate_public_ids"] == []
 
     async def test_bulk_confirm_unknown_platform_404(
         self,

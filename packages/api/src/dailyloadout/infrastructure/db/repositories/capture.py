@@ -185,6 +185,23 @@ class CaptureCandidateRepository:
                 candidate.matched_game_id = matched_game_id
             await self._session.flush()
 
+    async def set_title(self, candidate_id: int, title: str) -> None:
+        """Override a candidate's title, dropping its stale catalog enrichment.
+
+        A user-corrected title no longer corresponds to the matched IGDB game,
+        so the igdb_* fields are cleared and the entry becomes user-authored.
+        """
+        candidate = await self._session.get(CaptureCandidate, candidate_id)
+        if candidate is not None:
+            candidate.title = title
+            candidate.igdb_id = None
+            candidate.igdb_title = None
+            candidate.igdb_cover_url = None
+            candidate.igdb_summary = None
+            candidate.igdb_genres = None
+            candidate.igdb_first_release_date = None
+            await self._session.flush()
+
     async def get_all_for_capture(self, capture_id: int) -> list[CaptureCandidate]:
         """Return all candidates belonging to *capture_id*."""
         stmt = (

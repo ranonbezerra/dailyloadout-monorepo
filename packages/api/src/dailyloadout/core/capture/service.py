@@ -186,6 +186,7 @@ class CaptureService:
         confirm_public_ids: list[UUID],
         platform_id: int,
         library_status: str = "backlog",
+        title_overrides: dict[UUID, str] | None = None,
     ) -> tuple[int, int]:
         """Confirm the listed candidates and reject the rest, in one call.
 
@@ -202,6 +203,7 @@ class CaptureService:
             )
 
         confirm_set = set(confirm_public_ids)
+        overrides = title_overrides or {}
         candidates = await self._candidate_repo.get_all_for_capture(capture.id)
         confirmed = 0
         rejected = 0
@@ -213,6 +215,11 @@ class CaptureService:
                 await self._candidate_repo.update_status(candidate.id, "rejected")
                 rejected += 1
                 continue
+
+            # Apply a user-corrected title (drops the stale catalog match).
+            new_title = (overrides.get(candidate.public_id) or "").strip()
+            if new_title and new_title != candidate.title:
+                await self._candidate_repo.set_title(candidate.id, new_title)
 
             game = await self._get_or_create_game(candidate)
             if not await self._library_repo.exists(user_id, game.id, platform_id):

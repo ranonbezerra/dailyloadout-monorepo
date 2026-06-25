@@ -804,9 +804,9 @@ infrastructure/
 - [x] Endpoint `POST /v1/captures/library-import` (multipart, multiple images) → capture with a batch of candidates
 - [x] Bulk confirm endpoint `POST /v1/captures/{public_id}/candidates/bulk-confirm` (confirm a list, reject the rest) — commits 50–100 entries in one call
 - [x] **Per-day import cap** (images/day) → 429, plus a capped+logged vision-fallback, via a reusable `usage_counters` table
-- [ ] Per-platform capture hints: small annotated assets + a platform picker (Steam/Xbox/GOG/PSN/Epic/Switch) that sets the right hint and parsing profile (`list-view` vs `purchase-history` layout) — *client phase*
-- [ ] App: `LibraryImportPage` — platform picker → hint screen → multi-image picker → **checkbox confirmation list** → bulk confirm — *client phase*
-- [ ] Web: equivalent `/library/import` flow (drag-drop multiple screenshots → confirmation table) — *client phase*
+- [x] Per-platform capture hints + a platform picker (Steam/Xbox/GOG/PlayStation/Epic/Switch) that sets the right "switch to list view / open purchase history" hint and a default platform on both clients
+- [x] App: `LibraryImportPage` (`features/library_import/`) — platform picker → hint → multi-image picker (`pickMultiImage`) → **checkbox confirmation list** (all checked) → bulk confirm; route `/library/import`, entry-point FAB on the library list
+- [x] Web: `/library/import` 3-step flow (`pages/LibraryImportPage.tsx`) — picker → hint → multi-file input → checkbox confirmation list → bulk confirm; entry point in the QuickAdd menu
 - [x] Pytest: `DummyOCRClient` 1/40/100 lines; low-confidence triggers the vision fallback (+ cap); catalog matcher corrects a dirty title; bulk-confirm commits N + rejects the rest; per-day cap returns 429
 - [x] `PRODUCT.md`: paragraph clarifying "metadata catalog ≠ account integration"
 

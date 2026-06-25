@@ -1,9 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+	bulkConfirmCandidates,
+	checkCandidateDuplicates,
 	confirmCandidate,
 	getCapture,
 	listCaptures,
 	rejectCandidate,
+	submitLibraryImport,
 	submitPhotoCapture,
 	submitTextCapture,
 	transcribeAudio,
@@ -36,6 +39,15 @@ export function useCapture(publicId: string) {
 	});
 }
 
+/** Which candidates are already in the library for a platform (import warning). */
+export function useCandidateDuplicates(captureId: string | null, platformId: number | null) {
+	return useQuery({
+		queryKey: [...CAPTURES_KEY, captureId, "duplicates", platformId],
+		queryFn: () => checkCandidateDuplicates(captureId as string, platformId as number),
+		enabled: !!captureId && platformId != null,
+	});
+}
+
 // ---------------------------------------------------------------------------
 // Mutations
 // ---------------------------------------------------------------------------
@@ -59,6 +71,42 @@ export function useSubmitPhotoCapture() {
 		mutationFn: (imageFile: File) => submitPhotoCapture(imageFile),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: CAPTURES_KEY });
+		},
+	});
+}
+
+export function useSubmitLibraryImport() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (files: File[]) => submitLibraryImport(files),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: CAPTURES_KEY });
+		},
+	});
+}
+
+export function useBulkConfirmCandidates() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (vars: {
+			captureId: string;
+			confirmPublicIds: string[];
+			platformId: number;
+			status?: LibraryStatus;
+			titleOverrides?: Record<string, string>;
+		}) =>
+			bulkConfirmCandidates(
+				vars.captureId,
+				vars.confirmPublicIds,
+				vars.platformId,
+				vars.status,
+				vars.titleOverrides,
+			),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: CAPTURES_KEY });
+			queryClient.invalidateQueries({ queryKey: LIBRARY_KEY });
 		},
 	});
 }
