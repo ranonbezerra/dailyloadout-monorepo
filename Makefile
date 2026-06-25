@@ -78,6 +78,10 @@ api-test: ## Run API tests
 api-test-cov: ## Run API tests with coverage (fail under 80%)
 	cd $(API_DIR) && poetry run pytest --cov=src/dailyloadout --cov-report=term-missing --cov-fail-under=90
 
+.PHONY: igdb-check
+igdb-check: ## Smoke-test the live IGDB client (make igdb-check q="Hollow Knight")
+	cd $(API_DIR) && poetry run python scripts/check_igdb.py "$(or $(q),Hollow Knight)"
+
 .PHONY: api-lint
 api-lint: ## Lint API (ruff check)
 	cd $(API_DIR) && poetry run ruff check .

@@ -1,4 +1,4 @@
-import { AppShell, Button, NavLink, Stack, Text } from "@mantine/core";
+import { Anchor, AppShell, Button, NavLink, Stack, Text } from "@mantine/core";
 import {
 	IconBooks,
 	IconChartBar,
@@ -59,15 +59,31 @@ function AppLayout() {
 							onClick={() => navigate("/analytics")}
 						/>
 					</Stack>
-					<Button
-						variant="subtle"
-						color="gray"
-						leftSection={<IconLogout size={16} />}
-						onClick={() => logout()}
-						justify="flex-start"
-					>
-						Sign out
-					</Button>
+					<Stack gap="xs">
+						<Button
+							variant="subtle"
+							color="gray"
+							leftSection={<IconLogout size={16} />}
+							onClick={() => logout()}
+							justify="flex-start"
+						>
+							Sign out
+						</Button>
+						{/* IGDB requires visible, static attribution wherever its data is used. */}
+						<Text size="xs" c="dimmed">
+							Game data from{" "}
+							<Anchor
+								href="https://www.igdb.com"
+								target="_blank"
+								rel="noopener noreferrer"
+								c="dimmed"
+								underline="always"
+								inherit
+							>
+								IGDB.com
+							</Anchor>
+						</Text>
+					</Stack>
 				</Stack>
 			</AppShell.Navbar>
 

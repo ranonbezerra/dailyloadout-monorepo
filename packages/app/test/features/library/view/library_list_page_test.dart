@@ -127,6 +127,16 @@ void main() {
       },
     );
 
+    testWidgets('shows the IGDB attribution credit', (tester) async {
+      when(
+        () => libraryBloc.state,
+      ).thenReturn(const LibraryLoaded(entries: [], total: 0, hasMore: false));
+
+      await tester.pumpWidget(buildSubject());
+
+      expect(find.text('Game data provided by IGDB.com'), findsOneWidget);
+    });
+
     testWidgets(
       'each entry card shows game title, platform label, status chip',
       (tester) async {

@@ -134,6 +134,12 @@ describe("App - authenticated layout", () => {
 		expect(screen.getByRole("button", { name: /sign out/i })).toBeInTheDocument();
 	});
 
+	it("renders the IGDB attribution credit", () => {
+		renderApp(["/play"]);
+		const credit = screen.getByRole("link", { name: /igdb\.com/i });
+		expect(credit).toHaveAttribute("href", "https://www.igdb.com");
+	});
+
 	it("renders PlayPage at /play", () => {
 		renderApp(["/play"]);
 		expect(screen.getByText("PlayPage")).toBeInTheDocument();

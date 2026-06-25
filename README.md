@@ -166,6 +166,6 @@ AGPL-3.0. See [LICENSE](./LICENSE).
 
 ## Acknowledgements
 
-- **IGDB** for game metadata (optional integration). "Powered by IGDB" shown in app settings when enabled.
+- **IGDB** for game metadata (optional integration). A "Game data provided by IGDB.com" credit (linking to igdb.com) is shown in the web sidebar and the app's library, per IGDB's attribution requirement.
 - **Ollama** team for making local LLM deployment frictionless.
 - **faster-whisper** for efficient on-device speech-to-text.

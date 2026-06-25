@@ -1,4 +1,5 @@
 import 'package:app/core/library/library_models.dart';
+import 'package:app/core/theme/dailyloadout_theme.dart';
 import 'package:app/features/library/bloc/library_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -64,69 +65,79 @@ class _LibraryListPageState extends State<LibraryListPage> {
           ),
         ],
       ),
-      body: BlocBuilder<LibraryBloc, LibraryState>(
-        builder: (context, state) {
-          if (state is LibraryLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: Column(
+        children: [
+          Expanded(
+            child: BlocBuilder<LibraryBloc, LibraryState>(
+              builder: (context, state) {
+                if (state is LibraryLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-          if (state is LibraryError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      state.message,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
+                if (state is LibraryError) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            state.message,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          FilledButton(
+                            onPressed: _onRefresh,
+                            child: const Text('Retry'),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    FilledButton(
-                      onPressed: _onRefresh,
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-
-          if (state is LibraryLoaded) {
-            if (state.entries.isEmpty) {
-              return _EmptyState(onAdd: () => context.push('/library/add'));
-            }
-
-            return RefreshIndicator(
-              onRefresh: _onRefresh,
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                itemCount: state.entries.length,
-                itemBuilder: (context, index) {
-                  final entry = state.entries[index];
-                  return _LibraryEntryCard(
-                    entry: entry,
-                    onTap: () => context.push('/library/${entry.publicId}'),
-                    onStartMission: entry.status == 'playing'
-                        ? () => context.push(
-                            '/missions/briefing?entry=${entry.publicId}',
-                          )
-                        : null,
                   );
-                },
-              ),
-            );
-          }
+                }
 
-          // LibraryInitial — show nothing while waiting for first load.
-          return const SizedBox.shrink();
-        },
+                if (state is LibraryLoaded) {
+                  if (state.entries.isEmpty) {
+                    return _EmptyState(
+                      onAdd: () => context.push('/library/add'),
+                    );
+                  }
+
+                  return RefreshIndicator(
+                    onRefresh: _onRefresh,
+                    child: ListView.builder(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      itemCount: state.entries.length,
+                      itemBuilder: (context, index) {
+                        final entry = state.entries[index];
+                        return _LibraryEntryCard(
+                          entry: entry,
+                          onTap: () =>
+                              context.push('/library/${entry.publicId}'),
+                          onStartMission: entry.status == 'playing'
+                              ? () => context.push(
+                                  '/missions/briefing?entry=${entry.publicId}',
+                                )
+                              : null,
+                        );
+                      },
+                    ),
+                  );
+                }
+
+                // LibraryInitial — show nothing while waiting for first load.
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+          const _IgdbAttribution(),
+        ],
       ),
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
@@ -334,6 +345,23 @@ class _StatusChip extends StatelessWidget {
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
           color: isOnDark ? Colors.white : Colors.black,
         ),
+      ),
+    );
+  }
+}
+
+/// IGDB requires visible, static attribution wherever its game data is used.
+class _IgdbAttribution extends StatelessWidget {
+  const _IgdbAttribution();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 8),
+      child: Text(
+        'Game data provided by IGDB.com',
+        textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 11, color: DLColors.textDim),
       ),
     );
   }

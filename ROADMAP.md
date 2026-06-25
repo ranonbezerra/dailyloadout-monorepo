@@ -872,6 +872,36 @@ Epic 11 is already useful with buffered streaming; the live path adds real compl
 
 ---
 
+## Epic 17 — IGDB hardening: caching + attribution (v1.1+)
+
+**Goal:** make the optional IGDB integration *compliant* and *cheap*. The client itself is correct (verified against the v4 docs: Twitch OAuth `client_credentials`, `Client-ID` + `Authorization: Bearer` headers, `POST /v4/games` with an Apicalypse body, parsing `name`/`cover.image_id`/`summary`/`genres.name`/`first_release_date`), but two promised pieces were skipped: the **Redis cache** (ARCHITECTURE §2 "Redis 7 for IGDB cache"; Epic 3 "token cached in Redis") and **user-facing attribution**.
+
+**Status:** attribution done; caching pending.
+
+### Context
+
+IGDB is opt-in via `IGDB_CLIENT_ID` / `IGDB_CLIENT_SECRET` — graceful `IGDBNotConfigured` when absent. The catalog matcher (Epic 15) and capture enrichment (Epic 3) both call `search_games`. Two gaps surfaced once Epic 15 started hammering IGDB on bulk import (up to ~N searches per import at 4 req/s):
+
+- **No caching.** The OAuth token is cached **in-memory**, and the client is **instantiated per request** (`deps/capture.get_igdb_client_dep`), so every IGDB-using request re-authenticates with Twitch. No search-result cache, so popular titles are re-fetched on every import, for every user.
+- **No attribution.** IGDB asks for visible, static, user-facing credit to IGDB.com wherever its data is shown.
+
+### Tasks
+
+- [x] **Attribution** — visible static "Game data from IGDB.com" credit (web sidebar, linked) + "Game data provided by IGDB.com" (Flutter library footer); README acknowledgement corrected. (Storing/caching IGDB fields is explicitly allowed/encouraged by IGDB; non-commercial use is free.)
+- [x] **Dev smoke-test** — `scripts/check_igdb.py` + `make igdb-check q="…"` to verify live credentials without booting the app.
+- [ ] **Token in Redis (or a process-singleton client)** so the Twitch token isn't re-fetched per request; shared across API + worker processes.
+- [ ] **Redis result cache** for `search_games`, keyed by normalized query, TTL ~7–30d (game metadata is stable); cache-miss falls through to the live call. Behind the existing optional-IGDB flag; dummy/no-IGDB paths and tests unaffected (fakeredis or a dummy cache port in CI).
+- [ ] Optional: handle `429 Too Many Requests` with a short backoff (the 4 req/s limiter already avoids it under normal single-import load).
+
+### Definition of Done
+
+- IGDB-sourced data shows a visible IGDB.com credit on both clients.
+- The Twitch token is fetched once and reused across requests (not per request).
+- Repeat `search_games` for the same title is served from Redis; a cold import of popular titles is materially faster and makes far fewer IGDB calls.
+- No regression to the optional/`dummy`/no-IGDB paths; coverage parity for the cache layer.
+
+---
+
 ## Descope guide if time runs short
 
 If at some point you feel you're pushing, these are the epics to defer to **v1.1** without destroying the vitrine:
