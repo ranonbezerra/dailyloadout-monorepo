@@ -227,6 +227,24 @@ void main() {
       final body = captured[0] as Map<String, dynamic>;
       expect(body.containsKey('briefing_text'), isFalse);
     });
+
+    test('sends skip_briefing for the "just play" path', () async {
+      when(
+        () => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')),
+      ).thenAnswer((_) async => _response('/v1/missions', _missionJson()));
+
+      await repository.startMission('entry-001', skipBriefing: true);
+
+      final captured = verify(
+        () => dio.post<Map<String, dynamic>>(
+          any(),
+          data: captureAny(named: 'data'),
+        ),
+      ).captured;
+      final body = captured[0] as Map<String, dynamic>;
+      expect(body['skip_briefing'], isTrue);
+      expect(body.containsKey('briefing_text'), isFalse);
+    });
   });
 
   group('getActiveMission', () {

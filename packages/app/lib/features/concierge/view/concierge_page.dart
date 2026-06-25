@@ -3,6 +3,19 @@ import 'package:app/core/theme/dailyloadout_theme.dart';
 import 'package:app/features/concierge/bloc/concierge_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+
+/// Friendly labels for the tool affordance shown while the agent works.
+const _toolLabels = {
+  'search_library': 'searching your library',
+  'get_mission_history': 'recalling your last session',
+  'get_play_stats': 'checking your stats',
+  'estimate_session_fit': 'sizing up the session',
+  'start_mission': 'starting your mission',
+  'generate_briefing': 'writing a briefing',
+  'submit_retroactive_debrief': 'logging your session',
+  'set_status': 'updating your library',
+};
 
 /// Conversational chat with the Backlog Concierge (Epic 11).
 class ConciergePage extends StatefulWidget {
@@ -65,7 +78,38 @@ class _ConciergePageState extends State<ConciergePage> {
               },
             ),
           ),
+          const _ToolActivity(),
           _Composer(controller: _controller, onSend: _send),
+        ],
+      ),
+    );
+  }
+}
+
+/// A small "🔎 searching your library…" affordance shown while a tool runs.
+class _ToolActivity extends StatelessWidget {
+  const _ToolActivity();
+
+  @override
+  Widget build(BuildContext context) {
+    final tool = context.select<ConciergeBloc, String?>(
+      (bloc) => bloc.state.activeTool,
+    );
+    if (tool == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Row(
+        children: [
+          const SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '${_toolLabels[tool] ?? tool}…',
+            style: const TextStyle(color: DLColors.textMuted, fontSize: 12),
+          ),
         ],
       ),
     );
@@ -124,7 +168,28 @@ class _MessageBubble extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: DLColors.line),
         ),
-        child: Text(message.text.isEmpty ? '…' : message.text),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (message.text.isNotEmpty)
+              Text(message.text)
+            else if (message.recommendation == null)
+              const Text('…'),
+            if (message.recommendation != null) ...[
+              const SizedBox(height: 8),
+              FilledButton.icon(
+                // Open the briefing-choice flow for the recommended game,
+                // mirroring the library "Start Mission" entry point.
+                onPressed: () => context.push(
+                  '/missions/briefing?entry=${message.recommendation!.id}',
+                ),
+                icon: const Icon(Icons.play_arrow, size: 18),
+                label: Text('Play ${message.recommendation!.title}'),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -160,13 +225,13 @@ class _Composer extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             if (isStreaming)
-              const Padding(
-                padding: EdgeInsets.all(12),
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+              IconButton(
+                onPressed: () => context.read<ConciergeBloc>().add(
+                  const CancelConciergeStream(),
                 ),
+                icon: const Icon(Icons.stop),
+                color: DLColors.coral,
+                tooltip: 'Stop',
               )
             else
               IconButton(

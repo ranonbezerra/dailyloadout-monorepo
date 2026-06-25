@@ -18,9 +18,9 @@ afterEach(() => {
 });
 
 describe("useConcierge", () => {
-	it("appends the user message and streams the assistant reply", async () => {
+	it("appends the user message and streams the assistant reply token by token", async () => {
 		streamConcierge.mockReturnValue(
-			events([{ delta: "Play " }, { delta: "Hollow Knight." }, { done: true, thread_id: "t1" }]),
+			events([{ token: "Play " }, { token: "Hollow Knight." }, { done: true, thread_id: "t1" }]),
 		);
 
 		const { result } = renderHook(() => useConcierge());
@@ -37,10 +37,49 @@ describe("useConcierge", () => {
 		expect(result.current.error).toBeNull();
 	});
 
+	it("attaches a validated recommendation and tracks the active tool", async () => {
+		streamConcierge.mockReturnValue(
+			events([
+				{ tool: "search_library", phase: "start" },
+				{ tool: "search_library", phase: "end" },
+				{ token: "Give this a go." },
+				{ recommendation: { id: "abc", title: "Hades" } },
+				{ done: true, thread_id: "t1" },
+			]),
+		);
+
+		const { result } = renderHook(() => useConcierge());
+		await act(async () => {
+			await result.current.send("what should I play?");
+		});
+
+		const last = result.current.messages.at(-1);
+		expect(last?.text).toBe("Give this a go.");
+		expect(last?.recommendation).toEqual({ id: "abc", title: "Hades" });
+		expect(result.current.activeTool).toBeNull(); // cleared once the turn ends
+	});
+
+	it("appends a degrade nudge to the prose", async () => {
+		streamConcierge.mockReturnValue(
+			events([
+				{ token: "Hmm." },
+				{ degrade: "I'm not certain that one's in your library." },
+				{ done: true, thread_id: "t1" },
+			]),
+		);
+
+		const { result } = renderHook(() => useConcierge());
+		await act(async () => {
+			await result.current.send("play something");
+		});
+
+		expect(result.current.messages.at(-1)?.text).toContain("not certain");
+	});
+
 	it("threads the server thread_id into the next turn", async () => {
 		streamConcierge
-			.mockReturnValueOnce(events([{ delta: "Hi." }, { done: true, thread_id: "thread-42" }]))
-			.mockReturnValueOnce(events([{ delta: "Again." }, { done: true, thread_id: "thread-42" }]));
+			.mockReturnValueOnce(events([{ token: "Hi." }, { done: true, thread_id: "thread-42" }]))
+			.mockReturnValueOnce(events([{ token: "Again." }, { done: true, thread_id: "thread-42" }]));
 
 		const { result } = renderHook(() => useConcierge());
 
@@ -51,8 +90,18 @@ describe("useConcierge", () => {
 			await result.current.send("second");
 		});
 
-		expect(streamConcierge).toHaveBeenNthCalledWith(1, "first", undefined);
-		expect(streamConcierge).toHaveBeenNthCalledWith(2, "second", "thread-42");
+		expect(streamConcierge).toHaveBeenNthCalledWith(
+			1,
+			"first",
+			undefined,
+			expect.any(AbortSignal),
+		);
+		expect(streamConcierge).toHaveBeenNthCalledWith(
+			2,
+			"second",
+			"thread-42",
+			expect.any(AbortSignal),
+		);
 	});
 
 	it("ignores empty input", async () => {
@@ -62,6 +111,36 @@ describe("useConcierge", () => {
 		});
 		expect(result.current.messages).toEqual([]);
 		expect(streamConcierge).not.toHaveBeenCalled();
+	});
+
+	it("cancelling mid-stream keeps the partial reply without an error", async () => {
+		// Stream one token, then park until the abort signal fires (rejecting
+		// like an aborted fetch would).
+		streamConcierge.mockImplementation((_msg: string, _tid: undefined, signal: AbortSignal) =>
+			(async function* () {
+				yield { token: "partial " };
+				await new Promise((_resolve, reject) => {
+					signal.addEventListener("abort", () =>
+						reject(Object.assign(new Error("aborted"), { name: "AbortError" })),
+					);
+				});
+			})(),
+		);
+
+		const { result } = renderHook(() => useConcierge());
+		let sendPromise: Promise<void> = Promise.resolve();
+		await act(async () => {
+			sendPromise = result.current.send("what should I play?");
+			await Promise.resolve(); // let the first token flush
+		});
+		await act(async () => {
+			result.current.cancel();
+			await sendPromise;
+		});
+
+		expect(result.current.error).toBeNull();
+		expect(result.current.isStreaming).toBe(false);
+		expect(result.current.messages.at(-1)?.text).toContain("partial");
 	});
 
 	it("surfaces a server error event", async () => {

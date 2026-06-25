@@ -2,12 +2,14 @@
 
 Uses ``ChatOllama.bind_tools`` (via ``create_react_agent``) for the tool-calling
 loop. The tool-using model defaults to ``qwen3:8b`` — Gemma is weak at
-function-calling. A shared in-memory checkpointer persists conversation threads
-across turns (upgrade to a Postgres saver in Epic 16).
+function-calling. Conversation threads are checkpointed by the configured saver
+(Postgres for durability, memory fallback) so multi-turn chats accumulate and
+survive restarts (ROADMAP Epic 16).
 """
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from typing import TYPE_CHECKING, Any
 
 from langchain_core.messages import HumanMessage
@@ -15,18 +17,14 @@ from langchain_core.messages.utils import count_tokens_approximately, trim_messa
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import StructuredTool
 from langchain_ollama import ChatOllama
-from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import create_react_agent
 
 from .base import AbstractConciergeAgent, ConciergeReply, ConciergeRequest
+from .checkpointer import get_checkpointer
+from .streaming import ConciergeEvent, TokenEvent, ToolEvent
 
 if TYPE_CHECKING:
     from dailyloadout.config import Settings
-
-# Process-lifetime checkpointer: the agent is rebuilt per request (DI), so the
-# saver must live at module scope or multi-turn history is lost between turns.
-# Single-process only — a Postgres saver for multi-worker is ROADMAP Epic 16.
-_CHECKPOINTER = MemorySaver()
 
 # Cap the context fed to the model each turn. Persistent memory replays the whole
 # thread (messages + verbose tool outputs) every turn, so without a bound the
@@ -56,10 +54,8 @@ def _trim_history(state: dict[str, Any]) -> dict[str, Any]:
 class LangGraphConciergeAgent(AbstractConciergeAgent):
     def __init__(self, *, settings: Settings) -> None:
         self._settings = settings
-        # Shared across turns/threads so multi-turn conversations accumulate.
-        self._checkpointer = _CHECKPOINTER
 
-    async def respond(self, req: ConciergeRequest) -> ConciergeReply:
+    async def _build(self, req: ConciergeRequest) -> tuple[Any, RunnableConfig, dict[str, Any]]:
         model = ChatOllama(
             base_url=self._settings.ollama_base_url,
             model=self._settings.ollama_agent_model,
@@ -80,7 +76,7 @@ class LangGraphConciergeAgent(AbstractConciergeAgent):
             model,
             tools,
             prompt=req.system,
-            checkpointer=self._checkpointer,
+            checkpointer=await get_checkpointer(self._settings),
             pre_model_hook=_trim_history,
         )
         config: RunnableConfig = {
@@ -88,6 +84,26 @@ class LangGraphConciergeAgent(AbstractConciergeAgent):
             "recursion_limit": max(4, self._settings.concierge_max_tool_loops * 2),
         }
         inputs: dict[str, Any] = {"messages": [HumanMessage(content=req.message)]}
+        return graph, config, inputs
+
+    async def respond(self, req: ConciergeRequest) -> ConciergeReply:
+        graph, config, inputs = await self._build(req)
         result: Any = await graph.ainvoke(inputs, config=config)
         final = result["messages"][-1].content
         return ConciergeReply(text=final if isinstance(final, str) else str(final))
+
+    async def astream(self, req: ConciergeRequest) -> AsyncIterator[ConciergeEvent]:
+        graph, config, inputs = await self._build(req)
+        async for ev in graph.astream_events(inputs, config=config, version="v2"):
+            kind = ev["event"]
+            if kind == "on_tool_start":
+                yield ToolEvent(name=ev["name"], phase="start")
+            elif kind == "on_tool_end":
+                yield ToolEvent(name=ev["name"], phase="end")
+            elif kind == "on_chat_model_stream":
+                content = getattr(ev["data"]["chunk"], "content", "")
+                # ReAct fires the model several times; tool-deciding turns emit
+                # tool-call deltas (no prose). With reasoning off, the prose
+                # tokens here are the answer. The gate withholds the marker tail.
+                if isinstance(content, str) and content:
+                    yield TokenEvent(text=content)

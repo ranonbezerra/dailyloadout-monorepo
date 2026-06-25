@@ -58,13 +58,20 @@ final class CancelDeepBriefing extends MissionEvent {
 
 /// Dispatched to start a new mission.
 final class StartMission extends MissionEvent {
-  const StartMission({required this.libraryEntryPublicId, this.briefingText});
+  const StartMission({
+    required this.libraryEntryPublicId,
+    this.briefingText,
+    this.skipBriefing = false,
+  });
 
   final String libraryEntryPublicId;
   final String? briefingText;
 
+  /// Start with no briefing at all (the "just play" path).
+  final bool skipBriefing;
+
   @override
-  List<Object?> get props => [libraryEntryPublicId, briefingText];
+  List<Object?> get props => [libraryEntryPublicId, briefingText, skipBriefing];
 }
 
 /// Dispatched to submit a debrief for a mission.

@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
 
 from pydantic import BaseModel
+
+from .streaming import ConciergeEvent, TokenEvent
 
 
 @dataclass
@@ -47,3 +49,17 @@ class AbstractConciergeAgent(ABC):
     async def respond(self, req: ConciergeRequest) -> ConciergeReply:
         """Run the tool-using loop for one turn and return the answer text."""
         ...
+
+    async def astream(self, req: ConciergeRequest) -> AsyncIterator[ConciergeEvent]:
+        """Stream one turn as typed events (prose tokens + tool calls).
+
+        Emits ``TokenEvent`` for answer prose and ``ToolEvent`` for tool
+        start/end. The caller runs the prose through the recommendation gate
+        and validates any pick before surfacing it (ROADMAP Epic 16).
+
+        Default: fall back to the buffered ``respond`` and emit the whole answer
+        as one token, so agents that only implement ``respond`` still stream
+        (just not token-by-token). Real agents override this.
+        """
+        reply = await self.respond(req)
+        yield TokenEvent(text=reply.text)

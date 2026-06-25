@@ -258,10 +258,26 @@ beforeEach(() => {
 
 describe("MissionBriefingModal", () => {
 	describe("preview mode — choose briefing", () => {
-		it("shows the two briefing-mode buttons on open", () => {
+		it("shows the two briefing-mode buttons and a skip option on open", () => {
 			renderPreviewMode();
 			expect(screen.getByText("⚡ Quick briefing")).toBeInTheDocument();
 			expect(screen.getByText("🔎 Deep briefing (web)")).toBeInTheDocument();
+			expect(screen.getByText("▶️ Just play")).toBeInTheDocument();
+		});
+
+		it("'Just play' starts the mission with no briefing and confirms", async () => {
+			const onConfirm = vi.fn();
+			renderPreviewMode(makeEntry(), { onConfirm });
+
+			fireEvent.click(screen.getByText("▶️ Just play"));
+
+			await waitFor(() => {
+				expect(mockStartMutateAsync).toHaveBeenCalledWith(
+					expect.objectContaining({ libraryEntryPublicId: "entry-1", skipBriefing: true }),
+				);
+			});
+			expect(mockPreviewMutateAsync).not.toHaveBeenCalled(); // never generated a briefing
+			await waitFor(() => expect(onConfirm).toHaveBeenCalled());
 		});
 
 		it("shows the game title and platform", () => {

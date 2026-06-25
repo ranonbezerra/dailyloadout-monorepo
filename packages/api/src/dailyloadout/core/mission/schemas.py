@@ -28,6 +28,11 @@ class MissionStartRequest(BaseModel):
         default="quick",
         description="Briefing mode: 'quick' (single-shot) or 'deep' (web-researched).",
     )
+    skip_briefing: bool = Field(
+        default=False,
+        description="Start with no briefing at all (don't generate one). The "
+        "briefing is an optional stage — this is the 'just play' path.",
+    )
 
 
 class BriefingPreviewRequest(BaseModel):

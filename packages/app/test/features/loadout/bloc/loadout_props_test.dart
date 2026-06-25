@@ -118,13 +118,14 @@ void main() {
         libraryEntryPublicId: 'e-1',
       );
       expect(a, b);
-      expect(a.props, ['l-1', 'e-1']);
+      expect(a.props, ['l-1', 'e-1', 'quick']);
       expect(
         a,
         isNot(
           const GenerateLoadoutBriefing(
             publicId: 'l-1',
-            libraryEntryPublicId: 'e-2',
+            libraryEntryPublicId: 'e-1',
+            mode: 'deep',
           ),
         ),
       );

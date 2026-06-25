@@ -8,7 +8,7 @@ from uuid import uuid4
 
 import pytest
 
-from dailyloadout.core.concierge.service import ConciergeService, _split_recommendation
+from dailyloadout.core.concierge.service import ConciergeService
 from dailyloadout.core.stats.service import StatsService
 from dailyloadout.infrastructure.agent.concierge.base import (
     AbstractConciergeAgent,
@@ -16,6 +16,9 @@ from dailyloadout.infrastructure.agent.concierge.base import (
     ConciergeRequest,
 )
 from dailyloadout.infrastructure.agent.concierge.dummy import DummyConciergeAgent
+from dailyloadout.infrastructure.agent.concierge.streaming import (
+    split_recommendation as _split_recommendation,
+)
 from dailyloadout.infrastructure.db.repositories.library import LibraryRepository
 from dailyloadout.infrastructure.db.repositories.mission import MissionRepository
 from dailyloadout.infrastructure.db.repositories.stats import StatsRepository
@@ -165,6 +168,58 @@ async def test_empty_library_makes_no_pick() -> None:
         )
         assert "couldn't find anything" in text
         assert "RECOMMEND" not in text
+
+
+async def _collect(service: ConciergeService, **kwargs: Any) -> list[dict[str, Any]]:
+    return [e async for e in service.reply_stream(**kwargs)]
+
+
+async def test_reply_stream_valid_recommendation() -> None:
+    async with _TestSessionFactory() as session:
+        user_id, public_id = await _seed(session)
+        await session.commit()
+
+    async with _TestSessionFactory() as session:
+        events = await _collect(
+            _service(session, DummyConciergeAgent()),
+            user_id=user_id,
+            user_created_at=datetime.now(UTC),
+            thread_id="s1",
+            message="What should I play tonight?",
+        )
+
+    tokens = "".join(e["token"] for e in events if "token" in e)
+    tools = [e for e in events if "tool" in e]
+    recs = [e["recommendation"] for e in events if "recommendation" in e]
+    assert "give this a go" in tokens
+    assert "RECOMMEND" not in tokens  # marker withheld from the prose
+    assert public_id not in tokens
+    assert any(t["tool"] == "search_library" for t in tools)  # tool affordance surfaced
+    assert len(recs) == 1
+    assert recs[0]["id"] == public_id
+    assert recs[0]["title"] == "Hollow Knight"
+
+
+async def test_reply_stream_invalid_recommendation_degrades() -> None:
+    async with _TestSessionFactory() as session:
+        user_id, _ = await _seed(session)
+        await session.commit()
+
+    async with _TestSessionFactory() as session:
+        events = await _collect(
+            _service(session, _AlwaysInvalidAgent()),
+            user_id=user_id,
+            user_created_at=datetime.now(UTC),
+            thread_id="s2",
+            message="What should I play?",
+        )
+
+    tokens = "".join(e["token"] for e in events if "token" in e)
+    degrades = [e for e in events if "degrade" in e]
+    assert _FAKE_ID not in tokens
+    assert not [e for e in events if "recommendation" in e]  # invalid pick never surfaced
+    assert len(degrades) == 1
+    assert "library" in degrades[0]["degrade"]
 
 
 @pytest.mark.parametrize(

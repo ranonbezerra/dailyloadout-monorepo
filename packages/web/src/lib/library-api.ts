@@ -71,6 +71,11 @@ export async function fetchLibrary(params?: {
 	return snakeToCamel<LibraryListResponse>(raw);
 }
 
+export async function fetchLibraryEntry(publicId: string): Promise<LibraryEntry> {
+	const raw = await apiFetch<unknown>(`/v1/library/${publicId}`);
+	return snakeToCamel<LibraryEntry>(raw);
+}
+
 export async function addToLibrary(data: LibraryEntryCreate): Promise<LibraryEntry> {
 	const raw = await apiFetch<unknown>("/v1/library", {
 		method: "POST",

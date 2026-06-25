@@ -219,6 +219,48 @@ class TestSearchGames:
 # =====================================================================
 
 
+class TestGetLibraryEntry:
+    """GET /v1/library/{public_id}"""
+
+    async def test_get_entry_success(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+        create_game: dict[str, Any],
+        seed_platforms: list[dict[str, Any]],
+    ) -> None:
+        created = await async_client.post(
+            "/v1/library",
+            json={
+                "game_public_id": create_game["public_id"],
+                "platform_id": seed_platforms[0]["id"],
+                "status": "playing",
+            },
+            headers=auth_headers,
+        )
+        public_id = created.json()["public_id"]
+
+        resp = await async_client.get(f"/v1/library/{public_id}", headers=auth_headers)
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["public_id"] == public_id
+        assert data["game"]["slug"] == "elden-ring"
+        assert data["platform"]["id"] == seed_platforms[0]["id"]
+
+    async def test_get_entry_not_found(
+        self, async_client: AsyncClient, auth_headers: dict[str, str]
+    ) -> None:
+        resp = await async_client.get(
+            "/v1/library/00000000-0000-0000-0000-000000000000", headers=auth_headers
+        )
+        assert resp.status_code == 404
+
+    async def test_get_entry_unauthorized(self, async_client: AsyncClient) -> None:
+        resp = await async_client.get("/v1/library/00000000-0000-0000-0000-000000000000")
+        assert resp.status_code == 401
+
+
 class TestAddToLibrary:
     """POST /v1/library"""
 

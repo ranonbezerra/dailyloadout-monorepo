@@ -75,7 +75,7 @@ class _LoadoutPageState extends State<LoadoutPage> {
     context.read<LoadoutBloc>().add(RejectLoadout(publicId: loadout.publicId));
   }
 
-  void _onGetBriefing(Loadout loadout) {
+  void _onGetBriefing(Loadout loadout, String mode) {
     final entryId = loadout.libraryEntry?.publicId;
     if (entryId == null) return;
     setState(() => _briefingId = loadout.publicId);
@@ -83,6 +83,7 @@ class _LoadoutPageState extends State<LoadoutPage> {
       GenerateLoadoutBriefing(
         publicId: loadout.publicId,
         libraryEntryPublicId: entryId,
+        mode: mode,
       ),
     );
   }
@@ -217,7 +218,7 @@ class _LoadoutPageState extends State<LoadoutPage> {
             briefingText: _briefings[_results[i].publicId],
             onAccept: () => _onAccept(_results[i]),
             onReject: () => _onReject(_results[i]),
-            onGetBriefing: () => _onGetBriefing(_results[i]),
+            onGetBriefing: (mode) => _onGetBriefing(_results[i], mode),
             onStartWithBriefing: () => _onStartWithBriefing(_results[i]),
           ),
         const SizedBox(height: 16),

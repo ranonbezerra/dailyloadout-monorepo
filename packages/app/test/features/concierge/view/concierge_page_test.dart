@@ -44,10 +44,11 @@ void main() {
       () => repository.streamChat(
         message: any(named: 'message'),
         threadId: any(named: 'threadId'),
+        cancelToken: any(named: 'cancelToken'),
       ),
     ).thenAnswer(
       (_) => _deltas(const [
-        ConciergeDelta(delta: 'Try Hades.'),
+        ConciergeDelta(token: 'Try Hades.'),
         ConciergeDelta(done: true, threadId: 't1'),
       ]),
     );
@@ -60,5 +61,32 @@ void main() {
 
     expect(find.text('something short'), findsOneWidget);
     expect(find.text('Try Hades.'), findsOneWidget);
+  });
+
+  testWidgets('renders a Play CTA for a validated recommendation', (
+    tester,
+  ) async {
+    when(
+      () => repository.streamChat(
+        message: any(named: 'message'),
+        threadId: any(named: 'threadId'),
+        cancelToken: any(named: 'cancelToken'),
+      ),
+    ).thenAnswer(
+      (_) => _deltas(const [
+        ConciergeDelta(token: 'Give this a go.'),
+        ConciergeDelta(
+          recommendation: Recommendation(id: 'abc', title: 'Hades'),
+        ),
+        ConciergeDelta(done: true, threadId: 't1'),
+      ]),
+    );
+
+    await tester.pumpWidget(buildSubject());
+    await tester.enterText(find.byType(TextField), 'what should I play?');
+    await tester.testTextInput.receiveAction(TextInputAction.send);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Play Hades'), findsOneWidget);
   });
 }

@@ -164,6 +164,7 @@ class MissionBloc extends Bloc<MissionEvent, MissionState> {
       final mission = await _missionRepository.startMission(
         event.libraryEntryPublicId,
         briefingText: event.briefingText,
+        skipBriefing: event.skipBriefing,
       );
       emit(MissionStarted(mission: mission));
     } on DioException catch (e) {

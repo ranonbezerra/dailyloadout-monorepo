@@ -13,14 +13,17 @@ class ConciergeRepository {
   /// Sends [message] and yields [ConciergeDelta]s as the guarded reply streams.
   ///
   /// Pass the [threadId] returned by the previous turn's final event to keep
-  /// the conversation threaded.
+  /// the conversation threaded. Pass a [cancelToken] to abort the turn
+  /// mid-stream (the model run is torn down server-side on disconnect).
   Stream<ConciergeDelta> streamChat({
     required String message,
     String? threadId,
+    CancelToken? cancelToken,
   }) async* {
     final response = await _apiClient.dio.post<ResponseBody>(
       '/v1/concierge/chat',
       data: {'message': message, if (threadId != null) 'thread_id': threadId},
+      cancelToken: cancelToken,
       options: Options(
         responseType: ResponseType.stream,
         receiveTimeout: llmReceiveTimeout,

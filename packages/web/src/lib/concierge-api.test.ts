@@ -91,28 +91,28 @@ describe("streamConcierge request", () => {
 // ---------------------------------------------------------------------------
 
 describe("streamConcierge SSE parsing", () => {
-	it("parses delta events followed by a done event", async () => {
+	it("parses token events followed by a done event", async () => {
 		fetchMock.mockResolvedValueOnce(
 			makeStreamResponse([
-				'data: {"delta": "Hel"}\n',
-				'data: {"delta": "lo"}\n',
+				'data: {"token": "Hel"}\n',
+				'data: {"token": "lo"}\n',
 				'data: {"done": true, "thread_id": "abc"}\n',
 			]),
 		);
 
 		const events = await collect("hi");
 
-		expect(events).toEqual([{ delta: "Hel" }, { delta: "lo" }, { done: true, thread_id: "abc" }]);
+		expect(events).toEqual([{ token: "Hel" }, { token: "lo" }, { done: true, thread_id: "abc" }]);
 	});
 
 	it("reassembles events split across chunk boundaries", async () => {
 		fetchMock.mockResolvedValueOnce(
-			makeStreamResponse(['data: {"del', 'ta": "world"}\n', 'data: {"done": true}\n']),
+			makeStreamResponse(['data: {"tok', 'en": "world"}\n', 'data: {"done": true}\n']),
 		);
 
 		const events = await collect("hi");
 
-		expect(events).toEqual([{ delta: "world" }, { done: true }]);
+		expect(events).toEqual([{ token: "world" }, { done: true }]);
 	});
 
 	it("ignores blank lines and non-data lines", async () => {
@@ -121,24 +121,24 @@ describe("streamConcierge SSE parsing", () => {
 				"\n",
 				": keep-alive comment\n",
 				"event: message\n",
-				'data: {"delta": "x"}\n',
+				'data: {"token": "x"}\n',
 				"data: \n",
 			]),
 		);
 
 		const events = await collect("hi");
 
-		expect(events).toEqual([{ delta: "x" }]);
+		expect(events).toEqual([{ token: "x" }]);
 	});
 
 	it("skips malformed JSON without aborting the stream", async () => {
 		fetchMock.mockResolvedValueOnce(
-			makeStreamResponse(["data: {not valid json}\n", 'data: {"delta": "ok"}\n']),
+			makeStreamResponse(["data: {not valid json}\n", 'data: {"token": "ok"}\n']),
 		);
 
 		const events = await collect("hi");
 
-		expect(events).toEqual([{ delta: "ok" }]);
+		expect(events).toEqual([{ token: "ok" }]);
 	});
 
 	it("surfaces error events from the stream", async () => {

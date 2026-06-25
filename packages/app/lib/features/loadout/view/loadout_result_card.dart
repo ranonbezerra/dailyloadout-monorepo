@@ -25,8 +25,8 @@ class LoadoutResultCard extends StatelessWidget {
   final VoidCallback onAccept;
   final VoidCallback onReject;
 
-  /// Requests a quick briefing for this game.
-  final VoidCallback onGetBriefing;
+  /// Requests a briefing for this game in the given mode ('quick' | 'deep').
+  final void Function(String mode) onGetBriefing;
 
   /// Starts the mission carrying the generated [briefingText].
   final VoidCallback onStartWithBriefing;
@@ -199,38 +199,47 @@ class LoadoutResultCard extends StatelessWidget {
           const SizedBox(height: 12),
         ],
 
-        // Secondary actions: reject + (get briefing, unless already shown).
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: busy ? null : onReject,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: DLColors.red,
-                  side: const BorderSide(color: DLColors.red),
+        // Briefing options (until one is generated): quick vs deep.
+        if (!hasBriefing) ...[
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: busy ? null : () => onGetBriefing('quick'),
+                  icon: const Icon(Icons.bolt, size: 18),
+                  label: const Text('Quick briefing'),
                 ),
-                child: const Text('Reject'),
               ),
-            ),
-            if (!hasBriefing) ...[
               const SizedBox(width: 12),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: busy ? null : onGetBriefing,
+                  onPressed: busy ? null : () => onGetBriefing('deep'),
                   icon: isGeneratingBriefing
                       ? const SizedBox(
                           width: 16,
                           height: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.article_outlined, size: 18),
-                  label: Text(
-                    isGeneratingBriefing ? 'Briefing...' : 'Get briefing',
-                  ),
+                      : const Icon(Icons.travel_explore, size: 18),
+                  label: const Text('Deep briefing'),
                 ),
               ),
             ],
-          ],
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        // Reject.
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: busy ? null : onReject,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: DLColors.red,
+              side: const BorderSide(color: DLColors.red),
+            ),
+            child: const Text('Reject'),
+          ),
         ),
         const SizedBox(height: 12),
 
@@ -260,7 +269,7 @@ class LoadoutResultCard extends StatelessWidget {
                   ? 'Starting...'
                   : hasBriefing
                   ? 'Start with briefing'
-                  : 'Accept & Start Mission',
+                  : 'Just play',
             ),
           ),
         ),

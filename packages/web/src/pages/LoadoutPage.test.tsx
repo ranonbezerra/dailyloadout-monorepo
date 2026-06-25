@@ -450,8 +450,9 @@ describe("LoadoutPage - result cards", () => {
 
 		rollAndSetResults(mockMutate, [makeMockLoadout()]);
 
-		expect(screen.getByRole("button", { name: /Accept & Start/i })).toBeInTheDocument();
-		expect(screen.getByRole("button", { name: /Get briefing/i })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /Just play/i })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /Quick briefing/i })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /Deep briefing/i })).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: /Reject/i })).toBeInTheDocument();
 	});
 
@@ -536,7 +537,7 @@ describe("LoadoutPage - accept and reject actions", () => {
 		renderPage();
 		rollAndSetResults(createMutate, [makeMockLoadout()]);
 
-		fireEvent.click(screen.getByRole("button", { name: /Accept & Start/i }));
+		fireEvent.click(screen.getByRole("button", { name: /Just play/i }));
 
 		expect(acceptMutate).toHaveBeenCalledTimes(1);
 		expect(acceptMutate.mock.calls[0][0]).toEqual({
@@ -559,7 +560,7 @@ describe("LoadoutPage - accept and reject actions", () => {
 		rollAndSetResults(createMutate, [makeMockLoadout(), makeMockLoadout2()]);
 
 		// Click Accept on the first card (there are two Accept buttons)
-		const acceptButtons = screen.getAllByRole("button", { name: /Accept & Start/i });
+		const acceptButtons = screen.getAllByRole("button", { name: /Just play/i });
 		fireEvent.click(acceptButtons[0]);
 
 		// Simulate accept onSuccess callback
@@ -629,7 +630,7 @@ describe("LoadoutPage - briefing flow", () => {
 		mockNavigate.mockClear();
 	});
 
-	it("calls previewBriefing.mutate with the library entry id when 'Get briefing' is clicked", () => {
+	it("previews a quick briefing when 'Quick briefing' is clicked", () => {
 		const createMutate = setupCreateMockWithCapture();
 		const previewMutate = vi.fn();
 		(usePreviewBriefing as Mock).mockReturnValue({
@@ -642,12 +643,33 @@ describe("LoadoutPage - briefing flow", () => {
 		renderPage();
 		rollAndSetResults(createMutate, [makeMockLoadout()]);
 
-		fireEvent.click(screen.getByRole("button", { name: /Get briefing/i }));
+		fireEvent.click(screen.getByRole("button", { name: /Quick briefing/i }));
 
 		expect(previewMutate).toHaveBeenCalledTimes(1);
 		expect(previewMutate.mock.calls[0][0]).toEqual({
 			libraryEntryPublicId: "le-1",
 			mode: "quick",
+		});
+	});
+
+	it("previews a deep briefing when 'Deep briefing' is clicked", () => {
+		const createMutate = setupCreateMockWithCapture();
+		const previewMutate = vi.fn();
+		(usePreviewBriefing as Mock).mockReturnValue({
+			mutate: previewMutate,
+			mutateAsync: vi.fn(),
+			isPending: false,
+			variables: undefined,
+		});
+
+		renderPage();
+		rollAndSetResults(createMutate, [makeMockLoadout()]);
+
+		fireEvent.click(screen.getByRole("button", { name: /Deep briefing/i }));
+
+		expect(previewMutate.mock.calls[0][0]).toEqual({
+			libraryEntryPublicId: "le-1",
+			mode: "deep",
 		});
 	});
 
@@ -664,7 +686,7 @@ describe("LoadoutPage - briefing flow", () => {
 		renderPage();
 		rollAndSetResults(createMutate, [makeMockLoadout()]);
 
-		fireEvent.click(screen.getByRole("button", { name: /Get briefing/i }));
+		fireEvent.click(screen.getByRole("button", { name: /Quick briefing/i }));
 
 		// Simulate the preview onSuccess callback with a briefing text.
 		const onSuccess = previewMutate.mock.calls[0][1].onSuccess;
@@ -676,8 +698,8 @@ describe("LoadoutPage - briefing flow", () => {
 		expect(screen.getByText("Focus on collecting charms early.")).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: /Start with briefing/i })).toBeInTheDocument();
 		// The pre-briefing buttons should no longer be visible.
-		expect(screen.queryByRole("button", { name: /Accept & Start/i })).not.toBeInTheDocument();
-		expect(screen.queryByRole("button", { name: /Get briefing/i })).not.toBeInTheDocument();
+		expect(screen.queryByRole("button", { name: /Just play/i })).not.toBeInTheDocument();
+		expect(screen.queryByRole("button", { name: /Quick briefing/i })).not.toBeInTheDocument();
 	});
 
 	it("accepts with the fetched briefing text when 'Start with briefing' is clicked", () => {
@@ -699,7 +721,7 @@ describe("LoadoutPage - briefing flow", () => {
 		renderPage();
 		rollAndSetResults(createMutate, [makeMockLoadout()]);
 
-		fireEvent.click(screen.getByRole("button", { name: /Get briefing/i }));
+		fireEvent.click(screen.getByRole("button", { name: /Quick briefing/i }));
 		const onSuccess = previewMutate.mock.calls[0][1].onSuccess;
 		act(() => {
 			onSuccess({ briefingText: "Focus on collecting charms early." });

@@ -140,6 +140,23 @@ async def list_library(
     )
 
 
+@router.get("/library/{public_id}", response_model=LibraryEntryResponse)
+async def get_library_entry(
+    public_id: UUID,
+    current_user: CurrentUserDep,
+    library_service: LibraryServiceDep,
+) -> LibraryEntryResponse:
+    """Return a single library entry owned by the current user."""
+    try:
+        entry = await library_service.get_entry(current_user.id, public_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    return LibraryEntryResponse.model_validate(entry)
+
+
 @router.post(
     "/library",
     response_model=LibraryEntryResponse,

@@ -77,6 +77,7 @@ class LoadoutBloc extends Bloc<LoadoutEvent, LoadoutState> {
     try {
       final preview = await _missionRepository.previewBriefing(
         event.libraryEntryPublicId,
+        mode: event.mode,
       );
       emit(
         LoadoutBriefingReady(

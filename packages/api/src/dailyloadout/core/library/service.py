@@ -165,6 +165,17 @@ class LibraryService:
         total = await self._library_repo.count_for_user(user_id, status=status)
         return entries, total
 
+    async def get_entry(self, user_id: int, entry_public_id: UUID) -> LibraryEntry:
+        """Return a single library entry owned by the user.
+
+        Raises:
+            ValueError: If the entry is not found or not owned by the user.
+        """
+        entry = await self._library_repo.get_by_public_id(entry_public_id, user_id)
+        if entry is None:
+            raise ValueError("Library entry not found")
+        return entry
+
     async def update_entry(
         self,
         user_id: int,

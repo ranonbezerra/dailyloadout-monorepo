@@ -80,7 +80,7 @@ void main() {
     String? briefingText,
     VoidCallback? onAccept,
     VoidCallback? onReject,
-    VoidCallback? onGetBriefing,
+    void Function(String mode)? onGetBriefing,
     VoidCallback? onStartWithBriefing,
   }) {
     return MaterialApp(
@@ -95,7 +95,7 @@ void main() {
             briefingText: briefingText,
             onAccept: onAccept ?? () {},
             onReject: onReject ?? () {},
-            onGetBriefing: onGetBriefing ?? () {},
+            onGetBriefing: onGetBriefing ?? (_) {},
             onStartWithBriefing: onStartWithBriefing ?? () {},
           ),
         ),
@@ -143,11 +143,11 @@ void main() {
       expect(find.text('Action'), findsOneWidget);
     });
 
-    testWidgets('shows "Accept & Start Mission" and '
+    testWidgets('shows "Just play" and '
         '"Reject" buttons when action is null', (tester) async {
       await tester.pumpWidget(buildSubject(loadout: _loadout));
 
-      expect(find.text('Accept & Start Mission'), findsOneWidget);
+      expect(find.text('Just play'), findsOneWidget);
       expect(find.widgetWithText(OutlinedButton, 'Reject'), findsOneWidget);
     });
 
@@ -158,7 +158,7 @@ void main() {
       expect(find.text('Mission started!'), findsOneWidget);
       expect(find.byIcon(Icons.check_circle), findsOneWidget);
       // No action buttons visible
-      expect(find.text('Accept & Start Mission'), findsNothing);
+      expect(find.text('Just play'), findsNothing);
       expect(find.text('Reject'), findsNothing);
     });
 
@@ -168,7 +168,7 @@ void main() {
 
       expect(find.text('Rejected'), findsOneWidget);
       // No action buttons visible
-      expect(find.text('Accept & Start Mission'), findsNothing);
+      expect(find.text('Just play'), findsNothing);
       expect(find.text('Reject'), findsNothing);
     });
 
@@ -227,7 +227,7 @@ void main() {
         buildSubject(loadout: _loadout, onAccept: () => accepted = true),
       );
 
-      await tester.tap(find.text('Accept & Start Mission'));
+      await tester.tap(find.text('Just play'));
 
       expect(accepted, isTrue);
     });
@@ -243,37 +243,58 @@ void main() {
       expect(rejected, isTrue);
     });
 
-    testWidgets('shows "Get briefing" button when no briefing yet', (
+    testWidgets('shows Quick/Deep briefing + Just play when no briefing yet', (
       tester,
     ) async {
       await tester.pumpWidget(buildSubject(loadout: _loadout));
 
-      expect(find.text('Get briefing'), findsOneWidget);
-      expect(find.text('Accept & Start Mission'), findsOneWidget);
+      expect(find.text('Quick briefing'), findsOneWidget);
+      expect(find.text('Deep briefing'), findsOneWidget);
+      expect(find.text('Just play'), findsOneWidget);
     });
 
-    testWidgets('get briefing button calls onGetBriefing callback', (
+    testWidgets('Quick briefing calls onGetBriefing with quick mode', (
+      tester,
+    ) async {
+      String? mode;
+      await tester.pumpWidget(
+        buildSubject(loadout: _loadout, onGetBriefing: (m) => mode = m),
+      );
+
+      await tester.tap(find.text('Quick briefing'));
+
+      expect(mode, 'quick');
+    });
+
+    testWidgets('Deep briefing calls onGetBriefing with deep mode', (
+      tester,
+    ) async {
+      String? mode;
+      await tester.pumpWidget(
+        buildSubject(loadout: _loadout, onGetBriefing: (m) => mode = m),
+      );
+
+      await tester.tap(find.text('Deep briefing'));
+
+      expect(mode, 'deep');
+    });
+
+    testWidgets('shows a spinner and disables briefing while generating', (
       tester,
     ) async {
       var requested = false;
       await tester.pumpWidget(
-        buildSubject(loadout: _loadout, onGetBriefing: () => requested = true),
+        buildSubject(
+          loadout: _loadout,
+          isGeneratingBriefing: true,
+          onGetBriefing: (_) => requested = true,
+        ),
       );
 
-      await tester.tap(find.text('Get briefing'));
-
-      expect(requested, isTrue);
-    });
-
-    testWidgets('shows "Briefing..." while generating a briefing', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        buildSubject(loadout: _loadout, isGeneratingBriefing: true),
-      );
-
-      expect(find.text('Briefing...'), findsOneWidget);
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      // The briefing buttons are disabled mid-generation: tapping is a no-op.
+      await tester.tap(find.text('Quick briefing'));
+      expect(requested, isFalse);
     });
 
     testWidgets('shows briefing text and "Start with briefing" '
@@ -287,9 +308,10 @@ void main() {
 
       expect(find.text('Continue toward the Erdtree.'), findsOneWidget);
       expect(find.text('Start with briefing'), findsOneWidget);
-      // Get briefing is hidden once a briefing has been produced.
-      expect(find.text('Get briefing'), findsNothing);
-      expect(find.text('Accept & Start Mission'), findsNothing);
+      // Briefing options are hidden once a briefing has been produced.
+      expect(find.text('Quick briefing'), findsNothing);
+      expect(find.text('Deep briefing'), findsNothing);
+      expect(find.text('Just play'), findsNothing);
     });
 
     testWidgets('"Start with briefing" calls onStartWithBriefing callback', (

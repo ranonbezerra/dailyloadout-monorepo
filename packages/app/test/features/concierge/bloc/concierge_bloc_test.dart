@@ -38,11 +38,12 @@ void main() {
           () => repository.streamChat(
             message: any(named: 'message'),
             threadId: any(named: 'threadId'),
+            cancelToken: any(named: 'cancelToken'),
           ),
         ).thenAnswer(
           (_) => _deltas(const [
-            ConciergeDelta(delta: 'Play '),
-            ConciergeDelta(delta: 'Hades.'),
+            ConciergeDelta(token: 'Play '),
+            ConciergeDelta(token: 'Hades.'),
             ConciergeDelta(done: true, threadId: 't1'),
           ]),
         );
@@ -70,6 +71,7 @@ void main() {
           () => repository.streamChat(
             message: any(named: 'message'),
             threadId: any(named: 'threadId'),
+            cancelToken: any(named: 'cancelToken'),
           ),
         );
       },
@@ -82,6 +84,7 @@ void main() {
           () => repository.streamChat(
             message: any(named: 'message'),
             threadId: any(named: 'threadId'),
+            cancelToken: any(named: 'cancelToken'),
           ),
         ).thenThrow(
           DioException(
@@ -106,6 +109,7 @@ void main() {
           () => repository.streamChat(
             message: any(named: 'message'),
             threadId: any(named: 'threadId'),
+            cancelToken: any(named: 'cancelToken'),
           ),
         ).thenAnswer(
           (_) => _deltas(const [
@@ -124,12 +128,74 @@ void main() {
     );
 
     blocTest<ConciergeBloc, ConciergeState>(
+      'attaches a recommendation and surfaces tool activity',
+      setUp: () {
+        when(
+          () => repository.streamChat(
+            message: any(named: 'message'),
+            threadId: any(named: 'threadId'),
+            cancelToken: any(named: 'cancelToken'),
+          ),
+        ).thenAnswer(
+          (_) => _deltas(const [
+            ConciergeDelta(tool: 'search_library', phase: 'start'),
+            ConciergeDelta(tool: 'search_library', phase: 'end'),
+            ConciergeDelta(token: 'Give this a go.'),
+            ConciergeDelta(
+              recommendation: Recommendation(id: 'abc', title: 'Hades'),
+            ),
+            ConciergeDelta(done: true, threadId: 't1'),
+          ]),
+        );
+      },
+      build: buildBloc,
+      act: (bloc) =>
+          bloc.add(const SendConciergeMessage('what should I play?')),
+      verify: (bloc) {
+        expect(bloc.state.status, ConciergeStatus.idle);
+        expect(bloc.state.activeTool, isNull); // cleared once the turn ends
+        final last = bloc.state.messages.last;
+        expect(last.text, 'Give this a go.');
+        expect(
+          last.recommendation,
+          const Recommendation(id: 'abc', title: 'Hades'),
+        );
+      },
+    );
+
+    blocTest<ConciergeBloc, ConciergeState>(
+      'cancelling keeps the partial reply and settles idle',
+      setUp: () {
+        when(
+          () => repository.streamChat(
+            message: any(named: 'message'),
+            threadId: any(named: 'threadId'),
+            cancelToken: any(named: 'cancelToken'),
+          ),
+        ).thenThrow(
+          DioException.requestCancelled(
+            requestOptions: RequestOptions(path: '/v1/concierge/chat'),
+            reason: 'cancelled',
+          ),
+        );
+      },
+      build: buildBloc,
+      act: (bloc) => bloc.add(const SendConciergeMessage('hello')),
+      verify: (bloc) {
+        // A cancellation is not an error — no error state, partial kept.
+        expect(bloc.state.status, ConciergeStatus.idle);
+        expect(bloc.state.errorMessage, isNull);
+      },
+    );
+
+    blocTest<ConciergeBloc, ConciergeState>(
       'threads the previous thread id into the next turn',
       setUp: () {
         when(
           () => repository.streamChat(
             message: any(named: 'message'),
             threadId: any(named: 'threadId'),
+            cancelToken: any(named: 'cancelToken'),
           ),
         ).thenAnswer(
           (_) => _deltas(const [
@@ -151,10 +217,15 @@ void main() {
           () => repository.streamChat(
             message: 'first',
             threadId: any(named: 'threadId', that: isNull),
+            cancelToken: any(named: 'cancelToken'),
           ),
         ).called(1);
         verify(
-          () => repository.streamChat(message: 'second', threadId: 'thread-42'),
+          () => repository.streamChat(
+            message: 'second',
+            threadId: 'thread-42',
+            cancelToken: any(named: 'cancelToken'),
+          ),
         ).called(1);
       },
     );

@@ -14,9 +14,11 @@ class ConciergeBloc extends Bloc<ConciergeEvent, ConciergeState> {
     : _conciergeRepository = conciergeRepository,
       super(const ConciergeState()) {
     on<SendConciergeMessage>(_onSendMessage);
+    on<CancelConciergeStream>(_onCancel);
   }
 
   final ConciergeRepository _conciergeRepository;
+  CancelToken? _cancelToken;
 
   Future<void> _onSendMessage(
     SendConciergeMessage event,
@@ -34,14 +36,19 @@ class ConciergeBloc extends Bloc<ConciergeEvent, ConciergeState> {
           const ChatMessage(role: ChatRole.assistant, text: ''),
         ],
         status: ConciergeStatus.streaming,
+        clearActiveTool: true,
       ),
     );
 
+    final cancelToken = CancelToken();
+    _cancelToken = cancelToken;
     final buffer = StringBuffer();
+    Recommendation? recommendation;
     try {
       final stream = _conciergeRepository.streamChat(
         message: text,
         threadId: state.threadId,
+        cancelToken: cancelToken,
       );
       var failed = false;
       await for (final delta in stream) {
@@ -52,35 +59,87 @@ class ConciergeBloc extends Bloc<ConciergeEvent, ConciergeState> {
               messages: _withLastAssistant(delta.error!),
               status: ConciergeStatus.error,
               errorMessage: delta.error,
+              clearActiveTool: true,
             ),
           );
           // Stop here so the trailing done event can't clear the error.
           break;
         }
-        if (delta.delta != null) {
-          buffer.write(delta.delta);
-          emit(state.copyWith(messages: _withLastAssistant(buffer.toString())));
+        if (delta.token != null) {
+          buffer.write(delta.token);
+          emit(
+            state.copyWith(
+              messages: _withLastAssistant(buffer.toString(), recommendation),
+            ),
+          );
+        }
+        if (delta.tool != null) {
+          emit(
+            delta.phase == 'end'
+                ? state.copyWith(clearActiveTool: true)
+                : state.copyWith(activeTool: delta.tool),
+          );
+        }
+        if (delta.recommendation != null) {
+          recommendation = delta.recommendation;
+          emit(
+            state.copyWith(
+              messages: _withLastAssistant(buffer.toString(), recommendation),
+            ),
+          );
+        }
+        if (delta.degrade != null) {
+          buffer
+            ..write('\n\n')
+            ..write(delta.degrade);
+          emit(
+            state.copyWith(
+              messages: _withLastAssistant(buffer.toString(), recommendation),
+            ),
+          );
         }
         if (delta.done && delta.threadId != null) {
           emit(state.copyWith(threadId: delta.threadId));
         }
       }
       if (!failed) {
-        emit(state.copyWith(status: ConciergeStatus.idle));
+        emit(
+          state.copyWith(status: ConciergeStatus.idle, clearActiveTool: true),
+        );
       }
-    } on DioException {
-      _emitError(emit);
+    } on DioException catch (error) {
+      if (CancelToken.isCancel(error)) {
+        // User cancelled: keep the partial reply, just stop streaming.
+        emit(
+          state.copyWith(status: ConciergeStatus.idle, clearActiveTool: true),
+        );
+      } else {
+        _emitError(emit);
+      }
     } on Exception {
       _emitError(emit);
+    } finally {
+      _cancelToken = null;
     }
   }
 
-  /// Replaces the trailing assistant placeholder with [text].
-  List<ChatMessage> _withLastAssistant(String text) {
+  void _onCancel(CancelConciergeStream event, Emitter<ConciergeState> emit) {
+    // Aborts the dio request; the send handler catches the cancellation and
+    // settles the state (keeping the partial reply).
+    _cancelToken?.cancel();
+  }
+
+  /// Replaces the trailing assistant placeholder with [text] and an optional
+  /// validated [recommendation].
+  List<ChatMessage> _withLastAssistant(
+    String text, [
+    Recommendation? recommendation,
+  ]) {
     final messages = [...state.messages];
     messages[messages.length - 1] = ChatMessage(
       role: ChatRole.assistant,
       text: text,
+      recommendation: recommendation,
     );
     return messages;
   }
@@ -91,6 +150,7 @@ class ConciergeBloc extends Bloc<ConciergeEvent, ConciergeState> {
         messages: _withLastAssistant(_fallbackError),
         status: ConciergeStatus.error,
         errorMessage: _fallbackError,
+        clearActiveTool: true,
       ),
     );
   }

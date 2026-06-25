@@ -126,6 +126,15 @@ class _MissionBriefingPageState extends State<MissionBriefingPage> {
     );
   }
 
+  void _onSkipBriefing() {
+    context.read<MissionBloc>().add(
+      StartMission(
+        libraryEntryPublicId: widget.libraryEntryPublicId!,
+        skipBriefing: true,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -256,6 +265,14 @@ class _MissionBriefingPageState extends State<MissionBriefingPage> {
                 'Searches the web for spoiler-free next steps. Takes up to a '
                 'minute.',
             onTap: () => _onSelectMode(true),
+          ),
+          const SizedBox(height: 12),
+          _modeCard(
+            context,
+            icon: Icons.play_arrow,
+            title: 'Just play',
+            subtitle: 'Skip the briefing and start the mission right away.',
+            onTap: _onSkipBriefing,
           ),
         ],
       ),

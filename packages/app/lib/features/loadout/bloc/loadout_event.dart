@@ -54,13 +54,17 @@ final class GenerateLoadoutBriefing extends LoadoutEvent {
   const GenerateLoadoutBriefing({
     required this.publicId,
     required this.libraryEntryPublicId,
+    this.mode = 'quick',
   });
 
   final String publicId;
   final String libraryEntryPublicId;
 
+  /// 'quick' (single-shot) or 'deep' (web-researched).
+  final String mode;
+
   @override
-  List<Object?> get props => [publicId, libraryEntryPublicId];
+  List<Object?> get props => [publicId, libraryEntryPublicId, mode];
 }
 
 /// Dispatched to reject a loadout suggestion.
