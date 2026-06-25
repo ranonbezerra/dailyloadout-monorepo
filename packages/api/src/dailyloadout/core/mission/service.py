@@ -18,7 +18,6 @@ from dailyloadout.core.mission.briefing import (
 )
 from dailyloadout.core.mission.start import create_mission_for_entry
 from dailyloadout.infrastructure.agent.base import AbstractBriefingAgent
-from dailyloadout.infrastructure.cache.base import AbstractCache, NullCache
 from dailyloadout.infrastructure.db.models import LibraryEntry, Mission
 from dailyloadout.infrastructure.db.repositories.library import LibraryRepository
 from dailyloadout.infrastructure.db.repositories.mission import MissionRepository
@@ -37,14 +36,12 @@ class MissionService:
         llm_client: AbstractLLMClient,
         agent: AbstractBriefingAgent | None = None,
         settings: Settings | None = None,
-        cache: AbstractCache | None = None,
     ) -> None:
         self._mission_repo = mission_repo
         self._library_repo = library_repo
         self._llm_client = llm_client
         self._agent = agent
         self._settings = settings or default_settings
-        self._cache = cache or NullCache()
 
     # -- Start mission ---------------------------------------------------
 
@@ -96,7 +93,6 @@ class MissionService:
             user_id=user_id,
             entry=entry,
             briefing_text=briefing_text,
-            cache=self._cache,
         )
 
     # -- Preview briefing ------------------------------------------------
@@ -165,7 +161,7 @@ class MissionService:
             debrief_text=debrief_text,
             extracted_state=extracted_state,
         )
-        await invalidate_user_stats(self._cache, user_id)
+        await invalidate_user_stats(user_id)
 
         return await build_preview(
             self._mission_repo,
@@ -223,7 +219,7 @@ class MissionService:
 
         await self._mission_repo.set_debrief(mission.id, debrief_text)
         await self._mission_repo.end_mission(mission.id, ended_via="debrief_completed")
-        await invalidate_user_stats(self._cache, user_id)
+        await invalidate_user_stats(user_id)
 
         game_title = mission.library_entry.game.title
         try:
@@ -259,7 +255,7 @@ class MissionService:
             )
 
         await self._mission_repo.end_mission(mission.id, ended_via=ended_via)
-        await invalidate_user_stats(self._cache, user_id)
+        await invalidate_user_stats(user_id)
         return await self.get_mission(user_id, mission_public_id)
 
     # -- Regenerate briefing ---------------------------------------------

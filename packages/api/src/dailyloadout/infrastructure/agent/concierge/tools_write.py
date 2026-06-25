@@ -17,14 +17,20 @@ from __future__ import annotations
 
 import structlog
 from fastapi import HTTPException
-from pydantic import BaseModel, Field
 
 from dailyloadout.config import Settings
+from dailyloadout.core.cache.invalidation import invalidate_user_stats
 from dailyloadout.core.mission.briefing import BriefingMode, generate_briefing_for_mode
 from dailyloadout.core.mission.start import create_mission_for_entry
 from dailyloadout.infrastructure.agent.base import AbstractBriefingAgent
 from dailyloadout.infrastructure.agent.concierge.base import ConciergeTool
 from dailyloadout.infrastructure.agent.concierge.tools import _resolve_entry
+from dailyloadout.infrastructure.agent.concierge.write_schemas import (
+    GenerateBriefingArgs,
+    RetroactiveDebriefArgs,
+    SetStatusArgs,
+    StartMissionArgs,
+)
 from dailyloadout.infrastructure.db.repositories.library import LibraryRepository
 from dailyloadout.infrastructure.db.repositories.mission import MissionRepository
 from dailyloadout.infrastructure.llm.base import AbstractLLMClient
@@ -162,6 +168,7 @@ async def submit_retroactive_debrief(
         debrief_text=debrief_text,
         extracted_state=extracted_state,
     )
+    await invalidate_user_stats(user_id)
     next_action = (extracted_state or {}).get("next_action")
     logged = f"Logged your past session for {entry.game.title}."
     if next_action:
@@ -187,40 +194,8 @@ async def set_status(
         return "That game is not in the library."
 
     await library_repo.update(entry, status=normalised)
+    await invalidate_user_stats(user_id)
     return f"Marked {entry.game.title} as {normalised}."
-
-
-# -- LLM-facing argument schemas ------------------------------------------------
-
-
-class StartMissionArgs(BaseModel):
-    library_entry_public_id: str = Field(..., description="The game's id (from search_library).")
-    briefing: str = Field(
-        "none",
-        description="'quick' to start with a short briefing, or 'none' to start without one.",
-    )
-
-
-class GenerateBriefingArgs(BaseModel):
-    mode: str = Field(
-        "quick",
-        description="'quick' for a fast briefing, or 'deep' for web-researched (slower).",
-    )
-
-
-class RetroactiveDebriefArgs(BaseModel):
-    library_entry_public_id: str = Field(..., description="The game's id (from search_library).")
-    debrief_text: str = Field(
-        ..., description="What the player did in their past, untracked session."
-    )
-
-
-class SetStatusArgs(BaseModel):
-    library_entry_public_id: str = Field(..., description="The game's id (from search_library).")
-    status: str = Field(
-        ...,
-        description="New status: backlog, playing, paused, completed, or dropped.",
-    )
 
 
 def build_concierge_write_tools(

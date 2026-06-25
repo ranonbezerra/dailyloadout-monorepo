@@ -8,7 +8,6 @@ from dailyloadout.config import settings
 from dailyloadout.core.mission.service import MissionService
 from dailyloadout.infrastructure.agent.base import AbstractBriefingAgent
 from dailyloadout.infrastructure.agent.factory import get_briefing_agent
-from dailyloadout.infrastructure.cache.factory import get_cache
 from dailyloadout.infrastructure.db.repositories.mission import MissionRepository
 
 from .capture import LLMClientDep
@@ -53,7 +52,6 @@ def get_mission_service(
         llm_client,
         agent=agent,
         settings=settings,
-        cache=get_cache(settings),
     )
 
 

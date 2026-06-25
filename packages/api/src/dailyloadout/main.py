@@ -68,7 +68,8 @@ async def _auto_clamp_loop() -> None:
             async with async_session_factory() as session:
                 repo = MissionRepository(session)
                 clamped = await auto_clamp_stale_missions(
-                    repo, max_hours=settings.mission_auto_clamp_hours
+                    repo,
+                    max_hours=settings.mission_auto_clamp_hours,
                 )
                 await session.commit()
                 if clamped:

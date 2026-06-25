@@ -9,7 +9,6 @@ from fastapi import HTTPException, status
 
 from dailyloadout.core.loadout.pick import pick_one
 from dailyloadout.core.mission.start import create_mission_for_entry
-from dailyloadout.infrastructure.cache.base import AbstractCache, NullCache
 from dailyloadout.infrastructure.db.models import Loadout
 from dailyloadout.infrastructure.db.repositories.library import LibraryRepository
 from dailyloadout.infrastructure.db.repositories.loadout import LoadoutRepository
@@ -30,13 +29,11 @@ class LoadoutService:
         library_repo: LibraryRepository,
         mission_repo: MissionRepository,
         llm_client: AbstractLLMClient,
-        cache: AbstractCache | None = None,
     ) -> None:
         self._loadout_repo = loadout_repo
         self._library_repo = library_repo
         self._mission_repo = mission_repo
         self._llm_client = llm_client
-        self._cache = cache or NullCache()
 
     async def create_loadout(
         self,
@@ -231,7 +228,6 @@ class LoadoutService:
             user_id=user_id,
             entry=entry,
             briefing_text=briefing_text,
-            cache=self._cache,
         )
 
         await self._loadout_repo.set_action(loadout.id, "accepted")

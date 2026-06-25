@@ -72,7 +72,7 @@ async def test_overview_recomputes_after_invalidation() -> None:
     service = _service(repo, cache)
 
     await service.get_overview(1, _NOW)
-    await invalidate_user_stats(cache, 1)  # e.g. a mission just ended
+    await invalidate_user_stats(1, cache=cache)  # e.g. a mission just ended
     await service.get_overview(1, _NOW)
 
     assert repo.overview_calls == 2

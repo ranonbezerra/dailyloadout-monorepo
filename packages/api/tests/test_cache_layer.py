@@ -169,7 +169,7 @@ async def test_invalidate_user_stats_only_busts_that_user() -> None:
     cache.store[stats_key(1, "timeline", 20, 0)] = {"b": 2}
     cache.store[stats_key(2, "overview")] = {"c": 3}
 
-    await invalidate_user_stats(cache, 1)
+    await invalidate_user_stats(1, cache=cache)
 
     # User 1's whole slice is gone; user 2 is untouched (no cross-user leak).
     assert stats_key(1, "overview") not in cache.store
@@ -188,7 +188,7 @@ async def test_invalidation_forces_recompute() -> None:
 
     key = stats_key(1, "overview")
     a = await cached_call(cache=cache, key=key, ttl_seconds=10, namespace="stats", compute=compute)
-    await invalidate_user_stats(cache, 1)
+    await invalidate_user_stats(1, cache=cache)
     b = await cached_call(cache=cache, key=key, ttl_seconds=10, namespace="stats", compute=compute)
 
     assert a == {"n": 1}

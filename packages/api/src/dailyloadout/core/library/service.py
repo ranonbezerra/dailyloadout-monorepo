@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import date
 from uuid import UUID
 
+from dailyloadout.core.cache.invalidation import invalidate_user_stats
 from dailyloadout.infrastructure.db.models import Game, LibraryEntry, Platform
 from dailyloadout.infrastructure.db.repositories.game import GameRepository
 from dailyloadout.infrastructure.db.repositories.library import LibraryRepository
@@ -124,6 +125,7 @@ class LibraryService:
         # Attach resolved relationships so callers can serialize immediately.
         entry.game = game
         entry.platform = platform
+        await invalidate_user_stats(user_id)
         return entry
 
     async def list_library(
@@ -155,7 +157,9 @@ class LibraryService:
         if entry is None:
             raise ValueError("Library entry not found")
 
-        return await self._library_repo.update(entry, **fields)
+        updated = await self._library_repo.update(entry, **fields)
+        await invalidate_user_stats(user_id)
+        return updated
 
     async def delete_entry(self, user_id: int, entry_public_id: UUID) -> None:
         """Delete a library entry, validating ownership.
@@ -168,3 +172,4 @@ class LibraryService:
             raise ValueError("Library entry not found")
 
         await self._library_repo.delete(entry)
+        await invalidate_user_stats(user_id)
