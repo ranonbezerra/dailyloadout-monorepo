@@ -4,7 +4,9 @@ from typing import Annotated
 
 from fastapi import Depends
 
+from dailyloadout.config import settings
 from dailyloadout.core.loadout.service import LoadoutService
+from dailyloadout.infrastructure.cache.factory import get_cache
 from dailyloadout.infrastructure.db.repositories.loadout import LoadoutRepository
 
 from .capture import LLMClientDep
@@ -33,7 +35,9 @@ def get_loadout_service(
     llm_client: LLMClientDep,
 ) -> LoadoutService:
     """Provide a ``LoadoutService`` wired to the current dependencies."""
-    return LoadoutService(loadout_repo, library_repo, mission_repo, llm_client)
+    return LoadoutService(
+        loadout_repo, library_repo, mission_repo, llm_client, cache=get_cache(settings)
+    )
 
 
 LoadoutServiceDep = Annotated[LoadoutService, Depends(get_loadout_service)]

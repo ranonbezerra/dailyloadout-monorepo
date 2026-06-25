@@ -25,6 +25,21 @@ class AbstractCache(ABC):
         """Store *value* under *key* for *ttl_seconds*. Best-effort (never raises)."""
         ...
 
+    @abstractmethod
+    async def delete(self, key: str) -> None:
+        """Drop a single *key*. Best-effort (never raises)."""
+        ...
+
+    @abstractmethod
+    async def delete_namespace(self, prefix: str) -> None:
+        """Drop every key starting with *prefix*. Best-effort (never raises).
+
+        The unit of invalidation: a user's stats live under ``stats:<id>:`` and
+        are busted as a group on a mission event. Implementations must scope the
+        scan to *prefix* so one user's bust never touches another's keys.
+        """
+        ...
+
 
 class NullCache(AbstractCache):
     """No-op cache: every read misses, every write is dropped."""
@@ -33,4 +48,10 @@ class NullCache(AbstractCache):
         return None
 
     async def set_json(self, key: str, value: Any, ttl_seconds: int) -> None:
+        return None
+
+    async def delete(self, key: str) -> None:
+        return None
+
+    async def delete_namespace(self, prefix: str) -> None:
         return None

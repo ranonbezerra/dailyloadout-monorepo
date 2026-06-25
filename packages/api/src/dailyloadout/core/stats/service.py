@@ -17,14 +17,37 @@ from dailyloadout.core.stats.schemas import (
     TimelineEntry,
     TimelineResponse,
 )
+from dailyloadout.infrastructure.cache.base import AbstractCache, NullCache
+from dailyloadout.infrastructure.cache.keys import NS_STATS, stats_key
+from dailyloadout.infrastructure.cache.layer import cached_call
 from dailyloadout.infrastructure.db.repositories.stats import StatsRepository
 
 
 class StatsService:
-    def __init__(self, stats_repo: StatsRepository) -> None:
+    def __init__(
+        self,
+        stats_repo: StatsRepository,
+        cache: AbstractCache | None = None,
+        ttl_seconds: int = 300,
+    ) -> None:
         self._repo = stats_repo
+        self._cache = cache or NullCache()
+        self._ttl = ttl_seconds
 
     async def get_overview(self, user_id: int, user_created_at: datetime) -> StatsOverviewResponse:
+        return await cached_call(
+            cache=self._cache,
+            key=stats_key(user_id, "overview"),
+            ttl_seconds=self._ttl,
+            namespace=NS_STATS,
+            compute=lambda: self._compute_overview(user_id, user_created_at),
+            loads=StatsOverviewResponse.model_validate,
+            dumps=lambda m: m.model_dump(mode="json"),
+        )
+
+    async def _compute_overview(
+        self, user_id: int, user_created_at: datetime
+    ) -> StatsOverviewResponse:
         total_games = await self._repo.total_games(user_id)
         status_counts = await self._repo.status_counts(user_id)
         missions_30d = await self._repo.missions_last_30d(user_id)
@@ -38,6 +61,19 @@ class StatsService:
         )
 
     async def get_play_heatmap(
+        self, user_id: int, from_date: date | None, to_date: date | None
+    ) -> PlayHeatmapResponse:
+        return await cached_call(
+            cache=self._cache,
+            key=stats_key(user_id, "heatmap", from_date, to_date),
+            ttl_seconds=self._ttl,
+            namespace=NS_STATS,
+            compute=lambda: self._compute_play_heatmap(user_id, from_date, to_date),
+            loads=PlayHeatmapResponse.model_validate,
+            dumps=lambda m: m.model_dump(mode="json"),
+        )
+
+    async def _compute_play_heatmap(
         self, user_id: int, from_date: date | None, to_date: date | None
     ) -> PlayHeatmapResponse:
         missions = await self._repo.ended_missions_in_range(user_id, from_date, to_date)
@@ -56,6 +92,17 @@ class StatsService:
         return PlayHeatmapResponse(days=days)
 
     async def get_genre_stats(self, user_id: int) -> GenreStatsResponse:
+        return await cached_call(
+            cache=self._cache,
+            key=stats_key(user_id, "genres"),
+            ttl_seconds=self._ttl,
+            namespace=NS_STATS,
+            compute=lambda: self._compute_genre_stats(user_id),
+            loads=GenreStatsResponse.model_validate,
+            dumps=lambda m: m.model_dump(mode="json"),
+        )
+
+    async def _compute_genre_stats(self, user_id: int) -> GenreStatsResponse:
         missions = await self._repo.ended_missions_with_games(user_id)
         genre_map: dict[str, dict[str, int]] = defaultdict(
             lambda: {"total_minutes": 0, "mission_count": 0}
@@ -82,6 +129,17 @@ class StatsService:
         return GenreStatsResponse(genres=genre_stats)
 
     async def get_platform_stats(self, user_id: int) -> PlatformStatsResponse:
+        return await cached_call(
+            cache=self._cache,
+            key=stats_key(user_id, "platforms"),
+            ttl_seconds=self._ttl,
+            namespace=NS_STATS,
+            compute=lambda: self._compute_platform_stats(user_id),
+            loads=PlatformStatsResponse.model_validate,
+            dumps=lambda m: m.model_dump(mode="json"),
+        )
+
+    async def _compute_platform_stats(self, user_id: int) -> PlatformStatsResponse:
         entries, missions = await self._repo.library_and_missions_for_platforms(user_id)
         # Build platform map from library entries
         plat_map: dict[int, dict[str, Any]] = {}
@@ -115,6 +173,19 @@ class StatsService:
         return PlatformStatsResponse(platforms=platforms)
 
     async def get_timeline(
+        self, user_id: int, limit: int = 20, offset: int = 0
+    ) -> TimelineResponse:
+        return await cached_call(
+            cache=self._cache,
+            key=stats_key(user_id, "timeline", limit, offset),
+            ttl_seconds=self._ttl,
+            namespace=NS_STATS,
+            compute=lambda: self._compute_timeline(user_id, limit, offset),
+            loads=TimelineResponse.model_validate,
+            dumps=lambda m: m.model_dump(mode="json"),
+        )
+
+    async def _compute_timeline(
         self, user_id: int, limit: int = 20, offset: int = 0
     ) -> TimelineResponse:
         missions, total = await self._repo.recent_missions(user_id, limit=limit, offset=offset)
