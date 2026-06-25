@@ -889,9 +889,10 @@ IGDB is opt-in via `IGDB_CLIENT_ID` / `IGDB_CLIENT_SECRET` — graceful `IGDBNot
 
 - [x] **Attribution** — visible static "Game data from IGDB.com" credit (web sidebar, linked) + "Game data provided by IGDB.com" (Flutter library footer); README acknowledgement corrected. (Storing/caching IGDB fields is explicitly allowed/encouraged by IGDB; non-commercial use is free.)
 - [x] **Dev smoke-test** — `scripts/check_igdb.py` + `make igdb-check q="…"` to verify live credentials without booting the app.
-- [ ] **Token in Redis (or a process-singleton client)** so the Twitch token isn't re-fetched per request; shared across API + worker processes.
-- [ ] **Redis result cache** for `search_games`, keyed by normalized query, TTL ~7–30d (game metadata is stable); cache-miss falls through to the live call. Behind the existing optional-IGDB flag; dummy/no-IGDB paths and tests unaffected (fakeredis or a dummy cache port in CI).
-- [ ] Optional: handle `429 Too Many Requests` with a short backoff (the 4 req/s limiter already avoids it under normal single-import load).
+- [x] **Process-singleton client** (`deps.get_igdb_client_dep` memoised) so the Twitch token is reused across requests instead of re-authenticating per request.
+- [x] **Redis result cache** for `search_games` via a new cache port (`infrastructure/cache/`: `AbstractCache` + `NullCache` + `RedisCache`, factory by `app_env`/`cache_enabled`) and a `CachedIGDBClient` decorator (`IGDBSearchClient` protocol), keyed by normalized query+limit, TTL `igdb_cache_ttl_seconds` (7d). Best-effort: cache miss/outage falls through to live. Verified live: 1479ms → 1ms on a repeat lookup. Dummy/no-IGDB paths unaffected; `RedisCache` omitted from coverage like other adapters.
+- [ ] Optional: handle `429 Too Many Requests` with a short backoff (the 4 req/s limiter already avoids it under normal single-import load). *Folded into Epic 18.*
+- [ ] Optional: share the Twitch token cross-process via Redis (the singleton already covers the single-process inline path; the worker doesn't currently call IGDB). *Folded into Epic 18.*
 
 ### Definition of Done
 
@@ -899,6 +900,52 @@ IGDB is opt-in via `IGDB_CLIENT_ID` / `IGDB_CLIENT_SECRET` — graceful `IGDBNot
 - The Twitch token is fetched once and reused across requests (not per request).
 - Repeat `search_games` for the same title is served from Redis; a cold import of popular titles is materially faster and makes far fewer IGDB calls.
 - No regression to the optional/`dummy`/no-IGDB paths; coverage parity for the cache layer.
+
+---
+
+## Epic 18 — Application caching layer & strategy (v1.1+)
+
+**Goal:** promote the throwaway cache primitive introduced in Epic 17 into a **first-class, app-wide caching strategy** that materially cuts latency and LLM/API cost across every expensive path — not just IGDB. The hard parts are *correctness* (what is safe to cache, and how it's invalidated) and *coherence* (one consistent mechanism, keyed, observable, degradable), not the Redis calls themselves.
+
+**Status:** not started. Epic 17 shipped the seed: an `AbstractCache` port (`NullCache`/`RedisCache`) and one consumer (IGDB). This epic generalises that seed into a deliberate layer with an invalidation model, stampede protection, tiering, and observability.
+
+### Why this deserves its own epic
+
+The app has several genuinely expensive, repeat-heavy operations — a **deep research briefing** fires ~4 LLM calls plus web research; **stats** aggregate every mission on each dashboard load; **IGDB/SearXNG** are rate-limited network hops. Today each is recomputed from scratch every time. Caching these is the single biggest lever on both **perceived latency** and **inference/API cost** (the same cost thesis behind Epics 13–15). But naive caching is dangerous here: briefings depend on *mutable* session state, and stats are *per-user* — cache the wrong key or skip an invalidation and you serve stale or, worse, another user's data. So the value is high and the failure modes are real: it warrants a designed layer, not ad-hoc `redis.get` calls sprinkled per feature.
+
+### Scope — what to cache (highest value first)
+
+| Target | Key | TTL / invalidation | Why |
+|---|---|---|---|
+| **Deep research briefing** (Epic 10) | `(game_id, normalized session-state hash, mode)` | TTL (days) + **bust on new debrief** for that entry | The most expensive op (multi-LLM + web). Biggest single win. |
+| **LLM completions** (capture parse, loadout pick) | content-addressed `(model, prompt hash, json-mode)` | short TTL | De-dupes identical prompts; cheap correctness (idempotent inputs). |
+| **Web research / SearXNG** (Epic 10) | `normalized query` | TTL (hours) | Network hop; queries repeat across briefings. |
+| **Stats / analytics** (Epic 9) | `(user_id, window)` per overview/genre/platform | short TTL + **bust on mission start/end + debrief** | Recomputed on every dashboard load; per-user. |
+| **IGDB search** (Epic 17) | done | — | Already shipped as the seed. |
+| **Twitch/IGDB token** | `igdb:token` in Redis | `expires_in` | Cross-process sharing beyond the per-process singleton. |
+| **Reference data** (platforms, genres) | static keys | long TTL + in-process LRU | Tiny, hot, read on most pages. |
+
+### Cross-cutting mechanics
+
+- [ ] **Key + namespace convention** — a typed key-builder and per-namespace prefixes (`igdb:`, `briefing:`, `llm:`, `stats:<user_id>:`); **never** mix users into a shared key.
+- [ ] **Invalidation model** — a documented map from domain events → busted keys (new debrief ⇒ that game's briefing + that user's stats; mission start/end ⇒ stats). Event hooks live at the service layer, not scattered.
+- [ ] **Single-flight / stampede protection** — a per-key in-flight guard so N concurrent identical requests (e.g. two tabs opening the same deep briefing) trigger **one** computation and the rest await it. Critical for the LLM/briefing paths.
+- [ ] **Tiered cache** — optional in-process LRU in front of Redis for small, hot, shared data (platforms/genres) to skip a network round-trip; Redis for everything user- or size-significant.
+- [ ] **Observability** — per-namespace hit/miss counters (structured logs + optional metrics) so TTLs can be tuned against real hit rates, plus a `make cache-stats`-style readout.
+- [ ] **Safety & degradation** — every cache read is best-effort (outage ⇒ live); a global `cache_enabled` kill-switch; explicit opt-out per call where freshness must be guaranteed.
+- [ ] **Ops** — per-namespace TTL config; document a Redis `maxmemory-policy` (e.g. `allkeys-lru`) and memory budget; optional warm-up of popular IGDB titles.
+- [ ] **Tests** — invalidation correctness (event busts the right keys, never a cross-user key), single-flight (one compute under concurrency), tiered read-through, and graceful degradation when the cache is down. `RedisCache` stays integration-tested; the strategy/logic is unit-tested with a fake cache.
+
+### Definition of Done
+
+- Deep briefings, stats, LLM completions, and web research are cached through **one** mechanism with explicit, tested invalidation — no stale-data or cross-user leaks.
+- A concurrent burst of identical expensive requests computes once (single-flight), not N times.
+- Cache hit/miss is observable per namespace; TTLs are config-driven.
+- Everything degrades to live on a cache outage; a single flag disables all caching; `dummy`/test paths are unaffected.
+
+### Why this is a separate epic (not folded into Epic 17)
+
+Epic 17 is a tactical fix for one adapter. This is a **cross-cutting architectural concern** touching the briefing graph, the LLM port, stats, and research — with a real correctness surface (invalidation, per-user isolation, stampede control) that deserves its own design and review rather than being smuggled in feature-by-feature.
 
 ---
 

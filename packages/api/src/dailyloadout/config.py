@@ -19,6 +19,8 @@ class Settings(BaseSettings):
 
     # ── Redis ────────────────────────────────────────────────────────────
     redis_url: str = "redis://localhost:6380/0"
+    # Best-effort caching (IGDB lookups, etc.); off => NullCache (Epic 17).
+    cache_enabled: bool = True
 
     # ── Single-user mode ─────────────────────────────────────────────────
     single_user_mode: bool = False
@@ -88,6 +90,8 @@ class Settings(BaseSettings):
     # ── IGDB (optional) ──────────────────────────────────────────────────
     igdb_client_id: str = ""
     igdb_client_secret: str = ""
+    # Cache IGDB search results this long (game metadata is stable). 7 days.
+    igdb_cache_ttl_seconds: int = 7 * 24 * 3600
 
     # ── OAuth Google (optional) ──────────────────────────────────────────
     google_oauth_client_id: str = ""

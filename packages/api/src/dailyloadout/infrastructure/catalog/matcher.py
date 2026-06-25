@@ -13,7 +13,7 @@ import re
 import structlog
 from rapidfuzz import fuzz
 
-from dailyloadout.infrastructure.igdb.client import IGDBClient
+from dailyloadout.infrastructure.igdb.base import IGDBSearchClient
 from dailyloadout.infrastructure.igdb.schemas import IGDBGame
 
 from .base import AbstractCatalogMatcher, CatalogMatch
@@ -55,7 +55,9 @@ def best_match(
 
 
 class IGDBCatalogMatcher(AbstractCatalogMatcher):
-    def __init__(self, igdb_client: IGDBClient, min_score: float = _DEFAULT_MIN_SCORE) -> None:
+    def __init__(
+        self, igdb_client: IGDBSearchClient, min_score: float = _DEFAULT_MIN_SCORE
+    ) -> None:
         self._igdb_client = igdb_client
         self._min_score = min_score
 

@@ -114,6 +114,8 @@ omit = [
     # only — the escalation/cap business logic is tested in the import processor.
     "src/dailyloadout/infrastructure/ocr/tesseract.py",
     "src/dailyloadout/infrastructure/ocr/vision.py",
+    # Redis cache adapter — needs a live Redis, integration-tested only.
+    "src/dailyloadout/infrastructure/cache/redis_cache.py",
     # ChatOllama tool-calling path — exercised only with a real model, not in CI.
     "src/dailyloadout/infrastructure/agent/concierge/langgraph_agent.py",
 ]

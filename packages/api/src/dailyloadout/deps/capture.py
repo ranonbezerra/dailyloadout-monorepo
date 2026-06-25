@@ -8,10 +8,13 @@ from fastapi import Depends
 
 from dailyloadout.config import settings
 from dailyloadout.core.capture.service import CaptureService
+from dailyloadout.infrastructure.cache.factory import get_cache
 from dailyloadout.infrastructure.db.repositories.capture import (
     CaptureCandidateRepository,
     CaptureRepository,
 )
+from dailyloadout.infrastructure.igdb.base import IGDBSearchClient
+from dailyloadout.infrastructure.igdb.cached import CachedIGDBClient
 from dailyloadout.infrastructure.igdb.client import IGDBClient
 from dailyloadout.infrastructure.igdb.exceptions import IGDBNotConfiguredError
 from dailyloadout.infrastructure.llm.base import AbstractLLMClient
@@ -47,12 +50,25 @@ def get_llm_client_dep() -> AbstractLLMClient:
     return get_llm_client(settings)
 
 
-def get_igdb_client_dep() -> IGDBClient | None:
-    """Provide the IGDB client, or ``None`` if credentials are missing."""
-    try:
-        return IGDBClient(settings)
-    except IGDBNotConfiguredError:
-        return None
+# Singleton: built once so the Twitch OAuth token is reused across requests
+# (rather than re-authenticating per request), and wrapped with the result cache.
+_igdb_client: IGDBSearchClient | None = None
+_igdb_initialized = False
+
+
+def get_igdb_client_dep() -> IGDBSearchClient | None:
+    """Provide the cached IGDB client (singleton), or ``None`` if unconfigured."""
+    global _igdb_client, _igdb_initialized
+    if not _igdb_initialized:
+        try:
+            base = IGDBClient(settings)
+            _igdb_client = CachedIGDBClient(
+                base, get_cache(settings), settings.igdb_cache_ttl_seconds
+            )
+        except IGDBNotConfiguredError:
+            _igdb_client = None
+        _igdb_initialized = True
+    return _igdb_client
 
 
 def get_stt_client_dep() -> AbstractSTTClient | None:
@@ -64,7 +80,7 @@ def get_stt_client_dep() -> AbstractSTTClient | None:
 
 
 LLMClientDep = Annotated[AbstractLLMClient, Depends(get_llm_client_dep)]
-IGDBClientDep = Annotated[IGDBClient | None, Depends(get_igdb_client_dep)]
+IGDBClientDep = Annotated[IGDBSearchClient | None, Depends(get_igdb_client_dep)]
 STTClientDep = Annotated[AbstractSTTClient | None, Depends(get_stt_client_dep)]
 
 

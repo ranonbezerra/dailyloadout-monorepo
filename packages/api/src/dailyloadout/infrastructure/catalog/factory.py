@@ -7,13 +7,13 @@ IGDB-backed fuzzy matcher.
 from __future__ import annotations
 
 from dailyloadout.config import Settings
-from dailyloadout.infrastructure.igdb.client import IGDBClient
+from dailyloadout.infrastructure.igdb.base import IGDBSearchClient
 
 from .base import AbstractCatalogMatcher
 
 
 def get_catalog_matcher(
-    settings: Settings, igdb_client: IGDBClient | None
+    settings: Settings, igdb_client: IGDBSearchClient | None
 ) -> AbstractCatalogMatcher:
     """Return the catalog matcher for the current environment.
 

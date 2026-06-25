@@ -24,7 +24,7 @@ from dailyloadout.infrastructure.db.repositories.capture import (
     CaptureCandidateRepository,
     CaptureRepository,
 )
-from dailyloadout.infrastructure.igdb.client import IGDBClient
+from dailyloadout.infrastructure.igdb.base import IGDBSearchClient
 from dailyloadout.infrastructure.igdb.exceptions import IGDBNotConfiguredError
 from dailyloadout.infrastructure.llm.base import AbstractLLMClient
 
@@ -36,7 +36,7 @@ async def process_capture(
     capture_repo: CaptureRepository,
     candidate_repo: CaptureCandidateRepository,
     llm_client: AbstractLLMClient,
-    igdb_client: IGDBClient | None,
+    igdb_client: IGDBSearchClient | None,
 ) -> Capture:
     """Process a capture: extract games via LLM and enrich with IGDB.
 
