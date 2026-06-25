@@ -54,3 +54,31 @@ def stats_key(user_id: int, view: str, *params: Any) -> str:
 def stats_namespace(user_id: int) -> str:
     """Prefix covering *all* of a user's stats keys — the invalidation unit."""
     return f"{NS_STATS}:{user_id}:"
+
+
+# ── Content-addressed keys (no user dimension) ───────────────────────────
+
+
+def briefing_key(mode: str, context: Any) -> str:
+    """Key for a deep briefing, addressed by its grounding context.
+
+    The context *includes* the session's debriefs, so a new debrief changes the
+    digest and naturally yields a fresh key — "bust on new debrief" falls out of
+    content-addressing, no explicit invalidation needed.
+    """
+    return f"{NS_BRIEFING}:{mode}:{digest(context)}"
+
+
+def research_key(query: str, limit: int) -> str:
+    """Key for a web-research query result (provider-agnostic)."""
+    return f"{NS_RESEARCH}:{limit}:{query.strip().lower()}"
+
+
+def llm_key(method: str, role: str, json_mode: bool, payload: Any) -> str:
+    """Content-addressed key for an idempotent LLM call."""
+    return f"{NS_LLM}:{method}:{role}:{int(json_mode)}:{digest(payload)}"
+
+
+def reference_key(name: str) -> str:
+    """Key for a global, rarely-changing reference list (genres, ...)."""
+    return f"{NS_REF}:{name}"

@@ -24,6 +24,15 @@ class Settings(BaseSettings):
     # Per-user stats are recomputed on every dashboard load; cache them briefly
     # and bust on mission start/end/debrief (ROADMAP Epic 18). 5 minutes.
     stats_cache_ttl_seconds: int = 300
+    # Deep briefings (~4 LLM calls + web research) are content-addressed on the
+    # session context, so a new debrief yields a fresh key. Long TTL. 7 days.
+    briefing_cache_ttl_seconds: int = 7 * 24 * 3600
+    # Web-research queries repeat across briefings; cache the network hop. 6h.
+    research_cache_ttl_seconds: int = 6 * 3600
+    # Idempotent LLM completions, de-duped by content. 1 day.
+    llm_cache_ttl_seconds: int = 24 * 3600
+    # Reference data (genre list, etc.) — tiny, hot, rarely changes. 1 hour.
+    reference_cache_ttl_seconds: int = 3600
 
     # ── Single-user mode ─────────────────────────────────────────────────
     single_user_mode: bool = False

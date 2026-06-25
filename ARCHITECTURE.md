@@ -579,6 +579,21 @@ LLM, STT, storage, email, IGDB — each follows the same shape: abstract base cl
 
 Debrief extraction is fire-and-forget: submit the debrief, end the mission, dispatch a Taskiq task, return instantly. The background worker processes the LLM call with retries and exponential backoff. If the worker fails or hasn't run by the time the data is needed (next briefing), the system falls back to synchronous extraction — the user sees a brief loading state, but never loses data. This pattern ("optimistic background processing, pessimistic on-demand fallback") avoids two failure modes: (1) blocking the user on LLM latency for a result they don't need yet, and (2) silently losing debriefs when the worker is down.
 
+### 6.8 Application caching layer (Epic 18)
+
+Every expensive, repeat-heavy operation goes through **one** cache mechanism — a small async port (`infrastructure/cache/`) with a best-effort `RedisCache` and a `NullCache` that the factory returns under tests or when `CACHE_ENABLED=false`. A cache outage degrades to a live compute; it never raises.
+
+The seam is `cached_call()` (`infrastructure/cache/layer.py`): a read-through helper with **single-flight** stampede protection (N concurrent identical misses run *one* compute, the rest await it) and per-namespace hit/miss counters. Keys are built in one place (`infrastructure/cache/keys.py`) with per-namespace prefixes; **user-scoped keys always embed `user_id`** so a bust never crosses users.
+
+Two invalidation strategies, picked by data shape:
+
+- **Per-user, event-invalidated** — `stats:<user_id>:*`. Cached on read; busted on every mutation that shifts an aggregate (mission start/end/debrief, library add/update/delete, capture confirm). Invalidation is **ambient**, like `structlog`'s logger: `invalidate_user_stats(user_id)` resolves the process cache itself, so no service threads a cache for the write side. The boundary: *busting is ambient; caching reads are an injected dependency.*
+- **Content-addressed, TTL-only** — `briefing:`, `research:`, `llm:`, `ref:`. The key is a digest of the inputs, so when inputs change the key changes and stale entries simply age out. The **deep briefing** is the marquee case: its key digests the full `MissionContext` (which *includes* the session's debriefs), so "bust on new debrief" is structural — a new debrief yields a fresh key, no explicit hook. Degraded results (a deep briefing that fell back to quick, an empty LLM/search response) are never stored (`cache_if`), so a transient failure isn't remembered.
+
+Hit/miss is observable per namespace via `GET /v1/cache/stats` (and `make cache-stats`), so TTLs can be tuned against real hit rates.
+
+**Ops:** the cache is advisory, so set Redis `maxmemory` with `maxmemory-policy allkeys-lru` — content-addressed keys (briefings, completions) accumulate orphans by design and should be evicted under pressure rather than erroring. Per-namespace TTLs are config-driven (`*_CACHE_TTL_SECONDS`).
+
 ---
 
 ## 7. Environment variables (preview)
@@ -601,6 +616,14 @@ POSTGRES_PASSWORD=dailyloadout
 POSTGRES_DB=dailyloadout
 DATABASE_URL=postgresql+asyncpg://dailyloadout:dailyloadout@localhost:5433/dailyloadout
 REDIS_URL=redis://localhost:6380/0
+
+# Caching (Epic 18) — off => NullCache (behaves as "no caching")
+CACHE_ENABLED=true
+STATS_CACHE_TTL_SECONDS=300            # per-user stats; busted on mission/library writes
+BRIEFING_CACHE_TTL_SECONDS=604800      # deep briefings (content-addressed); 7 days
+RESEARCH_CACHE_TTL_SECONDS=21600       # web-research queries; 6 hours
+LLM_CACHE_TTL_SECONDS=86400            # idempotent LLM completions; 1 day
+REFERENCE_CACHE_TTL_SECONDS=3600       # genre list and other reference data; 1 hour
 
 # Single-user mode
 SINGLE_USER_MODE=false

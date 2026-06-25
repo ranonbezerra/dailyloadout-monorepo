@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from uuid import UUID
 
-from dailyloadout.core.capture.service import _slugify
+from dailyloadout.core.capture.games import slugify
 from dailyloadout.infrastructure.db.models import CaptureCandidate
 from dailyloadout.infrastructure.db.repositories.game import GameRepository
 from dailyloadout.infrastructure.db.repositories.library import LibraryRepository
@@ -40,7 +40,7 @@ async def find_duplicate_candidate_ids(
         if candidate.igdb_id is not None:
             game = await game_repo.get_by_igdb_id(candidate.igdb_id)
         if game is None:
-            game = await game_repo.get_by_slug(_slugify(candidate.igdb_title or candidate.title))
+            game = await game_repo.get_by_slug(slugify(candidate.igdb_title or candidate.title))
 
         if game is not None and await library_repo.exists(user_id, game.id, platform_id):
             duplicates.append(candidate.public_id)

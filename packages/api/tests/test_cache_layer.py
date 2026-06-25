@@ -135,6 +135,26 @@ async def test_loads_dumps_round_trip() -> None:
     assert out == {"n": 5}
 
 
+async def test_cache_if_skips_storing_rejected_values() -> None:
+    cache = FakeCache()
+    calls = 0
+
+    async def compute() -> str:
+        nonlocal calls
+        calls += 1
+        return ""  # an "empty"/degraded result we don't want to cache
+
+    a = await cached_call(
+        cache=cache, key="k", ttl_seconds=10, namespace="t", compute=compute, cache_if=bool
+    )
+    b = await cached_call(
+        cache=cache, key="k", ttl_seconds=10, namespace="t", compute=compute, cache_if=bool
+    )
+    assert (a, b) == ("", "")
+    assert calls == 2  # never stored, so the second call recomputes
+    assert "k" not in cache.store
+
+
 async def test_single_flight_collapses_concurrent_misses() -> None:
     cache = FakeCache()
     calls = 0

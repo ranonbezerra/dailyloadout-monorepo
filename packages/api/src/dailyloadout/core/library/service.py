@@ -6,6 +6,9 @@ from datetime import date
 from uuid import UUID
 
 from dailyloadout.core.cache.invalidation import invalidate_user_stats
+from dailyloadout.infrastructure.cache.base import AbstractCache, NullCache
+from dailyloadout.infrastructure.cache.keys import NS_REF, reference_key
+from dailyloadout.infrastructure.cache.layer import cached_call
 from dailyloadout.infrastructure.db.models import Game, LibraryEntry, Platform
 from dailyloadout.infrastructure.db.repositories.game import GameRepository
 from dailyloadout.infrastructure.db.repositories.library import LibraryRepository
@@ -13,17 +16,27 @@ from dailyloadout.infrastructure.db.repositories.platform import PlatformReposit
 
 
 class LibraryService:
-    """Orchestrates game catalog and user library operations."""
+    """Orchestrates game catalog and user library operations.
+
+    Writes invalidate stats ambiently (see ``invalidate_user_stats``); the
+    *cache* here is for the read side only — the global genre list (Epic 18
+    reference tier). Mirrors ``StatsService``: caching reads are injected, busts
+    are ambient.
+    """
 
     def __init__(
         self,
         game_repo: GameRepository,
         library_repo: LibraryRepository,
         platform_repo: PlatformRepository,
+        cache: AbstractCache | None = None,
+        reference_ttl_seconds: int = 3600,
     ) -> None:
         self._game_repo = game_repo
         self._library_repo = library_repo
         self._platform_repo = platform_repo
+        self._cache = cache or NullCache()
+        self._reference_ttl = reference_ttl_seconds
 
     # ------------------------------------------------------------------
     # Games
@@ -71,8 +84,18 @@ class LibraryService:
         return await self._game_repo.update(game, **fields)
 
     async def list_genres(self) -> list[str]:
-        """Return all distinct genre names from the games catalog."""
-        return await self._game_repo.distinct_genres()
+        """Return all distinct genre names from the games catalog.
+
+        Global, tiny, and rarely-changing — cached with a TTL (no event bust;
+        new genres surface within the TTL).
+        """
+        return await cached_call(
+            cache=self._cache,
+            key=reference_key("genres"),
+            ttl_seconds=self._reference_ttl,
+            namespace=NS_REF,
+            compute=self._game_repo.distinct_genres,
+        )
 
     async def search_games(self, query: str, limit: int = 20) -> list[Game]:
         """Search games by title."""

@@ -84,12 +84,15 @@ async def cached_call[T](
     compute: Callable[[], Awaitable[T]],
     loads: Callable[[Any], T] | None = None,
     dumps: Callable[[T], Any] | None = None,
+    cache_if: Callable[[T], bool] | None = None,
     skip_cache: bool = False,
 ) -> T:
     """Return a cached value for *key*, computing + storing it on a miss.
 
     *loads*/*dumps* convert between the live value (e.g. a Pydantic model) and a
-    JSON-able cache payload; omit them when the value is already JSON-able. Set
+    JSON-able cache payload; omit them when the value is already JSON-able.
+    *cache_if* gates whether a freshly computed value is stored — use it to skip
+    caching degraded results (e.g. a deep briefing that fell back to quick). Set
     *skip_cache* to force a fresh compute where freshness must be guaranteed.
     """
     if skip_cache:
@@ -109,5 +112,6 @@ async def cached_call[T](
 
         _record(namespace, hit=False)
         value = await compute()
-        await cache.set_json(key, dumps(value) if dumps else value, ttl_seconds)
+        if cache_if is None or cache_if(value):
+            await cache.set_json(key, dumps(value) if dumps else value, ttl_seconds)
         return value

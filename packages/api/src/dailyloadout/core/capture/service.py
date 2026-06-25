@@ -2,16 +2,13 @@
 
 from __future__ import annotations
 
-import re
 from uuid import UUID
 
+from fastapi import HTTPException, status
+
 from dailyloadout.core.cache.invalidation import invalidate_user_stats
-from dailyloadout.infrastructure.db.models import (
-    Capture,
-    CaptureCandidate,
-    Game,
-    LibraryEntry,
-)
+from dailyloadout.core.capture.games import get_or_create_game
+from dailyloadout.infrastructure.db.models import Capture, LibraryEntry
 from dailyloadout.infrastructure.db.repositories.capture import (
     CaptureCandidateRepository,
     CaptureRepository,
@@ -19,15 +16,6 @@ from dailyloadout.infrastructure.db.repositories.capture import (
 from dailyloadout.infrastructure.db.repositories.game import GameRepository
 from dailyloadout.infrastructure.db.repositories.library import LibraryRepository
 from dailyloadout.infrastructure.db.repositories.platform import PlatformRepository
-from fastapi import HTTPException, status
-
-
-def _slugify(title: str) -> str:
-    """Convert a game title into a URL-friendly slug."""
-    slug = title.lower().strip()
-    slug = re.sub(r"[^a-z0-9\s-]", "", slug)
-    slug = re.sub(r"[\s-]+", "-", slug)
-    return slug.strip("-")
 
 
 class CaptureService:
@@ -89,7 +77,12 @@ class CaptureService:
         offset: int = 0,
     ) -> tuple[list[Capture], int]:
         """Return the user's captures along with the total count."""
-        captures = await self._capture_repo.list_for_user(user_id, status=status_filter, limit=limit, offset=offset)
+        captures = await self._capture_repo.list_for_user(
+            user_id,
+            status=status_filter,
+            limit=limit,
+            offset=offset,
+        )
         total = await self._capture_repo.count_for_user(user_id, status=status_filter)
         return captures, total
 
@@ -132,7 +125,7 @@ class CaptureService:
                 detail="Platform not found",
             )
 
-        game = await self._get_or_create_game(candidate)
+        game = await get_or_create_game(self._game_repo, candidate)
 
         # Check for duplicate library entry.
         if await self._library_repo.exists(user_id, game.id, platform_id):
@@ -151,35 +144,15 @@ class CaptureService:
         entry.platform = platform
 
         # Mark candidate as confirmed.
-        await self._candidate_repo.update_status(candidate.id, "confirmed", matched_game_id=game.id)
+        await self._candidate_repo.update_status(
+            candidate.id,
+            "confirmed",
+            matched_game_id=game.id,
+        )
         await self._resolve_capture_status(capture.id)
         await invalidate_user_stats(user_id)
 
         return entry
-
-    async def _get_or_create_game(self, candidate: CaptureCandidate) -> Game:
-        """Resolve a candidate to a ``Game`` row, creating it if needed."""
-        if candidate.igdb_id is not None:
-            game = await self._game_repo.get_by_igdb_id(candidate.igdb_id)
-            if game is not None:
-                return game
-
-        title = candidate.igdb_title or candidate.title
-        slug = _slugify(title)
-        existing = await self._game_repo.get_by_slug(slug)
-        if existing is not None:
-            return existing
-
-        return await self._game_repo.create(
-            slug=slug,
-            title=title,
-            metadata_source="igdb" if candidate.igdb_id else "capture",
-            igdb_id=candidate.igdb_id,
-            summary=candidate.igdb_summary,
-            cover_url=candidate.igdb_cover_url,
-            first_release_date=candidate.igdb_first_release_date,
-            genres=candidate.igdb_genres,
-        )
 
     async def bulk_confirm_candidates(
         self,
@@ -223,7 +196,7 @@ class CaptureService:
             if new_title and new_title != candidate.title:
                 await self._candidate_repo.set_title(candidate.id, new_title)
 
-            game = await self._get_or_create_game(candidate)
+            game = await get_or_create_game(self._game_repo, candidate)
             if not await self._library_repo.exists(user_id, game.id, platform_id):
                 await self._library_repo.create(
                     user_id=user_id,
@@ -231,7 +204,11 @@ class CaptureService:
                     platform_id=platform_id,
                     status=library_status,
                 )
-            await self._candidate_repo.update_status(candidate.id, "confirmed", matched_game_id=game.id)
+            await self._candidate_repo.update_status(
+                candidate.id,
+                "confirmed",
+                matched_game_id=game.id,
+            )
             confirmed += 1
 
         await self._resolve_capture_status(capture.id)

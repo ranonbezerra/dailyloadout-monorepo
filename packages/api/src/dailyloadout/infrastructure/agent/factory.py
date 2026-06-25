@@ -30,12 +30,24 @@ def get_briefing_agent(
         return DummyBriefingAgent()
 
     if provider == "langgraph":
+        from dailyloadout.infrastructure.cache.factory import get_cache
+        from dailyloadout.infrastructure.llm.cached import CachedLLMClient
+        from dailyloadout.infrastructure.research.cached import CachedResearchClient
         from dailyloadout.infrastructure.research.factory import get_research_client
 
+        from .cached import CachedBriefingAgent
         from .langgraph_agent import LangGraphBriefingAgent
 
-        research = get_research_client(settings)
-        return LangGraphBriefingAgent(llm=llm, research=research, settings=settings)
+        # Three layers of caching (ROADMAP Epic 18 Phase 3): the whole briefing
+        # is cached by context; on a miss, the inner research + LLM-complete
+        # calls are de-duped across runs that share a query or prompt.
+        cache = get_cache(settings)
+        research = CachedResearchClient(
+            get_research_client(settings), cache, settings.research_cache_ttl_seconds
+        )
+        cached_llm = CachedLLMClient(llm, cache, settings.llm_cache_ttl_seconds)
+        agent = LangGraphBriefingAgent(llm=cached_llm, research=research, settings=settings)
+        return CachedBriefingAgent(agent, cache, settings.briefing_cache_ttl_seconds)
 
     msg = f"Unknown agent provider: {provider}"
     raise ValueError(msg)
