@@ -111,7 +111,7 @@ const CAPTURE: Capture = {
 			title: "Hades",
 			platformHint: null,
 			igdbTitle: "Hades",
-			igdbCoverUrl: "https://example.com/hades.jpg",
+			igdbCoverUrl: "https://images.igdb.com/igdb/image/upload/t_cover_big/hades.jpg",
 			igdbSummary: null,
 			igdbGenres: [],
 			confidence: 0.9,

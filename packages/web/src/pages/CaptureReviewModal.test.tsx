@@ -112,7 +112,7 @@ function makeCandidate(overrides: Partial<CaptureCandidate> = {}): CaptureCandid
 		title: "Hollow Knight",
 		platformHint: "PC",
 		igdbTitle: "Hollow Knight",
-		igdbCoverUrl: "https://example.com/cover.jpg",
+		igdbCoverUrl: "https://images.igdb.com/igdb/image/upload/t_cover_big/cover.jpg",
 		igdbSummary: "A metroidvania game",
 		igdbGenres: ["Action", "Platformer"],
 		confidence: 0.9,

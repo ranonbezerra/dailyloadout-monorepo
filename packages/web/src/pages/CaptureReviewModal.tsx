@@ -15,6 +15,7 @@ import { IconCheck, IconX } from "@tabler/icons-react";
 import { useState } from "react";
 import { useCapture, useConfirmCandidate, useRejectCandidate } from "../hooks/useCapture";
 import { usePlatforms } from "../hooks/useLibrary";
+import { safeImageUrl } from "../lib/safe-image";
 import type { CaptureCandidate } from "../types/capture";
 import type { LibraryStatus } from "../types/library";
 
@@ -178,9 +179,9 @@ function CandidateCard({
 	return (
 		<Card withBorder radius="sm" p="md" opacity={isResolved ? 0.6 : 1}>
 			<Group align="flex-start" wrap="nowrap" gap="md">
-				{candidate.igdbCoverUrl && (
+				{safeImageUrl(candidate.igdbCoverUrl) && (
 					<Image
-						src={candidate.igdbCoverUrl}
+						src={safeImageUrl(candidate.igdbCoverUrl)}
 						alt={candidate.igdbTitle ?? candidate.title}
 						w={80}
 						h={110}

@@ -10,13 +10,6 @@ interface AiBriefingOverlayProps {
 	onCancel?: () => void;
 }
 
-const shimmerKeyframes = `
-@keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(200%); }
-}
-`;
-
 export function AiBriefingOverlay({ opened, gameTitle, deep, onCancel }: AiBriefingOverlayProps) {
 	return (
 		<Modal
@@ -35,9 +28,6 @@ export function AiBriefingOverlay({ opened, gameTitle, deep, onCancel }: AiBrief
 				},
 			}}
 		>
-			{/* biome-ignore lint/security/noDangerouslySetInnerHtml: keyframe injection */}
-			<style dangerouslySetInnerHTML={{ __html: shimmerKeyframes }} />
-
 			<Stack align="center" gap="lg" py="md">
 				{/* Spinner with brain icon */}
 				<Box
