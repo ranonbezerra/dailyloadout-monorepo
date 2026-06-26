@@ -2,12 +2,25 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import HTTPException, status
 
-from dailyloadout.core.cache.invalidation import invalidate_user_stats
-from dailyloadout.core.capture.games import get_or_create_game
+from dailyloadout.config import Settings
+from dailyloadout.config import settings as default_settings
+from dailyloadout.core.capture import candidates
+from dailyloadout.core.capture.exceptions import ImportQuotaExceededError
+from dailyloadout.core.capture.ingestion import (
+    temp_image_file,
+    validate_image,
+    validate_import_image,
+)
+from dailyloadout.core.capture.ports import (
+    CaptureProcessor,
+    LibraryImportProcessor,
+)
+from dailyloadout.infrastructure.catalog.base import AbstractCatalogMatcher
 from dailyloadout.infrastructure.db.models import Capture, LibraryEntry
 from dailyloadout.infrastructure.db.repositories.capture import (
     CaptureCandidateRepository,
@@ -16,10 +29,23 @@ from dailyloadout.infrastructure.db.repositories.capture import (
 from dailyloadout.infrastructure.db.repositories.game import GameRepository
 from dailyloadout.infrastructure.db.repositories.library import LibraryRepository
 from dailyloadout.infrastructure.db.repositories.platform import PlatformRepository
+from dailyloadout.infrastructure.db.repositories.usage import UsageCounterRepository
+from dailyloadout.infrastructure.igdb.base import IGDBSearchClient
+from dailyloadout.infrastructure.llm.base import AbstractLLMClient
+from dailyloadout.infrastructure.ocr.base import AbstractOCRClient
+
+# Usage-counter key for the per-day bulk-import image cap.
+_IMPORT_IMAGES_KEY = "library_import_images"
 
 
 class CaptureService:
-    """Orchestrates capture submission, candidate review, and library commits."""
+    """Orchestrates capture submission, candidate review, and library commits.
+
+    Ingestion collaborators (LLM/IGDB/OCR clients, the worker pipelines, the
+    usage repo and catalog matcher) are injected so the routers only parse input
+    and delegate. They are optional because the candidate-review methods do not
+    need them; the submission methods that do will raise if they are missing.
+    """
 
     def __init__(
         self,
@@ -28,12 +54,31 @@ class CaptureService:
         game_repo: GameRepository,
         library_repo: LibraryRepository,
         platform_repo: PlatformRepository,
+        *,
+        usage_repo: UsageCounterRepository | None = None,
+        llm_client: AbstractLLMClient | None = None,
+        igdb_client: IGDBSearchClient | None = None,
+        ocr_client: AbstractOCRClient | None = None,
+        ocr_fallback_client: AbstractOCRClient | None = None,
+        catalog_matcher: AbstractCatalogMatcher | None = None,
+        process_capture: CaptureProcessor | None = None,
+        process_library_import: LibraryImportProcessor | None = None,
+        settings: Settings | None = None,
     ) -> None:
         self._capture_repo = capture_repo
         self._candidate_repo = candidate_repo
         self._game_repo = game_repo
         self._library_repo = library_repo
         self._platform_repo = platform_repo
+        self._usage_repo = usage_repo
+        self._llm_client = llm_client
+        self._igdb_client = igdb_client
+        self._ocr_client = ocr_client
+        self._ocr_fallback_client = ocr_fallback_client
+        self._catalog_matcher = catalog_matcher
+        self._process_capture = process_capture
+        self._process_library_import = process_library_import
+        self._settings = settings or default_settings
 
     # ------------------------------------------------------------------
     # Submission
@@ -54,6 +99,93 @@ class CaptureService:
             input_type="photo",
             image_path=image_path,
         )
+
+    # ------------------------------------------------------------------
+    # Submission + processing (orchestration moved out of the routers)
+    # ------------------------------------------------------------------
+
+    async def submit_and_process_text(
+        self,
+        user_id: int,
+        raw_text: str,
+        input_type: str = "text",
+    ) -> Capture:
+        """Persist a text capture, run the inline pipeline, and return it loaded."""
+        assert self._process_capture is not None and self._llm_client is not None
+        capture = await self.submit_text(user_id, raw_text, input_type)
+        await self._process_capture(
+            capture=capture,
+            capture_repo=self._capture_repo,
+            candidate_repo=self._candidate_repo,
+            llm_client=self._llm_client,
+            igdb_client=self._igdb_client,
+        )
+        return await self.get_capture(user_id, capture.public_id)
+
+    async def submit_and_process_photo(
+        self,
+        user_id: int,
+        contents: bytes,
+        content_type: str | None,
+    ) -> Capture:
+        """Validate, persist (with a temp file), process, and return a photo capture."""
+        assert self._process_capture is not None and self._llm_client is not None
+        validate_image(content_type, len(contents), self._settings)
+        with temp_image_file(contents, content_type, self._settings) as image_path:
+            capture = await self.submit_photo(user_id=user_id, image_path=image_path)
+            await self._process_capture(
+                capture=capture,
+                capture_repo=self._capture_repo,
+                candidate_repo=self._candidate_repo,
+                llm_client=self._llm_client,
+                igdb_client=self._igdb_client,
+            )
+            return await self.get_capture(user_id, capture.public_id)
+
+    async def submit_library_import(
+        self,
+        user_id: int,
+        files: list[tuple[str | None, bytes]],
+    ) -> Capture:
+        """Validate and meter a bulk import, run the pipeline, and return it loaded.
+
+        *files* is a list of ``(content_type, contents)`` tuples. Raises
+        ``InvalidUploadError`` for bad uploads and ``ImportQuotaExceededError``
+        when the per-day image cap is exceeded.
+        """
+        assert self._process_library_import is not None
+        assert self._usage_repo is not None
+        assert self._ocr_client is not None
+        assert self._catalog_matcher is not None
+
+        blobs: list[bytes] = []
+        for content_type, contents in files:
+            validate_import_image(content_type, len(contents), self._settings)
+            blobs.append(contents)
+
+        today = datetime.now(UTC).date()
+        used = await self._usage_repo.get_count(user_id, _IMPORT_IMAGES_KEY, today)
+        if used + len(blobs) > self._settings.library_import_images_per_day:
+            raise ImportQuotaExceededError(
+                "Daily library-import limit reached. Try again tomorrow."
+            )
+        await self._usage_repo.increment(user_id, _IMPORT_IMAGES_KEY, today, amount=len(blobs))
+
+        capture = await self._capture_repo.create(user_id=user_id, input_type="library_import")
+        await self._process_library_import(
+            capture,
+            blobs,
+            user_id=user_id,
+            today=today,
+            capture_repo=self._capture_repo,
+            candidate_repo=self._candidate_repo,
+            usage_repo=self._usage_repo,
+            ocr_client=self._ocr_client,
+            ocr_fallback_client=self._ocr_fallback_client,
+            catalog_matcher=self._catalog_matcher,
+            settings=self._settings,
+        )
+        return await self.get_capture(user_id, capture.public_id)
 
     # ------------------------------------------------------------------
     # Query
@@ -87,7 +219,7 @@ class CaptureService:
         return captures, total
 
     # ------------------------------------------------------------------
-    # Candidate actions
+    # Candidate actions (delegated to ``candidates`` to keep this file lean)
     # ------------------------------------------------------------------
 
     async def confirm_candidate(
@@ -98,61 +230,20 @@ class CaptureService:
         platform_id: int,
         library_status: str = "backlog",
     ) -> LibraryEntry:
-        """Confirm a candidate: create a library entry and mark it confirmed.
-
-        Raises:
-            HTTPException: If the capture, candidate, or platform is not found,
-                or the candidate is not in ``pending`` status.
-        """
+        """Confirm a candidate: create a library entry and mark it confirmed."""
         capture = await self.get_capture(user_id, capture_public_id)
-
-        candidate = await self._candidate_repo.get_by_public_id(candidate_public_id)
-        if candidate is None or candidate.capture_id != capture.id:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Candidate not found",
-            )
-        if candidate.status != "pending":
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"Candidate already {candidate.status}",
-            )
-
-        platform = await self._platform_repo.get_by_id(platform_id)
-        if platform is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Platform not found",
-            )
-
-        game = await get_or_create_game(self._game_repo, candidate)
-
-        # Check for duplicate library entry.
-        if await self._library_repo.exists(user_id, game.id, platform_id):
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Library entry already exists for this game and platform",
-            )
-
-        entry = await self._library_repo.create(
+        return await candidates.confirm_candidate(
             user_id=user_id,
-            game_id=game.id,
+            capture=capture,
+            candidate_public_id=candidate_public_id,
             platform_id=platform_id,
-            status=library_status,
+            library_status=library_status,
+            candidate_repo=self._candidate_repo,
+            capture_repo=self._capture_repo,
+            game_repo=self._game_repo,
+            library_repo=self._library_repo,
+            platform_repo=self._platform_repo,
         )
-        entry.game = game
-        entry.platform = platform
-
-        # Mark candidate as confirmed.
-        await self._candidate_repo.update_status(
-            candidate.id,
-            "confirmed",
-            matched_game_id=game.id,
-        )
-        await self._resolve_capture_status(capture.id)
-        await invalidate_user_stats(user_id)
-
-        return entry
 
     async def bulk_confirm_candidates(
         self,
@@ -163,58 +254,21 @@ class CaptureService:
         library_status: str = "backlog",
         title_overrides: dict[UUID, str] | None = None,
     ) -> tuple[int, int]:
-        """Confirm the listed candidates and reject the rest, in one call.
-
-        Returns ``(confirmed, rejected)`` counts. Duplicate library entries are
-        treated as already-imported (counted as confirmed), not an error, so a
-        bulk import of 50-100 titles never aborts midway.
-        """
+        """Confirm the listed candidates and reject the rest, in one call."""
         capture = await self.get_capture(user_id, capture_public_id)
-        platform = await self._platform_repo.get_by_id(platform_id)
-        if platform is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Platform not found",
-            )
-
-        confirm_set = set(confirm_public_ids)
-        overrides = title_overrides or {}
-        candidates = await self._candidate_repo.get_all_for_capture(capture.id)
-        confirmed = 0
-        rejected = 0
-
-        for candidate in candidates:
-            if candidate.status != "pending":
-                continue
-            if candidate.public_id not in confirm_set:
-                await self._candidate_repo.update_status(candidate.id, "rejected")
-                rejected += 1
-                continue
-
-            # Apply a user-corrected title (drops the stale catalog match).
-            new_title = (overrides.get(candidate.public_id) or "").strip()
-            if new_title and new_title != candidate.title:
-                await self._candidate_repo.set_title(candidate.id, new_title)
-
-            game = await get_or_create_game(self._game_repo, candidate)
-            if not await self._library_repo.exists(user_id, game.id, platform_id):
-                await self._library_repo.create(
-                    user_id=user_id,
-                    game_id=game.id,
-                    platform_id=platform_id,
-                    status=library_status,
-                )
-            await self._candidate_repo.update_status(
-                candidate.id,
-                "confirmed",
-                matched_game_id=game.id,
-            )
-            confirmed += 1
-
-        await self._resolve_capture_status(capture.id)
-        if confirmed:
-            await invalidate_user_stats(user_id)
-        return confirmed, rejected
+        return await candidates.bulk_confirm_candidates(
+            user_id=user_id,
+            capture=capture,
+            confirm_public_ids=confirm_public_ids,
+            platform_id=platform_id,
+            library_status=library_status,
+            title_overrides=title_overrides,
+            candidate_repo=self._candidate_repo,
+            capture_repo=self._capture_repo,
+            game_repo=self._game_repo,
+            library_repo=self._library_repo,
+            platform_repo=self._platform_repo,
+        )
 
     async def reject_candidate(
         self,
@@ -222,54 +276,11 @@ class CaptureService:
         capture_public_id: UUID,
         candidate_public_id: UUID,
     ) -> None:
-        """Reject a candidate.
-
-        Raises:
-            HTTPException: If the capture or candidate is not found, or the
-                candidate is not in ``pending`` status.
-        """
+        """Reject a candidate."""
         capture = await self.get_capture(user_id, capture_public_id)
-
-        candidate = await self._candidate_repo.get_by_public_id(candidate_public_id)
-        if candidate is None or candidate.capture_id != capture.id:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Candidate not found",
-            )
-        if candidate.status != "pending":
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"Candidate already {candidate.status}",
-            )
-
-        await self._candidate_repo.update_status(candidate.id, "rejected")
-        await self._resolve_capture_status(capture.id)
-
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-
-    async def _resolve_capture_status(self, capture_id: int) -> None:
-        """Check whether all candidates are resolved and update the capture status.
-
-        - All confirmed -> ``committed``
-        - All rejected  -> ``cancelled``
-        - Mix           -> ``partially_committed``
-        - Any pending   -> no change
-        """
-        candidates = await self._candidate_repo.get_all_for_capture(capture_id)
-        if not candidates:
-            return
-
-        statuses = {c.status for c in candidates}
-        if "pending" in statuses:
-            return  # Still has unresolved candidates.
-
-        if statuses == {"confirmed"}:
-            new_status = "committed"
-        elif statuses == {"rejected"}:
-            new_status = "cancelled"
-        else:
-            new_status = "partially_committed"
-
-        await self._capture_repo.update_status(capture_id, new_status)
+        await candidates.reject_candidate(
+            capture=capture,
+            candidate_public_id=candidate_public_id,
+            candidate_repo=self._candidate_repo,
+            capture_repo=self._capture_repo,
+        )
