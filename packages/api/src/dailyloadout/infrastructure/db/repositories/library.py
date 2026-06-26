@@ -228,6 +228,18 @@ class LibraryRepository:
         result = await self._session.execute(stmt)
         return list(result.scalars().unique().all())
 
+    async def count_distinct_owners(self, game_id: int) -> int:
+        """Return the number of DISTINCT users who own *game_id* (any platform).
+
+        Drives the catalogue promotion path: a private manual row becomes globally
+        shared once enough independent users own it (anti-abuse Block C).
+        """
+        stmt = select(func.count(func.distinct(LibraryEntry.user_id))).where(
+            LibraryEntry.game_id == game_id
+        )
+        result = await self._session.execute(stmt)
+        return result.scalar_one()
+
     async def exists(self, user_id: int, game_id: int, platform_id: int) -> bool:
         """Return ``True`` if an entry for the given triple already exists."""
         stmt = (

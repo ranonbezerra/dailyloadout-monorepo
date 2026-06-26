@@ -22,8 +22,19 @@ def slugify(title: str) -> str:
     return slug.strip("-")
 
 
-async def get_or_create_game(game_repo: GameRepository, candidate: CaptureCandidate) -> Game:
-    """Resolve a candidate to a ``Game`` row, creating it if needed."""
+async def get_or_create_game(
+    game_repo: GameRepository,
+    candidate: CaptureCandidate,
+    *,
+    created_by_user_id: int | None = None,
+) -> Game:
+    """Resolve a candidate to a ``Game`` row, creating it if needed.
+
+    A newly-created row WITHOUT an IGDB match is a private manual row attributed
+    to ``created_by_user_id`` (anti-abuse Block C): the capturing user sees their
+    own game, but it stays out of everyone else's catalogue until validated. An
+    IGDB-matched row is canonical/global (``is_shared`` follows the IGDB id).
+    """
     if candidate.igdb_id is not None:
         game = await game_repo.get_by_igdb_id(candidate.igdb_id)
         if game is not None:
@@ -35,13 +46,17 @@ async def get_or_create_game(game_repo: GameRepository, candidate: CaptureCandid
     if existing is not None:
         return existing
 
+    is_igdb = candidate.igdb_id is not None
     return await game_repo.create(
         slug=slug,
         title=title,
-        metadata_source="igdb" if candidate.igdb_id else "capture",
+        metadata_source="igdb" if is_igdb else "capture",
         igdb_id=candidate.igdb_id,
         summary=candidate.igdb_summary,
         cover_url=candidate.igdb_cover_url,
         first_release_date=candidate.igdb_first_release_date,
         genres=candidate.igdb_genres,
+        # Manual capture row → private + attributed; IGDB row → globally shared.
+        created_by_user_id=None if is_igdb else created_by_user_id,
+        is_shared=is_igdb,
     )

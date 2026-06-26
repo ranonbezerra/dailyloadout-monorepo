@@ -10,6 +10,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from dailyloadout.infrastructure.db.models import User
 
 
+def _normalize_email(email: str) -> str:
+    """Trim and lowercase an email for consistent storage and lookup."""
+    return email.strip().lower()
+
+
 class UserRepository:
     """Thin data-access layer around the ``users`` table."""
 
@@ -23,8 +28,8 @@ class UserRepository:
         return result.scalar_one_or_none()
 
     async def get_by_email(self, email: str) -> User | None:
-        """Return the active user with *email*, or ``None``."""
-        stmt = select(User).where(User.email == email, User.deleted_at.is_(None))
+        """Return the active user with *email* (normalized), or ``None``."""
+        stmt = select(User).where(User.email == _normalize_email(email), User.deleted_at.is_(None))
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -34,19 +39,35 @@ class UserRepository:
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def create(self, email: str, password_hash: str, display_name: str) -> User:
-        """Insert a new user and return the persisted instance."""
+    async def create(
+        self,
+        email: str,
+        password_hash: str,
+        display_name: str,
+        email_verified: bool = False,
+    ) -> User:
+        """Insert a new user (email normalized) and return the instance."""
         user = User(
-            email=email,
+            email=_normalize_email(email),
             password_hash=password_hash,
             display_name=display_name,
+            email_verified=email_verified,
         )
         self._session.add(user)
         await self._session.flush()
         return user
 
     async def email_exists(self, email: str) -> bool:
-        """Return ``True`` if an active user with *email* already exists."""
-        stmt = select(User.id).where(User.email == email, User.deleted_at.is_(None)).limit(1)
+        """Return ``True`` if an active user with *email* (normalized) exists."""
+        stmt = (
+            select(User.id)
+            .where(User.email == _normalize_email(email), User.deleted_at.is_(None))
+            .limit(1)
+        )
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none() is not None
+
+    async def set_email_verified(self, user: User) -> None:
+        """Mark *user*'s email as verified (idempotent)."""
+        user.email_verified = True
+        await self._session.flush()

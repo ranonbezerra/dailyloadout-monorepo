@@ -5,10 +5,25 @@ from __future__ import annotations
 from datetime import date
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import ColumnElement, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from dailyloadout.infrastructure.db.models import Game
+
+
+def _visible_to(user_id: int) -> ColumnElement[bool]:
+    """Return the catalogue-visibility predicate for *user_id*.
+
+    A game is browsable by user U when it is canonical (``igdb_id`` set), has
+    been promoted to shared, OR was created by U (their own still-private manual
+    row). Manual rows stay private to their creator until validated, so one
+    account cannot inject offensive/junk titles into everyone's catalogue.
+    """
+    return or_(
+        Game.igdb_id.is_not(None),
+        Game.is_shared.is_(True),
+        Game.created_by_user_id == user_id,
+    )
 
 
 class GameRepository:
@@ -45,15 +60,21 @@ class GameRepository:
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def search(self, query: str, limit: int = 20) -> list[Game]:
+    async def search(self, query: str, *, user_id: int, limit: int = 20) -> list[Game]:
         """Search games by title using trigram similarity (ILIKE fallback).
 
-        ``Game`` rows are global/shared, so every matching row is returned.
-        Returns up to *limit* results ordered by relevance.
+        Only rows VISIBLE to *user_id* are returned (canonical/shared rows plus
+        the user's own still-private manual rows); another user's unvalidated
+        private manual rows are excluded. Up to *limit* results, by title.
         """
         escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         pattern = f"%{escaped}%"
-        stmt = select(Game).where(Game.title.ilike(pattern)).order_by(Game.title).limit(limit)
+        stmt = (
+            select(Game)
+            .where(Game.title.ilike(pattern), _visible_to(user_id))
+            .order_by(Game.title)
+            .limit(limit)
+        )
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 
@@ -68,8 +89,14 @@ class GameRepository:
         first_release_date: date | None = None,
         genres: list[str] | None = None,
         created_by_user_id: int | None = None,
+        is_shared: bool = False,
     ) -> Game:
-        """Insert a new game and return the persisted instance."""
+        """Insert a new game and return the persisted instance.
+
+        Defaults to *private* (``is_shared=False``): a fresh manual row is visible
+        only to its creator until promoted. Callers resolving a canonical IGDB row
+        pass ``is_shared=True``.
+        """
         game = Game(
             slug=slug,
             title=title,
@@ -80,6 +107,7 @@ class GameRepository:
             first_release_date=first_release_date,
             genres=genres,
             created_by_user_id=created_by_user_id,
+            is_shared=is_shared,
         )
         self._session.add(game)
         await self._session.flush()
@@ -98,9 +126,13 @@ class GameRepository:
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 
-    async def distinct_genres(self) -> list[str]:
-        """Return all unique genre strings across all games, sorted."""
-        stmt = select(Game.genres).where(Game.genres.is_not(None))
+    async def distinct_genres(self, *, user_id: int) -> list[str]:
+        """Return unique genre strings across games VISIBLE to *user_id*, sorted.
+
+        Genres are sourced only from rows the user may browse, so a private manual
+        row's genres don't leak into another user's filter list.
+        """
+        stmt = select(Game.genres).where(Game.genres.is_not(None), _visible_to(user_id))
         result = await self._session.execute(stmt)
         genres: set[str] = set()
         for (game_genres,) in result.all():

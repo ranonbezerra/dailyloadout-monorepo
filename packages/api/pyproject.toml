@@ -99,6 +99,10 @@ env = [
     # the suite never sees a false 429. The dedicated rate-limit test re-enables
     # it via a settings patch + fake Redis (see test_rate_limit.py).
     "RATE_LIMIT_ENABLED=false",
+    # Cost kill-switch is Redis-backed and fails CLOSED (503 on Redis error);
+    # tests never start Redis, so disable it here. Its dedicated test re-enables
+    # it via a settings patch + fake Redis (see test_cost_guard.py).
+    "COST_GUARD_ENABLED=false",
     # Pin AI providers to dummies so tests never depend on a developer's local
     # .env (e.g. RESEARCH_PROVIDER=searxng) or hit real network/LLM services.
     "AGENT_PROVIDER=dummy",

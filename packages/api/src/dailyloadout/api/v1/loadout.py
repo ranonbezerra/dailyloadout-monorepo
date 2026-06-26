@@ -6,6 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, status
 
+from dailyloadout.api.v1._cost_guard import cost_guard
 from dailyloadout.api.v1._rate_limit import rate_limit
 from dailyloadout.config import settings
 from dailyloadout.core.loadout.schemas import (
@@ -16,7 +17,7 @@ from dailyloadout.core.loadout.schemas import (
     LoadoutResponse,
     LoadoutStartRequest,
 )
-from dailyloadout.deps import CurrentUserDep
+from dailyloadout.deps import CurrentUserDep, RequireVerifiedUserDep
 from dailyloadout.deps.loadout import LoadoutServiceDep
 
 router = APIRouter(prefix="/v1/loadouts", tags=["loadouts"])
@@ -30,8 +31,12 @@ _loadout_create_rate_limit = Depends(
         settings.rate_limit_loadout_create_per_minute,
         60,
         by="user",
+        fail_closed=True,
     )
 )
+
+# Aggregate $ cost kill-switch for the LLM-pick loadout routes.
+_loadout_cost_guard = Depends(cost_guard("loadout"))
 
 
 # ---------------------------------------------------------------------------
@@ -43,11 +48,11 @@ _loadout_create_rate_limit = Depends(
     "",
     response_model=list[LoadoutResponse],
     status_code=status.HTTP_201_CREATED,
-    dependencies=[_loadout_create_rate_limit],
+    dependencies=[_loadout_create_rate_limit, _loadout_cost_guard],
 )
 async def create_loadout(
     body: LoadoutCreateRequest,
-    current_user: CurrentUserDep,
+    current_user: RequireVerifiedUserDep,
     loadout_service: LoadoutServiceDep,
 ) -> list[LoadoutResponse]:
     """Create daily loadout suggestions (1-3).
@@ -76,11 +81,11 @@ async def create_loadout(
     "/start",
     response_model=LoadoutResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[_loadout_create_rate_limit],
+    dependencies=[_loadout_create_rate_limit, _loadout_cost_guard],
 )
 async def start_loadout(
     body: LoadoutStartRequest,
-    current_user: CurrentUserDep,
+    current_user: RequireVerifiedUserDep,
     loadout_service: LoadoutServiceDep,
 ) -> LoadoutResponse:
     """AI-pick a game and immediately start a mission for it (one tap).

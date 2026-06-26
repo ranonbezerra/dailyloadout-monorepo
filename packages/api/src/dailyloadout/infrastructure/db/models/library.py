@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     Date,
     DateTime,
     ForeignKey,
@@ -59,15 +60,26 @@ class Game(TimestampMixin, Base):
     first_release_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     genres: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True)
     metadata_source: Mapped[str] = mapped_column(String, nullable=False)
-    # ATTRIBUTION only: who first added this manual row. ``Game`` rows are always
-    # global/shared (slug is globally unique); this records the creator so a
-    # future admin trash-review can audit/remove manual additions. NULL = IGDB /
-    # legacy row. Editing is gated on this in the service, but visibility is not.
+    # ATTRIBUTION only: who first added this manual row. Records the creator so a
+    # future admin trash-review can audit/remove manual additions, and so the
+    # creator always sees their own private row. NULL = IGDB / legacy row.
     created_by_user_id: Mapped[int | None] = mapped_column(
         BigInteger,
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=True,
         index=True,
+    )
+    # VISIBILITY (anti-abuse Block C): a manual row is born PRIVATE to its creator
+    # so one account can't spam offensive/junk titles into everyone's catalogue.
+    # It becomes globally shared either by IGDB enrichment (``igdb_id`` set) or by
+    # passing the distinct-owner promotion threshold. A game is visible to user U
+    # when ``igdb_id IS NOT NULL OR is_shared IS TRUE OR created_by_user_id = U``.
+    # IGDB / legacy rows are shared; manual rows default to private.
+    is_shared: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false"),
     )
 
     # Relationships

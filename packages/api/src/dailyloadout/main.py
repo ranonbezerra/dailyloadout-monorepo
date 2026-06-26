@@ -9,7 +9,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from scalar_fastapi import get_scalar_api_reference
 
-from dailyloadout.api.middleware import MaxBodySizeMiddleware, SecurityHeadersMiddleware
+from dailyloadout.api.middleware import (
+    DefaultUserRateLimitMiddleware,
+    MaxBodySizeMiddleware,
+    SecurityHeadersMiddleware,
+)
 from dailyloadout.api.v1.auth import router as auth_router
 from dailyloadout.api.v1.cache import router as cache_router
 from dailyloadout.api.v1.capture import router as capture_router
@@ -161,6 +165,14 @@ def create_app() -> FastAPI:
     application.add_middleware(
         MaxBodySizeMiddleware,
         max_body_bytes=settings.max_request_body_bytes,
+    )
+
+    # Generous per-user rate-limit backstop so a NEW authenticated route is
+    # metered by default even if its author forgets an explicit limiter. No-op
+    # when rate limiting is disabled (tests); fails open on a limiter error.
+    application.add_middleware(
+        DefaultUserRateLimitMiddleware,
+        per_minute=settings.rate_limit_default_per_minute,
     )
 
     # CORS — X-Auth-Mode is sent by the web client on every request to select

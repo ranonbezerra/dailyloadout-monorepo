@@ -201,6 +201,44 @@ async def test_generate_briefing_persists_on_active_mission() -> None:
         assert active.briefing_text
 
 
+async def test_generate_briefing_clamps_deep_to_quick() -> None:
+    """A 'deep' mode request must NOT trigger the deep-research agent."""
+
+    class _ExplodingAgent:
+        async def run(self, *args: object, **kwargs: object) -> object:
+            raise AssertionError("deep agent must not be invoked from a chat turn")
+
+    async with _TestSessionFactory() as session:
+        user_id, public_id, _ = await _seed(session)
+        await session.commit()
+
+    async with _TestSessionFactory() as session:
+        await start_mission(
+            LibraryRepository(session),
+            MissionRepository(session),
+            DummyLLMClient(),
+            None,
+            settings,
+            user_id,
+            library_entry_public_id=public_id,
+        )
+        await session.commit()
+
+    async with _TestSessionFactory() as session:
+        # Even with mode='deep' and a (would-be) deep agent available, the quick
+        # path runs — the agent is never called.
+        out = await generate_briefing(
+            LibraryRepository(session),
+            MissionRepository(session),
+            DummyLLMClient(),
+            _ExplodingAgent(),  # type: ignore[arg-type]
+            settings,
+            user_id,
+            mode="deep",
+        )
+        assert "Hollow Knight" in out
+
+
 # -- submit_retroactive_debrief -------------------------------------------------
 
 

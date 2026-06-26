@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -12,6 +11,7 @@ from dailyloadout.config import settings as default_settings
 from dailyloadout.core.capture import candidates
 from dailyloadout.core.capture.ingestion import (
     enforce_import_quota,
+    meter_import,
     temp_image_file,
     validate_image,
     validate_import_image,
@@ -20,6 +20,7 @@ from dailyloadout.core.capture.ports import (
     CaptureProcessor,
     LibraryImportProcessor,
 )
+from dailyloadout.core.library.igdb_budget import igdb_budget_allows
 from dailyloadout.infrastructure.catalog.base import AbstractCatalogMatcher
 from dailyloadout.infrastructure.db.models import Capture, LibraryEntry
 from dailyloadout.infrastructure.db.repositories.capture import (
@@ -33,9 +34,6 @@ from dailyloadout.infrastructure.db.repositories.usage import UsageCounterReposi
 from dailyloadout.infrastructure.igdb.base import IGDBSearchClient
 from dailyloadout.infrastructure.llm.base import AbstractLLMClient
 from dailyloadout.infrastructure.ocr.base import AbstractOCRClient
-
-# Usage-counter key for the per-day bulk-import image cap.
-_IMPORT_IMAGES_KEY = "library_import_images"
 
 
 class CaptureService:
@@ -104,6 +102,15 @@ class CaptureService:
     # Submission + processing (orchestration moved out of the routers)
     # ------------------------------------------------------------------
 
+    async def _igdb_for(self, user_id: int) -> IGDBSearchClient | None:
+        """Return the IGDB client, or ``None`` when the user's daily budget is spent.
+
+        Shares the per-user/day outbound-IGDB budget with ``create_game``. Fail-open.
+        """
+        if self._igdb_client is None or not await igdb_budget_allows(user_id):
+            return None
+        return self._igdb_client
+
     async def submit_and_process_text(
         self,
         user_id: int,
@@ -118,7 +125,7 @@ class CaptureService:
             capture_repo=self._capture_repo,
             candidate_repo=self._candidate_repo,
             llm_client=self._llm_client,
-            igdb_client=self._igdb_client,
+            igdb_client=await self._igdb_for(user_id),
         )
         return await self.get_capture(user_id, capture.public_id)
 
@@ -138,7 +145,7 @@ class CaptureService:
                 capture_repo=self._capture_repo,
                 candidate_repo=self._candidate_repo,
                 llm_client=self._llm_client,
-                igdb_client=self._igdb_client,
+                igdb_client=await self._igdb_for(user_id),
             )
             return await self.get_capture(user_id, capture.public_id)
 
@@ -170,10 +177,11 @@ class CaptureService:
             validate_import_image(content_type, len(contents), self._settings, data=contents)
             blobs.append(contents)
 
-        # Re-check quota (idempotent with the router's pre-buffer check) and meter.
-        await self.check_import_quota(user_id, len(blobs))
-        today = datetime.now(UTC).date()
-        await self._usage_repo.increment(user_id, _IMPORT_IMAGES_KEY, today, amount=len(blobs))
+        # Authoritative atomic meter against the per-day cap (closes the TOCTOU
+        # race the router's pre-buffer ``check_import_quota`` read cannot).
+        today = await meter_import(
+            user_id, len(blobs), usage_repo=self._usage_repo, settings=self._settings
+        )
 
         capture = await self._capture_repo.create(user_id=user_id, input_type="library_import")
         await self._process_library_import(

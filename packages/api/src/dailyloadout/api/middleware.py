@@ -9,7 +9,10 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 
+import structlog
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
+
+logger = structlog.get_logger()
 
 # Response sent when Content-Length exceeds the cap, before any body is read.
 _TOO_LARGE_BODY = b'{"detail":"Request body too large."}'
@@ -63,6 +66,95 @@ async def _send_413(send: Send) -> None:
         }
     )
     await send({"type": "http.response.body", "body": _TOO_LARGE_BODY})
+
+
+_RL_TOO_MANY_BODY = b'{"detail":"Rate limit exceeded. Please slow down."}'
+
+
+class DefaultUserRateLimitMiddleware:
+    """Generous per-user rate-limit backstop applied to EVERY authenticated request.
+
+    A safety net so a NEW authenticated route is metered by default even if its
+    author forgets to attach an explicit ``rate_limit`` dependency. It identifies
+    the caller by the ``sub`` (user public_id) of a best-effort-decoded bearer
+    JWT — no DB hit. Anonymous/unauthenticated requests (no valid bearer token)
+    pass straight through; the per-route auth dependency rejects them.
+
+    Generous by design (it's a backstop, not the primary control) and:
+
+    - a **no-op when rate limiting is disabled** in settings (tests + "limiter
+      off" deploys), mirroring the ``rate_limit`` dependency, and
+    - **fail-open** on any limiter/Redis error — the backstop never hard-fails a
+      request.
+    """
+
+    def __init__(self, app: ASGIApp, *, per_minute: int) -> None:
+        self._app = app
+        self._per_minute = per_minute
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self._app(scope, receive, send)
+            return
+
+        # Local imports keep this module import-light and avoid an import cycle
+        # with the settings/limiter/auth modules at app-construction time.
+        from fastapi import HTTPException
+
+        from dailyloadout.api.v1._rate_limit import _enforce
+        from dailyloadout.config import settings
+
+        if settings.rate_limit_enabled:
+            identity = _bearer_subject(scope)
+            if identity is not None:
+                try:
+                    # fail_closed=False: a Redis error returns (allows) inside
+                    # _enforce, so the backstop fails open.
+                    await _enforce("default_user", identity, self._per_minute, 60)
+                except HTTPException as exc:
+                    if exc.status_code == 429:
+                        await _send_429(send)
+                        return
+                except Exception:
+                    logger.warning("default_rate_limit_error", exc_info=True)
+
+        await self._app(scope, receive, send)
+
+
+def _bearer_subject(scope: Scope) -> str | None:
+    """Return the ``sub`` of a best-effort-decoded bearer JWT, else ``None``."""
+    token: str | None = None
+    for name, value in scope.get("headers", []):
+        if name == b"authorization":
+            raw = value.decode("latin-1")
+            if raw.lower().startswith("bearer "):
+                token = raw[7:].strip()
+            break
+    if not token:
+        return None
+    try:
+        from dailyloadout.core.auth.security import decode_access_token
+
+        payload = decode_access_token(token)
+    except Exception:
+        return None
+    subject = payload.get("sub")
+    return str(subject) if subject is not None else None
+
+
+async def _send_429(send: Send) -> None:
+    await send(
+        {
+            "type": "http.response.start",
+            "status": 429,
+            "headers": [
+                (b"content-type", b"application/json"),
+                (b"content-length", str(len(_RL_TOO_MANY_BODY)).encode()),
+                (b"retry-after", b"60"),
+            ],
+        }
+    )
+    await send({"type": "http.response.body", "body": _RL_TOO_MANY_BODY})
 
 
 class SecurityHeadersMiddleware:

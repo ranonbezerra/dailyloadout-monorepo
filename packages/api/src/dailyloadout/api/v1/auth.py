@@ -1,6 +1,6 @@
 """Auth API endpoints: register, login, refresh, logout, me."""
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 
 from dailyloadout.api.v1._rate_limit import rate_limit
 from dailyloadout.api.v1.auth_cookies import (
@@ -15,17 +15,27 @@ from dailyloadout.core.auth.schemas import (
     MessageResponse,
     RefreshRequest,
     RegisterRequest,
+    ResendVerificationRequest,
     TokenResponse,
     UserResponse,
+    VerifyEmailRequest,
 )
 from dailyloadout.deps import AuthServiceDep, CurrentUserDep
+from dailyloadout.deps.captcha import verify_turnstile
 
 # Per-IP limiters, now Redis-backed (shared across worker processes) and
 # fail-open if Redis is unreachable. Limits come from settings. These names are
 # overridden to no-ops in tests (see conftest), matching the old wiring.
-_check_login_rate = rate_limit("auth_login", settings.rate_limit_login_per_minute, 60, by="ip")
+_check_login_rate = rate_limit(
+    "auth_login", settings.rate_limit_login_per_minute, 60, by="ip", fail_closed=True
+)
 _check_register_rate = rate_limit(
-    "auth_register", settings.rate_limit_register_per_minute, 60, by="ip"
+    "auth_register", settings.rate_limit_register_per_minute, 60, by="ip", fail_closed=True
+)
+# Resend-verification is per-IP and abuse-prone (email bombing); reuse the
+# register rate as a conservative cap. Fail-open is fine here (no account mint).
+_check_resend_rate = rate_limit(
+    "auth_resend_verification", settings.rate_limit_register_per_minute, 60, by="ip"
 )
 
 
@@ -36,7 +46,7 @@ router = APIRouter(prefix="/v1/auth", tags=["auth"])
     "/register",
     response_model=TokenResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(_check_register_rate)],
+    dependencies=[Depends(_check_register_rate), Depends(verify_turnstile)],
 )
 async def register(
     body: RegisterRequest,
@@ -107,6 +117,47 @@ async def login(
         return TokenResponse(access_token=access_token, refresh_token="")
 
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+
+
+@router.post("/verify", response_model=MessageResponse)
+async def verify_email(
+    auth_service: AuthServiceDep,
+    body: VerifyEmailRequest | None = None,
+    token: str = Query(default=""),
+) -> MessageResponse:
+    """Verify an email address from a signed token (body or query).
+
+    Idempotent: an already-verified account still returns 200. An
+    expired/invalid/missing token returns 400.
+    """
+    raw_token = (body.token if body else "") or token
+    if not raw_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Verification token is required",
+        )
+    try:
+        await auth_service.verify_email(raw_token)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    return MessageResponse(message="Email verified")
+
+
+@router.post(
+    "/resend-verification",
+    response_model=MessageResponse,
+    dependencies=[Depends(_check_resend_rate)],
+)
+async def resend_verification(
+    body: ResendVerificationRequest,
+    auth_service: AuthServiceDep,
+) -> MessageResponse:
+    """Re-send a verification email. Response is neutral (no account oracle)."""
+    await auth_service.resend_verification(body.email)
+    return MessageResponse(message="If the account exists, a verification email was sent.")
 
 
 @router.post("/refresh", response_model=TokenResponse)

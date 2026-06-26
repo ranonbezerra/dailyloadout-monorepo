@@ -19,10 +19,11 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
+from dailyloadout.api.v1._cost_guard import cost_guard
 from dailyloadout.api.v1._rate_limit import rate_limit
 from dailyloadout.config import settings
 from dailyloadout.core.concierge.schemas import ChatRequest
-from dailyloadout.deps import CurrentUserDep
+from dailyloadout.deps import RequireVerifiedUserDep
 from dailyloadout.deps.concierge import ConciergeServiceDep
 
 logger = logging.getLogger(__name__)
@@ -52,13 +53,15 @@ def _sse(payload: dict[str, object]) -> str:
                 settings.rate_limit_concierge_chat_per_minute,
                 60,
                 by="user",
+                fail_closed=True,
             )
-        )
+        ),
+        Depends(cost_guard("concierge")),
     ],
 )
 async def chat(
     body: ChatRequest,
-    current_user: CurrentUserDep,
+    current_user: RequireVerifiedUserDep,
     concierge_service: ConciergeServiceDep,
 ) -> StreamingResponse:
     """Stream a guarded concierge reply as typed Server-Sent Events."""

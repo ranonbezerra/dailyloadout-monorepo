@@ -2,8 +2,11 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
+from dailyloadout.api.v1._cost_guard import cost_guard
+from dailyloadout.api.v1._rate_limit import rate_limit
+from dailyloadout.config import settings
 from dailyloadout.core.library.schemas import (
     GameCreate,
     GameResponse,
@@ -14,9 +17,32 @@ from dailyloadout.core.library.schemas import (
     LibraryGroupedResponse,
     PlatformResponse,
 )
-from dailyloadout.deps import CurrentUserDep, LibraryServiceDep
+from dailyloadout.deps import CurrentUserDep, LibraryServiceDep, RequireVerifiedUserDep
 
 router = APIRouter(prefix="/v1", tags=["library"])
+
+# Per-user limiter + aggregate cost guard on the LLM/IGDB game-resolve route.
+# fail_closed: losing the limiter on a cost-bearing route is unacceptable.
+_game_create_rate_limit = Depends(
+    rate_limit(
+        "game_create",
+        settings.rate_limit_game_create_per_minute,
+        60,
+        by="user",
+        fail_closed=True,
+    )
+)
+_game_create_cost_guard = Depends(cost_guard("game_create"))
+
+# Generous per-user limiter for cheap library CRUD writes (backstop, not cost).
+_library_write_rate_limit = Depends(
+    rate_limit("library_write", settings.rate_limit_library_write_per_minute, 60, by="user")
+)
+
+# Generous per-user limiter for read-only catalogue endpoints (anti-scraping).
+_read_rate_limit = Depends(
+    rate_limit("library_read", settings.rate_limit_read_per_minute, 60, by="user")
+)
 
 
 # ---------------------------------------------------------------------------
@@ -28,10 +54,11 @@ router = APIRouter(prefix="/v1", tags=["library"])
     "/games",
     response_model=GameResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[_game_create_rate_limit, _game_create_cost_guard],
 )
 async def create_game(
     body: GameCreate,
-    current_user: CurrentUserDep,
+    current_user: RequireVerifiedUserDep,
     library_service: LibraryServiceDep,
 ) -> GameResponse:
     """Create or resolve a game (DB-first, IGDB enrichment on the fly).
@@ -51,24 +78,28 @@ async def create_game(
     return GameResponse.model_validate(game)
 
 
-@router.get("/games/genres", response_model=list[str])
+@router.get("/games/genres", response_model=list[str], dependencies=[_read_rate_limit])
 async def list_genres(
     current_user: CurrentUserDep,
     library_service: LibraryServiceDep,
 ) -> list[str]:
     """Return all distinct genre names from the games catalog."""
-    return await library_service.list_genres()
+    return await library_service.list_genres(user_id=current_user.id)
 
 
-@router.get("/games/search", response_model=list[GameResponse])
+@router.get(
+    "/games/search",
+    response_model=list[GameResponse],
+    dependencies=[_read_rate_limit],
+)
 async def search_games(
     current_user: CurrentUserDep,
     library_service: LibraryServiceDep,
-    q: str = Query(min_length=1),
-    limit: int = Query(default=20, ge=1, le=100),
+    q: str = Query(min_length=3),
+    limit: int = Query(default=20, ge=1, le=25),
 ) -> list[GameResponse]:
     """Fuzzy-search games by title."""
-    games = await library_service.search_games(q, limit=limit)
+    games = await library_service.search_games(q, user_id=current_user.id, limit=limit)
     return [GameResponse.model_validate(g) for g in games]
 
 
@@ -141,6 +172,7 @@ async def get_library_entry(
     "/library",
     response_model=LibraryGameGroup,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[_library_write_rate_limit],
 )
 async def add_to_library(
     body: LibraryEntryCreate,
@@ -174,7 +206,11 @@ async def add_to_library(
         ) from exc
 
 
-@router.patch("/library/{public_id}", response_model=LibraryEntryResponse)
+@router.patch(
+    "/library/{public_id}",
+    response_model=LibraryEntryResponse,
+    dependencies=[_library_write_rate_limit],
+)
 async def update_library_entry(
     public_id: UUID,
     body: LibraryEntryUpdate,
@@ -201,6 +237,7 @@ async def update_library_entry(
 @router.delete(
     "/library/{public_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[_library_write_rate_limit],
 )
 async def delete_library_entry(
     public_id: UUID,

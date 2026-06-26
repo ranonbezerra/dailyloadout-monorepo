@@ -6,6 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, status
 
+from dailyloadout.api.v1._cost_guard import cost_guard
 from dailyloadout.api.v1._rate_limit import rate_limit
 from dailyloadout.config import settings
 from dailyloadout.core.mission.schemas import (
@@ -20,7 +21,7 @@ from dailyloadout.core.mission.schemas import (
     RegenerateBriefingRequest,
     RetroactiveDebriefRequest,
 )
-from dailyloadout.deps import CurrentUserDep
+from dailyloadout.deps import CurrentUserDep, RequireVerifiedUserDep
 from dailyloadout.deps.mission import MissionServiceDep
 
 router = APIRouter(prefix="/v1/missions", tags=["missions"])
@@ -34,8 +35,12 @@ _briefing_rate_limit = Depends(
         settings.rate_limit_mission_briefing_per_minute,
         60,
         by="user",
+        fail_closed=True,
     )
 )
+
+# Aggregate $ cost kill-switch for the LLM-bearing mission routes.
+_mission_cost_guard = Depends(cost_guard("mission"))
 
 
 # ---------------------------------------------------------------------------
@@ -47,10 +52,11 @@ _briefing_rate_limit = Depends(
     "",
     response_model=MissionResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[_briefing_rate_limit, _mission_cost_guard],
 )
 async def start_mission(
     body: MissionStartRequest,
-    current_user: CurrentUserDep,
+    current_user: RequireVerifiedUserDep,
     mission_service: MissionServiceDep,
 ) -> MissionResponse:
     """Start a new mission for a library entry.
@@ -77,11 +83,11 @@ async def start_mission(
 @router.post(
     "/preview-briefing",
     response_model=BriefingPreviewResponse,
-    dependencies=[_briefing_rate_limit],
+    dependencies=[_briefing_rate_limit, _mission_cost_guard],
 )
 async def preview_briefing(
     body: BriefingPreviewRequest,
-    current_user: CurrentUserDep,
+    current_user: RequireVerifiedUserDep,
     mission_service: MissionServiceDep,
 ) -> BriefingPreviewResponse:
     """Generate a briefing preview without creating a mission.
@@ -106,10 +112,11 @@ async def preview_briefing(
 @router.post(
     "/retroactive-debrief",
     response_model=BriefingPreviewResponse,
+    dependencies=[_briefing_rate_limit, _mission_cost_guard],
 )
 async def submit_retroactive_debrief(
     body: RetroactiveDebriefRequest,
-    current_user: CurrentUserDep,
+    current_user: RequireVerifiedUserDep,
     mission_service: MissionServiceDep,
 ) -> BriefingPreviewResponse:
     """Record a debrief for a play session that wasn't tracked.
@@ -198,11 +205,11 @@ async def end_mission(
 @router.post(
     "/{public_id}/briefing/regenerate",
     response_model=MissionResponse,
-    dependencies=[_briefing_rate_limit],
+    dependencies=[_briefing_rate_limit, _mission_cost_guard],
 )
 async def regenerate_briefing(
     public_id: UUID,
-    current_user: CurrentUserDep,
+    current_user: RequireVerifiedUserDep,
     mission_service: MissionServiceDep,
     body: RegenerateBriefingRequest | None = None,
 ) -> MissionResponse:

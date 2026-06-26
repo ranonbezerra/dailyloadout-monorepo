@@ -677,7 +677,20 @@ SearXNG finds URLs → Firecrawl `/scrape` turns the top 1–2 into markdown →
 
 **Goal:** add cloud LLM providers behind the existing `AbstractLLMClient` port so the project can ship a **hosted** distribution (cloud inference) alongside the **self-host** one (local Ollama), choosing per deployment via `LLM_PROVIDER`. Keep Ollama the default for the OSS build; `dummy` stays the test default.
 
-**Status:** not committed. Spike-then-decide — the README already lists "cloud provider adapters belong behind the existing LLM port" as planned. The actual provider choice (Bedrock-with-Claude vs an open-source/self-hosted model) is the user's, and **turns mostly on cost vs. volume** (see below). This epic is the prerequisite that makes Firecrawl-as-primary (Epic 12) sensible.
+**Status:** not committed. Spike-then-decide — the README already lists "cloud provider adapters belong behind the existing LLM port" as planned. The actual provider choice (Bedrock-with-Claude vs an open-source/self-hosted model) is now **decided: AWS Bedrock** for the hosted distribution (see the Decision below). This epic is the prerequisite that makes Firecrawl-as-primary (Epic 12) sensible.
+
+### Decision (2026-06): AWS Bedrock + in-house cost governance
+
+**Provider — AWS Bedrock.** Ship the hosted distribution on **Bedrock** (Ollama stays the local-dev / OSS default; `dummy` the test default). Bedrock is chosen over a self-hosted OSS model or a managed gateway primarily for **portfolio value** — AWS is the broadest-demand cloud skill, and this repo is a portfolio piece — and the cost is trivial at portfolio scale anyway (a cheap tier ≈ a few $/month, bounded by the caps below). The open-serverless price advantage only matters at real multi-tenant scale, which a portfolio won't hit.
+
+**Build vs. buy — call Bedrock directly, build the cost layer ourselves.** We deliberately do **not** route through an LLM gateway (LiteLLM proxy/SDK). Two reasons: (1) we already own the `AbstractLLMClient` port, so a gateway is a redundant second abstraction; (2) the cost-governance layer is the *differentiated, interview-worthy* part — offloading it to a tool would hide exactly the engineering worth showing.
+
+- **Buy (don't build):** the Bedrock call itself → boto3 / Anthropic `AnthropicBedrock` SDK (commodity plumbing; also the "AWS / Bedrock" résumé keyword).
+- **Build (the showcase):** a cost-governance layer on top — per-call cost from token usage (token→$), a per-user **monthly budget** and a **global spend kill-switch** with graceful degradation, backed by Redis counters, plus **AWS Budgets** as the outer alarm.
+
+This mirrors the rate-limiting call in PR #34: keep the solved commodity (`pyrate_limiter`), build the bespoke differentiated piece. The per-minute per-user limits already shipped (#34) bound bursts; this epic adds the **monthly + global $ caps** that bound *sustained* cost — a hard prerequisite before opening the app to the public (without them a scripted account can run up cost via the per-minute ceiling).
+
+**Cheap-tier-first:** default the `fast`/`smart` roles to cheap models (Claude Haiku / Amazon Nova), escalate only where output quality is user-visible; prompt-cache the repeated deep-briefing context. **Document the build-vs-buy reasoning in an ADR** — the decision itself is a portfolio signal.
 
 ### Context
 
@@ -716,9 +729,9 @@ A deep briefing fires up to ~4 LLM calls (`grade` → `refine`×0–2 → `synth
 - [ ] Add `anthropic[bedrock]` (and/or `[vertex]` / a Gemini client) as **optional** deps
 - [ ] `BedrockLLMClient(AbstractLLMClient)` (and/or `VertexLLMClient`) implementing all methods incl. `complete(prompt, role, json)`; map `role`→tier; JSON via `output_config.format`/strict tools; adaptive thinking
 - [ ] Extend the LLM factory: `LLM_PROVIDER=bedrock|vertex|ollama|dummy`; env for creds (AWS region/IAM or GCP project/location/service account), per-tier model IDs
-- [ ] Cost guardrails: per-user/day token budget cap + structured usage logging; prompt caching on the deep-research context
+- [ ] Cost governance (built in-house, **no gateway**): token→$ metering from usage; per-user **monthly** budget + **global spend kill-switch** with graceful degradation (Redis counters); **AWS Budgets** alarm as the outer net; structured usage logging; prompt caching on the deep-research context. Prerequisite before any public launch.
 - [ ] Tests with a mocked cloud client (no real cloud calls in CI; `dummy` stays the CI default)
-- [ ] Decision write-up: measured per-briefing cost on cloud Claude vs estimated OSS-local TCO at expected volume → keep/which-provider recommendation
+- [ ] ADR: the build-vs-buy write-up (Bedrock-direct + in-house cost governance vs. an LLM gateway like LiteLLM; why we own the cost layer given the existing port) + measured per-briefing cost on cheap-tier Bedrock
 
 ### Definition of Done
 
@@ -946,6 +959,37 @@ The app has several genuinely expensive, repeat-heavy operations — a **deep re
 ### Why this is a separate epic (not folded into Epic 17)
 
 Epic 17 is a tactical fix for one adapter. This is a **cross-cutting architectural concern** touching the briefing graph, the LLM port, stats, and research — with a real correctness surface (invalidation, per-user isolation, stampede control) that deserves its own design and review rather than being smuggled in feature-by-feature.
+
+---
+
+## Epic 19 — Social login / OAuth: Google, Apple, Twitch (v1.1+)
+
+**Goal:** let users register & sign in via **Google, Apple, and Twitch** (Authorization Code + PKCE), in addition to email/password — behind the existing auth layer, issuing the same access/refresh tokens so the rest of the app is unchanged.
+
+**Status:** not started. Planned feature. Pairs naturally with the anti-abuse work — a verified social identity is a much stronger anti-abuse signal than an unverified email, and **Apple/Google logins arrive pre-verified**, sidestepping the email-verification + CAPTCHA cost for those users.
+
+### Context
+
+- There's already an `oauth_identities` table/provider scaffold and `GOOGLE_OAUTH_CLIENT_ID/SECRET` slots in settings — extend that, don't rebuild auth. The OAuth callback resolves/creates a `User` (linking by verified email when safe) and then issues our own JWT access + refresh tokens (cookie-mode for web, body-mode for app), so missions/library/concierge are untouched.
+- **Twitch is a strategic fit** — it's the gaming identity, and the app already uses Twitch OAuth for IGDB (client-credentials), so the integration/ops surface is familiar (different grant: user Authorization Code vs the existing app-token).
+
+### Tasks
+
+- [ ] `oauth_identities` (provider, provider_user_id, user_id, linked email) — confirm/extend the model; unique (provider, provider_user_id)
+- [ ] Provider configs (Google, Apple, Twitch): client id/secret, redirect URIs, scopes; Apple needs the JWT client-secret + key id dance
+- [ ] `GET /v1/auth/oauth/{provider}/start` (PKCE + state) and `/callback` → resolve/link/create user → issue our tokens (reuse the cookie/body dual-mode)
+- [ ] Account linking + collision policy: link to an existing account **only** on a provider-verified email match; otherwise create new (never silently merge)
+- [ ] Mark socially-authenticated users `email_verified = true` when the provider asserts a verified email (skips our email-verify gate)
+- [ ] Web: provider buttons on login/register; App (Flutter): native Sign in with Apple/Google + Twitch web flow
+- [ ] Tests: start/callback, state/PKCE validation, linking, collision, token issuance; mocked provider (no real OAuth in CI)
+
+### Definition of Done
+
+- A user can sign up / log in with Google, Apple, or Twitch and land authenticated with our tokens; email/password still works; linking is safe (no account takeover via unverified email); provider-verified users skip the email-verification gate. Coverage at parity with the password flow.
+
+### Technical highlight
+
+> **One auth core, many front doors.** Social login resolves to the *same* `User` + JWT the rest of the app already speaks, so adding Google/Apple/Twitch is new adapters + a callback, not an auth rewrite — and it doubles as anti-abuse hardening (a verified Google/Apple/Twitch identity is far costlier to mass-create than throwaway emails).
 
 ---
 

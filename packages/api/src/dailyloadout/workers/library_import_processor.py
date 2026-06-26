@@ -112,9 +112,17 @@ async def process_library_import(
                 result.mean_confidence < settings.ocr_confidence_threshold
                 and ocr_fallback_client is not None
             ):
-                used = await usage_repo.get_count(user_id, VISION_FALLBACK_KEY, today)
-                if used < settings.library_import_vision_fallbacks_per_day:
-                    await usage_repo.increment(user_id, VISION_FALLBACK_KEY, today)
+                # Atomically claim a vision-fallback slot: increments only when
+                # the new total stays within the daily cap, so concurrent tasks
+                # for the same user can't both pass the check and overshoot.
+                claimed = await usage_repo.increment_within_cap(
+                    user_id,
+                    VISION_FALLBACK_KEY,
+                    today,
+                    amount=1,
+                    cap=settings.library_import_vision_fallbacks_per_day,
+                )
+                if claimed is not None:
                     logger.info("library_import_vision_fallback", capture_id=capture.id)
                     result = await ocr_fallback_client.extract_lines(blob)
 

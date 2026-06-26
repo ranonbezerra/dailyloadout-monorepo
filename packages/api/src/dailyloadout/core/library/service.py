@@ -7,6 +7,7 @@ from uuid import UUID
 
 from dailyloadout.core.cache.invalidation import invalidate_user_stats
 from dailyloadout.core.library.backfill import enrich_in_place, reconcile_manual_title
+from dailyloadout.core.library.igdb_budget import igdb_budget_allows
 from dailyloadout.core.library.schemas import (
     GameResponse,
     LibraryGameGroup,
@@ -40,6 +41,7 @@ class LibraryService:
         reference_ttl_seconds: int = 3600,
         igdb_client: IGDBSearchClient | None = None,
         match_min_score: float = 0.6,
+        share_threshold: int = 5,
     ) -> None:
         self._game_repo = game_repo
         self._library_repo = library_repo
@@ -48,6 +50,9 @@ class LibraryService:
         self._reference_ttl = reference_ttl_seconds
         self._igdb_client = igdb_client
         self._match_min_score = match_min_score
+        # Distinct-owner count that promotes a private manual row to globally
+        # shared/discoverable (anti-abuse Block C).
+        self._share_threshold = share_threshold
 
     # ------------------------------------------------------------------
     # Games
@@ -63,24 +68,33 @@ class LibraryService:
         first_release_date: date | None = None,
         genres: list[str] | None = None,
     ) -> Game:
-        """Resolve *(slug, title)* to a shared global game, DB-first.
+        """Resolve *(slug, title)* to a game, DB-first.
 
-        ``Game`` rows are global/shared; the server — not the client — decides
-        ``metadata_source``. Resolution order:
+        The server — not the client — decides ``metadata_source`` and visibility.
+        Resolution order:
 
-        1. If we already hold a row for *slug* (any creator), return it (enriching
-           it in place from IGDB first if it lacks IGDB metadata). Idempotent —
-           the next user relates to the existing row instead of duplicating it.
+        1. If we already hold a row for *slug* (any creator — ``get_by_slug`` is a
+           GLOBAL lookup), return it (enriching it in place from IGDB first if it
+           lacks IGDB metadata; that enrichment sets ``igdb_id`` and so makes a
+           previously-private manual row globally visible). Idempotent.
         2. Else if IGDB confidently matches *title*, reuse/create a canonical
            GLOBAL row.
-        3. Else create a manual GLOBAL row, attributed to *user_id*.
+        3. Else create a PRIVATE manual row (``is_shared=False``), attributed to
+           and visible only to *user_id* until it's validated/promoted.
         """
+        # Gate outbound IGDB on the per-user/day budget so novel-title spam can't
+        # exhaust the app-wide IGDB quota for everyone. When the budget is spent
+        # (or there's no client) we resolve DB-first without enrichment.
+        igdb_client = self._igdb_client
+        if igdb_client is not None and not await igdb_budget_allows(user_id):
+            igdb_client = None
+
         existing = await self._game_repo.get_by_slug(slug)
         if existing is not None:
             if existing.igdb_id is None:
                 await enrich_in_place(
                     existing,
-                    igdb_client=self._igdb_client,
+                    igdb_client=igdb_client,
                     game_repo=self._game_repo,
                     min_score=self._match_min_score,
                 )
@@ -88,7 +102,7 @@ class LibraryService:
 
         reconciled = await reconcile_manual_title(
             title,
-            igdb_client=self._igdb_client,
+            igdb_client=igdb_client,
             game_repo=self._game_repo,
             min_score=self._match_min_score,
         )
@@ -107,23 +121,24 @@ class LibraryService:
             created_by_user_id=user_id,
         )
 
-    async def list_genres(self) -> list[str]:
-        """Return all distinct genre names from the games catalog.
+    async def list_genres(self, *, user_id: int) -> list[str]:
+        """Return distinct genre names visible to *user_id*.
 
-        Global, tiny, and rarely-changing — cached with a TTL (no event bust;
-        new genres surface within the TTL).
+        Genres come only from rows the user may browse (canonical/shared rows plus
+        the user's own private manual rows), so another user's unvalidated private
+        manual genres don't leak. Per-user, so the cache key is namespaced by user.
         """
         return await cached_call(
             cache=self._cache,
-            key=reference_key("genres"),
+            key=reference_key(f"genres:{user_id}"),
             ttl_seconds=self._reference_ttl,
             namespace=NS_REF,
-            compute=self._game_repo.distinct_genres,
+            compute=lambda: self._game_repo.distinct_genres(user_id=user_id),
         )
 
-    async def search_games(self, query: str, limit: int = 20) -> list[Game]:
-        """Search games by title across the shared global catalogue."""
-        return await self._game_repo.search(query, limit=limit)
+    async def search_games(self, query: str, *, user_id: int, limit: int = 20) -> list[Game]:
+        """Search games by title across the catalogue VISIBLE to *user_id*."""
+        return await self._game_repo.search(query, user_id=user_id, limit=limit)
 
     # ------------------------------------------------------------------
     # Platforms
@@ -175,10 +190,26 @@ class LibraryService:
                 acquired_at=acquired_at,
             )
 
+        await self._maybe_promote_to_shared(game)
         await invalidate_user_stats(user_id)
 
         entries = await self._library_repo.list_for_user_game(user_id, game.id)
         return self._group_entries(entries)[0]
+
+    async def _maybe_promote_to_shared(self, game: Game) -> None:
+        """Promote a private manual *game* to globally shared by distinct owners.
+
+        Discoverability path (anti-abuse Block C): a manual row stays private to
+        its creator until enough INDEPENDENT users own it, at which point it's
+        clearly a genuinely-untracked game rather than spam, so it joins the shared
+        catalogue. Attribution (``created_by_user_id``) is preserved. Only applies
+        to still-private manual rows; canonical/IGDB rows are already shared.
+        """
+        if game.igdb_id is not None or game.is_shared or game.created_by_user_id is None:
+            return
+        owners = await self._library_repo.count_distinct_owners(game.id)
+        if owners >= self._share_threshold:
+            await self._game_repo.update(game, is_shared=True)
 
     async def list_library(
         self,

@@ -109,12 +109,21 @@ async def generate_briefing(
     *,
     mode: str = "quick",
 ) -> str:
-    """Generate a briefing for the user's active mission and persist it."""
+    """Generate a briefing for the user's active mission and persist it.
+
+    ``mode`` is accepted for tool-schema compatibility but always clamped to
+    ``quick``: the deep-research graph is too expensive to trigger from a single
+    chat turn (it would bypass the briefing limiter + cost guard).
+    """
+    _ = mode  # accepted but intentionally ignored — always clamped to quick.
     mission = await mission_repo.get_active_for_user(user_id)
     if mission is None:
         return "There's no active mission to brief. Start one first."
 
-    selected: BriefingMode = "deep" if mode.strip().lower() == "deep" else "quick"
+    # Clamp to 'quick' (mirror start_mission's _BRIEFING_CHOICES): one 6/min chat
+    # turn must not be able to trigger the full deep-research graph and bypass the
+    # briefing limiter + cost guard.
+    selected: BriefingMode = "quick"
     briefing_text = await generate_briefing_for_mode(
         mission_repo,
         library_repo,

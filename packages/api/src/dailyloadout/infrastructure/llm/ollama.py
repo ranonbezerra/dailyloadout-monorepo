@@ -19,18 +19,14 @@ from .parsers import _extract_json, _parse_game_list
 logger = structlog.get_logger()
 
 # Process-shared ceiling on concurrent outbound model calls to the host Ollama
-# server. Created lazily on first use so it binds to the running event loop
-# (a module-import-time Semaphore would attach to the wrong/no loop). Only the
-# real OllamaClient acquires it; the Dummy client (tests) never touches it.
+# server. Created lazily on first use so it binds to the running event loop (a
+# module-import-time Semaphore would attach to the wrong/no loop). Only the real
+# OllamaClient acquires it; the Dummy client (tests) never touches it.
 _ollama_semaphore: asyncio.Semaphore | None = None
 
 
 def _get_ollama_semaphore() -> asyncio.Semaphore:
-    """Return the process-wide Ollama concurrency semaphore (lazy-initialized).
-
-    Bound to the running loop on first call. The bound is read from settings
-    once, when the semaphore is first created.
-    """
+    """Return the process-wide Ollama concurrency semaphore (lazy-initialized)."""
     global _ollama_semaphore
     if _ollama_semaphore is None:
         _ollama_semaphore = asyncio.Semaphore(_settings.ollama_max_concurrency)
@@ -65,7 +61,15 @@ class OllamaClient(AbstractLLMClient):
         self._vision_model = settings.ollama_vision_model
         self._timeout = settings.llm_timeout_seconds
         self._max_games_per_shelf = settings.capture_max_games_per_shelf
+        self._max_output_tokens = settings.llm_max_output_tokens
         self._http_client: httpx.AsyncClient | None = None
+
+    def _payload(self, payload: dict[str, object]) -> dict[str, object]:
+        """Inject the ``options.num_predict`` output-token cap into *payload*."""
+        existing = payload.get("options")
+        options: dict[str, object] = dict(existing) if isinstance(existing, dict) else {}
+        options.setdefault("num_predict", self._max_output_tokens)
+        return {**payload, "options": options}
 
     async def _get_client(self) -> httpx.AsyncClient:
         """Return a reusable HTTP client (connection pooling)."""
@@ -83,16 +87,15 @@ class OllamaClient(AbstractLLMClient):
         """POST to Ollama ``/api/generate``. Returns *None* on HTTP error.
 
         The outbound model call is gated by the process-wide concurrency
-        semaphore so a burst of requests can't oversubscribe the host. The
-        semaphore is held ONLY around the HTTP round-trip, not the surrounding
-        prompt rendering or response parsing.
+        semaphore (held ONLY around the HTTP round-trip) so a burst can't
+        oversubscribe the host.
         """
         client = await self._get_client()
         try:
             async with _get_ollama_semaphore():
                 resp = await client.post(
                     f"{self._base_url}/api/generate",
-                    json=payload,
+                    json=self._payload(payload),
                 )
             resp.raise_for_status()
             return resp

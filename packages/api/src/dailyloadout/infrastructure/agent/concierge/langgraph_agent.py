@@ -62,6 +62,9 @@ class LangGraphConciergeAgent(AbstractConciergeAgent):
             # Disable the model's hidden chain-of-thought — qwen3's <think>
             # blocks dominate latency across the multi-step ReAct loop.
             reasoning=self._settings.concierge_agent_reasoning,
+            # Bound generated tokens per model call — this is what caps
+            # output-token billing on a metered backend later.
+            num_predict=self._settings.llm_max_output_tokens,
         )
         tools = [
             StructuredTool.from_function(

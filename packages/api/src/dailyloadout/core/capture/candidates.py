@@ -50,7 +50,7 @@ async def confirm_candidate(
     if platform is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Platform not found")
 
-    game = await get_or_create_game(game_repo, candidate)
+    game = await get_or_create_game(game_repo, candidate, created_by_user_id=user_id)
     if await library_repo.exists(user_id, game.id, platform_id):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -115,7 +115,7 @@ async def bulk_confirm_candidates(
         if new_title and new_title != candidate.title:
             await candidate_repo.set_title(candidate.id, new_title)
 
-        game = await get_or_create_game(game_repo, candidate)
+        game = await get_or_create_game(game_repo, candidate, created_by_user_id=user_id)
         if not await library_repo.exists(user_id, game.id, platform_id):
             await library_repo.create(
                 user_id=user_id,

@@ -49,18 +49,16 @@ class Settings(BaseSettings):
     llm_timeout_seconds: int = 60
     # Preload these Ollama models in the background on startup so the first real
     # request isn't a slow cold-load (the concierge agent especially). Empty =
-    # disabled. Local example: '["qwen2.5:7b-instruct"]'. Only runs when
-    # LLM_PROVIDER=ollama.
+    # disabled. Local example: '["qwen2.5:7b-instruct"]'. Only on LLM_PROVIDER=ollama.
     ollama_warmup_models: list[str] = []
-    # How long warmed models stay resident after idle. Default frees the RAM
-    # after 30 min; set '-1' to pin them loaded indefinitely (always fast, but
-    # holds the memory).
+    # How long warmed models stay resident after idle. Default frees the RAM after
+    # 30 min; set '-1' to pin them loaded indefinitely (always fast, holds memory).
     ollama_warmup_keep_alive: str = "30m"
     # Process-wide ceiling on concurrent model calls to the host Ollama server
-    # (per worker process). A burst of concierge/briefing requests would
-    # otherwise oversubscribe the GPU/CPU and stall every in-flight call; this
-    # bounds the queue depth so the model serves a few requests fast rather than
-    # thrashing all of them. Holds only around the model HTTP call.
+    # (per worker process). A burst of concierge/briefing requests would otherwise
+    # oversubscribe the GPU/CPU and stall every in-flight call; this bounds the
+    # queue depth so the model serves a few requests fast rather than thrashing all
+    # of them. Holds only around the model HTTP call.
     ollama_max_concurrency: int = 2
 
     # ── Agent / Deep Research Briefing (Epic 10) ─────────────────────────
@@ -82,8 +80,7 @@ class Settings(BaseSettings):
     # qwen3 without reasoning is incoherent on multi-step grounded tasks).
     ollama_agent_model: str = "qwen2.5:7b-instruct"
     # Qwen3 is a reasoning model: its <think> chains add huge latency to every
-    # ReAct step. Disable for fast tool-calling; enable only if answer quality
-    # demands deliberation.
+    # ReAct step. Disable for fast tool-calling; enable only if quality demands it.
     concierge_agent_reasoning: bool = False
     concierge_max_tool_loops: int = 6
     # Where conversation threads are checkpointed (ROADMAP Epic 16). 'postgres'
@@ -110,6 +107,9 @@ class Settings(BaseSettings):
     ocr_confidence_threshold: float = 0.6
     # Fuzzy-match cutoff for accepting an OCR line as a canonical game.
     catalog_match_min_score: float = 0.6
+    # Anti-abuse (Block C): distinct owners that promote a private manual row to
+    # globally shared/discoverable (spam stays hidden until enough users own it).
+    catalog_share_threshold: int = 5
     # Bulk-import path replaces the single-shelf cap of 12. Lowered from 200 as
     # a DoS mitigation: each candidate fans out to an IGDB lookup. The full
     # async/Taskiq move is a separate follow-up.
@@ -142,6 +142,20 @@ class Settings(BaseSettings):
     smtp_user: str = ""
     smtp_password: str = ""
     smtp_from: str = "DailyLoadout <noreply@dailyloadout.local>"
+
+    # ── Email verification (account integrity) ───────────────────────────
+    # Verification tokens are signed, purpose-scoped JWTs (no new table). They
+    # expire after this many hours; an expired/invalid token is rejected (400).
+    email_verification_ttl_hours: int = 24
+    # Public base URL the verification link points at (the web/app deep link
+    # appends ``?token=...``). Used only when composing the email body.
+    email_verification_base_url: str = "http://localhost:5173/verify-email"
+
+    # ── CAPTCHA (Cloudflare Turnstile) ───────────────────────────────────
+    # When empty (dev / not configured) the Turnstile dependency is a no-op.
+    # When set, register requires a valid ``cf-turnstile-response`` token.
+    turnstile_secret: str = ""
+    turnstile_verify_url: str = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
 
     # ── Auth ───────────────────────────────────────────────────────
     bcrypt_rounds: int = 12
@@ -185,6 +199,36 @@ class Settings(BaseSettings):
     rate_limit_loadout_create_per_minute: int = 10
     rate_limit_capture_submit_per_minute: int = 15
     rate_limit_library_import_per_minute: int = 5
+    # Cost-bearing limit on POST /v1/games (LLM/IGDB resolve); generous anti-abuse
+    # backstops on library CRUD writes and read-only catalogue/stats/cache reads.
+    rate_limit_game_create_per_minute: int = 20
+    rate_limit_library_write_per_minute: int = 60
+    rate_limit_read_per_minute: int = 120
+
+    # ── Cost kill-switch (aggregate $ guard, provider-agnostic) ──────────
+    # Counts LLM-bearing requests as a proxy for spend; hard-fails 503 over a
+    # global minute/day/month ceiling plus a per-user/day budget. False =>
+    # cost_guard() is a no-op (tests), independent of rate_limit_enabled. FAIL-
+    # CLOSED: a Redis error denies (503), unlike the rate limiter (fails open).
+    cost_guard_enabled: bool = True
+    cost_global_per_minute: int = 120
+    cost_global_per_day: int = 5000
+    cost_global_per_month: int = 100000
+    cost_user_per_day: int = 200
+    cost_alert_threshold: float = 0.8
+
+    # Generous default per-user limit the middleware applies to every
+    # authenticated request (backstop for routes lacking an explicit limiter).
+    rate_limit_default_per_minute: int = 120
+
+    # Per-user/day outbound-IGDB budget shared by create_game/capture (the app-
+    # wide IGDB quota is 4 req/s for everyone). Fails OPEN (best-effort).
+    igdb_user_budget_per_day: int = 300
+
+    # Process-wide concurrent Whisper transcriptions (mirrors ollama), and the
+    # per-call generated-token cap (Ollama/ChatOllama num_predict) bounding spend.
+    stt_max_concurrency: int = 2
+    llm_max_output_tokens: int = 1024
 
     # ── Request hardening (DoS / security headers) ───────────────────────
     # Coarse backstop: reject any request whose Content-Length exceeds this cap
@@ -209,6 +253,11 @@ class Settings(BaseSettings):
     # ── Observability (optional) ─────────────────────────────────────────
     sentry_dsn: str = ""
     otel_exporter_otlp_endpoint: str = ""
+
+    @property
+    def is_production(self) -> bool:
+        """True when running outside development/testing (i.e. production)."""
+        return self.app_env not in _DEV_ENVS
 
 
 _DEV_ENVS = ("development", "testing")
@@ -238,6 +287,12 @@ def _validate_production_settings(s: Settings) -> None:
 
     if s.auth_cookie_samesite == "none" and not s.auth_cookie_secure:
         raise RuntimeError("FATAL: auth_cookie_samesite='none' requires auth_cookie_secure=True.")
+
+    if s.single_user_mode:
+        raise RuntimeError(
+            "FATAL: single_user_mode must be False in production. "
+            "It bypasses JWT auth and returns a fixed account for every request."
+        )
 
 
 settings = Settings()

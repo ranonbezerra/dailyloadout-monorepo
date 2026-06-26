@@ -55,6 +55,7 @@ def get_library_service(
         reference_ttl_seconds=settings.reference_cache_ttl_seconds,
         igdb_client=igdb_client,
         match_min_score=settings.catalog_match_min_score,
+        share_threshold=settings.catalog_share_threshold,
     )
 
 

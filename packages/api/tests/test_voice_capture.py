@@ -94,6 +94,35 @@ class TestTranscribeAudio:
         )
         assert resp.status_code == 401
 
+    async def test_transcribe_rejects_over_max_audio_seconds(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """A transcription longer than capture_max_audio_seconds is rejected 422."""
+        from dailyloadout.config import settings
+        from dailyloadout.deps.capture import get_stt_client_dep
+        from dailyloadout.infrastructure.stt.base import TranscriptionResult
+        from dailyloadout.main import app
+
+        class _LongSTT:
+            async def transcribe(
+                self, audio_path: str, language: str = "pt"
+            ) -> TranscriptionResult:
+                return TranscriptionResult(
+                    text="x",
+                    language="en",
+                    duration_seconds=settings.capture_max_audio_seconds + 1,
+                )
+
+        app.dependency_overrides[get_stt_client_dep] = lambda: _LongSTT()
+        try:
+            resp = await _transcribe(async_client, auth_headers)
+        finally:
+            del app.dependency_overrides[get_stt_client_dep]
+        assert resp.status_code == 422
+        assert "seconds" in resp.json()["detail"].lower()
+
 
 # =====================================================================
 # Test: Full voice flow (transcribe → submit text with input_type=voice)
