@@ -36,7 +36,7 @@ def test_production_rejects_insecure_cookie() -> None:
 def test_production_accepts_hardened_settings() -> None:
     s = Settings(
         app_env="production",
-        secret_key="real-secret",
+        secret_key="real-secret",  # pragma: allowlist secret
         auth_cookie_secure=True,
         auth_cookie_samesite="none",
     )
