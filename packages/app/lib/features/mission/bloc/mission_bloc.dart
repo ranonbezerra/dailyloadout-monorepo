@@ -1,3 +1,4 @@
+import 'package:app/core/auth/email_verification.dart';
 import 'package:app/core/mission/mission_models.dart';
 import 'package:app/core/mission/mission_repository.dart';
 import 'package:bloc/bloc.dart';
@@ -260,6 +261,11 @@ class MissionBloc extends Bloc<MissionEvent, MissionState> {
   }
 
   String _extractErrorMessage(DioException e) {
+    // Briefing generation 403s until the email is verified; surface the
+    // actionable verify prompt rather than the bare API detail.
+    if (EmailVerification.isUnverifiedError(e)) {
+      return EmailVerification.friendlyMessage;
+    }
     final data = e.response?.data;
     if (data is Map<String, dynamic>) {
       final detail = data['detail'];

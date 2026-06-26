@@ -1,3 +1,4 @@
+import 'package:app/core/auth/email_verification.dart';
 import 'package:app/core/loadout/loadout_models.dart';
 import 'package:app/core/loadout/loadout_repository.dart';
 import 'package:app/core/mission/mission_repository.dart';
@@ -145,6 +146,11 @@ class LoadoutBloc extends Bloc<LoadoutEvent, LoadoutState> {
   }
 
   String _extractErrorMessage(DioException e) {
+    // Cost-bearing routes 403 until the email is verified; surface the
+    // actionable verify prompt rather than the bare API detail.
+    if (EmailVerification.isUnverifiedError(e)) {
+      return EmailVerification.friendlyMessage;
+    }
     final data = e.response?.data;
     if (data is Map<String, dynamic>) {
       final detail = data['detail'];

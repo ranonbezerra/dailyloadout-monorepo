@@ -16,6 +16,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<LoginRequested>(_onLoginRequested);
     on<RegisterRequested>(_onRegisterRequested);
     on<LogoutRequested>(_onLogoutRequested);
+    on<RefreshUserRequested>(_onRefreshUserRequested);
+    on<ResendVerificationRequested>(_onResendVerificationRequested);
   }
 
   final AuthRepository _authRepository;
@@ -114,6 +116,56 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     } finally {
       await _authRepository.clearTokens();
       emit(const Unauthenticated());
+    }
+  }
+
+  /// Re-fetches the user profile without flipping back through a loading
+  /// screen. Used to pick up a freshly verified email after the user clicks
+  /// the link in the web app. Silently no-ops if the fetch fails so the user
+  /// keeps their session.
+  Future<void> _onRefreshUserRequested(
+    RefreshUserRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    try {
+      final user = await _authRepository.getMe();
+      emit(Authenticated(user: user));
+    } on Exception catch (e) {
+      _logger.w('User refresh failed: $e');
+    }
+  }
+
+  /// Requests a fresh verification email. Emits a transient feedback state
+  /// (for a snackbar) and then settles back to [Authenticated]. The current
+  /// user is preserved throughout so the session is never interrupted.
+  Future<void> _onResendVerificationRequested(
+    ResendVerificationRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    final current = state;
+    if (current is! AuthenticatedState) return;
+    final user = current.user;
+
+    try {
+      final message = await _authRepository.resendVerification();
+      emit(
+        VerificationEmailSent(
+          user: user,
+          message: message.isEmpty
+              ? 'Verification email sent. Check your inbox.'
+              : message,
+        ),
+      );
+    } on DioException catch (e) {
+      emit(
+        VerificationEmailFailed(user: user, message: _extractErrorMessage(e)),
+      );
+    } on Exception catch (e) {
+      emit(VerificationEmailFailed(user: user, message: e.toString()));
+    } finally {
+      // Settle back to a stable state so a repeated resend re-triggers the
+      // listener (transient states wouldn't fire again if they stuck around).
+      emit(Authenticated(user: user));
     }
   }
 

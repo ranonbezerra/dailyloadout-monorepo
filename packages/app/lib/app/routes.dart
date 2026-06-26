@@ -44,7 +44,7 @@ GoRouter createRouter(
         return null;
       }
 
-      final isAuthenticated = authState is Authenticated;
+      final isAuthenticated = authState is AuthenticatedState;
       final isOnAuthPage =
           currentPath == '/login' || currentPath == '/register';
       final isOnSplash = currentPath == '/splash';

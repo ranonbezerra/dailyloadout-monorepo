@@ -428,6 +428,134 @@ void main() {
     });
 
     // ---------------------------------------------------------------
+    // RefreshUserRequested
+    // ---------------------------------------------------------------
+    group('RefreshUserRequested', () {
+      final verifiedUser = User(
+        publicId: 'user-001',
+        email: 'test@example.com',
+        displayName: 'TestUser',
+        emailVerified: true,
+        locale: 'en-US',
+        timezone: 'America/New_York',
+        createdAt: DateTime.utc(2025, 1, 15),
+      );
+
+      blocTest<AuthBloc, AuthState>(
+        're-fetches the profile and emits Authenticated without AuthLoading',
+        setUp: () {
+          when(
+            () => mockAuthRepository.getMe(),
+          ).thenAnswer((_) async => verifiedUser);
+        },
+        build: buildBloc,
+        act: (bloc) => bloc.add(const RefreshUserRequested()),
+        expect: () => [Authenticated(user: verifiedUser)],
+        verify: (_) {
+          verify(() => mockAuthRepository.getMe()).called(1);
+        },
+      );
+
+      blocTest<AuthBloc, AuthState>(
+        'emits nothing when getMe throws (session is preserved)',
+        setUp: () {
+          when(
+            () => mockAuthRepository.getMe(),
+          ).thenThrow(Exception('offline'));
+        },
+        build: buildBloc,
+        act: (bloc) => bloc.add(const RefreshUserRequested()),
+        expect: () => const <AuthState>[],
+      );
+    });
+
+    // ---------------------------------------------------------------
+    // ResendVerificationRequested
+    // ---------------------------------------------------------------
+    group('ResendVerificationRequested', () {
+      final unverifiedUser = User(
+        publicId: 'user-001',
+        email: 'test@example.com',
+        displayName: 'TestUser',
+        emailVerified: false,
+        locale: 'en-US',
+        timezone: 'America/New_York',
+        createdAt: DateTime.utc(2025, 1, 15),
+      );
+
+      blocTest<AuthBloc, AuthState>(
+        'emits [VerificationEmailSent, Authenticated] on success',
+        setUp: () {
+          when(
+            () => mockAuthRepository.resendVerification(),
+          ).thenAnswer((_) async => 'Email sent.');
+        },
+        build: buildBloc,
+        seed: () => Authenticated(user: unverifiedUser),
+        act: (bloc) => bloc.add(const ResendVerificationRequested()),
+        expect: () => [
+          VerificationEmailSent(user: unverifiedUser, message: 'Email sent.'),
+          Authenticated(user: unverifiedUser),
+        ],
+      );
+
+      blocTest<AuthBloc, AuthState>(
+        'uses a fallback message when the API returns an empty message',
+        setUp: () {
+          when(
+            () => mockAuthRepository.resendVerification(),
+          ).thenAnswer((_) async => '');
+        },
+        build: buildBloc,
+        seed: () => Authenticated(user: unverifiedUser),
+        act: (bloc) => bloc.add(const ResendVerificationRequested()),
+        expect: () => [
+          VerificationEmailSent(
+            user: unverifiedUser,
+            message: 'Verification email sent. Check your inbox.',
+          ),
+          Authenticated(user: unverifiedUser),
+        ],
+      );
+
+      blocTest<AuthBloc, AuthState>(
+        'emits [VerificationEmailFailed, Authenticated] on DioException',
+        setUp: () {
+          when(() => mockAuthRepository.resendVerification()).thenThrow(
+            DioException(
+              requestOptions: RequestOptions(),
+              response: Response(
+                requestOptions: RequestOptions(),
+                statusCode: 429,
+                data: <String, dynamic>{'detail': 'Too many requests'},
+              ),
+            ),
+          );
+        },
+        build: buildBloc,
+        seed: () => Authenticated(user: unverifiedUser),
+        act: (bloc) => bloc.add(const ResendVerificationRequested()),
+        expect: () => [
+          VerificationEmailFailed(
+            user: unverifiedUser,
+            message: 'Too many requests',
+          ),
+          Authenticated(user: unverifiedUser),
+        ],
+      );
+
+      blocTest<AuthBloc, AuthState>(
+        'does nothing when not in an authenticated state',
+        build: buildBloc,
+        act: (bloc) => bloc.add(const ResendVerificationRequested()),
+        expect: () => const <AuthState>[],
+        verify: (_) {
+          verifyNever(() => mockAuthRepository.resendVerification());
+        },
+      );
+    });
+
+    // ---------------------------------------------------------------
     // _extractErrorMessage coverage via DioException paths
     // ---------------------------------------------------------------
     group('_extractErrorMessage (via DioException error paths)', () {

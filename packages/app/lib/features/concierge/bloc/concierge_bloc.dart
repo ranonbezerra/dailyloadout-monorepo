@@ -1,3 +1,4 @@
+import 'package:app/core/auth/email_verification.dart';
 import 'package:app/core/concierge/concierge_models.dart';
 import 'package:app/core/concierge/concierge_repository.dart';
 import 'package:bloc/bloc.dart';
@@ -113,6 +114,9 @@ class ConciergeBloc extends Bloc<ConciergeEvent, ConciergeState> {
         emit(
           state.copyWith(status: ConciergeStatus.idle, clearActiveTool: true),
         );
+      } else if (EmailVerification.isUnverifiedError(error)) {
+        // The concierge is a cost-bearing route; 403 until email is verified.
+        _emitError(emit, message: EmailVerification.friendlyMessage);
       } else {
         _emitError(emit);
       }
@@ -144,12 +148,13 @@ class ConciergeBloc extends Bloc<ConciergeEvent, ConciergeState> {
     return messages;
   }
 
-  void _emitError(Emitter<ConciergeState> emit) {
+  void _emitError(Emitter<ConciergeState> emit, {String? message}) {
+    final text = message ?? _fallbackError;
     emit(
       state.copyWith(
-        messages: _withLastAssistant(_fallbackError),
+        messages: _withLastAssistant(text),
         status: ConciergeStatus.error,
-        errorMessage: _fallbackError,
+        errorMessage: text,
         clearActiveTool: true,
       ),
     );

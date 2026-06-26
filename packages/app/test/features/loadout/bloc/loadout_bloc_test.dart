@@ -229,6 +229,46 @@ void main() {
           LoadoutError(message: 'Exception: unexpected'),
         ],
       );
+
+      blocTest<LoadoutBloc, LoadoutState>(
+        'surfaces the verify-email prompt on a 403 "Email not verified"',
+        setUp: () {
+          when(
+            () => mockLoadoutRepository.createLoadout(
+              mood: any(named: 'mood'),
+              availableMinutes: any(named: 'availableMinutes'),
+              mentalEnergy: any(named: 'mentalEnergy'),
+              count: any(named: 'count'),
+              context: any(named: 'context'),
+            ),
+          ).thenThrow(
+            DioException(
+              requestOptions: RequestOptions(),
+              response: Response(
+                requestOptions: RequestOptions(),
+                statusCode: 403,
+                data: <String, dynamic>{'detail': 'Email not verified'},
+              ),
+            ),
+          );
+        },
+        build: buildBloc,
+        act: (bloc) => bloc.add(
+          const CreateLoadout(
+            mood: 'chill',
+            availableMinutes: 60,
+            mentalEnergy: 'medium',
+          ),
+        ),
+        expect: () => [
+          const LoadoutLoading(),
+          isA<LoadoutError>().having(
+            (e) => e.message,
+            'message',
+            contains('Verify your email'),
+          ),
+        ],
+      );
     });
 
     // -------------------------------------------------------------

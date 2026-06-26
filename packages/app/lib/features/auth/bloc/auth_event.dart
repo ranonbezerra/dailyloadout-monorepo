@@ -43,3 +43,18 @@ final class RegisterRequested extends AuthEvent {
 final class LogoutRequested extends AuthEvent {
   const LogoutRequested();
 }
+
+/// Dispatched to re-fetch the current user's profile from `/me`.
+///
+/// Used after the user has clicked the email verification link in the web
+/// app: re-fetching updates [User.emailVerified] so the verify prompt clears.
+/// Unlike [AppStarted], this does not emit [AuthLoading], so the UI stays put
+/// while the profile refreshes in the background.
+final class RefreshUserRequested extends AuthEvent {
+  const RefreshUserRequested();
+}
+
+/// Dispatched to request a fresh verification email be sent.
+final class ResendVerificationRequested extends AuthEvent {
+  const ResendVerificationRequested();
+}
