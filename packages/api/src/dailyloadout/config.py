@@ -56,6 +56,12 @@ class Settings(BaseSettings):
     # after 30 min; set '-1' to pin them loaded indefinitely (always fast, but
     # holds the memory).
     ollama_warmup_keep_alive: str = "30m"
+    # Process-wide ceiling on concurrent model calls to the host Ollama server
+    # (per worker process). A burst of concierge/briefing requests would
+    # otherwise oversubscribe the GPU/CPU and stall every in-flight call; this
+    # bounds the queue depth so the model serves a few requests fast rather than
+    # thrashing all of them. Holds only around the model HTTP call.
+    ollama_max_concurrency: int = 2
 
     # ── Agent / Deep Research Briefing (Epic 10) ─────────────────────────
     agent_provider: str = "dummy"  # langgraph | dummy
@@ -161,6 +167,24 @@ class Settings(BaseSettings):
     mission_auto_clamp_hours: int = 24
     loadout_auto_ignore_hours: int = 24
     loadout_cooldown_hours: int = 12
+
+    # ── Rate limiting (Redis fixed-window, per-user / per-IP) ────────────
+    # Master switch. False => the rate_limit() dependency is a no-op (used in
+    # tests and any deploy that wants it off). The limiter ALSO fails open if
+    # Redis is unreachable, so the API never hard-fails on a limiter error.
+    rate_limit_enabled: bool = True
+    # Auth limiters (per client IP) — migrated from in-memory pyrate_limiter to
+    # Redis so the window is shared across worker processes.
+    rate_limit_login_per_minute: int = 10
+    rate_limit_register_per_minute: int = 5
+    # Per-USER limits on the expensive (LLM / IGDB / research) routes. Tuned
+    # conservatively for COST (each call is a paid Vertex/Bedrock request, and
+    # the concierge fans out to several model calls per turn), not just abuse.
+    rate_limit_concierge_chat_per_minute: int = 6
+    rate_limit_mission_briefing_per_minute: int = 4
+    rate_limit_loadout_create_per_minute: int = 10
+    rate_limit_capture_submit_per_minute: int = 15
+    rate_limit_library_import_per_minute: int = 5
 
     # ── Request hardening (DoS / security headers) ───────────────────────
     # Coarse backstop: reject any request whose Content-Length exceeds this cap

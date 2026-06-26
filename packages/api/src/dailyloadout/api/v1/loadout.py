@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, Depends, Query, status
 
+from dailyloadout.api.v1._rate_limit import rate_limit
+from dailyloadout.config import settings
 from dailyloadout.core.loadout.schemas import (
     LoadoutAcceptRequest,
     LoadoutCreateRequest,
@@ -19,6 +21,18 @@ from dailyloadout.deps.loadout import LoadoutServiceDep
 
 router = APIRouter(prefix="/v1/loadouts", tags=["loadouts"])
 
+# Per-user limiter on the LLM-pick routes (create + one-tap start). Each call
+# runs a smart-model pick over the eligible library, so it's the expensive
+# loadout surface worth bounding per account.
+_loadout_create_rate_limit = Depends(
+    rate_limit(
+        "loadout_create",
+        settings.rate_limit_loadout_create_per_minute,
+        60,
+        by="user",
+    )
+)
+
 
 # ---------------------------------------------------------------------------
 # Create loadout
@@ -29,6 +43,7 @@ router = APIRouter(prefix="/v1/loadouts", tags=["loadouts"])
     "",
     response_model=list[LoadoutResponse],
     status_code=status.HTTP_201_CREATED,
+    dependencies=[_loadout_create_rate_limit],
 )
 async def create_loadout(
     body: LoadoutCreateRequest,
@@ -57,7 +72,12 @@ async def create_loadout(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/start", response_model=LoadoutResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/start",
+    response_model=LoadoutResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[_loadout_create_rate_limit],
+)
 async def start_loadout(
     body: LoadoutStartRequest,
     current_user: CurrentUserDep,

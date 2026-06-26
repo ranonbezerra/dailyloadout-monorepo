@@ -20,7 +20,7 @@ taskiq-redis = "*"
 redis = { version = "*", extras = ["hiredis"] }
 httpx = "*"
 structlog = "*"
-pyrate-limiter = ">=3"
+pyrate-limiter = ">=4.4"
 python-jose = { version = "*", extras = ["cryptography"] }
 passlib = { version = "*", extras = ["bcrypt"] }
 python-multipart = "*"
@@ -95,6 +95,10 @@ env = [
     "APP_ENV=testing",
     "DATABASE_URL=sqlite+aiosqlite://",
     "BCRYPT_ROUNDS=4",
+    # Rate limiting is Redis-backed; tests never start Redis. Off by default so
+    # the suite never sees a false 429. The dedicated rate-limit test re-enables
+    # it via a settings patch + fake Redis (see test_rate_limit.py).
+    "RATE_LIMIT_ENABLED=false",
     # Pin AI providers to dummies so tests never depend on a developer's local
     # .env (e.g. RESEARCH_PROVIDER=searxng) or hit real network/LLM services.
     "AGENT_PROVIDER=dummy",

@@ -1,0 +1,117 @@
+"""Redis-backed rate limiting as a FastAPI dependency factory.
+
+Built on ``pyrate_limiter``'s async ``RedisBucket`` over a shared
+``redis.asyncio`` client (``settings.redis_url``). The Redis backend makes the
+window shared across worker processes — the in-memory bucket counts per-process,
+which is the bug this replaces.
+
+``rate_limit(scope, times, seconds, by)`` returns a dependency that consumes one
+permit from the bucket keyed by ``f"rl:{scope}:{identity}"`` and raises **429**
+with a ``Retry-After`` header once the window is full. Identity is the
+authenticated user (``by="user"``) or the client IP (``by="ip"``, uvicorn runs
+with ``--proxy-headers``).
+
+Fail-open by design: the limiter NEVER hard-fails a request. Any limiter/Redis
+error allows the request (logged as a warning), so the API works without Redis.
+When ``settings.rate_limit_enabled`` is False the dependency is a no-op (tests
+and "limiter off" deploys). The per-key ``Limiter`` instances (and their Redis
+Lua script load) are created lazily on first use, so importing this module and
+starting the app never require Redis.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Awaitable, Callable
+from inspect import isawaitable
+from typing import Literal
+
+import structlog
+from fastapi import HTTPException, Request, status
+from pyrate_limiter import Duration, Limiter, Rate, RedisBucket
+
+from dailyloadout.config import settings
+from dailyloadout.deps.auth import CurrentUserDep
+from dailyloadout.infrastructure.cache.redis_client import get_redis_client
+
+logger = structlog.get_logger()
+
+RateLimitBy = Literal["user", "ip"]
+
+# One Limiter per (scope, times, seconds, identity). pyrate_limiter's RedisBucket
+# counts the WHOLE bucket (Lua ZCOUNT over the ZSET), so the identity must live
+# in the bucket key — not the per-item ``name`` — for windows to be isolated per
+# user/IP. Memoised so the Lua script is loaded once per bucket, not per request.
+_limiters: dict[str, Limiter] = {}
+
+
+def _client_ip(request: Request) -> str:
+    """Resolve the client IP (uvicorn runs with ``--proxy-headers``)."""
+    return request.client.host if request.client else "unknown"
+
+
+async def _get_limiter(scope: str, identity: str, times: int, seconds: int) -> Limiter:
+    """Return (lazily building) the Redis-backed limiter for this key/rate."""
+    cache_key = f"{scope}:{times}:{seconds}:{identity}"
+    limiter = _limiters.get(cache_key)
+    if limiter is None:
+        rate = Rate(times, Duration.SECOND * seconds)
+        bucket = await RedisBucket.init(
+            [rate], get_redis_client(), bucket_key=f"rl:{scope}:{identity}"
+        )
+        limiter = Limiter(bucket)
+        _limiters[cache_key] = limiter
+    return limiter
+
+
+async def _enforce(scope: str, identity: str, times: int, seconds: int) -> None:
+    """Consume one permit; raise 429 when the window is full.
+
+    Fail-open: any limiter/Redis error allows the request (logged as a warning).
+    The bucket key embeds the identity so each user/IP gets its own window.
+    """
+    try:
+        limiter = await _get_limiter(scope, identity, times, seconds)
+        # The async RedisBucket makes try_acquire awaitable; the signature is a
+        # sync/async union, so resolve it defensively.
+        result = limiter.try_acquire(scope, blocking=False)
+        acquired = await result if isawaitable(result) else result
+    except Exception:
+        logger.warning("rate_limit_redis_error", scope=scope, exc_info=True)
+        return
+
+    if not acquired:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Rate limit exceeded. Please slow down.",
+            headers={"Retry-After": str(seconds)},
+        )
+
+
+def rate_limit(
+    scope: str,
+    times: int,
+    seconds: int,
+    by: RateLimitBy = "user",
+) -> Callable[..., Awaitable[None]]:
+    """Build a FastAPI dependency enforcing ``times`` requests per ``seconds``.
+
+    ``scope`` namespaces the bucket (one scope per protected route). ``by``
+    selects the identity: the authenticated user id (``"user"``) or the client
+    IP (``"ip"``). The returned dependency is a no-op when rate limiting is
+    disabled in settings.
+    """
+    if by == "user":
+
+        async def _dep_user(current_user: CurrentUserDep) -> None:
+            if not settings.rate_limit_enabled:
+                return
+            await _enforce(scope, str(current_user.id), times, seconds)
+
+        return _dep_user
+
+    async def _dep_ip(request: Request) -> None:
+        if not settings.rate_limit_enabled:
+            return
+        await _enforce(scope, _client_ip(request), times, seconds)
+
+    return _dep_ip

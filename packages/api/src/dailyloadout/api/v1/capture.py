@@ -6,9 +6,10 @@ import os
 import tempfile
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, status
 
 from dailyloadout.api.v1._mime_helpers import guess_audio_extension
+from dailyloadout.api.v1._rate_limit import rate_limit
 from dailyloadout.config import settings
 from dailyloadout.core.capture.exceptions import InvalidUploadError
 from dailyloadout.core.capture.ingestion import read_upload_capped
@@ -26,6 +27,18 @@ from dailyloadout.deps.capture import STTClientDep
 
 router = APIRouter(prefix="/v1/captures", tags=["captures"])
 
+# Per-user limiter on the LLM/IGDB capture-submit routes (text + photo). Each
+# submission runs an LLM extraction plus IGDB lookups, so it's the expensive
+# capture surface to bound per account.
+_capture_submit_rate_limit = Depends(
+    rate_limit(
+        "capture_submit",
+        settings.rate_limit_capture_submit_per_minute,
+        60,
+        by="user",
+    )
+)
+
 
 # ---------------------------------------------------------------------------
 # Text capture
@@ -36,6 +49,7 @@ router = APIRouter(prefix="/v1/captures", tags=["captures"])
     "/text",
     response_model=CaptureResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[_capture_submit_rate_limit],
 )
 async def submit_text_capture(
     body: CaptureTextRequest,
@@ -64,6 +78,7 @@ async def submit_text_capture(
     "/photo",
     response_model=CaptureResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[_capture_submit_rate_limit],
 )
 async def submit_photo_capture(
     file: UploadFile,

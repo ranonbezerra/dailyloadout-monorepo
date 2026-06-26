@@ -1,8 +1,8 @@
 """Auth API endpoints: register, login, refresh, logout, me."""
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from pyrate_limiter import Duration, Limiter, Rate
 
+from dailyloadout.api.v1._rate_limit import rate_limit
 from dailyloadout.api.v1.auth_cookies import (
     clear_refresh_cookie,
     is_cookie_mode,
@@ -20,28 +20,13 @@ from dailyloadout.core.auth.schemas import (
 )
 from dailyloadout.deps import AuthServiceDep, CurrentUserDep
 
-_login_limiter = Limiter(Rate(10, Duration.MINUTE))
-_register_limiter = Limiter(Rate(5, Duration.MINUTE))
-
-
-async def _check_login_rate(request: Request) -> None:
-    client_ip = request.client.host if request.client else "unknown"
-    allowed = _login_limiter.try_acquire(client_ip, blocking=False)
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many login attempts. Try again later.",
-        )
-
-
-async def _check_register_rate(request: Request) -> None:
-    client_ip = request.client.host if request.client else "unknown"
-    allowed = _register_limiter.try_acquire(client_ip, blocking=False)
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many registration attempts. Try again later.",
-        )
+# Per-IP limiters, now Redis-backed (shared across worker processes) and
+# fail-open if Redis is unreachable. Limits come from settings. These names are
+# overridden to no-ops in tests (see conftest), matching the old wiring.
+_check_login_rate = rate_limit("auth_login", settings.rate_limit_login_per_minute, 60, by="ip")
+_check_register_rate = rate_limit(
+    "auth_register", settings.rate_limit_register_per_minute, 60, by="ip"
+)
 
 
 router = APIRouter(prefix="/v1/auth", tags=["auth"])

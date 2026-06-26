@@ -16,9 +16,11 @@ import logging
 from collections.abc import AsyncIterator
 from uuid import uuid4
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
+from dailyloadout.api.v1._rate_limit import rate_limit
+from dailyloadout.config import settings
 from dailyloadout.core.concierge.schemas import ChatRequest
 from dailyloadout.deps import CurrentUserDep
 from dailyloadout.deps.concierge import ConciergeServiceDep
@@ -41,7 +43,19 @@ def _sse(payload: dict[str, object]) -> str:
     return f"data: {json.dumps(payload)}\n\n"
 
 
-@router.post("/chat")
+@router.post(
+    "/chat",
+    dependencies=[
+        Depends(
+            rate_limit(
+                "concierge_chat",
+                settings.rate_limit_concierge_chat_per_minute,
+                60,
+                by="user",
+            )
+        )
+    ],
+)
 async def chat(
     body: ChatRequest,
     current_user: CurrentUserDep,
