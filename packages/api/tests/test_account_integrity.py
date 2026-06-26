@@ -47,7 +47,7 @@ class TestAutoVerifyBypass:
             "/v1/auth/register",
             json={
                 "email": "autoverify@example.com",
-                "password": "SecurePass1",
+                "password": "SecurePass1",  # pragma: allowlist secret
                 "display_name": "Auto Verify",
             },
         )
@@ -55,7 +55,9 @@ class TestAutoVerifyBypass:
         assert user.email_verified is True
 
     async def test_me_reports_verified(
-        self, async_client: AsyncClient, auth_headers: dict[str, str]
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
     ) -> None:
         resp = await async_client.get("/v1/auth/me", headers=auth_headers)
         assert resp.json()["email_verified"] is True
@@ -159,7 +161,8 @@ class TestVerifyEmail:
 class TestResendVerification:
     async def test_resend_neutral_for_unknown(self, async_client: AsyncClient) -> None:
         resp = await async_client.post(
-            "/v1/auth/resend-verification", json={"email": "ghost@example.com"}
+            "/v1/auth/resend-verification",
+            json={"email": "ghost@example.com"},
         )
         assert resp.status_code == 200
         assert "verification email was sent" in resp.json()["message"]
@@ -175,7 +178,8 @@ class TestResendVerification:
         )
         await _set_unverified("resend@example.com")
         resp = await async_client.post(
-            "/v1/auth/resend-verification", json={"email": "resend@example.com"}
+            "/v1/auth/resend-verification",
+            json={"email": "resend@example.com"},
         )
         assert resp.status_code == 200
 
