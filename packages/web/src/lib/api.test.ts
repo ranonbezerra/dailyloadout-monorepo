@@ -1,49 +1,25 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	apiFetch,
+	authFetch,
 	BASE_URL,
 	clearTokens,
 	getAccessToken,
-	getRefreshToken,
+	refreshSession,
 	saveTokens,
 } from "./api";
 
 // ---------------------------------------------------------------------------
-// localStorage mock (simple in-memory implementation)
-// ---------------------------------------------------------------------------
-
-function createLocalStorageMock(): Storage {
-	let store: Record<string, string> = {};
-	return {
-		getItem: vi.fn((key: string) => store[key] ?? null),
-		setItem: vi.fn((key: string, value: string) => {
-			store[key] = value;
-		}),
-		removeItem: vi.fn((key: string) => {
-			delete store[key];
-		}),
-		clear: vi.fn(() => {
-			store = {};
-		}),
-		get length() {
-			return Object.keys(store).length;
-		},
-		key: vi.fn((index: number) => Object.keys(store)[index] ?? null),
-	};
-}
-
-// ---------------------------------------------------------------------------
-// Setup
+// Setup — the access token now lives in a module-level variable (in memory),
+// and the refresh token is an httpOnly cookie the browser manages.
 // ---------------------------------------------------------------------------
 
 const mockFetch = vi.fn<(...args: unknown[]) => Promise<Response>>();
-let storageMock: Storage;
 
 beforeEach(() => {
 	vi.stubGlobal("fetch", mockFetch);
-	storageMock = createLocalStorageMock();
-	vi.stubGlobal("localStorage", storageMock);
 	mockFetch.mockReset();
+	clearTokens();
 });
 
 // ---------------------------------------------------------------------------
@@ -55,33 +31,131 @@ describe("Token helpers", () => {
 		expect(getAccessToken()).toBeNull();
 	});
 
-	it("getRefreshToken returns null when no token is stored", () => {
-		expect(getRefreshToken()).toBeNull();
-	});
-
-	it("saveTokens persists both tokens to localStorage", () => {
-		saveTokens("access-123", "refresh-456");
-		expect(storageMock.setItem).toHaveBeenCalledWith("dl_access_token", "access-123");
-		expect(storageMock.setItem).toHaveBeenCalledWith("dl_refresh_token", "refresh-456");
-	});
-
-	it("getAccessToken returns the saved access token", () => {
+	it("saveTokens stores the access token in memory (refresh arg ignored)", () => {
 		saveTokens("access-123", "refresh-456");
 		expect(getAccessToken()).toBe("access-123");
 	});
 
-	it("getRefreshToken returns the saved refresh token", () => {
-		saveTokens("access-123", "refresh-456");
-		expect(getRefreshToken()).toBe("refresh-456");
+	it("saveTokens works with only the access token", () => {
+		saveTokens("access-only");
+		expect(getAccessToken()).toBe("access-only");
 	});
 
-	it("clearTokens removes both tokens from localStorage", () => {
-		saveTokens("access-123", "refresh-456");
+	it("clearTokens removes the in-memory access token", () => {
+		saveTokens("access-123");
 		clearTokens();
 		expect(getAccessToken()).toBeNull();
-		expect(getRefreshToken()).toBeNull();
-		expect(storageMock.removeItem).toHaveBeenCalledWith("dl_access_token");
-		expect(storageMock.removeItem).toHaveBeenCalledWith("dl_refresh_token");
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Response helpers
+// ---------------------------------------------------------------------------
+
+function jsonResponse(body: unknown, status = 200): Response {
+	return {
+		ok: status >= 200 && status < 300,
+		status,
+		json: () => Promise.resolve(body),
+		text: () => Promise.resolve(JSON.stringify(body)),
+		headers: new Headers(),
+	} as unknown as Response;
+}
+
+function textResponse(text: string, status: number): Response {
+	return {
+		ok: status >= 200 && status < 300,
+		status,
+		json: () => Promise.reject(new Error("not json")),
+		text: () => Promise.resolve(text),
+		headers: new Headers(),
+	} as unknown as Response;
+}
+
+// ---------------------------------------------------------------------------
+// refreshSession (cookie-based silent refresh)
+// ---------------------------------------------------------------------------
+
+describe("refreshSession", () => {
+	it("POSTs /v1/auth/refresh with cookie-mode header, credentials, no body", async () => {
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({ access_token: "new-access", refresh_token: "" }),
+		);
+
+		const ok = await refreshSession();
+
+		expect(ok).toBe(true);
+		expect(getAccessToken()).toBe("new-access");
+
+		const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+		expect(url).toBe(`${BASE_URL}/v1/auth/refresh`);
+		expect(init.method).toBe("POST");
+		expect(init.credentials).toBe("include");
+		expect(init.body).toBeUndefined();
+		const headers = new Headers(init.headers);
+		expect(headers.get("X-Auth-Mode")).toBe("cookie");
+	});
+
+	it("clears the token and returns false when refresh is not ok", async () => {
+		saveTokens("stale");
+		mockFetch.mockResolvedValueOnce(jsonResponse({}, 401));
+
+		const ok = await refreshSession();
+
+		expect(ok).toBe(false);
+		expect(getAccessToken()).toBeNull();
+	});
+
+	it("clears the token and returns false on a network error", async () => {
+		saveTokens("stale");
+		mockFetch.mockRejectedValueOnce(new Error("network"));
+
+		const ok = await refreshSession();
+
+		expect(ok).toBe(false);
+		expect(getAccessToken()).toBeNull();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// authFetch (login / register / logout)
+// ---------------------------------------------------------------------------
+
+describe("authFetch", () => {
+	it("sends cookie-mode header + credentials and returns parsed JSON", async () => {
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({ access_token: "a", refresh_token: "", token_type: "bearer" }),
+		);
+
+		const data = await authFetch("/v1/auth/login", { email: "x@y.z", password: "p" });
+
+		expect(data).toEqual({ access_token: "a", refresh_token: "", token_type: "bearer" });
+		const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+		expect(url).toBe(`${BASE_URL}/v1/auth/login`);
+		expect(init.credentials).toBe("include");
+		const headers = new Headers(init.headers);
+		expect(headers.get("X-Auth-Mode")).toBe("cookie");
+		expect(headers.get("Content-Type")).toBe("application/json");
+		expect(JSON.parse(init.body as string)).toEqual({ email: "x@y.z", password: "p" });
+	});
+
+	it("returns undefined for a 204 logout", async () => {
+		mockFetch.mockResolvedValueOnce({
+			ok: true,
+			status: 204,
+			json: () => Promise.reject(new Error("no body")),
+			text: () => Promise.resolve(""),
+			headers: new Headers(),
+		} as unknown as Response);
+
+		const data = await authFetch("/v1/auth/logout", {});
+		expect(data).toBeUndefined();
+	});
+
+	it("throws the error detail on a non-ok response", async () => {
+		mockFetch.mockResolvedValueOnce(jsonResponse({ detail: "Invalid credentials" }, 401));
+
+		await expect(authFetch("/v1/auth/login", {})).rejects.toThrow("Invalid credentials");
 	});
 });
 
@@ -90,31 +164,10 @@ describe("Token helpers", () => {
 // ---------------------------------------------------------------------------
 
 describe("apiFetch", () => {
-	// Helper to create a minimal Response-like object for mockFetch
-	function jsonResponse(body: unknown, status = 200): Response {
-		return {
-			ok: status >= 200 && status < 300,
-			status,
-			json: () => Promise.resolve(body),
-			text: () => Promise.resolve(JSON.stringify(body)),
-			headers: new Headers(),
-		} as unknown as Response;
-	}
-
-	function textResponse(text: string, status: number): Response {
-		return {
-			ok: status >= 200 && status < 300,
-			status,
-			json: () => Promise.reject(new Error("not json")),
-			text: () => Promise.resolve(text),
-			headers: new Headers(),
-		} as unknown as Response;
-	}
-
 	// -- Authorization header ------------------------------------------------
 
 	it("sets Authorization header when an access token exists", async () => {
-		saveTokens("my-token", "my-refresh");
+		saveTokens("my-token");
 		mockFetch.mockResolvedValueOnce(jsonResponse({ ok: true }));
 
 		await apiFetch("/v1/items");
@@ -122,6 +175,15 @@ describe("apiFetch", () => {
 		const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
 		const headers = new Headers(init.headers);
 		expect(headers.get("Authorization")).toBe("Bearer my-token");
+	});
+
+	it("includes credentials so the cookie rides along", async () => {
+		mockFetch.mockResolvedValueOnce(jsonResponse({ ok: true }));
+
+		await apiFetch("/v1/items");
+
+		const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+		expect(init.credentials).toBe("include");
 	});
 
 	it("does not set Authorization header when no access token exists", async () => {
@@ -137,13 +199,10 @@ describe("apiFetch", () => {
 	// -- Content-Type --------------------------------------------------------
 
 	it("sets Content-Type to application/json when a body is provided", async () => {
-		saveTokens("tok", "ref");
+		saveTokens("tok");
 		mockFetch.mockResolvedValueOnce(jsonResponse({ id: 1 }));
 
-		await apiFetch("/v1/items", {
-			method: "POST",
-			body: JSON.stringify({ name: "Sword" }),
-		});
+		await apiFetch("/v1/items", { method: "POST", body: JSON.stringify({ name: "Sword" }) });
 
 		const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
 		const headers = new Headers(init.headers);
@@ -226,29 +285,30 @@ describe("apiFetch", () => {
 		);
 	});
 
-	it("throws with status code when error response is not JSON", async () => {
+	it("surfaces the raw body when the error response is not JSON", async () => {
 		mockFetch.mockResolvedValueOnce(textResponse("Internal error", 500));
+
+		await expect(apiFetch("/v1/items")).rejects.toThrow("Internal error");
+	});
+
+	it("throws with status code when error response has an empty body", async () => {
+		mockFetch.mockResolvedValueOnce(textResponse("", 500));
 
 		await expect(apiFetch("/v1/items")).rejects.toThrow("Request failed: 500");
 	});
 
-	// -- 401 refresh flow ----------------------------------------------------
+	// -- 401 cookie-refresh flow ---------------------------------------------
 
 	describe("401 token refresh", () => {
-		it("refreshes the token and retries the original request on 401", async () => {
-			saveTokens("expired-token", "valid-refresh");
+		it("refreshes via the cookie and retries the original request on 401", async () => {
+			saveTokens("expired-token");
 
 			// 1st call: original request returns 401
 			mockFetch.mockResolvedValueOnce(jsonResponse({}, 401));
-
-			// 2nd call: refresh endpoint succeeds
+			// 2nd call: refresh endpoint succeeds (cookie-based, empty refresh body)
 			mockFetch.mockResolvedValueOnce(
-				jsonResponse({
-					access_token: "new-access",
-					refresh_token: "new-refresh",
-				}),
+				jsonResponse({ access_token: "new-access", refresh_token: "" }),
 			);
-
 			// 3rd call: retry of the original request succeeds
 			const retryPayload = { id: 1, name: "Sword" };
 			mockFetch.mockResolvedValueOnce(jsonResponse(retryPayload));
@@ -258,75 +318,58 @@ describe("apiFetch", () => {
 			expect(result).toEqual(retryPayload);
 			expect(mockFetch).toHaveBeenCalledTimes(3);
 
-			// Verify the refresh call was made correctly
+			// The refresh call: no body, cookie-mode header, credentials included.
 			const [refreshUrl, refreshInit] = mockFetch.mock.calls[1] as [string, RequestInit];
 			expect(refreshUrl).toBe(`${BASE_URL}/v1/auth/refresh`);
-			expect(JSON.parse(refreshInit.body as string)).toEqual({
-				refresh_token: "valid-refresh",
-			});
+			expect(refreshInit.body).toBeUndefined();
+			expect(refreshInit.credentials).toBe("include");
+			expect(new Headers(refreshInit.headers).get("X-Auth-Mode")).toBe("cookie");
 
-			// Verify the retry used the new token
+			// The retry used the new in-memory token.
 			const [, retryInit] = mockFetch.mock.calls[2] as [string, RequestInit];
-			const retryHeaders = new Headers(retryInit.headers);
-			expect(retryHeaders.get("Authorization")).toBe("Bearer new-access");
-
-			// Verify tokens were updated in storage
+			expect(new Headers(retryInit.headers).get("Authorization")).toBe("Bearer new-access");
 			expect(getAccessToken()).toBe("new-access");
-			expect(getRefreshToken()).toBe("new-refresh");
 		});
 
-		it("clears tokens and throws when refresh fails with non-ok status", async () => {
-			saveTokens("expired-token", "bad-refresh");
+		it("clears the token and throws when refresh fails with non-ok status", async () => {
+			saveTokens("expired-token");
 
-			// 1st call: original 401
 			mockFetch.mockResolvedValueOnce(jsonResponse({}, 401));
-
-			// 2nd call: refresh returns 401 (invalid refresh token)
 			mockFetch.mockResolvedValueOnce(jsonResponse({}, 401));
 
 			await expect(apiFetch("/v1/items")).rejects.toThrow("Session expired. Please log in again.");
 
 			expect(getAccessToken()).toBeNull();
-			expect(getRefreshToken()).toBeNull();
 		});
 
-		it("clears tokens and throws when refresh request throws a network error", async () => {
-			saveTokens("expired-token", "valid-refresh");
+		it("clears the token and throws when the refresh request throws", async () => {
+			saveTokens("expired-token");
 
-			// 1st call: original 401
 			mockFetch.mockResolvedValueOnce(jsonResponse({}, 401));
-
-			// 2nd call: refresh throws network error
 			mockFetch.mockRejectedValueOnce(new Error("Network error"));
 
 			await expect(apiFetch("/v1/items")).rejects.toThrow("Session expired. Please log in again.");
 
 			expect(getAccessToken()).toBeNull();
-			expect(getRefreshToken()).toBeNull();
 		});
 
-		it("does not attempt refresh when there is no refresh token", async () => {
-			saveTokens("expired-token", "valid-refresh");
-			// Remove only the refresh token
-			localStorage.removeItem("dl_refresh_token");
-
+		it("attempts a cookie refresh even when there is no in-memory token", async () => {
+			// No access token yet (e.g. cookie present but memory empty): a 401
+			// still triggers a refresh attempt because the cookie may be valid.
 			mockFetch.mockResolvedValueOnce(jsonResponse({ detail: "Unauthorized" }, 401));
+			mockFetch.mockResolvedValueOnce(jsonResponse({}, 401)); // refresh also 401
 
-			await expect(apiFetch("/v1/items")).rejects.toThrow("Unauthorized");
-
-			// Should not have called the refresh endpoint
-			expect(mockFetch).toHaveBeenCalledTimes(1);
+			await expect(apiFetch("/v1/items")).rejects.toThrow("Session expired. Please log in again.");
+			// original + refresh attempt = 2 calls
+			expect(mockFetch).toHaveBeenCalledTimes(2);
 		});
 
 		it("retried request 204 returns undefined", async () => {
-			saveTokens("expired-token", "valid-refresh");
+			saveTokens("expired-token");
 
 			mockFetch.mockResolvedValueOnce(jsonResponse({}, 401));
 			mockFetch.mockResolvedValueOnce(
-				jsonResponse({
-					access_token: "new-access",
-					refresh_token: "new-refresh",
-				}),
+				jsonResponse({ access_token: "new-access", refresh_token: "" }),
 			);
 			mockFetch.mockResolvedValueOnce({
 				ok: true,
@@ -341,16 +384,12 @@ describe("apiFetch", () => {
 		});
 
 		it("throws when retried request after successful refresh still fails", async () => {
-			saveTokens("expired-token", "valid-refresh");
+			saveTokens("expired-token");
 
 			mockFetch.mockResolvedValueOnce(jsonResponse({}, 401));
 			mockFetch.mockResolvedValueOnce(
-				jsonResponse({
-					access_token: "new-access",
-					refresh_token: "new-refresh",
-				}),
+				jsonResponse({ access_token: "new-access", refresh_token: "" }),
 			);
-			// Retry also fails
 			mockFetch.mockResolvedValueOnce(textResponse("Forbidden", 403));
 
 			await expect(apiFetch("/v1/admin/secret")).rejects.toThrow("Forbidden");
@@ -359,24 +398,15 @@ describe("apiFetch", () => {
 		// -- Concurrent 401 deduplication ------------------------------------
 
 		it("deduplicates concurrent refresh calls into a single request", async () => {
-			saveTokens("expired-token", "valid-refresh");
+			saveTokens("expired-token");
 
-			// Both initial requests return 401
 			mockFetch.mockResolvedValueOnce(jsonResponse({}, 401)); // call A
 			mockFetch.mockResolvedValueOnce(jsonResponse({}, 401)); // call B
-
-			// Single refresh call
 			mockFetch.mockResolvedValueOnce(
-				jsonResponse({
-					access_token: "new-access",
-					refresh_token: "new-refresh",
-				}),
+				jsonResponse({ access_token: "new-access", refresh_token: "" }),
 			);
-
-			// Retry for call A
-			mockFetch.mockResolvedValueOnce(jsonResponse({ id: 1 }));
-			// Retry for call B
-			mockFetch.mockResolvedValueOnce(jsonResponse({ id: 2 }));
+			mockFetch.mockResolvedValueOnce(jsonResponse({ id: 1 })); // retry A
+			mockFetch.mockResolvedValueOnce(jsonResponse({ id: 2 })); // retry B
 
 			const [resultA, resultB] = await Promise.all([
 				apiFetch("/v1/items/1"),
@@ -385,11 +415,8 @@ describe("apiFetch", () => {
 
 			expect(resultA).toEqual({ id: 1 });
 			expect(resultB).toEqual({ id: 2 });
-
-			// 2 original + 1 refresh + 2 retries = 5 calls total
 			expect(mockFetch).toHaveBeenCalledTimes(5);
 
-			// Verify only ONE call went to the refresh endpoint
 			const refreshCalls = mockFetch.mock.calls.filter(
 				(call) => (call[0] as string) === `${BASE_URL}/v1/auth/refresh`,
 			);

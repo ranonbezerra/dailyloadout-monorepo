@@ -35,7 +35,9 @@ class LoginRequest(BaseModel):
 
 
 class RefreshRequest(BaseModel):
-    refresh_token: str
+    # Optional so cookie-mode web callers can POST refresh/logout with no body;
+    # in that case the token is read from the httpOnly cookie instead.
+    refresh_token: str = ""
 
 
 # ---------------------------------------------------------------------------

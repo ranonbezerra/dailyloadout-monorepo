@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic_settings import BaseSettings
 
 
@@ -132,6 +134,17 @@ class Settings(BaseSettings):
 
     # ── Auth ───────────────────────────────────────────────────────
     bcrypt_rounds: int = 12
+
+    # ── Auth refresh cookie (web cookie-mode, X-Auth-Mode: cookie) ───────
+    # The Flutter app uses BODY mode (no cookie); these only affect web.
+    # Dev-friendly defaults: Secure off + SameSite lax so http://localhost
+    # works. PRODUCTION: set auth_cookie_secure=True, and if web/api live on
+    # different domains set auth_cookie_samesite="none" (which requires Secure).
+    auth_cookie_name: str = "dl_refresh_token"
+    auth_cookie_secure: bool = False
+    auth_cookie_samesite: Literal["lax", "strict", "none"] = "lax"
+    auth_cookie_path: str = "/v1/auth"
+    auth_cookie_domain: str | None = None
 
     # ── Limits ───────────────────────────────────────────────────────────
     capture_max_audio_seconds: int = 60
