@@ -23,11 +23,19 @@ final class MissionListLoaded extends MissionState {
     required this.missions,
     required this.total,
     this.isLoadingMore = false,
+    this.loadMoreError,
   });
 
   final List<MissionListItem> missions;
   final int total;
   final bool isLoadingMore;
+
+  /// Error message from a failed "load more" page fetch.
+  ///
+  /// Surfaced inline (snackbar/banner) so the already-loaded list stays
+  /// visible. A full-screen [MissionError] is reserved for first-page
+  /// load failures.
+  final String? loadMoreError;
 
   bool get hasMore => missions.length < total;
 
@@ -35,16 +43,18 @@ final class MissionListLoaded extends MissionState {
     List<MissionListItem>? missions,
     int? total,
     bool? isLoadingMore,
+    String? loadMoreError,
   }) {
     return MissionListLoaded(
       missions: missions ?? this.missions,
       total: total ?? this.total,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      loadMoreError: loadMoreError,
     );
   }
 
   @override
-  List<Object?> get props => [missions, total, isLoadingMore];
+  List<Object?> get props => [missions, total, isLoadingMore, loadMoreError];
 }
 
 /// Active mission has been loaded (null means no active mission).

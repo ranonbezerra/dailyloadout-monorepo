@@ -373,8 +373,8 @@ void main() {
       );
 
       blocTest<AnalyticsBloc, AnalyticsState>(
-        'resets isLoadingMoreTimeline and emits '
-        'AnalyticsError on DioException',
+        'keeps the dashboard and surfaces loadMoreTimelineError '
+        'on DioException (no full-screen AnalyticsError)',
         setUp: () {
           when(
             () => mockAnalyticsRepository.getTimeline(
@@ -419,14 +419,14 @@ void main() {
             platformStats: _platformStats,
             timelineItems: [_timelineEntry],
             timelineTotal: 2,
+            loadMoreTimelineError: 'Page error',
           ),
-          const AnalyticsError(message: 'Page error'),
         ],
       );
 
       blocTest<AnalyticsBloc, AnalyticsState>(
-        'resets isLoadingMoreTimeline and emits '
-        'AnalyticsError on generic Exception',
+        'keeps the dashboard and surfaces loadMoreTimelineError '
+        'on generic Exception',
         setUp: () {
           when(
             () => mockAnalyticsRepository.getTimeline(
@@ -462,8 +462,8 @@ void main() {
             platformStats: _platformStats,
             timelineItems: [_timelineEntry],
             timelineTotal: 2,
+            loadMoreTimelineError: 'Exception: network down',
           ),
-          const AnalyticsError(message: 'Exception: network down'),
         ],
       );
     });

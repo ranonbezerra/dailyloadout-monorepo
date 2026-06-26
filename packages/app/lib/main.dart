@@ -54,6 +54,11 @@ Future<void> main() async {
   final conciergeRepository = ConciergeRepository(apiClient: apiClient);
 
   final authBloc = AuthBloc(authRepository: authRepository);
+
+  // Wire token-refresh failure to a forced logout. The auth interceptor
+  // clears tokens and invokes this when a refresh token is expired/revoked,
+  // so the router's refreshListenable can redirect to /login.
+  apiClient.onForceLogout = () => authBloc.add(const LogoutRequested());
   final libraryBloc = LibraryBloc(libraryRepository: libraryRepository);
   final captureBloc = CaptureBloc(captureRepository: captureRepository);
   final libraryImportBloc = LibraryImportBloc(

@@ -97,6 +97,7 @@ void main() {
         [_timelineEntry],
         2,
         false,
+        null,
       ]);
 
       final updated = a.copyWith(isLoadingMoreTimeline: true, timelineTotal: 1);
@@ -104,6 +105,10 @@ void main() {
       expect(updated.timelineTotal, 1);
       expect(updated.hasMoreTimeline, false);
       expect(updated.overview, _overview);
+
+      final errored = a.copyWith(loadMoreTimelineError: 'oops');
+      expect(errored.loadMoreTimelineError, 'oops');
+      expect(errored.props.last, 'oops');
     });
 
     test('AnalyticsLoaded uses default timeline values', () {

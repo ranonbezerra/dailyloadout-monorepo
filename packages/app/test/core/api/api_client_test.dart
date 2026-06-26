@@ -158,6 +158,25 @@ void main() {
       expect(loggedOut, isTrue);
     });
 
+    test('fires onForceLogout wired up after construction', () async {
+      when(() => tokenStore.getAccessToken()).thenReturn('old-access');
+      when(() => tokenStore.getRefreshToken()).thenAnswer((_) async => null);
+      var loggedOut = false;
+
+      when(() => adapter.fetch(any(), any(), any())).thenAnswer(
+        (_) async => _jsonBody(<String, dynamic>{'detail': 'nope'}, 401),
+      );
+
+      // Built without a callback; wired afterwards like main.dart does.
+      apiClient = buildClient()..onForceLogout = () => loggedOut = true;
+
+      await expectLater(
+        apiClient.dio.get<dynamic>('/v1/protected'),
+        throwsA(isA<DioException>()),
+      );
+      expect(loggedOut, isTrue);
+    });
+
     test('clears tokens and logs out when refresh fails', () async {
       when(() => tokenStore.getAccessToken()).thenReturn('old-access');
       when(

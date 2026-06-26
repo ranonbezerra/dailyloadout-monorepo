@@ -27,6 +27,7 @@ final class AnalyticsLoaded extends AnalyticsState {
     this.timelineItems = const [],
     this.timelineTotal = 0,
     this.isLoadingMoreTimeline = false,
+    this.loadMoreTimelineError,
   });
 
   final StatsOverview overview;
@@ -36,6 +37,12 @@ final class AnalyticsLoaded extends AnalyticsState {
   final List<TimelineEntry> timelineItems;
   final int timelineTotal;
   final bool isLoadingMoreTimeline;
+
+  /// Error message from a failed timeline "load more" page fetch.
+  ///
+  /// Surfaced inline so the dashboard stays visible. A full-screen
+  /// [AnalyticsError] is reserved for the initial load failure.
+  final String? loadMoreTimelineError;
 
   bool get hasMoreTimeline => timelineItems.length < timelineTotal;
 
@@ -47,6 +54,7 @@ final class AnalyticsLoaded extends AnalyticsState {
     List<TimelineEntry>? timelineItems,
     int? timelineTotal,
     bool? isLoadingMoreTimeline,
+    String? loadMoreTimelineError,
   }) {
     return AnalyticsLoaded(
       overview: overview ?? this.overview,
@@ -57,6 +65,7 @@ final class AnalyticsLoaded extends AnalyticsState {
       timelineTotal: timelineTotal ?? this.timelineTotal,
       isLoadingMoreTimeline:
           isLoadingMoreTimeline ?? this.isLoadingMoreTimeline,
+      loadMoreTimelineError: loadMoreTimelineError,
     );
   }
 
@@ -69,6 +78,7 @@ final class AnalyticsLoaded extends AnalyticsState {
     timelineItems,
     timelineTotal,
     isLoadingMoreTimeline,
+    loadMoreTimelineError,
   ];
 }
 

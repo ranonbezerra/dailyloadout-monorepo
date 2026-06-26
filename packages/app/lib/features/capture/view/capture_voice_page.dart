@@ -221,19 +221,23 @@ class _CaptureVoicePageState extends State<CaptureVoicePage> {
           ),
           const SizedBox(height: 24),
           // Mic button.
-          GestureDetector(
-            onTap: _isRecording ? _stopRecording : _startRecording,
-            child: Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _isRecording ? colors.error : colors.primary,
-              ),
-              child: Icon(
-                _isRecording ? Icons.stop : Icons.mic,
-                color: Colors.white,
-                size: 40,
+          Semantics(
+            button: true,
+            label: _isRecording ? 'Stop recording' : 'Start recording',
+            child: GestureDetector(
+              onTap: _isRecording ? _stopRecording : _startRecording,
+              child: Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _isRecording ? colors.error : colors.primary,
+                ),
+                child: Icon(
+                  _isRecording ? Icons.stop : Icons.mic,
+                  color: _isRecording ? colors.onError : colors.onPrimary,
+                  size: 40,
+                ),
               ),
             ),
           ),

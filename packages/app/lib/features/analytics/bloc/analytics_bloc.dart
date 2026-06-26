@@ -102,11 +102,20 @@ class AnalyticsBloc extends Bloc<AnalyticsEvent, AnalyticsState> {
         ),
       );
     } on DioException catch (e) {
-      emit(currentState.copyWith(isLoadingMoreTimeline: false));
-      emit(AnalyticsError(message: _extractErrorMessage(e)));
+      // Keep the dashboard visible; surface the error inline.
+      emit(
+        currentState.copyWith(
+          isLoadingMoreTimeline: false,
+          loadMoreTimelineError: _extractErrorMessage(e),
+        ),
+      );
     } on Exception catch (e) {
-      emit(currentState.copyWith(isLoadingMoreTimeline: false));
-      emit(AnalyticsError(message: e.toString()));
+      emit(
+        currentState.copyWith(
+          isLoadingMoreTimeline: false,
+          loadMoreTimelineError: e.toString(),
+        ),
+      );
     }
   }
 

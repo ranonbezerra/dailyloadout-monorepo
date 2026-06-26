@@ -32,7 +32,27 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Analytics')),
-      body: BlocBuilder<AnalyticsBloc, AnalyticsState>(
+      body: BlocConsumer<AnalyticsBloc, AnalyticsState>(
+        listenWhen: (previous, current) =>
+            current is AnalyticsLoaded && current.loadMoreTimelineError != null,
+        listener: (context, state) {
+          if (state is! AnalyticsLoaded) return;
+          final message = state.loadMoreTimelineError;
+          if (message == null) return;
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              SnackBar(
+                content: Text('Could not load more: $message'),
+                action: SnackBarAction(
+                  label: 'Retry',
+                  onPressed: () => context.read<AnalyticsBloc>().add(
+                    const LoadMoreTimeline(),
+                  ),
+                ),
+              ),
+            );
+        },
         builder: (context, state) {
           if (state is AnalyticsLoading) {
             return const Center(child: CircularProgressIndicator());
