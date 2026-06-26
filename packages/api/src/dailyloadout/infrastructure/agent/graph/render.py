@@ -11,9 +11,14 @@ from pathlib import Path
 
 from jinja2.sandbox import SandboxedEnvironment
 
+from dailyloadout.core.sanitization import wrap_user_data
+
 _PROMPTS_DIR = Path(__file__).resolve().parents[3] / "prompts"
 
 _jinja_env = SandboxedEnvironment(autoescape=False)
+# ``udata`` fences untrusted user/shared/library text in a <user_data> block and
+# neutralizes any forged closing sentinel, so the model treats it as DATA only.
+_jinja_env.filters["udata"] = wrap_user_data
 
 
 @cache

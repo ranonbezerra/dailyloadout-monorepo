@@ -9,7 +9,21 @@ verbatim into a prompt — so they are stripped/rejected at the edge.
 
 from __future__ import annotations
 
+import re
 from urllib.parse import urlparse
+
+# Sentinel that delimits untrusted user/shared/library content inside an LLM
+# prompt. Everything between the open and close tag is DATA, never instructions
+# (the SYSTEM prompts state this rule explicitly). The wrapper neutralizes any
+# attempt by the user to forge a closing tag and "break out" of the block.
+USER_DATA_OPEN = "<user_data>"
+USER_DATA_CLOSE = "</user_data>"
+
+# Matches any case-variant / whitespace-padded forgery of the closing tag
+# (e.g. ``</USER_DATA >`` or ``< / user_data >``) so a crafted title can't end
+# the data block early and have the rest read as instructions.
+_CLOSE_TAG_RE = re.compile(r"<\s*/\s*user_data\s*>", re.IGNORECASE)
+_CLOSE_TAG_REPLACEMENT = "<​/user_data>"
 
 # Control characters (C0 + DEL + C1) that must never survive into a prompt or
 # the catalog. Tab/newline/CR are intentionally included: titles and slugs are
@@ -61,3 +75,27 @@ def validate_cdn_url(value: str | None, allowed_hosts: list[str]) -> str | None:
     if parsed.hostname not in allowed_hosts:
         return None
     return value
+
+
+def neutralize_close_sentinel(value: str) -> str:
+    """Defang any forged ``</user_data>`` so the user can't escape the data block.
+
+    A zero-width space is inserted after the ``<`` of every close-tag variant.
+    The text stays human-readable to the model (it reads the same) but is no
+    longer the literal sentinel the wrapper uses, so the block can't be ended
+    early to smuggle in instructions.
+    """
+    return _CLOSE_TAG_RE.sub(_CLOSE_TAG_REPLACEMENT, value)
+
+
+def wrap_user_data(value: object) -> str:
+    """Wrap untrusted *value* in a delimited ``<user_data>`` block for prompts.
+
+    All user/shared/library text interpolated into an LLM prompt MUST pass
+    through here so the model can tell DATA from INSTRUCTIONS. The value is
+    stringified, any forged closing sentinel is neutralized, and the result is
+    fenced between the open/close tags. The SYSTEM prompts carry the standing
+    rule that text inside this block is never to be obeyed as a directive.
+    """
+    text = "" if value is None else str(value)
+    return f"{USER_DATA_OPEN}{neutralize_close_sentinel(text)}{USER_DATA_CLOSE}"

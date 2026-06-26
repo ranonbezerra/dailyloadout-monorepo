@@ -15,6 +15,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from dailyloadout.core.sanitization import wrap_user_data
 from dailyloadout.core.stats.service import StatsService
 from dailyloadout.infrastructure.agent.concierge.base import ConciergeTool
 from dailyloadout.infrastructure.db.models import LibraryEntry
@@ -26,10 +27,18 @@ _STATUS_FIT = {"playing": 40, "paused": 30, "backlog": 15, "completed": 0, "drop
 
 
 def _entry_line(entry: LibraryEntry) -> str:
-    """One-line summary of a library entry, including its id for recommendations."""
-    parts = [f"{entry.game.title} — {entry.platform.label} [{entry.status}]"]
+    """One-line summary of a library entry, including its id for recommendations.
+
+    Game titles and saved next-actions are user/shared content, so they are
+    fenced in a <user_data> block (the concierge SYSTEM prompt tells the model to
+    treat that as DATA, never instructions). Platform, status, and id are trusted
+    system values left unwrapped so the model can still use them for filtering
+    and recommendations.
+    """
+    title = wrap_user_data(entry.game.title)
+    parts = [f"{title} — {entry.platform.label} [{entry.status}]"]
     if entry.mission_next_action:
-        parts.append(f"next: {entry.mission_next_action}")
+        parts.append(f"next: {wrap_user_data(entry.mission_next_action)}")
     parts.append(f"(id: {entry.public_id})")
     return "- " + " | ".join(parts)
 
@@ -76,9 +85,9 @@ async def get_mission_history(
         return "That game is not in the library."
 
     missions = await mission_repo.get_recent_for_entry(entry.id, limit=max(1, min(limit, 5)))
-    lines = [f"Game: {entry.game.title}"]
+    lines = [f"Game: {wrap_user_data(entry.game.title)}"]
     if entry.mission_next_action:
-        lines.append(f"Saved next action: {entry.mission_next_action}")
+        lines.append(f"Saved next action: {wrap_user_data(entry.mission_next_action)}")
     if not missions:
         lines.append("No recorded sessions yet.")
         return "\n".join(lines)
@@ -87,7 +96,8 @@ async def get_mission_history(
         state = m.extracted_state or {}
         bits = [str(v) for v in (state.get("location"), state.get("current_quest")) if v]
         summary = "; ".join(bits) if bits else (m.debrief_text or "").strip()[:160]
-        lines.append(f"- {summary or 'session recorded'}")
+        # Mission state and debrief text are the player's own words — fence them.
+        lines.append(f"- {wrap_user_data(summary or 'session recorded')}")
     return "\n".join(lines)
 
 
@@ -154,9 +164,8 @@ async def estimate_session_fit(
         reasons.append("plenty of time this session")
 
     score = max(0, min(100, score))
-    return (
-        f"Fit score for '{entry.game.title}' in {minutes} min: {score}/100 ({'; '.join(reasons)})."
-    )
+    title = wrap_user_data(entry.game.title)
+    return f"Fit score for {title} in {minutes} min: {score}/100 ({'; '.join(reasons)})."
 
 
 async def validate_recommendation(

@@ -12,6 +12,7 @@ from jinja2.sandbox import SandboxedEnvironment
 
 from dailyloadout.config import Settings
 from dailyloadout.config import settings as _settings
+from dailyloadout.core.sanitization import wrap_user_data
 
 from .base import AbstractLLMClient, ExtractedGame, ExtractedState, LLMRole, LoadoutPick
 from .parsers import _extract_json, _parse_game_list
@@ -34,14 +35,13 @@ def _get_ollama_semaphore() -> asyncio.Semaphore:
 
 
 _PROMPTS_DIR = Path(__file__).resolve().parent.parent.parent / "prompts"
-
 _jinja_env = SandboxedEnvironment(autoescape=False)
+_jinja_env.filters["udata"] = wrap_user_data  # fence untrusted text in <user_data>
 
 
 def _load_prompt(name: str) -> str:
     """Load a Jinja2 prompt template source from the ``prompts/`` directory."""
-    path = _PROMPTS_DIR / name
-    return path.read_text(encoding="utf-8")
+    return (_PROMPTS_DIR / name).read_text(encoding="utf-8")
 
 
 _CAPTURE_PARSE_SRC = _load_prompt("capture_parse.j2")
