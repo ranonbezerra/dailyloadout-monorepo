@@ -210,10 +210,7 @@ class _EmptyState extends StatelessWidget {
 ///
 /// Renders the grouped response as-is — no client-side grouping.
 class _LibraryGameCard extends StatelessWidget {
-  const _LibraryGameCard({
-    required this.group,
-    required this.onStartMission,
-  });
+  const _LibraryGameCard({required this.group, required this.onStartMission});
 
   final LibraryGameGroup group;
 
@@ -347,10 +344,7 @@ class _PlatformRow extends StatelessWidget {
                 tooltip: 'Start Mission',
                 iconSize: 20,
                 padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(
-                  minWidth: 32,
-                  minHeight: 32,
-                ),
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
               ),
           ],
         ),

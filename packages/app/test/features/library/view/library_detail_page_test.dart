@@ -186,11 +186,7 @@ void main() {
       tester,
     ) async {
       when(() => libraryBloc.state).thenReturn(
-        LibraryLoaded(
-          groups: [_groupWithoutSummary],
-          total: 1,
-          hasMore: false,
-        ),
+        LibraryLoaded(groups: [_groupWithoutSummary], total: 1, hasMore: false),
       );
 
       await tester.pumpWidget(buildSubject(entryPublicId: 'entry-2'));

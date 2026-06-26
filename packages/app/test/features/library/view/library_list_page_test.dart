@@ -110,9 +110,9 @@ void main() {
       'shows empty state with Your backlog is empty when LibraryLoaded '
       'with empty list',
       (tester) async {
-        when(() => libraryBloc.state).thenReturn(
-          const LibraryLoaded(groups: [], total: 0, hasMore: false),
-        );
+        when(
+          () => libraryBloc.state,
+        ).thenReturn(const LibraryLoaded(groups: [], total: 0, hasMore: false));
 
         await tester.pumpWidget(buildSubject());
 
