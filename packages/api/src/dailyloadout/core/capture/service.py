@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -12,6 +11,7 @@ from dailyloadout.config import settings as default_settings
 from dailyloadout.core.capture import candidates
 from dailyloadout.core.capture.ingestion import (
     enforce_import_quota,
+    meter_import,
     temp_image_file,
     validate_image,
     validate_import_image,
@@ -34,9 +34,6 @@ from dailyloadout.infrastructure.db.repositories.usage import UsageCounterReposi
 from dailyloadout.infrastructure.igdb.base import IGDBSearchClient
 from dailyloadout.infrastructure.llm.base import AbstractLLMClient
 from dailyloadout.infrastructure.ocr.base import AbstractOCRClient
-
-# Usage-counter key for the per-day bulk-import image cap.
-_IMPORT_IMAGES_KEY = "library_import_images"
 
 
 class CaptureService:
@@ -180,10 +177,11 @@ class CaptureService:
             validate_import_image(content_type, len(contents), self._settings, data=contents)
             blobs.append(contents)
 
-        # Re-check quota (idempotent with the router's pre-buffer check) and meter.
-        await self.check_import_quota(user_id, len(blobs))
-        today = datetime.now(UTC).date()
-        await self._usage_repo.increment(user_id, _IMPORT_IMAGES_KEY, today, amount=len(blobs))
+        # Authoritative atomic meter against the per-day cap (closes the TOCTOU
+        # race the router's pre-buffer ``check_import_quota`` read cannot).
+        today = await meter_import(
+            user_id, len(blobs), usage_repo=self._usage_repo, settings=self._settings
+        )
 
         capture = await self._capture_repo.create(user_id=user_id, input_type="library_import")
         await self._process_library_import(

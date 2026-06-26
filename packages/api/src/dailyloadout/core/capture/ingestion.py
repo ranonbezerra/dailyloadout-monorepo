@@ -12,7 +12,7 @@ import os
 import tempfile
 from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from fastapi import UploadFile
 from PIL import Image
@@ -52,6 +52,48 @@ async def enforce_import_quota(
     used = await usage_repo.get_count(user_id, _IMPORT_IMAGES_KEY, today)
     if used + file_count > settings.library_import_images_per_day:
         raise ImportQuotaExceededError("Daily library-import limit reached. Try again tomorrow.")
+
+
+async def meter_import(
+    user_id: int,
+    file_count: int,
+    *,
+    usage_repo: UsageCounterRepository,
+    settings: Settings,
+) -> date:
+    """Authoritatively meter a bulk import against the per-day cap, atomically.
+
+    Re-validates the file count, then claims ``file_count`` from the per-day
+    image budget in a single atomic upsert. Unlike :func:`enforce_import_quota`
+    (a cheap pre-buffer read), the increment and cap check happen in one
+    statement, so N concurrent imports cannot all read the same pre-increment
+    count and overshoot the quota (the prior TOCTOU race). A rejected import
+    consumes nothing, so it never over-counts or locks the user out.
+
+    Returns the UTC day the import was metered against.
+
+    Raises:
+        InvalidUploadError: If *file_count* is empty or exceeds the per-request cap.
+        ImportQuotaExceededError: If the per-day image quota would be exceeded.
+    """
+    if file_count < 1:
+        raise InvalidUploadError("At least one image is required.")
+    if file_count > settings.library_import_max_files:
+        raise InvalidUploadError(
+            f"Too many files: at most {settings.library_import_max_files} per import."
+        )
+
+    today = datetime.now(UTC).date()
+    new_total = await usage_repo.increment_within_cap(
+        user_id,
+        _IMPORT_IMAGES_KEY,
+        today,
+        amount=file_count,
+        cap=settings.library_import_images_per_day,
+    )
+    if new_total is None:
+        raise ImportQuotaExceededError("Daily library-import limit reached. Try again tomorrow.")
+    return today
 
 
 def _verify_image_bytes(data: bytes) -> None:
