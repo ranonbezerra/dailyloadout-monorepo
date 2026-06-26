@@ -137,8 +137,14 @@ class TestRefresh:
         assert "refresh_token" in data
 
     async def test_refresh_rotation(self, async_client: AsyncClient) -> None:
-        """After a refresh, the old refresh token must be revoked and the
-        new one must be valid."""
+        """After a refresh, the old refresh token is revoked and the new one is valid.
+
+        Note: replaying the *already-rotated* old token now triggers reuse
+        detection (theft signal) which cuts off the whole family — covered in
+        detail by test_auth_kill_switch. Here we only assert the happy path:
+        the rotated-out token is dead, and the new token keeps working as long
+        as the old one is not replayed.
+        """
         tokens = await self._register(async_client)
         old_refresh = tokens["refresh_token"]
 
@@ -150,19 +156,19 @@ class TestRefresh:
         assert resp1.status_code == 200
         new_tokens = resp1.json()
 
-        # The old refresh token is now revoked — using it again must fail.
+        # The new refresh token works and can itself be rotated.
         resp2 = await async_client.post(
-            "/v1/auth/refresh",
-            json={"refresh_token": old_refresh},
-        )
-        assert resp2.status_code == 401
-
-        # The new refresh token should still work.
-        resp3 = await async_client.post(
             "/v1/auth/refresh",
             json={"refresh_token": new_tokens["refresh_token"]},
         )
-        assert resp3.status_code == 200
+        assert resp2.status_code == 200
+
+        # The original (rotated-out) token is dead — replaying it fails.
+        resp3 = await async_client.post(
+            "/v1/auth/refresh",
+            json={"refresh_token": old_refresh},
+        )
+        assert resp3.status_code == 401
 
     async def test_refresh_invalid_token(self, async_client: AsyncClient) -> None:
         resp = await async_client.post(

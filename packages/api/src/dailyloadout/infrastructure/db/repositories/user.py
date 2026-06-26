@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from dailyloadout.infrastructure.db.models import User
@@ -71,3 +71,13 @@ class UserRepository:
         """Mark *user*'s email as verified (idempotent)."""
         user.email_verified = True
         await self._session.flush()
+
+    async def bump_token_version(self, user_id: int) -> None:
+        """Increment *user_id*'s ``token_version`` (kills outstanding access tokens)."""
+        stmt = update(User).where(User.id == user_id).values(token_version=User.token_version + 1)
+        await self._session.execute(stmt)
+
+    async def set_banned(self, user_id: int, banned: bool) -> None:
+        """Set *user_id*'s ``is_banned`` flag to *banned*."""
+        stmt = update(User).where(User.id == user_id).values(is_banned=banned)
+        await self._session.execute(stmt)

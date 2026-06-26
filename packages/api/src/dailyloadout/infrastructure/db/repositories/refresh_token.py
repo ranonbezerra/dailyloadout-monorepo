@@ -45,6 +45,17 @@ class RefreshTokenRepository:
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def get_any_by_hash(self, token_hash: str) -> RefreshToken | None:
+        """Return the token matching *token_hash* regardless of revoked/expired state.
+
+        Used by refresh-reuse detection: a hash that is absent from the active
+        lookup but present here means an already-rotated/revoked token was
+        replayed — a theft signal.
+        """
+        stmt = select(RefreshToken).where(RefreshToken.token_hash == token_hash)
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def revoke(self, token_id: int) -> None:
         """Mark a single refresh token as revoked."""
         now = datetime.now(UTC)
@@ -63,3 +74,12 @@ class RefreshTokenRepository:
             .values(revoked_at=now)
         )
         await self._session.execute(stmt)
+
+    async def commit(self) -> None:
+        """Flush and commit the current transaction.
+
+        Used by incident-response paths (e.g. refresh-token reuse detection)
+        that must durably persist a security write even though the request then
+        raises and returns an error response (which would otherwise roll back).
+        """
+        await self._session.commit()

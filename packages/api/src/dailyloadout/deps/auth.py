@@ -96,6 +96,7 @@ async def get_current_user(
                 headers={"WWW-Authenticate": "Bearer"},
             )
         public_id = UUID(subject)
+        token_version = payload.get("tv")
     except (JWTError, ValueError) as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -110,6 +111,23 @@ async def get_current_user(
             detail="User not found",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    # Session kill-switch: a stale token_version means the session was revoked
+    # (logout-everywhere, ban, or theft response) — reject every old token.
+    if not isinstance(token_version, int) or token_version != user.token_version:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Incident response: a banned account is cut off at the auth boundary.
+    if user.is_banned:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account suspended",
+        )
+
     return user
 
 

@@ -80,7 +80,7 @@ class TestVerifyEmail:
     async def test_decode_rejects_access_token_purpose(self) -> None:
         from dailyloadout.core.auth.security import create_access_token
 
-        access = create_access_token("some-uuid")
+        access = create_access_token("some-uuid", token_version=0)
         with pytest.raises(ValueError, match="Invalid or expired"):
             decode_email_verification_token(access)
 

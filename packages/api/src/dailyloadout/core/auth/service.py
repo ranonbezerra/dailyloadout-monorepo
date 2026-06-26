@@ -73,7 +73,7 @@ class AuthService:
         if not auto_verify:
             self._send_verification_email(user)
 
-        access_token = create_access_token(str(user.public_id))
+        access_token = create_access_token(str(user.public_id), user.token_version)
         raw_refresh = generate_refresh_token()
         await self._store_refresh_token(user.id, raw_refresh)
 
@@ -144,7 +144,7 @@ class AuthService:
         if not verify_password(password, user.password_hash):
             raise ValueError("Invalid credentials")
 
-        access_token = create_access_token(str(user.public_id))
+        access_token = create_access_token(str(user.public_id), user.token_version)
         raw_refresh = generate_refresh_token()
         await self._store_refresh_token(user.id, raw_refresh, device_label=device_label)
 
@@ -165,6 +165,22 @@ class AuthService:
         token_hash = hash_refresh_token(raw_refresh_token)
         stored = await self._refresh_token_repo.get_by_hash(token_hash)
         if stored is None:
+            # Reuse detection: the active lookup missed, but if the hash exists at
+            # all it means an already-rotated/revoked token was replayed — a theft
+            # signal. Cut off the whole family (revoke all + bump token_version)
+            # so the stolen token, and the legitimate one it was rotated from,
+            # are both useless and the user is forced to re-login everywhere.
+            replayed = await self._refresh_token_repo.get_any_by_hash(token_hash)
+            if replayed is not None:
+                logger.warning(
+                    "refresh_token_reuse_detected",
+                    user_id=replayed.user_id,
+                    refresh_token_id=replayed.id,
+                )
+                await self._revoke_all_sessions_by_internal_id(replayed.user_id)
+                # Persist the cutoff durably: the request raises below (→ 401),
+                # which would otherwise roll back the security write.
+                await self._refresh_token_repo.commit()
             raise ValueError("Invalid or expired refresh token")
 
         # Revoke the old token (rotation)
@@ -175,7 +191,7 @@ class AuthService:
         if user is None:
             raise ValueError("User not found")
 
-        new_access = create_access_token(str(user.public_id))
+        new_access = create_access_token(str(user.public_id), user.token_version)
         new_raw_refresh = generate_refresh_token()
         await self._store_refresh_token(
             stored.user_id,
@@ -194,6 +210,32 @@ class AuthService:
         stored = await self._refresh_token_repo.get_by_hash(token_hash)
         if stored is not None:
             await self._refresh_token_repo.revoke(stored.id)
+
+    # ------------------------------------------------------------------
+    # Session kill-switch (logout-everywhere) and incident response
+    # ------------------------------------------------------------------
+    async def revoke_all_sessions(self, user_id: int) -> None:
+        """Cut off every session for *user_id* (internal id).
+
+        Bumps ``token_version`` (instantly invalidating all outstanding access
+        tokens) AND revokes all refresh tokens (killing every device). Used by
+        logout-everywhere and as the building block for ban / theft response.
+        """
+        await self._revoke_all_sessions_by_internal_id(user_id)
+
+    async def ban_user(self, user_id: int) -> None:
+        """Suspend *user_id* (internal id) and fully cut off their access.
+
+        Sets ``is_banned=True`` (so ``get_current_user`` 403s them), bumps
+        ``token_version``, and revokes every refresh token — a complete cutoff.
+        """
+        await self._user_repo.set_banned(user_id, True)
+        await self._revoke_all_sessions_by_internal_id(user_id)
+
+    async def _revoke_all_sessions_by_internal_id(self, user_id: int) -> None:
+        """Bump token_version and revoke all refresh tokens for *user_id*."""
+        await self._user_repo.bump_token_version(user_id)
+        await self._refresh_token_repo.revoke_all_for_user(user_id)
 
     # ------------------------------------------------------------------
     # Current user lookup

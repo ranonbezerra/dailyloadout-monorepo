@@ -55,13 +55,20 @@ def verify_password_dummy(plain: str) -> None:
 # ---------------------------------------------------------------------------
 def create_access_token(
     user_id: str,
+    token_version: int,
     expires_delta: timedelta | None = None,
 ) -> str:
-    """Create a signed JWT with *user_id* (public_id UUID string) as ``sub``."""
+    """Create a signed JWT with *user_id* (public_id UUID string) as ``sub``.
+
+    The ``tv`` claim carries the user's ``token_version``: ``get_current_user``
+    rejects the token when it no longer matches the DB value, so bumping
+    ``token_version`` instantly kills every outstanding access token.
+    """
     now = datetime.now(UTC)
     expire = now + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     payload = {
         "sub": user_id,
+        "tv": token_version,
         "exp": expire,
         "iat": now,
     }

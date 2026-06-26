@@ -45,6 +45,15 @@ class User(SoftDeleteMixin, TimestampMixin, Base):
     email_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     locale: Mapped[str] = mapped_column(String, nullable=False, default="pt-BR")
     timezone: Mapped[str] = mapped_column(String, nullable=False, default="America/Recife")
+    # Anti-abuse: bumping this instantly invalidates every outstanding access
+    # token (the ``tv`` JWT claim must match this value in get_current_user).
+    token_version: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, default=0, server_default=text("0")
+    )
+    # Anti-abuse: a banned account is rejected at the auth boundary (403).
+    is_banned: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
 
     # Relationships
     oauth_identities: Mapped[list["OAuthIdentity"]] = relationship(back_populates="user")

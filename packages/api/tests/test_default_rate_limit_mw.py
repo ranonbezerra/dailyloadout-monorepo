@@ -71,7 +71,7 @@ def _auth(token: str) -> dict[str, str]:
 async def test_disabled_is_noop() -> None:
     settings.rate_limit_enabled = False
     app = _build_app()
-    token = create_access_token("user-public-id")
+    token = create_access_token("user-public-id", token_version=0)
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         for _ in range(10):
@@ -93,7 +93,7 @@ async def test_anonymous_requests_pass_through(in_memory_limiter: None) -> None:
 async def test_metered_per_user_429(in_memory_limiter: None) -> None:
     settings.rate_limit_enabled = True
     app = _build_app()
-    token = create_access_token("user-aaa")
+    token = create_access_token("user-aaa", token_version=0)
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         assert (await ac.get("/ping", headers=_auth(token))).status_code == 200
@@ -107,8 +107,8 @@ async def test_keyed_per_user(in_memory_limiter: None) -> None:
     settings.rate_limit_enabled = True
     app = _build_app()
     transport = ASGITransport(app=app)
-    token_a = create_access_token("user-a")
-    token_b = create_access_token("user-b")
+    token_a = create_access_token("user-a", token_version=0)
+    token_b = create_access_token("user-b", token_version=0)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         await ac.get("/ping", headers=_auth(token_a))
         await ac.get("/ping", headers=_auth(token_a))
@@ -125,7 +125,7 @@ async def test_fails_open_on_limiter_error(monkeypatch: pytest.MonkeyPatch) -> N
 
     monkeypatch.setattr(_rate_limit, "_get_limiter", _broken)
     app = _build_app()
-    token = create_access_token("user-err")
+    token = create_access_token("user-err", token_version=0)
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         # Limiter errors => the backstop fails open (request allowed).
@@ -134,7 +134,7 @@ async def test_fails_open_on_limiter_error(monkeypatch: pytest.MonkeyPatch) -> N
 
 
 def test_bearer_subject_extraction() -> None:
-    token = create_access_token("abc-123")
+    token = create_access_token("abc-123", token_version=0)
     scope = {"headers": [(b"authorization", f"Bearer {token}".encode())]}
     assert _bearer_subject(scope) == "abc-123"
 

@@ -219,6 +219,25 @@ async def logout(
     return MessageResponse(message="Logged out")
 
 
+@router.post("/logout-all", response_model=MessageResponse)
+async def logout_all(
+    auth_service: AuthServiceDep,
+    current_user: CurrentUserDep,
+    response: Response,
+    request: Request,
+) -> MessageResponse:
+    """Log out everywhere: revoke all refresh tokens and kill all access tokens.
+
+    Bumps the user's ``token_version`` (instantly invalidating every outstanding
+    access token, including the one used for this request) and revokes every
+    refresh token. In cookie mode the local refresh cookie is also cleared.
+    """
+    await auth_service.revoke_all_sessions(current_user.id)
+    if is_cookie_mode(request):
+        clear_refresh_cookie(response)
+    return MessageResponse(message="Logged out everywhere")
+
+
 @router.get("/me", response_model=UserResponse)
 async def me(
     current_user: CurrentUserDep,
