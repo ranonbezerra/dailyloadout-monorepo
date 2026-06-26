@@ -6,25 +6,28 @@ import io
 from typing import Any
 
 from httpx import AsyncClient
+from PIL import Image
+
+
+def _real_png(size_px: int = 1) -> bytes:
+    """Return the bytes of a real, decodable PNG (passes magic-byte validation)."""
+    buf = io.BytesIO()
+    Image.new("RGB", (size_px, size_px), (10, 20, 30)).save(buf, format="PNG")
+    return buf.getvalue()
+
 
 # =====================================================================
 # Helpers
 # =====================================================================
 
-# Minimal valid PNG (1x1 pixel, transparent).
-_MINIMAL_PNG = (
-    b"\x89PNG\r\n\x1a\n"  # PNG signature
-    b"\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
-    b"\x08\x06\x00\x00\x00\x1f\x15\xc4\x89"
-    b"\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01"
-    b"\r\n\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
-)
+_MINIMAL_PNG = _real_png()
 
 
 def _make_image_file(size: int | None = None) -> io.BytesIO:
-    """Create a minimal in-memory image file for upload tests.
+    """Create a real in-memory PNG for upload tests.
 
-    If *size* is given, the buffer is padded to that many bytes.
+    If *size* is given, the buffer is padded past the image with trailing bytes
+    (ignored by the PNG decoder) so the size guard can be exercised.
     """
     data = _MINIMAL_PNG
     if size is not None and size > len(data):
@@ -96,6 +99,24 @@ class TestPhotoUpload:
         resp = await _upload_photo(async_client, auth_headers, image_file=large_file)
         assert resp.status_code == 400
         assert "10MB" in resp.json()["detail"]
+
+    async def test_upload_rejects_spoofed_image(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Bytes that aren't a real image are rejected even with an image/* MIME."""
+        buf = io.BytesIO(b"this is not really a PNG, just text")
+        buf.name = "fake.png"
+        resp = await _upload_photo(
+            async_client,
+            auth_headers,
+            image_file=buf,
+            content_type="image/png",
+            filename="fake.png",
+        )
+        assert resp.status_code == 400
+        assert "valid image" in resp.json()["detail"].lower()
 
     async def test_upload_unauthorized(
         self,

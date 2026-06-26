@@ -1,0 +1,31 @@
+/*
+ * Shared keyframe animations.
+ *
+ * Lives in a real stylesheet (imported once in main.tsx) rather than being
+ * injected via dangerouslySetInnerHTML, so a strict CSP can drop the
+ * 'unsafe-inline' style/script allowances.
+ */
+
+/* AiBriefingOverlay — shimmer progress bar */
+@keyframes shimmer {
+	0% {
+		transform: translateX(-100%);
+	}
+	100% {
+		transform: translateX(200%);
+	}
+}
+
+/* ConciergePage — typing-indicator dots */
+@keyframes conciergeBlink {
+	0%,
+	80%,
+	100% {
+		opacity: 0.25;
+		transform: translateY(0);
+	}
+	40% {
+		opacity: 1;
+		transform: translateY(-3px);
+	}
+}

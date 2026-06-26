@@ -1,18 +1,44 @@
+# Base stack — safe by default.
+#
+# Every service runs on the internal compose network with NO published ports
+# for the backing services (Postgres, Redis, SearXNG). The API and worker reach
+# them by service name over that network (postgres:5432, redis:6379,
+# searxng:8080).
+#
+# SECURITY — Docker bypasses the host firewall:
+#   Docker writes its own iptables rules (the DOCKER chain) evaluated BEFORE
+#   UFW. A `ports:` mapping like "5433:5432" on 0.0.0.0 is reachable from the
+#   public internet even with `ufw deny 5433` set. So we never publish
+#   backing-service ports here. Local dev publishes them on LOOPBACK ONLY via
+#   docker-compose.dev.yml (applied by `make up`).
+#
+# Usage:
+#   Local dev : make up
+#               (= docker compose -f docker-compose.yml -f docker-compose.dev.yml up)
+#               -> base + Postgres/Redis on 127.0.0.1 for host tools
+#   Production: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#               -> base + prod hardening, NO published backing-service ports
+#
+#   Plain `docker compose up` (no -f) = base only: services run but publish no
+#   ports, so use `make up` for host development.
+#
+# Required env (see packages/api/.env.example): POSTGRES_PASSWORD, REDIS_PASSWORD.
 services:
   postgres:
     image: postgres:18-alpine
     container_name: dl-postgres
-    ports:
-      - "${POSTGRES_PORT:-5433}:5432"
+    # No `ports:` here — internal-only. Reachable as `postgres:5432`.
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-dailyloadout}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dailyloadout}
-      POSTGRES_DB: ${POSTGRES_DB:-dailyloadout}
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
+      # Strong password REQUIRED from the environment. Compose refuses to start
+      # if POSTGRES_PASSWORD is unset/empty. Never reuse the old dev default.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD (do not use the old dev default)}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB}
     volumes:
       - dl_postgres_data:/var/lib/postgresql
       - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dailyloadout}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:?set POSTGRES_USER}"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -20,12 +46,16 @@ services:
   redis:
     image: redis:7-alpine
     container_name: dl-redis
-    ports:
-      - "${REDIS_PORT:-6380}:6379"
+    # No `ports:` here — internal-only. Reachable as `redis:6379`.
+    # Auth REQUIRED: refuse to start without REDIS_PASSWORD.
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?set REDIS_PASSWORD}"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD}
     volumes:
       - dl_redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      # Authenticated PING so the check works with auth enabled.
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -33,10 +63,10 @@ services:
   searxng:
     image: searxng/searxng:latest
     container_name: dl-searxng
-    ports:
-      - "${SEARXNG_PORT:-8888}:8080"
+    # No `ports:` here — internal-only. Reachable as `searxng:8080`. The limiter
+    # is enabled (infra/searxng/settings.yml) as defense-in-depth.
     environment:
-      SEARXNG_BASE_URL: http://localhost:${SEARXNG_PORT:-8888}/
+      SEARXNG_BASE_URL: http://searxng:8080/
     volumes:
       - ./infra/searxng:/etc/searxng:rw
     restart: unless-stopped
@@ -52,7 +82,14 @@ services:
       dockerfile: Dockerfile
     container_name: dl-taskiq-worker
     command: ["taskiq", "worker", "dailyloadout.infrastructure.tasks.debrief_extraction:broker"]
+    # App settings (SECRET_KEY, IGDB, Ollama, …) come from the API env file.
     env_file: ./packages/api/.env
+    # DB/Redis connection strings are built here from the SINGLE source of truth
+    # (root .env, used to provision the containers) and use the INTERNAL service
+    # hostnames — overriding the host-dev localhost URLs in packages/api/.env.
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:?set POSTGRES_USER}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:?set POSTGRES_DB}
+      REDIS_URL: redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD}@redis:6379/0
     depends_on:
       postgres:
         condition: service_healthy

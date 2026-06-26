@@ -1,13 +1,27 @@
-# Development overrides — use with: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
-# The Makefile handles this automatically via `make up`.
+# Dev overlay — applied by `make up`
+#   (docker compose -f docker-compose.yml -f docker-compose.dev.yml up).
 #
-# Ollama runs locally for full GPU + RAM access.
-# Start it separately: ollama serve
-
+# Publishes the backing-service ports on LOOPBACK ONLY (127.0.0.1) so host
+# tools and `make api` can reach Postgres/Redis at localhost — without ever
+# exposing them to the network. The base file publishes nothing.
+#
+# Loopback-only ports — never 0.0.0.0. Ollama runs locally (ollama serve).
 services:
   postgres:
     ports:
-      - "${POSTGRES_PORT:-5433}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
 
   redis:
-    command: redis-server --save 60 1 --loglevel warning
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6380}:6379"
+    # `command` fully overrides the base, so re-include --requirepass to keep
+    # auth on (the app's REDIS_URL expects a password).
+    command:
+      - "redis-server"
+      - "--requirepass"
+      - "${REDIS_PASSWORD:?set REDIS_PASSWORD}"
+      - "--save"
+      - "60"
+      - "1"
+      - "--loglevel"
+      - "warning"

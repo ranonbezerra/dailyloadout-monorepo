@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 import pytest
 
@@ -35,6 +35,7 @@ class _SpyAsyncClient:
     """Captures the Apicalypse body sent to the games endpoint."""
 
     last_body: str = ""
+    token_kwargs: ClassVar[dict[str, Any]] = {}
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         pass
@@ -50,7 +51,53 @@ class _SpyAsyncClient:
             _SpyAsyncClient.last_body = kwargs["content"]
             return _SpyResponse([])
         # token endpoint
+        _SpyAsyncClient.token_kwargs = kwargs
         return _SpyResponse({"access_token": "tok", "expires_in": 3600})  # type: ignore[arg-type]
+
+
+async def test_token_sends_secret_in_body_not_query(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import dailyloadout.infrastructure.igdb.client as mod
+
+    monkeypatch.setattr(mod.httpx, "AsyncClient", _SpyAsyncClient)
+    client = _client()
+    await client.search_games("Zelda", limit=1)
+
+    kwargs = _SpyAsyncClient.token_kwargs
+    # Credentials go in the POST body, never the query string.
+    assert "params" not in kwargs
+    assert kwargs["data"]["client_secret"] == "secret"
+    assert kwargs["data"]["grant_type"] == "client_credentials"
+
+
+async def test_token_http_error_is_sanitized(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A failing token request never surfaces the secret; raises a clean error."""
+    import httpx
+
+    import dailyloadout.infrastructure.igdb.client as mod
+    from dailyloadout.infrastructure.igdb.exceptions import IGDBNotConfiguredError
+
+    class _FailingTokenClient(_SpyAsyncClient):
+        async def post(self, url: str, **kwargs: Any) -> _SpyResponse:
+            request = httpx.Request("POST", url, params={"client_secret": "secret"})
+            response = httpx.Response(400, request=request)
+
+            class _Resp:
+                def raise_for_status(self) -> None:
+                    raise httpx.HTTPStatusError("bad", request=request, response=response)
+
+                def json(self) -> dict[str, Any]:  # pragma: no cover
+                    return {}
+
+            return _Resp()  # type: ignore[return-value]
+
+    monkeypatch.setattr(mod.httpx, "AsyncClient", _FailingTokenClient)
+    client = _client()
+    with pytest.raises(IGDBNotConfiguredError) as exc_info:
+        await client.search_games("Zelda", limit=1)
+    # The clean error message must not leak the secret.
+    assert "secret" not in str(exc_info.value)
 
 
 async def test_search_sanitizes_quotes(monkeypatch: pytest.MonkeyPatch) -> None:

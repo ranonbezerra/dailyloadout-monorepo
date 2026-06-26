@@ -8,21 +8,64 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
+from dailyloadout.config import settings
+from dailyloadout.core.sanitization import (
+    reject_control_chars,
+    validate_cdn_url,
+)
+
 # Valid statuses for library entries.
 LibraryStatus = Literal["backlog", "playing", "paused", "completed", "dropped"]
+
+# Upper bounds on user-supplied game metadata. Titles/slugs flow unescaped into
+# LLM prompts and the catalog, so they are capped and control-char-checked.
+_MAX_TITLE_LEN = 200
+_MAX_SLUG_LEN = 200
+_MAX_SUMMARY_LEN = 5000
+_MAX_GENRES = 30
+_MAX_GENRE_LEN = 60
+_MAX_COVER_URL_LEN = 500
+_MAX_NOTES_LEN = 2000
+# A game realistically lives on a handful of platforms; cap to bound fan-out.
+_MAX_PLATFORM_IDS = 50
 
 
 # ---------------------------------------------------------------------------
 # Game schemas
 # ---------------------------------------------------------------------------
 class GameCreate(BaseModel):
-    slug: str = Field(min_length=1)
-    title: str = Field(min_length=1)
+    slug: str = Field(min_length=1, max_length=_MAX_SLUG_LEN)
+    title: str = Field(min_length=1, max_length=_MAX_TITLE_LEN)
     metadata_source: str = "manual"
-    summary: str | None = None
-    cover_url: str | None = None
+    summary: str | None = Field(default=None, max_length=_MAX_SUMMARY_LEN)
+    cover_url: str | None = Field(default=None, max_length=_MAX_COVER_URL_LEN)
     first_release_date: date | None = None
-    genres: list[str] | None = None
+    genres: list[str] | None = Field(default=None, max_length=_MAX_GENRES)
+
+    @field_validator("title", "slug")
+    @classmethod
+    def _no_control_chars(cls, value: str) -> str:
+        """Reject control chars/newlines — the key prompt-injection mitigation."""
+        return reject_control_chars(value, field="value")
+
+    @field_validator("genres")
+    @classmethod
+    def _bound_genres(cls, value: list[str] | None) -> list[str] | None:
+        """Cap per-genre length and reject control chars in each genre."""
+        if value is None:
+            return None
+        cleaned: list[str] = []
+        for genre in value:
+            if len(genre) > _MAX_GENRE_LEN:
+                raise ValueError(f"Each genre must be at most {_MAX_GENRE_LEN} characters.")
+            cleaned.append(reject_control_chars(genre, field="genre"))
+        return cleaned
+
+    @field_validator("cover_url")
+    @classmethod
+    def _validate_cover_url(cls, value: str | None) -> str | None:
+        """Null any cover URL that isn't https on the IGDB-CDN allowlist."""
+        return validate_cdn_url(value, settings.igdb_cdn_allowed_hosts)
 
 
 class GameResponse(BaseModel):
@@ -62,9 +105,9 @@ class PlatformResponse(BaseModel):
 # ---------------------------------------------------------------------------
 class LibraryEntryCreate(BaseModel):
     game_public_id: UUID
-    platform_ids: list[int] = Field(min_length=1)
+    platform_ids: list[int] = Field(min_length=1, max_length=_MAX_PLATFORM_IDS)
     status: LibraryStatus = "backlog"
-    notes: str | None = None
+    notes: str | None = Field(default=None, max_length=_MAX_NOTES_LEN)
     acquired_at: date | None = None
 
     @field_validator("platform_ids")
@@ -82,7 +125,7 @@ class LibraryEntryCreate(BaseModel):
 
 class LibraryEntryUpdate(BaseModel):
     status: LibraryStatus | None = None
-    notes: str | None = None
+    notes: str | None = Field(default=None, max_length=_MAX_NOTES_LEN)
     acquired_at: date | None = None
 
 

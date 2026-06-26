@@ -6,9 +6,16 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from dailyloadout.core.library.schemas import GameResponse, LibraryStatus
+from dailyloadout.core.sanitization import strip_control_chars
+
+# Bound the bulk-confirm payload: an import is at most a few hundred candidates,
+# so these caps are generous but stop a runaway request.
+_MAX_CONFIRM_IDS = 500
+_MAX_TITLE_OVERRIDES = 500
+_MAX_OVERRIDE_TITLE_LEN = 200
 
 # ---------------------------------------------------------------------------
 # Request schemas
@@ -48,10 +55,34 @@ class BulkConfirmRequest(BaseModel):
     as a user-authored title (its prior catalog match is dropped).
     """
 
-    confirm_public_ids: list[UUID] = Field(default_factory=list)
+    confirm_public_ids: list[UUID] = Field(default_factory=list, max_length=_MAX_CONFIRM_IDS)
     platform_id: int
     status: LibraryStatus = "backlog"
-    title_overrides: dict[UUID, str] = Field(default_factory=dict)
+    title_overrides: dict[UUID, str] = Field(default_factory=dict, max_length=_MAX_TITLE_OVERRIDES)
+
+    @model_validator(mode="after")
+    def _sanitize_overrides(self) -> BulkConfirmRequest:
+        """Bound and clean ``title_overrides``.
+
+        - Reject keys not present in ``confirm_public_ids`` (an override for a
+          candidate that isn't being confirmed is meaningless and lets a caller
+          smuggle extra titles).
+        - Cap each override length and strip control chars (prompt-injection +
+          catalog-poisoning guard).
+        """
+        confirm_set = set(self.confirm_public_ids)
+        cleaned: dict[UUID, str] = {}
+        for key, value in self.title_overrides.items():
+            if key not in confirm_set:
+                raise ValueError("title_overrides keys must be in confirm_public_ids.")
+            stripped = strip_control_chars(value).strip()
+            if len(stripped) > _MAX_OVERRIDE_TITLE_LEN:
+                raise ValueError(
+                    f"Override titles must be at most {_MAX_OVERRIDE_TITLE_LEN} characters."
+                )
+            cleaned[key] = stripped
+        self.title_overrides = cleaned
+        return self
 
 
 class BulkConfirmResponse(BaseModel):

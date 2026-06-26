@@ -6,7 +6,9 @@ use_default_settings: true
 server:
   # Placeholder only — override via the SEARXNG_SECRET env var in production.
   secret_key: "change-me-in-prod-searxng"  # pragma: allowlist secret
-  limiter: false
+  # Rate-limit/bot-protection enabled. Defense-in-depth even though SearXNG is
+  # internal-only (no published port — see docker-compose.yml).
+  limiter: true
   image_proxy: false
 
 search:

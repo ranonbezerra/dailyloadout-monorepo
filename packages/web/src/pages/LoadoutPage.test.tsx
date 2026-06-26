@@ -49,7 +49,7 @@ function makeMockLoadout(overrides?: Partial<Loadout>): Loadout {
 				publicId: "g-1",
 				slug: "hollow-knight",
 				title: "Hollow Knight",
-				coverUrl: "https://example.com/hk.jpg",
+				coverUrl: "https://images.igdb.com/igdb/image/upload/t_cover_big/hk.jpg",
 				genres: ["Metroidvania", "Platformer"],
 				metadataSource: "igdb",
 				createdAt: "2024-01-01T00:00:00Z",
@@ -80,7 +80,7 @@ function makeMockLoadout2(): Loadout {
 				publicId: "g-2",
 				slug: "celeste",
 				title: "Celeste",
-				coverUrl: "https://example.com/celeste.jpg",
+				coverUrl: "https://images.igdb.com/igdb/image/upload/t_cover_big/celeste.jpg",
 				genres: ["Platformer"],
 				metadataSource: "igdb",
 				createdAt: "2024-01-01T00:00:00Z",
@@ -431,7 +431,10 @@ describe("LoadoutPage - result cards", () => {
 
 		const img = screen.getByAltText("Hollow Knight");
 		expect(img).toBeInTheDocument();
-		expect(img).toHaveAttribute("src", "https://example.com/hk.jpg");
+		expect(img).toHaveAttribute(
+			"src",
+			"https://images.igdb.com/igdb/image/upload/t_cover_big/hk.jpg",
+		);
 	});
 
 	it("renders genre badges", () => {

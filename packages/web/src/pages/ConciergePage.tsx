@@ -25,13 +25,6 @@ import { useLibraryEntry } from "../hooks/useLibrary";
 import type { ChatMessage } from "../types/concierge";
 import { MissionBriefingModal } from "./MissionBriefingModal";
 
-const typingKeyframes = `
-@keyframes conciergeBlink {
-  0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
-  40% { opacity: 1; transform: translateY(-3px); }
-}
-`;
-
 const TYPING_DOTS = ["dot-0", "dot-1", "dot-2"];
 
 // Friendly labels for the tool affordance shown while the agent works.
@@ -127,8 +120,6 @@ export function ConciergePage() {
 
 	return (
 		<Stack h="calc(100vh - 32px)" gap="md">
-			{/* biome-ignore lint/security/noDangerouslySetInnerHtml: keyframe injection */}
-			<style dangerouslySetInnerHTML={{ __html: typingKeyframes }} />
 			<div>
 				<Title order={2}>Backlog Concierge</Title>
 				<Text c="dimmed" size="sm">

@@ -4,6 +4,10 @@ Treats the image payload as UTF-8 text: each non-empty line becomes an
 ``OcrLine``. This lets tests feed an arbitrary number of titles (1, 40, 100)
 without a real image. A leading ``__lowconf__`` marker line forces a low
 ``mean_confidence`` so the local -> vision fallback path can be exercised.
+
+To stay compatible with the endpoint's magic-byte upload validation, callers
+may prefix a real image and separate the OCR "text" with the ``__OCRTEXT__``
+sentinel; only the bytes after the sentinel are decoded as titles.
 """
 
 from __future__ import annotations
@@ -11,12 +15,17 @@ from __future__ import annotations
 from .base import AbstractOCRClient, OcrLine, OcrResult
 
 _LOW_CONFIDENCE_MARKER = "__lowconf__"
+_TEXT_SENTINEL = b"__OCRTEXT__"
 _HIGH_CONFIDENCE = 0.95
 _LOW_CONFIDENCE = 0.30
 
 
 class DummyOCRClient(AbstractOCRClient):
     async def extract_lines(self, image_bytes: bytes) -> OcrResult:
+        # If a real image was prefixed before the sentinel, only treat the bytes
+        # after it as the OCR text (the prefix is opaque binary).
+        if _TEXT_SENTINEL in image_bytes:
+            image_bytes = image_bytes.split(_TEXT_SENTINEL, 1)[1]
         payload = image_bytes.decode("utf-8", errors="ignore")
         raw_lines = [line.strip() for line in payload.splitlines()]
 

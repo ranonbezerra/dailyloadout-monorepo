@@ -19,6 +19,7 @@ import { useNavigate } from "react-router-dom";
 import { useAcceptLoadout, useCreateLoadout, useRejectLoadout } from "../hooks/useLoadout";
 import { usePreviewBriefing } from "../hooks/useMission";
 import type { BriefingMode } from "../lib/mission-api";
+import { safeImageUrl } from "../lib/safe-image";
 import type { Loadout, LoadoutMood, MentalEnergy } from "../types/loadout";
 
 const MOOD_OPTIONS: { value: LoadoutMood; label: string }[] = [
@@ -76,10 +77,10 @@ function LoadoutResultCard({
 				)}
 
 				<Group align="flex-start" gap="md">
-					{loadout.libraryEntry?.game.coverUrl && (
+					{safeImageUrl(loadout.libraryEntry?.game.coverUrl) && (
 						<Image
-							src={loadout.libraryEntry.game.coverUrl}
-							alt={loadout.libraryEntry.game.title}
+							src={safeImageUrl(loadout.libraryEntry?.game.coverUrl)}
+							alt={loadout.libraryEntry?.game.title}
 							w={120}
 							radius="sm"
 						/>

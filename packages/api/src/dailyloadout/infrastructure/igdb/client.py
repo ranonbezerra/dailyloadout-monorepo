@@ -49,15 +49,30 @@ class IGDBClient:
             if self._access_token and time.monotonic() < self._token_expires_at:
                 return self._access_token
 
+            # Send credentials in the POST body, never as query params — query
+            # params land in the URL and would leak into any logged
+            # ``HTTPStatusError`` (which echoes the request URL).
             resp = await client.post(
                 _TWITCH_TOKEN_URL,
-                params={
+                data={
                     "client_id": self._client_id,
                     "client_secret": self._client_secret,
                     "grant_type": "client_credentials",
                 },
             )
-            resp.raise_for_status()
+            try:
+                resp.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                # Log only the status + path (no query, no body) so the secret
+                # never reaches the logs, and re-raise a clean error.
+                logger.error(
+                    "igdb_token_request_failed",
+                    status_code=exc.response.status_code,
+                    url=str(exc.request.url.copy_with(query=None)),
+                )
+                raise IGDBNotConfiguredError(
+                    "IGDB authentication failed. Check credentials."
+                ) from None
             data = resp.json()
 
             self._access_token = str(data["access_token"])

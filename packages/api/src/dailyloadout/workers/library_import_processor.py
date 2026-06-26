@@ -131,8 +131,13 @@ async def process_library_import(
         await candidate_repo.create_bulk(capture.id, [_candidate_dict(m) for m in matches])
         await capture_repo.update_status(capture.id, "review")
         logger.info("library_import_processed", capture_id=capture.id, candidates=len(matches))
-    except Exception as exc:
+    except Exception:
+        # Persist a generic, user-facing message. The full exception (with its
+        # traceback) is logged server-side; raw internals must never reach the
+        # client via the capture's error_message.
         logger.error("library_import_failed", capture_id=capture.id, exc_info=True)
-        await capture_repo.update_status(capture.id, "failed", error_message=str(exc))
+        await capture_repo.update_status(
+            capture.id, "failed", error_message="Import failed. Please try again."
+        )
 
     return capture

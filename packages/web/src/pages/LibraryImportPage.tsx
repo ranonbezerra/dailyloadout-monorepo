@@ -22,6 +22,7 @@ import {
 	useSubmitLibraryImport,
 } from "../hooks/useCapture";
 import { usePlatforms } from "../hooks/useLibrary";
+import { safeImageUrl } from "../lib/safe-image";
 import type { Capture } from "../types/capture";
 import type { LibraryStatus, Platform } from "../types/library";
 
@@ -420,8 +421,14 @@ export function LibraryImportPage() {
 											onChange={(e) => toggleChecked(cand.publicId, e.currentTarget.checked)}
 											aria-label={`Select ${cand.title}`}
 										/>
-										{cand.igdbCoverUrl && !isEdited(cand) && (
-											<Image src={cand.igdbCoverUrl} alt={cand.title} w={40} h={56} radius="sm" />
+										{safeImageUrl(cand.igdbCoverUrl) && !isEdited(cand) && (
+											<Image
+												src={safeImageUrl(cand.igdbCoverUrl)}
+												alt={cand.title}
+												w={40}
+												h={56}
+												radius="sm"
+											/>
 										)}
 										<TextInput
 											value={titles[cand.publicId] ?? cand.title}

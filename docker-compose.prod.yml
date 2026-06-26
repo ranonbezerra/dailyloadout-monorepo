@@ -1,0 +1,74 @@
+# Production overlay — apply EXPLICITLY:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Because this is used with explicit `-f` flags, the dev overlay
+# (docker-compose.dev.yml loopback ports) is NOT applied. Redis and SearXNG
+# publish NO ports (internal compose network only). Postgres is published on
+# the VPS LOOPBACK ONLY (127.0.0.1:5432) so a desktop client can reach it over
+# an SSH tunnel — never on 0.0.0.0, never on the network.
+#
+# Emergency DB access is via SSH + `docker compose ... exec postgres psql`
+# (or an `ssh -L` loopback tunnel). See docs/DEPLOYMENT.md. The DB port is
+# never bound to 0.0.0.0; all access is gated by SSH key auth.
+#
+# Adds: resource limits, dropped capabilities, no-new-privileges, read-only
+# rootfs where feasible, and restart policy. Required secrets are enforced by
+# `${VAR:?}` in the base file (POSTGRES_PASSWORD, REDIS_PASSWORD).
+services:
+  postgres:
+    # LOOPBACK ONLY (127.0.0.1) — never 0.0.0.0. Not reachable from the network;
+    # the only way in is an SSH tunnel (key auth) to the VPS, then the DB
+    # password. Lets a desktop client (DataGrip/DBeaver) connect over SSH. See
+    # docs/DEPLOYMENT.md §1.8. The 127.0.0.1: prefix is load-bearing — without
+    # it, Docker binds 0.0.0.0 and Docker's iptables bypass UFW.
+    ports:
+      - "127.0.0.1:5432:5432"
+    restart: unless-stopped
+    mem_limit: 1g
+    cpus: 1.0
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # Postgres needs a few capabilities to chown its data dir / set ownership.
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+
+  redis:
+    restart: unless-stopped
+    mem_limit: 512m
+    cpus: 0.5
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  searxng:
+    restart: unless-stopped
+    mem_limit: 512m
+    cpus: 0.5
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  taskiq-worker:
+    restart: unless-stopped
+    mem_limit: 1g
+    cpus: 1.0
+    # Runs as the non-root `appuser` baked into packages/api/Dockerfile.
+    user: appuser
+    read_only: true
+    tmpfs:
+      # Writable scratch for the non-root process (rootfs is read-only).
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL

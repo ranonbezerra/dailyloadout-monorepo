@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from scalar_fastapi import get_scalar_api_reference
 
+from dailyloadout.api.middleware import MaxBodySizeMiddleware, SecurityHeadersMiddleware
 from dailyloadout.api.v1.auth import router as auth_router
 from dailyloadout.api.v1.cache import router as cache_router
 from dailyloadout.api.v1.capture import router as capture_router
@@ -132,21 +133,44 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         await ignore_task
 
 
+def _docs_enabled() -> bool:
+    """Docs/OpenAPI are exposed only in dev/test, or when explicitly enabled."""
+    return settings.docs_enabled and settings.app_env in ("development", "testing")
+
+
 def create_app() -> FastAPI:
+    docs_on = _docs_enabled()
     application = FastAPI(
         title="DailyLoadout API",
         version="0.1.0",
         lifespan=lifespan,
         docs_url=None,
+        redoc_url=None,
+        # Disable the schema entirely in production so /openapi.json 404s and
+        # Scalar has nothing to render.
+        openapi_url="/openapi.json" if docs_on else None,
     )
 
-    # CORS
+    # Security response headers (HSTS, nosniff, frame-deny, referrer policy).
+    application.add_middleware(
+        SecurityHeadersMiddleware,
+        hsts_max_age=settings.hsts_max_age_seconds,
+    )
+
+    # Coarse request-body size cap (DoS backstop), before any body is read.
+    application.add_middleware(
+        MaxBodySizeMiddleware,
+        max_body_bytes=settings.max_request_body_bytes,
+    )
+
+    # CORS — X-Auth-Mode is sent by the web client on every request to select
+    # cookie vs body refresh mode; omitting it breaks cross-origin cookie mode.
     application.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type"],
+        allow_headers=["Authorization", "Content-Type", "X-Auth-Mode"],
     )
 
     # Routers
@@ -164,12 +188,14 @@ def create_app() -> FastAPI:
     async def health() -> dict[str, str]:
         return {"status": "ok"}
 
-    @application.get("/docs", include_in_schema=False)
-    async def scalar_docs() -> HTMLResponse:
-        return get_scalar_api_reference(
-            openapi_url=application.openapi_url or "/openapi.json",
-            title=application.title,
-        )
+    if docs_on:
+
+        @application.get("/docs", include_in_schema=False)
+        async def scalar_docs() -> HTMLResponse:
+            return get_scalar_api_reference(
+                openapi_url=application.openapi_url or "/openapi.json",
+                title=application.title,
+            )
 
     return application
 
