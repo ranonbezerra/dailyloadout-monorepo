@@ -14,7 +14,7 @@ vi.mock("@mantine/notifications", () => ({
 	notifications: { show: vi.fn() },
 }));
 
-// Mock Textarea (autosize crashes in jsdom) and TagsInput
+// Mock Textarea (autosize crashes in jsdom)
 vi.mock("@mantine/core", async () => {
 	const actual = await vi.importActual("@mantine/core");
 	return {
@@ -32,24 +32,6 @@ vi.mock("@mantine/core", async () => {
 		}) => (
 			<div>
 				<textarea placeholder={placeholder} value={value} onChange={onChange} aria-label={label} />
-			</div>
-		),
-		TagsInput: ({
-			label,
-			placeholder,
-			value,
-		}: {
-			label?: string;
-			placeholder?: string;
-			value?: string[];
-		}) => (
-			<div>
-				<input
-					placeholder={placeholder}
-					value={value?.join(",") || ""}
-					aria-label={label}
-					readOnly
-				/>
 			</div>
 		),
 	};
@@ -116,8 +98,6 @@ vi.mock("../hooks/useLibrary", () => ({
 	useLibrary: vi.fn(),
 	useUpdateEntry: vi.fn(),
 	useDeleteEntry: vi.fn(),
-	useGameGenres: vi.fn(),
-	useUpdateGame: vi.fn(),
 }));
 
 vi.mock("../hooks/useMission", () => ({
@@ -129,13 +109,7 @@ vi.mock("../hooks/useMission", () => ({
 // Imports (after mocks)
 // ---------------------------------------------------------------------------
 
-import {
-	useDeleteEntry,
-	useGameGenres,
-	useLibrary,
-	useUpdateEntry,
-	useUpdateGame,
-} from "../hooks/useLibrary";
+import { useDeleteEntry, useLibrary, useUpdateEntry } from "../hooks/useLibrary";
 import { useActiveMission, usePreviewBriefing } from "../hooks/useMission";
 import type { LibraryEntry } from "../types/library";
 import type { Mission } from "../types/mission";
@@ -231,8 +205,6 @@ beforeEach(() => {
 
 	(useUpdateEntry as Mock).mockReturnValue(mutationStub);
 	(useDeleteEntry as Mock).mockReturnValue(mutationStub);
-	(useGameGenres as Mock).mockReturnValue({ data: [] });
-	(useUpdateGame as Mock).mockReturnValue(mutationStub);
 
 	(useActiveMission as Mock).mockReturnValue({ data: null });
 	(usePreviewBriefing as Mock).mockReturnValue(mutationStub);
@@ -414,7 +386,7 @@ describe("LibraryPage", () => {
 	// ExpandedRow rendering (via DataTable rowExpansion mock)
 	// -----------------------------------------------------------------------
 
-	it("renders ExpandedRow with Status select, Genres input, Notes textarea", () => {
+	it("renders ExpandedRow with Status select, read-only Genres, Notes textarea", () => {
 		const entry = makeEntry();
 		(useLibrary as Mock).mockReturnValue({
 			data: { items: [entry], total: 1, limit: 50, offset: 0 },
@@ -425,8 +397,11 @@ describe("LibraryPage", () => {
 
 		// Status select (real Mantine Select renders label text)
 		expect(screen.getByText("Status")).toBeInTheDocument();
-		// Genres TagsInput (mocked - uses aria-label)
-		expect(screen.getByRole("textbox", { name: "Genres" })).toBeInTheDocument();
+		// Genres render as read-only badges (no editable input)
+		expect(screen.queryByRole("textbox", { name: "Genres" })).not.toBeInTheDocument();
+		expect(screen.getByText("Genres")).toBeInTheDocument();
+		expect(screen.getByText("Action")).toBeInTheDocument();
+		expect(screen.getByText("Platformer")).toBeInTheDocument();
 		// Notes textarea (mocked - uses aria-label)
 		expect(screen.getByRole("textbox", { name: "Notes" })).toBeInTheDocument();
 	});
@@ -531,7 +506,7 @@ describe("LibraryPage", () => {
 		expect(textarea).toHaveValue("My custom note");
 	});
 
-	it("ExpandedRow pre-fills genres input with entry genres", () => {
+	it("ExpandedRow renders entry genres as read-only badges", () => {
 		const entry = makeEntry({
 			game: {
 				publicId: "game-1",
@@ -551,11 +526,14 @@ describe("LibraryPage", () => {
 
 		renderPage();
 
-		const genresInput = screen.getByRole("textbox", { name: "Genres" });
-		expect(genresInput).toHaveValue("Action,Platformer");
+		// Genres are read-only badges, not an editable input
+		expect(screen.queryByRole("textbox", { name: "Genres" })).not.toBeInTheDocument();
+		expect(screen.getByText("Genres")).toBeInTheDocument();
+		expect(screen.getByText("Action")).toBeInTheDocument();
+		expect(screen.getByText("Platformer")).toBeInTheDocument();
 	});
 
-	it("ExpandedRow handles empty genres gracefully", () => {
+	it("ExpandedRow hides the Genres section when there are no genres", () => {
 		const entry = makeEntry({
 			game: {
 				publicId: "game-1",
@@ -575,8 +553,9 @@ describe("LibraryPage", () => {
 
 		renderPage();
 
-		const genresInput = screen.getByRole("textbox", { name: "Genres" });
-		expect(genresInput).toHaveValue("");
+		// No genres -> no Genres label and no editable input
+		expect(screen.queryByRole("textbox", { name: "Genres" })).not.toBeInTheDocument();
+		expect(screen.queryByText("Genres")).not.toBeInTheDocument();
 	});
 
 	it("ExpandedRow handles empty notes gracefully", () => {
@@ -600,10 +579,6 @@ describe("LibraryPage", () => {
 		const mockMutateAsync = vi.fn().mockResolvedValue(undefined);
 		(useUpdateEntry as Mock).mockReturnValue({
 			mutateAsync: mockMutateAsync,
-			isPending: false,
-		});
-		(useUpdateGame as Mock).mockReturnValue({
-			mutateAsync: vi.fn().mockResolvedValue(undefined),
 			isPending: false,
 		});
 
@@ -671,10 +646,6 @@ describe("LibraryPage", () => {
 			mutateAsync: mockMutateAsync,
 			isPending: false,
 		});
-		(useUpdateGame as Mock).mockReturnValue({
-			mutateAsync: vi.fn().mockResolvedValue(undefined),
-			isPending: false,
-		});
 
 		const entry = makeEntry();
 		(useLibrary as Mock).mockReturnValue({
@@ -703,10 +674,6 @@ describe("LibraryPage", () => {
 		const mockMutateAsync = vi.fn().mockRejectedValue(new Error("Update failed"));
 		(useUpdateEntry as Mock).mockReturnValue({
 			mutateAsync: mockMutateAsync,
-			isPending: false,
-		});
-		(useUpdateGame as Mock).mockReturnValue({
-			mutateAsync: vi.fn().mockResolvedValue(undefined),
 			isPending: false,
 		});
 

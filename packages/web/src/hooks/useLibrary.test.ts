@@ -66,7 +66,6 @@ vi.mock("../lib/library-api", () => ({
 	updateEntry: vi.fn(() => Promise.resolve(mockLibraryEntry)),
 	deleteEntry: vi.fn(() => Promise.resolve(undefined)),
 	createGame: vi.fn(() => Promise.resolve(mockGames[0])),
-	updateGame: vi.fn(() => Promise.resolve(mockGames[0])),
 }));
 
 import {
@@ -78,7 +77,6 @@ import {
 	fetchPlatforms,
 	searchGames,
 	updateEntry,
-	updateGame,
 } from "../lib/library-api";
 import {
 	useAddToLibrary,
@@ -89,7 +87,6 @@ import {
 	usePlatforms,
 	useSearchGames,
 	useUpdateEntry,
-	useUpdateGame,
 } from "./useLibrary";
 
 beforeEach(() => {
@@ -224,18 +221,5 @@ describe("useCreateGame", () => {
 		await result.current.mutateAsync(payload);
 
 		expect(createGame).toHaveBeenCalledWith(payload);
-	});
-});
-
-describe("useUpdateGame", () => {
-	it("calls updateGame with publicId and data", async () => {
-		const { result } = renderHook(() => useUpdateGame(), {
-			wrapper: createWrapper(),
-		});
-
-		const vars = { publicId: "game-1", data: { genres: ["RPG", "Strategy"] } };
-		await result.current.mutateAsync(vars);
-
-		expect(updateGame).toHaveBeenCalledWith("game-1", { genres: ["RPG", "Strategy"] });
 	});
 });

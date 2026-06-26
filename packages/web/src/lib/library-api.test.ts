@@ -17,7 +17,6 @@ import {
 	fetchPlatforms,
 	searchGames,
 	updateEntry,
-	updateGame,
 } from "./library-api";
 
 const mockApiFetch = apiFetch as Mock;
@@ -137,35 +136,6 @@ describe("fetchGameGenres", () => {
 
 		expect(mockApiFetch).toHaveBeenCalledWith("/v1/games/genres");
 		expect(result).toEqual(genres);
-	});
-});
-
-describe("updateGame", () => {
-	it("calls PATCH /v1/games/:publicId with snake_cased body", async () => {
-		const apiResponse = {
-			public_id: "g1",
-			slug: "hades",
-			title: "Hades",
-			genres: ["roguelike"],
-			metadata_source: "manual",
-			created_at: "2024-01-01",
-		};
-		mockApiFetch.mockResolvedValueOnce(apiResponse);
-
-		const result = await updateGame("g1", { genres: ["roguelike"] });
-
-		expect(mockApiFetch).toHaveBeenCalledWith("/v1/games/g1", {
-			method: "PATCH",
-			body: JSON.stringify({ genres: ["roguelike"] }),
-		});
-		expect(result).toEqual({
-			publicId: "g1",
-			slug: "hades",
-			title: "Hades",
-			genres: ["roguelike"],
-			metadataSource: "manual",
-			createdAt: "2024-01-01",
-		});
 	});
 });
 

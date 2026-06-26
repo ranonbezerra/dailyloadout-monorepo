@@ -9,14 +9,8 @@ import {
 	fetchPlatforms,
 	searchGames,
 	updateEntry,
-	updateGame,
 } from "../lib/library-api";
-import type {
-	GameCreate,
-	GameUpdate,
-	LibraryEntryCreate,
-	LibraryEntryUpdate,
-} from "../types/library";
+import type { GameCreate, LibraryEntryCreate, LibraryEntryUpdate } from "../types/library";
 
 // ---------------------------------------------------------------------------
 // Query keys
@@ -112,17 +106,5 @@ export function useDeleteEntry() {
 export function useCreateGame() {
 	return useMutation({
 		mutationFn: (data: GameCreate) => createGame(data),
-	});
-}
-
-export function useUpdateGame() {
-	const queryClient = useQueryClient();
-
-	return useMutation({
-		mutationFn: (vars: { publicId: string; data: GameUpdate }) =>
-			updateGame(vars.publicId, vars.data),
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: LIBRARY_KEY });
-		},
 	});
 }

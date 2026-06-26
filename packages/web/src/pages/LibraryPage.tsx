@@ -7,7 +7,6 @@ import {
 	Select,
 	Skeleton,
 	Stack,
-	TagsInput,
 	Text,
 	Textarea,
 	Title,
@@ -22,13 +21,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ErrorState } from "../components/ErrorState";
 import { QuickAddMenu } from "../components/QuickAddMenu";
-import {
-	useDeleteEntry,
-	useGameGenres,
-	useLibrary,
-	useUpdateEntry,
-	useUpdateGame,
-} from "../hooks/useLibrary";
+import { useDeleteEntry, useLibrary, useUpdateEntry } from "../hooks/useLibrary";
 import { useActiveMission } from "../hooks/useMission";
 import type { LibraryEntry, LibraryStatus } from "../types/library";
 import type { Mission } from "../types/mission";
@@ -389,25 +382,14 @@ interface ExpandedRowProps {
 function ExpandedRow({ entry, onUpdate, onDelete, onStartMission, isPending }: ExpandedRowProps) {
 	const [editStatus, setEditStatus] = useState<string | null>(entry.status);
 	const [editNotes, setEditNotes] = useState(entry.notes ?? "");
-	const [editGenres, setEditGenres] = useState<string[]>(entry.game.genres ?? []);
 	const { data: activeMission } = useActiveMission();
-	const updateGameMutation = useUpdateGame();
-	const { data: genreOptions = [] } = useGameGenres();
 
 	const hasActiveMission = activeMission != null;
 	const isThisEntryActive = activeMission?.libraryEntry.publicId === entry.publicId;
 
 	const handleSave = async () => {
-		// Update game genres if changed
-		const prev = [...(entry.game.genres ?? [])].sort();
-		const next = [...editGenres].sort();
-		if (JSON.stringify(prev) !== JSON.stringify(next)) {
-			await updateGameMutation.mutateAsync({
-				publicId: entry.game.publicId,
-				data: { genres: editGenres },
-			});
-		}
-		// Update library entry fields
+		// Game metadata (title/genres) is immutable — it's a cache of IGDB.
+		// Only the user's own library-entry fields are editable here.
 		await onUpdate({
 			status: (editStatus as LibraryStatus) ?? undefined,
 			notes: editNotes.trim() || undefined,
@@ -447,13 +429,20 @@ function ExpandedRow({ entry, onUpdate, onDelete, onStartMission, isPending }: E
 					w={200}
 				/>
 			</Group>
-			<TagsInput
-				label="Genres"
-				placeholder="Type a genre and press Enter"
-				data={genreOptions}
-				value={editGenres}
-				onChange={setEditGenres}
-			/>
+			{entry.game.genres && entry.game.genres.length > 0 && (
+				<div>
+					<Text size="sm" fw={500} mb={4}>
+						Genres
+					</Text>
+					<Group gap="xs">
+						{entry.game.genres.map((g) => (
+							<Badge key={g} variant="light" size="sm">
+								{g}
+							</Badge>
+						))}
+					</Group>
+				</div>
+			)}
 			<Textarea
 				label="Notes"
 				value={editNotes}
@@ -463,7 +452,7 @@ function ExpandedRow({ entry, onUpdate, onDelete, onStartMission, isPending }: E
 				maxRows={4}
 			/>
 			<Group>
-				<Button size="xs" loading={isPending || updateGameMutation.isPending} onClick={handleSave}>
+				<Button size="xs" loading={isPending} onClick={handleSave}>
 					Save
 				</Button>
 				<Button size="xs" color="teal" disabled={hasActiveMission} onClick={onStartMission}>
