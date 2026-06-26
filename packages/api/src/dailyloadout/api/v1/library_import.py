@@ -8,8 +8,9 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, status
 
+from dailyloadout.api.v1._rate_limit import rate_limit
 from dailyloadout.config import settings
 from dailyloadout.core.capture.duplicates import find_duplicate_candidate_ids
 from dailyloadout.core.capture.exceptions import ImportQuotaExceededError, InvalidUploadError
@@ -30,6 +31,16 @@ router = APIRouter(prefix="/v1/captures", tags=["captures"])
     "/library-import",
     response_model=CaptureResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[
+        Depends(
+            rate_limit(
+                "library_import",
+                settings.rate_limit_library_import_per_minute,
+                60,
+                by="user",
+            )
+        )
+    ],
 )
 async def submit_library_import(
     current_user: CurrentUserDep,

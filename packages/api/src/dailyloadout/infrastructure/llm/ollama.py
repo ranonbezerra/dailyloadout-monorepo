@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 
@@ -10,11 +11,31 @@ import structlog
 from jinja2.sandbox import SandboxedEnvironment
 
 from dailyloadout.config import Settings
+from dailyloadout.config import settings as _settings
 
 from .base import AbstractLLMClient, ExtractedGame, ExtractedState, LLMRole, LoadoutPick
 from .parsers import _extract_json, _parse_game_list
 
 logger = structlog.get_logger()
+
+# Process-shared ceiling on concurrent outbound model calls to the host Ollama
+# server. Created lazily on first use so it binds to the running event loop
+# (a module-import-time Semaphore would attach to the wrong/no loop). Only the
+# real OllamaClient acquires it; the Dummy client (tests) never touches it.
+_ollama_semaphore: asyncio.Semaphore | None = None
+
+
+def _get_ollama_semaphore() -> asyncio.Semaphore:
+    """Return the process-wide Ollama concurrency semaphore (lazy-initialized).
+
+    Bound to the running loop on first call. The bound is read from settings
+    once, when the semaphore is first created.
+    """
+    global _ollama_semaphore
+    if _ollama_semaphore is None:
+        _ollama_semaphore = asyncio.Semaphore(_settings.ollama_max_concurrency)
+    return _ollama_semaphore
+
 
 _PROMPTS_DIR = Path(__file__).resolve().parent.parent.parent / "prompts"
 
@@ -59,13 +80,20 @@ class OllamaClient(AbstractLLMClient):
         payload: dict[str, object],
         log_key: str,
     ) -> httpx.Response | None:
-        """POST to Ollama ``/api/generate``. Returns *None* on HTTP error."""
+        """POST to Ollama ``/api/generate``. Returns *None* on HTTP error.
+
+        The outbound model call is gated by the process-wide concurrency
+        semaphore so a burst of requests can't oversubscribe the host. The
+        semaphore is held ONLY around the HTTP round-trip, not the surrounding
+        prompt rendering or response parsing.
+        """
         client = await self._get_client()
         try:
-            resp = await client.post(
-                f"{self._base_url}/api/generate",
-                json=payload,
-            )
+            async with _get_ollama_semaphore():
+                resp = await client.post(
+                    f"{self._base_url}/api/generate",
+                    json=payload,
+                )
             resp.raise_for_status()
             return resp
         except httpx.HTTPError as exc:

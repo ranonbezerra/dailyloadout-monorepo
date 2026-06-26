@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, Depends, Query, status
 
+from dailyloadout.api.v1._rate_limit import rate_limit
+from dailyloadout.config import settings
 from dailyloadout.core.mission.schemas import (
     BriefingPreviewRequest,
     BriefingPreviewResponse,
@@ -22,6 +24,18 @@ from dailyloadout.deps import CurrentUserDep
 from dailyloadout.deps.mission import MissionServiceDep
 
 router = APIRouter(prefix="/v1/missions", tags=["missions"])
+
+# Per-user limiter shared by the LLM-heavy briefing routes (preview / deep
+# briefing / regenerate). Each call fans out to several model + web-research
+# requests, so this is the most expensive surface to flood.
+_briefing_rate_limit = Depends(
+    rate_limit(
+        "mission_briefing",
+        settings.rate_limit_mission_briefing_per_minute,
+        60,
+        by="user",
+    )
+)
 
 
 # ---------------------------------------------------------------------------
@@ -63,6 +77,7 @@ async def start_mission(
 @router.post(
     "/preview-briefing",
     response_model=BriefingPreviewResponse,
+    dependencies=[_briefing_rate_limit],
 )
 async def preview_briefing(
     body: BriefingPreviewRequest,
@@ -183,6 +198,7 @@ async def end_mission(
 @router.post(
     "/{public_id}/briefing/regenerate",
     response_model=MissionResponse,
+    dependencies=[_briefing_rate_limit],
 )
 async def regenerate_briefing(
     public_id: UUID,
