@@ -197,6 +197,9 @@ async def reconcile_manual_title(
         first_release_date=match.first_release_date,
         genres=match.genres,
         created_by_user_id=None,
+        # Canonical IGDB row: globally visible. ``igdb_id`` alone already satisfies
+        # the visibility rule; set the flag too for clarity/consistency.
+        is_shared=True,
     )
 
 

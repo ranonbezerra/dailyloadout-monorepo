@@ -291,7 +291,9 @@ class TestSharedManual:
         async_client: AsyncClient,
         auth_headers: dict[str, str],
     ) -> None:
-        # IGDB client is None by default -> manual path. Manual games are shared.
+        # IGDB client is None by default -> manual path. ``get_by_slug`` is a
+        # GLOBAL lookup, so a second user creating the same slug dedups onto the
+        # existing row (no duplicate) even though it is still private.
         first = await async_client.post(
             "/v1/games", json=_payload("my-game", "My Game"), headers=auth_headers
         )
@@ -302,7 +304,7 @@ class TestSharedManual:
             "/v1/games", json=_payload("my-game", "My Game"), headers=other
         )
         assert second.status_code == 201
-        # Shared global row — the second user relates to the same row, no dup.
+        # Same underlying row reused — identical public_id, no dup.
         assert second.json()["public_id"] == first.json()["public_id"]
 
     async def test_same_user_same_slug_is_idempotent(
@@ -326,25 +328,32 @@ class TestSharedManual:
 
 
 class TestSharedVisibility:
-    async def test_manual_game_visible_to_other_user(
+    async def test_private_manual_game_hidden_from_other_user(
         self,
         async_client: AsyncClient,
         auth_headers: dict[str, str],
     ) -> None:
-        # User A adds a manual game...
+        # User A adds a manual game; it is born PRIVATE (anti-abuse Block C).
         await async_client.post(
             "/v1/games",
             json=_payload("indie-gem", "Indie Gem"),
             headers=auth_headers,
         )
 
-        # ...and user B can discover it (shared catalogue).
+        # The creator still sees their own private row...
+        creator_search = await async_client.get(
+            "/v1/games/search", params={"q": "Indie"}, headers=auth_headers
+        )
+        assert creator_search.status_code == 200
+        assert any(g["slug"] == "indie-gem" for g in creator_search.json())
+
+        # ...but user B must NOT discover an unvalidated private manual row.
         other = await _register(async_client, "second@example.com")
         other_search = await async_client.get(
             "/v1/games/search", params={"q": "Indie"}, headers=other
         )
         assert other_search.status_code == 200
-        assert any(g["slug"] == "indie-gem" for g in other_search.json())
+        assert not any(g["slug"] == "indie-gem" for g in other_search.json())
 
     async def test_igdb_row_visible_to_everyone(
         self,
@@ -367,3 +376,168 @@ class TestSharedVisibility:
         search = await async_client.get("/v1/games/search", params={"q": "Stardew"}, headers=other)
         assert search.status_code == 200
         assert any(g["slug"] == "stardew-valley" for g in search.json())
+
+    async def test_igdb_enrichment_makes_private_row_visible(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+        use_igdb: Callable[[FakeIGDBClient], None],
+    ) -> None:
+        """On-the-fly IGDB enrichment of a private manual row makes it global."""
+        # User A creates a private manual row (no IGDB client configured).
+        created = await async_client.post(
+            "/v1/games", json=_payload("celeste", "Celeste"), headers=auth_headers
+        )
+        assert created.status_code == 201
+        assert created.json()["igdb_id"] is None
+
+        other = await _register(async_client, "second@example.com")
+        hidden = await async_client.get("/v1/games/search", params={"q": "Celeste"}, headers=other)
+        assert not any(g["slug"] == "celeste" for g in hidden.json())
+
+        # User B re-resolves the same slug with IGDB available: the existing
+        # private row is enriched in place (igdb_id set), which makes it visible.
+        use_igdb(FakeIGDBClient({"Celeste": [IGDBGame(igdb_id=200, title="Celeste")]}))
+        enriched = await async_client.post(
+            "/v1/games", json=_payload("celeste", "Celeste"), headers=other
+        )
+        assert enriched.status_code == 201
+        assert enriched.json()["igdb_id"] == 200
+
+        now_visible = await async_client.get(
+            "/v1/games/search", params={"q": "Celeste"}, headers=other
+        )
+        assert any(g["slug"] == "celeste" for g in now_visible.json())
+
+
+class TestGenresVisibility:
+    """GET /v1/games/genres respects per-user catalogue visibility."""
+
+    async def test_private_manual_genres_hidden_from_other_user(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        await async_client.post(
+            "/v1/games",
+            json=_payload("metroidvania-x", "Metroidvania X", genres=["metroidvania"]),
+            headers=auth_headers,
+        )
+
+        # Creator sees the genre from their own private row.
+        own = await async_client.get("/v1/games/genres", headers=auth_headers)
+        assert own.status_code == 200
+        assert "metroidvania" in own.json()
+
+        # A different user must not see genres sourced from a private manual row.
+        other = await _register(async_client, "second@example.com")
+        other_genres = await async_client.get("/v1/games/genres", headers=other)
+        assert other_genres.status_code == 200
+        assert "metroidvania" not in other_genres.json()
+
+
+class TestDistinctOwnerPromotion:
+    """A private manual row is promoted to shared once enough users own it."""
+
+    async def _seed_platform(self) -> int:
+        from dailyloadout.infrastructure.db.models import Platform
+        from tests.conftest import _TestSessionFactory
+
+        async with _TestSessionFactory() as session:
+            platform = Platform(slug="pc", label="PC", family="pc")
+            session.add(platform)
+            await session.flush()
+            platform_id = platform.id
+            await session.commit()
+        return platform_id
+
+    async def test_fifth_distinct_owner_flips_to_shared(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        platform_id = await self._seed_platform()
+
+        # User A (creator) makes the private manual row and adds it (owner #1).
+        created = await async_client.post(
+            "/v1/games", json=_payload("backlog-buddy", "Backlog Buddy"), headers=auth_headers
+        )
+        assert created.status_code == 201
+        game_public_id = created.json()["public_id"]
+        add_a = await async_client.post(
+            "/v1/library",
+            json={"game_public_id": game_public_id, "platform_ids": [platform_id]},
+            headers=auth_headers,
+        )
+        assert add_a.status_code == 201
+
+        # Owners #2..#4 add it. With threshold 5 it stays private throughout.
+        for i in range(2, 5):
+            hdr = await _register(async_client, f"owner{i}@example.com")
+            resolved = await async_client.post(
+                "/v1/games", json=_payload("backlog-buddy", "Backlog Buddy"), headers=hdr
+            )
+            assert resolved.json()["public_id"] == game_public_id
+            await async_client.post(
+                "/v1/library",
+                json={"game_public_id": game_public_id, "platform_ids": [platform_id]},
+                headers=hdr,
+            )
+            search = await async_client.get(
+                "/v1/games/search", params={"q": "Backlog"}, headers=hdr
+            )
+            # Each owner sees it only via /games (their own resolve), but search
+            # still excludes it because it is private and they are not the creator.
+            assert not any(g["slug"] == "backlog-buddy" for g in search.json())
+
+        # The 5th DISTINCT owner crosses the threshold -> promoted to shared.
+        fifth = await _register(async_client, "owner5@example.com")
+        await async_client.post(
+            "/v1/games", json=_payload("backlog-buddy", "Backlog Buddy"), headers=fifth
+        )
+        promote = await async_client.post(
+            "/v1/library",
+            json={"game_public_id": game_public_id, "platform_ids": [platform_id]},
+            headers=fifth,
+        )
+        assert promote.status_code == 201
+
+        # Now a brand-new, non-owning user can discover it.
+        outsider = await _register(async_client, "outsider@example.com")
+        search = await async_client.get(
+            "/v1/games/search", params={"q": "Backlog"}, headers=outsider
+        )
+        assert any(g["slug"] == "backlog-buddy" for g in search.json())
+
+    async def test_same_user_multiple_platforms_does_not_promote(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Distinct OWNERS, not entries: one user on many platforms stays private."""
+        from dailyloadout.infrastructure.db.models import Platform
+        from tests.conftest import _TestSessionFactory
+
+        async with _TestSessionFactory() as session:
+            ids: list[int] = []
+            for slug, label in [("pc", "PC"), ("ps5", "PS5"), ("switch", "Switch")]:
+                plat = Platform(slug=slug, label=label, family=slug)
+                session.add(plat)
+                await session.flush()
+                ids.append(plat.id)
+            await session.commit()
+
+        created = await async_client.post(
+            "/v1/games", json=_payload("solo-spam", "Solo Spam"), headers=auth_headers
+        )
+        game_public_id = created.json()["public_id"]
+        # One user, three platform entries — still one distinct owner.
+        await async_client.post(
+            "/v1/library",
+            json={"game_public_id": game_public_id, "platform_ids": ids},
+            headers=auth_headers,
+        )
+
+        other = await _register(async_client, "second@example.com")
+        search = await async_client.get("/v1/games/search", params={"q": "Solo"}, headers=other)
+        assert not any(g["slug"] == "solo-spam" for g in search.json())

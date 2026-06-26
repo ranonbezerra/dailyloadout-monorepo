@@ -47,7 +47,7 @@ class _GenreRepo:
     def __init__(self) -> None:
         self.calls = 0
 
-    async def distinct_genres(self) -> list[str]:
+    async def distinct_genres(self, *, user_id: int) -> list[str]:
         self.calls += 1
         return ["action", "metroidvania"]
 
@@ -61,9 +61,10 @@ async def test_genres_served_from_cache_on_repeat() -> None:
     cache = FakeCache()
     service = _service(repo, cache)
 
-    first = await service.list_genres()
-    second = await service.list_genres()
+    first = await service.list_genres(user_id=7)
+    second = await service.list_genres(user_id=7)
 
     assert first == second == ["action", "metroidvania"]
     assert repo.calls == 1  # second read hit the reference cache
-    assert reference_key("genres") in cache.store
+    # The genre cache is namespaced per user (private rows are user-scoped).
+    assert reference_key("genres:7") in cache.store

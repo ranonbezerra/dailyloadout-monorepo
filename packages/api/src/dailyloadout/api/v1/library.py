@@ -84,7 +84,7 @@ async def list_genres(
     library_service: LibraryServiceDep,
 ) -> list[str]:
     """Return all distinct genre names from the games catalog."""
-    return await library_service.list_genres()
+    return await library_service.list_genres(user_id=current_user.id)
 
 
 @router.get(
@@ -99,7 +99,7 @@ async def search_games(
     limit: int = Query(default=20, ge=1, le=25),
 ) -> list[GameResponse]:
     """Fuzzy-search games by title."""
-    games = await library_service.search_games(q, limit=limit)
+    games = await library_service.search_games(q, user_id=current_user.id, limit=limit)
     return [GameResponse.model_validate(g) for g in games]
 
 

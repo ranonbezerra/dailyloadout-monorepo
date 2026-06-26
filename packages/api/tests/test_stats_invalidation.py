@@ -155,7 +155,12 @@ class _LibRepo:
 
 class _GameRepo:
     async def get_by_public_id(self, public_id: Any) -> Any:
-        return type("G", (), {"id": 1})()
+        # Already-shared (igdb) row so add_to_library's promotion check is a no-op.
+        return type(
+            "G",
+            (),
+            {"id": 1, "igdb_id": 1, "is_shared": True, "created_by_user_id": None},
+        )()
 
 
 class _PlatformRepo:

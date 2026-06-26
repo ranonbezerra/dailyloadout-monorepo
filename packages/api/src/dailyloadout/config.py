@@ -49,18 +49,16 @@ class Settings(BaseSettings):
     llm_timeout_seconds: int = 60
     # Preload these Ollama models in the background on startup so the first real
     # request isn't a slow cold-load (the concierge agent especially). Empty =
-    # disabled. Local example: '["qwen2.5:7b-instruct"]'. Only runs when
-    # LLM_PROVIDER=ollama.
+    # disabled. Local example: '["qwen2.5:7b-instruct"]'. Only on LLM_PROVIDER=ollama.
     ollama_warmup_models: list[str] = []
-    # How long warmed models stay resident after idle. Default frees the RAM
-    # after 30 min; set '-1' to pin them loaded indefinitely (always fast, but
-    # holds the memory).
+    # How long warmed models stay resident after idle. Default frees the RAM after
+    # 30 min; set '-1' to pin them loaded indefinitely (always fast, holds memory).
     ollama_warmup_keep_alive: str = "30m"
     # Process-wide ceiling on concurrent model calls to the host Ollama server
-    # (per worker process). A burst of concierge/briefing requests would
-    # otherwise oversubscribe the GPU/CPU and stall every in-flight call; this
-    # bounds the queue depth so the model serves a few requests fast rather than
-    # thrashing all of them. Holds only around the model HTTP call.
+    # (per worker process). A burst of concierge/briefing requests would otherwise
+    # oversubscribe the GPU/CPU and stall every in-flight call; this bounds the
+    # queue depth so the model serves a few requests fast rather than thrashing all
+    # of them. Holds only around the model HTTP call.
     ollama_max_concurrency: int = 2
 
     # ── Agent / Deep Research Briefing (Epic 10) ─────────────────────────
@@ -82,8 +80,7 @@ class Settings(BaseSettings):
     # qwen3 without reasoning is incoherent on multi-step grounded tasks).
     ollama_agent_model: str = "qwen2.5:7b-instruct"
     # Qwen3 is a reasoning model: its <think> chains add huge latency to every
-    # ReAct step. Disable for fast tool-calling; enable only if answer quality
-    # demands deliberation.
+    # ReAct step. Disable for fast tool-calling; enable only if quality demands it.
     concierge_agent_reasoning: bool = False
     concierge_max_tool_loops: int = 6
     # Where conversation threads are checkpointed (ROADMAP Epic 16). 'postgres'
@@ -110,6 +107,9 @@ class Settings(BaseSettings):
     ocr_confidence_threshold: float = 0.6
     # Fuzzy-match cutoff for accepting an OCR line as a canonical game.
     catalog_match_min_score: float = 0.6
+    # Anti-abuse (Block C): distinct owners that promote a private manual row to
+    # globally shared/discoverable (spam stays hidden until enough users own it).
+    catalog_share_threshold: int = 5
     # Bulk-import path replaces the single-shelf cap of 12. Lowered from 200 as
     # a DoS mitigation: each candidate fans out to an IGDB lookup. The full
     # async/Taskiq move is a separate follow-up.
