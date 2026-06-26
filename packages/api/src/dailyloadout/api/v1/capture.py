@@ -11,6 +11,7 @@ from fastapi import APIRouter, HTTPException, Query, UploadFile, status
 from dailyloadout.api.v1._mime_helpers import guess_audio_extension
 from dailyloadout.config import settings
 from dailyloadout.core.capture.exceptions import InvalidUploadError
+from dailyloadout.core.capture.ingestion import read_upload_capped
 from dailyloadout.core.capture.schemas import (
     CandidateConfirmRequest,
     CaptureListItem,
@@ -70,8 +71,14 @@ async def submit_photo_capture(
     capture_service: CaptureServiceDep,
 ) -> CaptureResponse:
     """Submit a photo capture, process it inline (vision LLM + IGDB), and return candidates."""
-    contents = await file.read()
+    max_bytes = settings.capture_max_image_mb * 1024 * 1024
     try:
+        # Reject oversized uploads before fully buffering them into memory.
+        contents = await read_upload_capped(
+            file,
+            max_bytes,
+            too_large_message=f"Image file must be under {settings.capture_max_image_mb}MB.",
+        )
         capture = await capture_service.submit_and_process_photo(
             user_id=current_user.id,
             contents=contents,
@@ -100,11 +107,13 @@ async def transcribe_audio(
     if not file.content_type or not file.content_type.startswith("audio/"):
         raise HTTPException(status_code=400, detail="File must be an audio file.")
 
-    # Validate file size (5 MB max).
-    max_size = 5 * 1024 * 1024
-    contents = await file.read()
-    if len(contents) > max_size:
-        raise HTTPException(status_code=400, detail="Audio file must be under 5MB.")
+    # Validate file size BEFORE buffering the whole file into memory.
+    max_size = settings.capture_max_audio_mb * 1024 * 1024
+    too_large = f"Audio file must be under {settings.capture_max_audio_mb}MB."
+    try:
+        contents = await read_upload_capped(file, max_size, too_large_message=too_large)
+    except InvalidUploadError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     if stt_client is None:
         raise HTTPException(status_code=503, detail="Speech-to-text service is not available.")

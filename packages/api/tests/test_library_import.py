@@ -185,9 +185,31 @@ async def test_processor_no_titles_marks_review() -> None:
 # -- Endpoints ------------------------------------------------------------------
 
 
+def _real_png() -> bytes:
+    import io
+
+    from PIL import Image
+
+    buf = io.BytesIO()
+    Image.new("RGB", (1, 1), (0, 0, 0)).save(buf, format="PNG")
+    return buf.getvalue()
+
+
+_PNG_PREFIX = _real_png()
+
+
 def _image_files(*payloads: str) -> list[tuple[str, tuple[str, bytes, str]]]:
+    """Build upload tuples that pass magic-byte validation AND carry OCR text.
+
+    Each "image" is a real PNG followed by the ``__OCRTEXT__`` sentinel and the
+    title payload; the dummy OCR reads only the bytes after the sentinel.
+    """
     return [
-        ("files", (f"shot{i}.png", p.encode("utf-8"), "image/png")) for i, p in enumerate(payloads)
+        (
+            "files",
+            (f"shot{i}.png", _PNG_PREFIX + b"__OCRTEXT__" + p.encode("utf-8"), "image/png"),
+        )
+        for i, p in enumerate(payloads)
     ]
 
 
@@ -252,6 +274,65 @@ class TestLibraryImportEndpoint:
             headers=auth_headers,
         )
         assert resp.status_code == 429
+
+    async def test_import_rejects_too_many_files(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+        monkeypatch: Any,
+    ) -> None:
+        monkeypatch.setattr(settings, "library_import_max_files", 2)
+        resp = await async_client.post(
+            "/v1/captures/library-import",
+            files=_image_files("A", "B", "C"),  # 3 files > cap of 2
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+        assert "too many" in resp.json()["detail"].lower()
+
+    async def test_import_rejects_spoofed_image(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        # An image/* MIME but bytes that are not a real image.
+        resp = await async_client.post(
+            "/v1/captures/library-import",
+            files=[("files", ("fake.png", b"plain text, not an image", "image/png"))],
+            headers=auth_headers,
+        )
+        assert resp.status_code == 400
+        assert "valid image" in resp.json()["detail"].lower()
+
+    async def test_worker_error_is_generic(self) -> None:
+        """A processing failure persists a generic message, not raw internals."""
+
+        class _BoomOCR(AbstractOCRClient):
+            async def extract_lines(self, image_bytes: bytes) -> OcrResult:
+                raise RuntimeError("secret internal db dsn leaked here")
+
+        async with _TestSessionFactory() as session:
+            user_id, capture = await _seed_user_and_capture(session)
+            await process_library_import(
+                capture,
+                [b"whatever"],
+                user_id=user_id,
+                today=date(2026, 6, 24),
+                capture_repo=CaptureRepository(session),
+                candidate_repo=CaptureCandidateRepository(session),
+                usage_repo=UsageCounterRepository(session),
+                ocr_client=_BoomOCR(),
+                ocr_fallback_client=None,
+                catalog_matcher=DummyCatalogMatcher(),
+                settings=settings,
+            )
+            refreshed = await CaptureRepository(session).get_by_public_id(
+                capture.public_id, user_id=user_id
+            )
+            assert refreshed is not None
+            assert refreshed.status == "failed"
+            assert refreshed.error_message == "Import failed. Please try again."
+            assert "secret" not in (refreshed.error_message or "")
 
     async def test_bulk_confirm_commits_and_rejects(
         self,

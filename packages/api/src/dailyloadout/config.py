@@ -104,11 +104,16 @@ class Settings(BaseSettings):
     ocr_confidence_threshold: float = 0.6
     # Fuzzy-match cutoff for accepting an OCR line as a canonical game.
     catalog_match_min_score: float = 0.6
-    # Bulk-import path replaces the single-shelf cap of 12.
-    library_import_max_candidates: int = 200
+    # Bulk-import path replaces the single-shelf cap of 12. Lowered from 200 as
+    # a DoS mitigation: each candidate fans out to an IGDB lookup. The full
+    # async/Taskiq move is a separate follow-up.
+    library_import_max_candidates: int = 40
     # Free-tier abuse/cost guards (per user, per UTC day).
     library_import_images_per_day: int = 10
     library_import_vision_fallbacks_per_day: int = 20
+    # Hard cap on files accepted in a single bulk-import request, checked BEFORE
+    # any file is read into memory (DoS backstop on top of the per-day quota).
+    library_import_max_files: int = 20
 
     # ── Storage ──────────────────────────────────────────────────────────
     storage_provider: str = "local_fs"
@@ -141,7 +146,9 @@ class Settings(BaseSettings):
     # works. PRODUCTION: set auth_cookie_secure=True, and if web/api live on
     # different domains set auth_cookie_samesite="none" (which requires Secure).
     auth_cookie_name: str = "dl_refresh_token"
-    auth_cookie_secure: bool = False
+    # Secure by default; dev/test may override to False so http://localhost works.
+    # Production startup refuses to boot with this False (see guard below).
+    auth_cookie_secure: bool = True
     auth_cookie_samesite: Literal["lax", "strict", "none"] = "lax"
     auth_cookie_path: str = "/v1/auth"
     auth_cookie_domain: str | None = None
@@ -149,23 +156,66 @@ class Settings(BaseSettings):
     # ── Limits ───────────────────────────────────────────────────────────
     capture_max_audio_seconds: int = 60
     capture_max_image_mb: int = 10
+    capture_max_audio_mb: int = 5
     capture_max_games_per_shelf: int = 12
     mission_auto_clamp_hours: int = 24
     loadout_auto_ignore_hours: int = 24
     loadout_cooldown_hours: int = 12
+
+    # ── Request hardening (DoS / security headers) ───────────────────────
+    # Coarse backstop: reject any request whose Content-Length exceeds this cap
+    # with HTTP 413 before the body is read. ~25 MB covers the largest legit
+    # upload (multi-image library import) with headroom.
+    max_request_body_bytes: int = 25 * 1024 * 1024
+    # HSTS max-age in seconds advertised to browsers (~2 years).
+    hsts_max_age_seconds: int = 63072000
+    # Disable Scalar /docs + /openapi.json outside dev/test (production lockdown).
+    docs_enabled: bool = True
+    # Allowlist of hosts an IGDB cover_url may point at (https only). Anything
+    # else is rejected/nulled to keep poisoned URLs out of LLM prompts + the UI.
+    igdb_cdn_allowed_hosts: list[str] = ["images.igdb.com"]
+
+    # ── DB connection pool (sized for a small multi-worker deploy) ───────
+    db_pool_size: int = 10
+    db_max_overflow: int = 5
+    db_pool_timeout_seconds: int = 30
+    db_pool_recycle_seconds: int = 1800
+    db_pool_pre_ping: bool = True
 
     # ── Observability (optional) ─────────────────────────────────────────
     sentry_dsn: str = ""
     otel_exporter_otlp_endpoint: str = ""
 
 
+_DEV_ENVS = ("development", "testing")
+
+
+def _validate_production_settings(s: Settings) -> None:
+    """Fail fast on insecure production configuration.
+
+    Dev/test (``app_env`` in ``development``/``testing``) may relax these so
+    http://localhost keeps working; any other environment is treated as
+    production and must be hardened.
+    """
+    if s.app_env in _DEV_ENVS:
+        return
+
+    if s.secret_key == "change-me-in-prod":
+        raise RuntimeError(
+            "FATAL: secret_key is still the default value. "
+            "Set the SECRET_KEY environment variable before running in production."
+        )
+
+    if not s.auth_cookie_secure:
+        raise RuntimeError(
+            "FATAL: auth_cookie_secure must be True in production. "
+            "Refresh-token cookies must only be sent over HTTPS."
+        )
+
+    if s.auth_cookie_samesite == "none" and not s.auth_cookie_secure:
+        raise RuntimeError("FATAL: auth_cookie_samesite='none' requires auth_cookie_secure=True.")
+
+
 settings = Settings()
 
-if (
-    settings.app_env not in ("development", "testing")
-    and settings.secret_key == "change-me-in-prod"
-):
-    raise RuntimeError(
-        "FATAL: secret_key is still the default value. "
-        "Set the SECRET_KEY environment variable before running in production."
-    )
+_validate_production_settings(settings)

@@ -10,8 +10,8 @@ from fastapi import HTTPException, status
 from dailyloadout.config import Settings
 from dailyloadout.config import settings as default_settings
 from dailyloadout.core.capture import candidates
-from dailyloadout.core.capture.exceptions import ImportQuotaExceededError
 from dailyloadout.core.capture.ingestion import (
+    enforce_import_quota,
     temp_image_file,
     validate_image,
     validate_import_image,
@@ -130,7 +130,7 @@ class CaptureService:
     ) -> Capture:
         """Validate, persist (with a temp file), process, and return a photo capture."""
         assert self._process_capture is not None and self._llm_client is not None
-        validate_image(content_type, len(contents), self._settings)
+        validate_image(content_type, len(contents), self._settings, data=contents)
         with temp_image_file(contents, content_type, self._settings) as image_path:
             capture = await self.submit_photo(user_id=user_id, image_path=image_path)
             await self._process_capture(
@@ -141,6 +141,13 @@ class CaptureService:
                 igdb_client=self._igdb_client,
             )
             return await self.get_capture(user_id, capture.public_id)
+
+    async def check_import_quota(self, user_id: int, file_count: int) -> None:
+        """Reject a bulk import (count cap + per-day quota) before buffering files."""
+        assert self._usage_repo is not None
+        await enforce_import_quota(
+            user_id, file_count, usage_repo=self._usage_repo, settings=self._settings
+        )
 
     async def submit_library_import(
         self,
@@ -160,15 +167,12 @@ class CaptureService:
 
         blobs: list[bytes] = []
         for content_type, contents in files:
-            validate_import_image(content_type, len(contents), self._settings)
+            validate_import_image(content_type, len(contents), self._settings, data=contents)
             blobs.append(contents)
 
+        # Re-check quota (idempotent with the router's pre-buffer check) and meter.
+        await self.check_import_quota(user_id, len(blobs))
         today = datetime.now(UTC).date()
-        used = await self._usage_repo.get_count(user_id, _IMPORT_IMAGES_KEY, today)
-        if used + len(blobs) > self._settings.library_import_images_per_day:
-            raise ImportQuotaExceededError(
-                "Daily library-import limit reached. Try again tomorrow."
-            )
         await self._usage_repo.increment(user_id, _IMPORT_IMAGES_KEY, today, amount=len(blobs))
 
         capture = await self._capture_repo.create(user_id=user_id, input_type="library_import")

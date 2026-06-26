@@ -173,6 +173,7 @@ async def async_client() -> AsyncIterator[AsyncClient]:
     database dependency overridden to use the in-memory SQLite engine.
     """
     from dailyloadout.api.v1.auth import _check_login_rate, _check_register_rate
+    from dailyloadout.config import settings
     from dailyloadout.deps import get_db
     from dailyloadout.deps.capture import (
         get_igdb_client_dep,
@@ -182,6 +183,10 @@ async def async_client() -> AsyncIterator[AsyncClient]:
     from dailyloadout.infrastructure.llm.dummy import DummyLLMClient
     from dailyloadout.infrastructure.stt.dummy import DummySTTClient
     from dailyloadout.main import app
+
+    # Tests run over plain http://; a Secure cookie would never be sent back by
+    # httpx, so relax it for the cookie-mode auth tests (prod stays Secure).
+    settings.auth_cookie_secure = False
 
     app.dependency_overrides[get_db] = _override_get_db
     app.dependency_overrides[get_llm_client_dep] = lambda: DummyLLMClient()
