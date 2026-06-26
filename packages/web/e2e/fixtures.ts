@@ -24,6 +24,7 @@ const user = {
 };
 
 const platform = { id: 1, slug: "pc", label: "PC", family: "computer" };
+const switchPlatform = { id: 2, slug: "switch", label: "Nintendo Switch", family: "console" };
 
 function game(slug: string, title: string) {
 	return {
@@ -39,11 +40,10 @@ function game(slug: string, title: string) {
 	};
 }
 
-function entry(slug: string, title: string, status: string) {
+function platformState(slug: string, status: string, plat = platform) {
 	return {
-		public_id: `le-${slug}`,
-		game: game(slug, title),
-		platform,
+		public_id: `le-${slug}-${plat.slug}`,
+		platform: plat,
 		status,
 		notes: null,
 		acquired_at: null,
@@ -51,6 +51,14 @@ function entry(slug: string, title: string, status: string) {
 		mission_next_action: null,
 		created_at: NOW,
 		updated_at: NOW,
+	};
+}
+
+/** A grouped library game: one game, one or more per-platform states. */
+function group(slug: string, title: string, platforms: ReturnType<typeof platformState>[]) {
+	return {
+		game: game(slug, title),
+		platforms,
 	};
 }
 
@@ -67,10 +75,15 @@ export const DEFAULT_ROUTES: Record<string, Canned> = {
 	"GET /v1/library": {
 		status: 200,
 		body: {
+			// Grouped: one row per distinct game. Hollow Knight is owned on two
+			// platforms, so it appears once with two per-platform states.
 			items: [
-				entry("hollow-knight", "Hollow Knight", "playing"),
-				entry("hades", "Hades", "backlog"),
-				entry("celeste", "Celeste", "completed"),
+				group("hollow-knight", "Hollow Knight", [
+					platformState("hollow-knight", "playing", platform),
+					platformState("hollow-knight", "backlog", switchPlatform),
+				]),
+				group("hades", "Hades", [platformState("hades", "backlog", platform)]),
+				group("celeste", "Celeste", [platformState("celeste", "completed", platform)]),
 			],
 			total: 3,
 			limit: 50,
@@ -79,7 +92,7 @@ export const DEFAULT_ROUTES: Record<string, Canned> = {
 	},
 	"GET /v1/platforms": {
 		status: 200,
-		body: [platform, { id: 2, slug: "switch", label: "Nintendo Switch", family: "console" }],
+		body: [platform, switchPlatform],
 	},
 	"GET /v1/games/genres": { status: 200, body: ["action", "metroidvania", "roguelike"] },
 	"GET /v1/missions/active": { status: 404, body: { detail: "No active mission" } },

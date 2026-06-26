@@ -27,11 +27,19 @@ test.describe("DailyLoadout web — smoke + UX capture", () => {
 		await page.screenshot({ path: `${SHOTS}/play-hub.png`, fullPage: true });
 	});
 
-	test("library lists the user's games", async ({ page }) => {
+	test("library lists grouped games with per-platform badges", async ({ page }) => {
 		await setupMockedApp(page);
 		await page.goto("/library");
 		await expect(page.getByRole("heading", { name: "Library" })).toBeVisible();
-		await expect(page.getByText("Hollow Knight")).toBeVisible();
+
+		// Grouped shape: Hollow Knight is owned on two platforms but renders as a
+		// SINGLE row — its title appears exactly once in the table.
+		await expect(page.getByText("Hollow Knight", { exact: true })).toHaveCount(1);
+
+		// Each platform shows its own status badge within that one row.
+		await expect(page.getByText("PC: playing")).toBeVisible();
+		await expect(page.getByText("Nintendo Switch: backlog")).toBeVisible();
+
 		await page.screenshot({ path: `${SHOTS}/library.png`, fullPage: true });
 	});
 

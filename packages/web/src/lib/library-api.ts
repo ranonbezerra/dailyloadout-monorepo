@@ -4,6 +4,7 @@ import type {
 	LibraryEntry,
 	LibraryEntryCreate,
 	LibraryEntryUpdate,
+	LibraryGameGroup,
 	LibraryListResponse,
 	Platform,
 } from "../types/library";
@@ -67,12 +68,12 @@ export async function fetchLibraryEntry(publicId: string): Promise<LibraryEntry>
 	return snakeToCamel<LibraryEntry>(raw);
 }
 
-export async function addToLibrary(data: LibraryEntryCreate): Promise<LibraryEntry> {
+export async function addToLibrary(data: LibraryEntryCreate): Promise<LibraryGameGroup> {
 	const raw = await apiFetch<unknown>("/v1/library", {
 		method: "POST",
 		body: JSON.stringify(camelToSnake(data as unknown as Record<string, unknown>)),
 	});
-	return snakeToCamel<LibraryEntry>(raw);
+	return snakeToCamel<LibraryGameGroup>(raw);
 }
 
 export async function updateEntry(

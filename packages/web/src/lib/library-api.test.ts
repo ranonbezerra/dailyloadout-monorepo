@@ -166,11 +166,10 @@ describe("fetchLibrary", () => {
 		expect(calledPath).toContain("offset=5");
 	});
 
-	it("converts snake_case response items to camelCase", async () => {
+	it("converts a grouped snake_case response to camelCase", async () => {
 		const apiResponse = {
 			items: [
 				{
-					public_id: "le1",
 					game: {
 						public_id: "g1",
 						title: "Hades",
@@ -178,11 +177,24 @@ describe("fetchLibrary", () => {
 						metadata_source: "igdb",
 						created_at: "2024-01-01",
 					},
-					platform: { id: 1, slug: "pc", label: "PC", family: "computer" },
-					status: "playing",
-					last_played_at: "2024-06-01",
-					created_at: "2024-01-01",
-					updated_at: "2024-06-01",
+					platforms: [
+						{
+							public_id: "le1",
+							platform: { id: 1, slug: "pc", label: "PC", family: "computer" },
+							status: "playing",
+							last_played_at: "2024-06-01",
+							created_at: "2024-01-01",
+							updated_at: "2024-06-01",
+						},
+						{
+							public_id: "le2",
+							platform: { id: 2, slug: "switch", label: "Switch", family: "console" },
+							status: "backlog",
+							last_played_at: null,
+							created_at: "2024-01-01",
+							updated_at: "2024-06-01",
+						},
+					],
 				},
 			],
 			total: 1,
@@ -193,10 +205,13 @@ describe("fetchLibrary", () => {
 
 		const result = await fetchLibrary();
 
-		expect(result.items[0].publicId).toBe("le1");
 		expect(result.items[0].game.publicId).toBe("g1");
 		expect(result.items[0].game.metadataSource).toBe("igdb");
-		expect(result.items[0].lastPlayedAt).toBe("2024-06-01");
+		expect(result.items[0].platforms).toHaveLength(2);
+		expect(result.items[0].platforms[0].publicId).toBe("le1");
+		expect(result.items[0].platforms[0].lastPlayedAt).toBe("2024-06-01");
+		expect(result.items[0].platforms[1].publicId).toBe("le2");
+		expect(result.items[0].platforms[1].platform.slug).toBe("switch");
 	});
 
 	it("handles offset=0 correctly (falsy but valid)", async () => {
@@ -210,9 +225,8 @@ describe("fetchLibrary", () => {
 });
 
 describe("addToLibrary", () => {
-	it("calls POST /v1/library with snake_cased body", async () => {
+	it("calls POST /v1/library with snake_cased body and returns a grouped game", async () => {
 		const apiResponse = {
-			public_id: "le1",
 			game: {
 				public_id: "g1",
 				title: "Hades",
@@ -220,16 +234,28 @@ describe("addToLibrary", () => {
 				metadata_source: "igdb",
 				created_at: "2024-01-01",
 			},
-			platform: { id: 1, slug: "pc", label: "PC", family: "computer" },
-			status: "backlog",
-			created_at: "2024-01-01",
-			updated_at: "2024-01-01",
+			platforms: [
+				{
+					public_id: "le1",
+					platform: { id: 1, slug: "pc", label: "PC", family: "computer" },
+					status: "backlog",
+					created_at: "2024-01-01",
+					updated_at: "2024-01-01",
+				},
+				{
+					public_id: "le2",
+					platform: { id: 2, slug: "switch", label: "Switch", family: "console" },
+					status: "backlog",
+					created_at: "2024-01-01",
+					updated_at: "2024-01-01",
+				},
+			],
 		};
 		mockApiFetch.mockResolvedValueOnce(apiResponse);
 
 		const result = await addToLibrary({
 			gamePublicId: "g1",
-			platformId: 1,
+			platformIds: [1, 2],
 			status: "backlog",
 		});
 
@@ -237,12 +263,14 @@ describe("addToLibrary", () => {
 			method: "POST",
 			body: JSON.stringify({
 				game_public_id: "g1",
-				platform_id: 1,
+				platform_ids: [1, 2],
 				status: "backlog",
 			}),
 		});
-		expect(result.publicId).toBe("le1");
 		expect(result.game.publicId).toBe("g1");
+		expect(result.platforms).toHaveLength(2);
+		expect(result.platforms[0].publicId).toBe("le1");
+		expect(result.platforms[1].platform.slug).toBe("switch");
 	});
 });
 

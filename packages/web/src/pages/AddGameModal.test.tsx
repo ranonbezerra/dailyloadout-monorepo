@@ -59,6 +59,34 @@ vi.mock("@mantine/core", async () => {
 				))}
 			</select>
 		),
+		// Render MultiSelect as a native multi-select so tests can drive it.
+		MultiSelect: ({
+			label,
+			placeholder,
+			value,
+			onChange,
+			data,
+		}: {
+			label?: string;
+			placeholder?: string;
+			value?: string[];
+			onChange?: (value: string[]) => void;
+			data?: { value: string; label: string }[];
+		}) => (
+			<select
+				multiple
+				aria-label={label}
+				data-placeholder={placeholder}
+				value={value ?? []}
+				onChange={(e) => onChange?.(Array.from(e.currentTarget.selectedOptions, (o) => o.value))}
+			>
+				{(data ?? []).map((opt) => (
+					<option key={opt.value} value={opt.value}>
+						{opt.label}
+					</option>
+				))}
+			</select>
+		),
 		Textarea: ({
 			label,
 			placeholder,
@@ -170,10 +198,13 @@ function renderModal(props: { opened?: boolean; onClose?: () => void } = {}) {
 	return { ...result, onClose };
 }
 
-function selectPlatform(label: string) {
-	const select = screen.getByRole("combobox", { name: "Platform" });
-	const id = PLATFORMS.find((p) => p.label === label)?.id;
-	fireEvent.change(select, { target: { value: String(id) } });
+function selectPlatforms(...labels: string[]) {
+	const select = screen.getByRole("listbox", { name: "Platforms" }) as HTMLSelectElement;
+	const wantedIds = labels.map((l) => String(PLATFORMS.find((p) => p.label === l)?.id));
+	for (const option of Array.from(select.options)) {
+		option.selected = wantedIds.includes(option.value);
+	}
+	fireEvent.change(select);
 }
 
 beforeEach(() => {
@@ -201,9 +232,9 @@ describe("AddGameModal rendering", () => {
 		expect(screen.getByPlaceholderText("Type at least 2 characters...")).toBeInTheDocument();
 	});
 
-	it("shows platform select, status select, and notes textarea", () => {
+	it("shows the multi-platform select, status select, and notes textarea", () => {
 		renderModal();
-		expect(screen.getByRole("combobox", { name: "Platform" })).toBeInTheDocument();
+		expect(screen.getByRole("listbox", { name: "Platforms" })).toBeInTheDocument();
 		expect(screen.getByRole("combobox", { name: "Status" })).toBeInTheDocument();
 		expect(screen.getByPlaceholderText("Optional notes...")).toBeInTheDocument();
 	});
@@ -280,7 +311,7 @@ describe("AddGameModal submit (search mode)", () => {
 	it("warns when a platform is set but no game is selected", () => {
 		renderModal();
 
-		selectPlatform("PC");
+		selectPlatforms("PC");
 		fireEvent.click(screen.getByRole("button", { name: /add to library/i }));
 
 		expect(mockNotify).toHaveBeenCalledWith(
@@ -294,7 +325,7 @@ describe("AddGameModal submit (search mode)", () => {
 		const { onClose } = renderModal();
 
 		fireEvent.click(screen.getByText("Hades"));
-		selectPlatform("PC");
+		selectPlatforms("PC");
 		fireEvent.change(screen.getByPlaceholderText("Optional notes..."), {
 			target: { value: "first run" },
 		});
@@ -304,7 +335,7 @@ describe("AddGameModal submit (search mode)", () => {
 		await waitFor(() => {
 			expect(addMutateAsync).toHaveBeenCalledWith({
 				gamePublicId: "game-1",
-				platformId: 1,
+				platformIds: [1],
 				status: "backlog",
 				notes: "first run",
 			});
@@ -315,13 +346,32 @@ describe("AddGameModal submit (search mode)", () => {
 		expect(onClose).toHaveBeenCalled();
 	});
 
+	it("adds the selected game on multiple platforms at once", async () => {
+		setupHooks({ searchResults: [SAMPLE_GAME] });
+		renderModal();
+
+		fireEvent.click(screen.getByText("Hades"));
+		selectPlatforms("PC", "PlayStation 5");
+
+		fireEvent.click(screen.getByRole("button", { name: /add to library/i }));
+
+		await waitFor(() => {
+			expect(addMutateAsync).toHaveBeenCalledWith({
+				gamePublicId: "game-1",
+				platformIds: [1, 2],
+				status: "backlog",
+				notes: undefined,
+			});
+		});
+	});
+
 	it("shows an error notification when the mutation rejects", async () => {
 		setupHooks({ searchResults: [SAMPLE_GAME] });
 		addMutateAsync.mockRejectedValueOnce(new Error("boom"));
 		renderModal();
 
 		fireEvent.click(screen.getByText("Hades"));
-		selectPlatform("PC");
+		selectPlatforms("PC");
 		fireEvent.click(screen.getByRole("button", { name: /add to library/i }));
 
 		await waitFor(() => {
@@ -341,7 +391,7 @@ describe("AddGameModal submit (manual mode)", () => {
 		renderModal();
 
 		fireEvent.click(screen.getByRole("switch", { name: /create manually/i }));
-		selectPlatform("PC");
+		selectPlatforms("PC");
 		fireEvent.click(screen.getByRole("button", { name: /add to library/i }));
 
 		expect(mockNotify).toHaveBeenCalledWith(
@@ -360,7 +410,7 @@ describe("AddGameModal submit (manual mode)", () => {
 		fireEvent.change(screen.getByPlaceholderText("game-slug"), {
 			target: { value: "my-game" },
 		});
-		selectPlatform("PlayStation 5");
+		selectPlatforms("PlayStation 5");
 
 		fireEvent.click(screen.getByRole("button", { name: /add to library/i }));
 
@@ -373,7 +423,7 @@ describe("AddGameModal submit (manual mode)", () => {
 		});
 		expect(addMutateAsync).toHaveBeenCalledWith({
 			gamePublicId: "created-game-1",
-			platformId: 2,
+			platformIds: [2],
 			status: "backlog",
 			notes: undefined,
 		});

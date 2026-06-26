@@ -20,6 +20,7 @@ const PLATFORMS_KEY = ["platforms"] as const;
 const GAMES_SEARCH_KEY = ["games", "search"] as const;
 const GAME_GENRES_KEY = ["games", "genres"] as const;
 const LIBRARY_KEY = ["library"] as const;
+const STATS_KEY = ["stats"] as const;
 
 // ---------------------------------------------------------------------------
 // Queries
@@ -76,6 +77,7 @@ export function useAddToLibrary() {
 		mutationFn: (data: LibraryEntryCreate) => addToLibrary(data),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: LIBRARY_KEY });
+			queryClient.invalidateQueries({ queryKey: STATS_KEY });
 		},
 	});
 }
@@ -88,6 +90,7 @@ export function useUpdateEntry() {
 			updateEntry(vars.publicId, vars.data),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: LIBRARY_KEY });
+			queryClient.invalidateQueries({ queryKey: STATS_KEY });
 		},
 	});
 }
@@ -99,6 +102,7 @@ export function useDeleteEntry() {
 		mutationFn: (publicId: string) => deleteEntry(publicId),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: LIBRARY_KEY });
+			queryClient.invalidateQueries({ queryKey: STATS_KEY });
 		},
 	});
 }

@@ -37,9 +37,8 @@ const mockGames = [
 
 const mockGenres = ["Action", "RPG", "Adventure", "Puzzle"];
 
-const mockLibraryEntry = {
+const mockPlatformState = {
 	publicId: "entry-1",
-	game: mockGames[0],
 	platform: mockPlatforms[0],
 	status: "playing" as const,
 	acquiredAt: null,
@@ -50,8 +49,18 @@ const mockLibraryEntry = {
 	updatedAt: "2024-06-01T00:00:00Z",
 };
 
+const mockLibraryEntry = {
+	...mockPlatformState,
+	game: mockGames[0],
+};
+
+const mockGameGroup = {
+	game: mockGames[0],
+	platforms: [mockPlatformState],
+};
+
 const mockLibraryResponse = {
-	items: [mockLibraryEntry],
+	items: [mockGameGroup],
 	total: 1,
 	limit: 50,
 	offset: 0,
@@ -62,7 +71,7 @@ vi.mock("../lib/library-api", () => ({
 	searchGames: vi.fn(() => Promise.resolve(mockGames)),
 	fetchGameGenres: vi.fn(() => Promise.resolve(mockGenres)),
 	fetchLibrary: vi.fn(() => Promise.resolve(mockLibraryResponse)),
-	addToLibrary: vi.fn(() => Promise.resolve(mockLibraryEntry)),
+	addToLibrary: vi.fn(() => Promise.resolve(mockGameGroup)),
 	updateEntry: vi.fn(() => Promise.resolve(mockLibraryEntry)),
 	deleteEntry: vi.fn(() => Promise.resolve(undefined)),
 	createGame: vi.fn(() => Promise.resolve(mockGames[0])),
@@ -179,7 +188,7 @@ describe("useAddToLibrary", () => {
 			wrapper: createWrapper(),
 		});
 
-		const payload = { gamePublicId: "game-1", platformId: 1, status: "backlog" as const };
+		const payload = { gamePublicId: "game-1", platformIds: [1, 2], status: "backlog" as const };
 		await result.current.mutateAsync(payload);
 
 		expect(addToLibrary).toHaveBeenCalledWith(payload);
