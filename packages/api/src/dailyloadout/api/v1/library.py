@@ -14,7 +14,7 @@ from dailyloadout.core.library.schemas import (
     LibraryGroupedResponse,
     PlatformResponse,
 )
-from dailyloadout.deps import CurrentUserDep, LibraryServiceDep
+from dailyloadout.deps import CurrentUserDep, LibraryServiceDep, RequireVerifiedUserDep
 
 router = APIRouter(prefix="/v1", tags=["library"])
 
@@ -31,7 +31,7 @@ router = APIRouter(prefix="/v1", tags=["library"])
 )
 async def create_game(
     body: GameCreate,
-    current_user: CurrentUserDep,
+    current_user: RequireVerifiedUserDep,
     library_service: LibraryServiceDep,
 ) -> GameResponse:
     """Create or resolve a game (DB-first, IGDB enrichment on the fly).

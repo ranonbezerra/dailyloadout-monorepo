@@ -20,7 +20,7 @@ from dailyloadout.core.mission.schemas import (
     RegenerateBriefingRequest,
     RetroactiveDebriefRequest,
 )
-from dailyloadout.deps import CurrentUserDep
+from dailyloadout.deps import CurrentUserDep, RequireVerifiedUserDep
 from dailyloadout.deps.mission import MissionServiceDep
 
 router = APIRouter(prefix="/v1/missions", tags=["missions"])
@@ -50,7 +50,7 @@ _briefing_rate_limit = Depends(
 )
 async def start_mission(
     body: MissionStartRequest,
-    current_user: CurrentUserDep,
+    current_user: RequireVerifiedUserDep,
     mission_service: MissionServiceDep,
 ) -> MissionResponse:
     """Start a new mission for a library entry.
@@ -81,7 +81,7 @@ async def start_mission(
 )
 async def preview_briefing(
     body: BriefingPreviewRequest,
-    current_user: CurrentUserDep,
+    current_user: RequireVerifiedUserDep,
     mission_service: MissionServiceDep,
 ) -> BriefingPreviewResponse:
     """Generate a briefing preview without creating a mission.
@@ -109,7 +109,7 @@ async def preview_briefing(
 )
 async def submit_retroactive_debrief(
     body: RetroactiveDebriefRequest,
-    current_user: CurrentUserDep,
+    current_user: RequireVerifiedUserDep,
     mission_service: MissionServiceDep,
 ) -> BriefingPreviewResponse:
     """Record a debrief for a play session that wasn't tracked.
@@ -202,7 +202,7 @@ async def end_mission(
 )
 async def regenerate_briefing(
     public_id: UUID,
-    current_user: CurrentUserDep,
+    current_user: RequireVerifiedUserDep,
     mission_service: MissionServiceDep,
     body: RegenerateBriefingRequest | None = None,
 ) -> MissionResponse:

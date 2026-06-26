@@ -5,17 +5,26 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
+import structlog
+
+from dailyloadout.config import settings
 from dailyloadout.core.auth.security import (
     REFRESH_TOKEN_EXPIRE_DAYS,
     create_access_token,
+    create_email_verification_token,
+    decode_email_verification_token,
     generate_refresh_token,
     hash_password,
     hash_refresh_token,
     verify_password,
+    verify_password_dummy,
 )
 from dailyloadout.infrastructure.db.models import User
 from dailyloadout.infrastructure.db.repositories.refresh_token import RefreshTokenRepository
 from dailyloadout.infrastructure.db.repositories.user import UserRepository
+from dailyloadout.infrastructure.email import Mailer, get_mailer, send_verification_email
+
+logger = structlog.get_logger()
 
 
 class AuthService:
@@ -25,9 +34,11 @@ class AuthService:
         self,
         user_repo: UserRepository,
         refresh_token_repo: RefreshTokenRepository,
+        mailer: Mailer | None = None,
     ) -> None:
         self._user_repo = user_repo
         self._refresh_token_repo = refresh_token_repo
+        self._mailer = mailer or get_mailer()
 
     # ------------------------------------------------------------------
     # Registration
@@ -50,13 +61,61 @@ class AuthService:
             raise ValueError("Email already registered")
 
         pw_hash = hash_password(password)
-        user = await self._user_repo.create(email, pw_hash, display_name)
+
+        # Dev/test auto-verify bypass: outside production, accounts are created
+        # already verified and no email is sent, so local dev and the test suite
+        # are never blocked by the verification gate.
+        auto_verify = not settings.is_production
+        user = await self._user_repo.create(
+            email, pw_hash, display_name, email_verified=auto_verify
+        )
+
+        if not auto_verify:
+            self._send_verification_email(user)
 
         access_token = create_access_token(str(user.public_id))
         raw_refresh = generate_refresh_token()
         await self._store_refresh_token(user.id, raw_refresh)
 
         return user, access_token, raw_refresh
+
+    # ------------------------------------------------------------------
+    # Email verification
+    # ------------------------------------------------------------------
+    async def verify_email(self, token: str) -> None:
+        """Validate a verification *token* and mark the email verified.
+
+        Idempotent: an already-verified user is a no-op success. An
+        expired/invalid token or an unknown user raises ``ValueError``.
+        """
+        public_id_str = decode_email_verification_token(token)
+        try:
+            public_id = UUID(public_id_str)
+        except ValueError as exc:
+            raise ValueError("Invalid or expired verification token") from exc
+
+        user = await self._user_repo.get_by_public_id(public_id)
+        if user is None:
+            raise ValueError("Invalid or expired verification token")
+
+        if not user.email_verified:
+            await self._user_repo.set_email_verified(user)
+
+    async def resend_verification(self, email: str) -> None:
+        """Best-effort re-send of a verification email.
+
+        Neutral by design: it never reveals whether the email exists or is
+        already verified — the caller always gets the same response.
+        """
+        user = await self._user_repo.get_by_email(email)
+        if user is None or user.email_verified:
+            return
+        self._send_verification_email(user)
+
+    def _send_verification_email(self, user: User) -> None:
+        """Generate a verification token and best-effort send it via SMTP."""
+        token = create_email_verification_token(str(user.public_id))
+        send_verification_email(self._mailer, to=user.email, token=token)
 
     # ------------------------------------------------------------------
     # Login
@@ -77,6 +136,9 @@ class AuthService:
         """
         user = await self._user_repo.get_by_email(email)
         if user is None or user.password_hash is None:
+            # Constant-time: still run a bcrypt verification against a fixed
+            # dummy hash so response time does not reveal account existence.
+            verify_password_dummy(password)
             raise ValueError("Invalid credentials")
 
         if not verify_password(password, user.password_hash):

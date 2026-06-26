@@ -43,7 +43,10 @@ def get_auth_service(
     user_repo: UserRepoDep,
     rt_repo: RefreshTokenRepoDep,
 ) -> AuthService:
-    """Provide an ``AuthService`` wired to the current repositories."""
+    """Provide an ``AuthService`` wired to the current repositories.
+
+    The mailer is resolved internally (best-effort SMTP; no-op when unconfigured).
+    """
     return AuthService(user_repo, rt_repo)
 
 
@@ -111,3 +114,21 @@ async def get_current_user(
 
 
 CurrentUserDep = Annotated[User, Depends(get_current_user)]
+
+
+async def get_verified_user(current_user: CurrentUserDep) -> User:
+    """Require the authenticated user to have a verified email.
+
+    Gate for cost-bearing routes (LLM / IGDB / research). Raises **403** when
+    ``email_verified`` is False. In single-user mode the configured account is
+    trusted, so this is effectively a pass-through.
+    """
+    if not current_user.email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Email not verified",
+        )
+    return current_user
+
+
+RequireVerifiedUserDep = Annotated[User, Depends(get_verified_user)]

@@ -143,6 +143,20 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     smtp_from: str = "DailyLoadout <noreply@dailyloadout.local>"
 
+    # ── Email verification (account integrity) ───────────────────────────
+    # Verification tokens are signed, purpose-scoped JWTs (no new table). They
+    # expire after this many hours; an expired/invalid token is rejected (400).
+    email_verification_ttl_hours: int = 24
+    # Public base URL the verification link points at (the web/app deep link
+    # appends ``?token=...``). Used only when composing the email body.
+    email_verification_base_url: str = "http://localhost:5173/verify-email"
+
+    # ── CAPTCHA (Cloudflare Turnstile) ───────────────────────────────────
+    # When empty (dev / not configured) the Turnstile dependency is a no-op.
+    # When set, register requires a valid ``cf-turnstile-response`` token.
+    turnstile_secret: str = ""
+    turnstile_verify_url: str = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
+
     # ── Auth ───────────────────────────────────────────────────────
     bcrypt_rounds: int = 12
 
@@ -210,6 +224,11 @@ class Settings(BaseSettings):
     sentry_dsn: str = ""
     otel_exporter_otlp_endpoint: str = ""
 
+    @property
+    def is_production(self) -> bool:
+        """True when running outside development/testing (i.e. production)."""
+        return self.app_env not in _DEV_ENVS
+
 
 _DEV_ENVS = ("development", "testing")
 
@@ -238,6 +257,12 @@ def _validate_production_settings(s: Settings) -> None:
 
     if s.auth_cookie_samesite == "none" and not s.auth_cookie_secure:
         raise RuntimeError("FATAL: auth_cookie_samesite='none' requires auth_cookie_secure=True.")
+
+    if s.single_user_mode:
+        raise RuntimeError(
+            "FATAL: single_user_mode must be False in production. "
+            "It bypasses JWT auth and returns a fixed account for every request."
+        )
 
 
 settings = Settings()

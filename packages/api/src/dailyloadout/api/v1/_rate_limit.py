@@ -63,10 +63,22 @@ async def _get_limiter(scope: str, identity: str, times: int, seconds: int) -> L
     return limiter
 
 
-async def _enforce(scope: str, identity: str, times: int, seconds: int) -> None:
+async def _enforce(
+    scope: str,
+    identity: str,
+    times: int,
+    seconds: int,
+    fail_closed: bool = False,
+) -> None:
     """Consume one permit; raise 429 when the window is full.
 
-    Fail-open: any limiter/Redis error allows the request (logged as a warning).
+    Fail mode on a limiter/Redis error:
+
+    - ``fail_closed=False`` (default): allow the request (logged as a warning) —
+      the limiter never hard-fails a request.
+    - ``fail_closed=True``: **deny** with 503 — used on account-minting/auth
+      routes where silently losing the limiter is unacceptable.
+
     The bucket key embeds the identity so each user/IP gets its own window.
     """
     try:
@@ -76,7 +88,15 @@ async def _enforce(scope: str, identity: str, times: int, seconds: int) -> None:
         result = limiter.try_acquire(scope, blocking=False)
         acquired = await result if isawaitable(result) else result
     except Exception:
-        logger.warning("rate_limit_redis_error", scope=scope, exc_info=True)
+        logger.warning(
+            "rate_limit_redis_error", scope=scope, fail_closed=fail_closed, exc_info=True
+        )
+        if fail_closed:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Rate limiter unavailable. Please try again shortly.",
+                headers={"Retry-After": str(seconds)},
+            ) from None
         return
 
     if not acquired:
@@ -92,26 +112,30 @@ def rate_limit(
     times: int,
     seconds: int,
     by: RateLimitBy = "user",
+    fail_closed: bool = False,
 ) -> Callable[..., Awaitable[None]]:
     """Build a FastAPI dependency enforcing ``times`` requests per ``seconds``.
 
     ``scope`` namespaces the bucket (one scope per protected route). ``by``
     selects the identity: the authenticated user id (``"user"``) or the client
-    IP (``"ip"``). The returned dependency is a no-op when rate limiting is
-    disabled in settings.
+    IP (``"ip"``). When ``fail_closed`` is True a limiter/Redis error denies the
+    request (503) instead of allowing it — use for account-minting/auth routes.
+
+    The returned dependency is a no-op when rate limiting is disabled in
+    settings, regardless of ``fail_closed``.
     """
     if by == "user":
 
         async def _dep_user(current_user: CurrentUserDep) -> None:
             if not settings.rate_limit_enabled:
                 return
-            await _enforce(scope, str(current_user.id), times, seconds)
+            await _enforce(scope, str(current_user.id), times, seconds, fail_closed)
 
         return _dep_user
 
     async def _dep_ip(request: Request) -> None:
         if not settings.rate_limit_enabled:
             return
-        await _enforce(scope, _client_ip(request), times, seconds)
+        await _enforce(scope, _client_ip(request), times, seconds, fail_closed)
 
     return _dep_ip

@@ -16,7 +16,7 @@ from dailyloadout.core.loadout.schemas import (
     LoadoutResponse,
     LoadoutStartRequest,
 )
-from dailyloadout.deps import CurrentUserDep
+from dailyloadout.deps import CurrentUserDep, RequireVerifiedUserDep
 from dailyloadout.deps.loadout import LoadoutServiceDep
 
 router = APIRouter(prefix="/v1/loadouts", tags=["loadouts"])
@@ -47,7 +47,7 @@ _loadout_create_rate_limit = Depends(
 )
 async def create_loadout(
     body: LoadoutCreateRequest,
-    current_user: CurrentUserDep,
+    current_user: RequireVerifiedUserDep,
     loadout_service: LoadoutServiceDep,
 ) -> list[LoadoutResponse]:
     """Create daily loadout suggestions (1-3).
@@ -80,7 +80,7 @@ async def create_loadout(
 )
 async def start_loadout(
     body: LoadoutStartRequest,
-    current_user: CurrentUserDep,
+    current_user: RequireVerifiedUserDep,
     loadout_service: LoadoutServiceDep,
 ) -> LoadoutResponse:
     """AI-pick a game and immediately start a mission for it (one tap).

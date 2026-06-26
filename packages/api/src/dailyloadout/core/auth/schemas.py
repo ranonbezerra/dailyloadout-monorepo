@@ -40,6 +40,15 @@ class RefreshRequest(BaseModel):
     refresh_token: str = ""
 
 
+class VerifyEmailRequest(BaseModel):
+    # Optional in the body so the token may instead arrive as a query param.
+    token: str = ""
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
+
 # ---------------------------------------------------------------------------
 # Response schemas
 # ---------------------------------------------------------------------------
@@ -71,6 +80,8 @@ __all__ = [
     "MessageResponse",
     "RefreshRequest",
     "RegisterRequest",
+    "ResendVerificationRequest",
     "TokenResponse",
     "UserResponse",
+    "VerifyEmailRequest",
 ]

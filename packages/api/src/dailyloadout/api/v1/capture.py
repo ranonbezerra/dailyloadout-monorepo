@@ -22,7 +22,7 @@ from dailyloadout.core.capture.schemas import (
     TranscribeResponse,
 )
 from dailyloadout.core.library.schemas import LibraryEntryResponse
-from dailyloadout.deps import CaptureServiceDep, CurrentUserDep
+from dailyloadout.deps import CaptureServiceDep, CurrentUserDep, RequireVerifiedUserDep
 from dailyloadout.deps.capture import STTClientDep
 
 router = APIRouter(prefix="/v1/captures", tags=["captures"])
@@ -53,7 +53,7 @@ _capture_submit_rate_limit = Depends(
 )
 async def submit_text_capture(
     body: CaptureTextRequest,
-    current_user: CurrentUserDep,
+    current_user: RequireVerifiedUserDep,
     capture_service: CaptureServiceDep,
 ) -> CaptureResponse:
     """Submit a text capture, process it inline (LLM + IGDB), and return candidates.
@@ -82,7 +82,7 @@ async def submit_text_capture(
 )
 async def submit_photo_capture(
     file: UploadFile,
-    current_user: CurrentUserDep,
+    current_user: RequireVerifiedUserDep,
     capture_service: CaptureServiceDep,
 ) -> CaptureResponse:
     """Submit a photo capture, process it inline (vision LLM + IGDB), and return candidates."""
@@ -110,7 +110,7 @@ async def submit_photo_capture(
 )
 async def transcribe_audio(
     file: UploadFile,
-    current_user: CurrentUserDep,
+    current_user: RequireVerifiedUserDep,
     stt_client: STTClientDep,
 ) -> TranscribeResponse:
     """Transcribe an audio file and return the text for user review.

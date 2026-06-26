@@ -5,7 +5,7 @@ Re-exports all dependency aliases so existing imports keep working:
     from dailyloadout.deps import AuthServiceDep, CurrentUserDep
 """
 
-from .auth import AuthServiceDep, CurrentUserDep
+from .auth import AuthServiceDep, CurrentUserDep, RequireVerifiedUserDep
 from .capture import (
     CaptureCandidateRepoDep,
     CaptureRepoDep,
@@ -48,6 +48,7 @@ __all__ = [
     "MissionRepoDep",
     "MissionServiceDep",
     "PlatformRepoDep",
+    "RequireVerifiedUserDep",
     "STTClientDep",
     "StatsRepoDep",
     "StatsServiceDep",

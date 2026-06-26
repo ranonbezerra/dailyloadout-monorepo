@@ -21,7 +21,7 @@ from dailyloadout.core.capture.schemas import (
     CaptureResponse,
     DuplicatesResponse,
 )
-from dailyloadout.deps import CaptureServiceDep, CurrentUserDep
+from dailyloadout.deps import CaptureServiceDep, CurrentUserDep, RequireVerifiedUserDep
 from dailyloadout.deps.library import GameRepoDep, LibraryRepoDep
 
 router = APIRouter(prefix="/v1/captures", tags=["captures"])
@@ -43,7 +43,7 @@ router = APIRouter(prefix="/v1/captures", tags=["captures"])
     ],
 )
 async def submit_library_import(
-    current_user: CurrentUserDep,
+    current_user: RequireVerifiedUserDep,
     capture_service: CaptureServiceDep,
     files: list[UploadFile],
 ) -> CaptureResponse:
