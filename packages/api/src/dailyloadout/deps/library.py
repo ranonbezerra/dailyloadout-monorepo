@@ -11,6 +11,7 @@ from dailyloadout.infrastructure.db.repositories.game import GameRepository
 from dailyloadout.infrastructure.db.repositories.library import LibraryRepository
 from dailyloadout.infrastructure.db.repositories.platform import PlatformRepository
 
+from .capture import IGDBClientDep
 from .db import DbSession
 
 # ── Repositories ───────────────────────────────────────────────────────
@@ -43,6 +44,7 @@ def get_library_service(
     game_repo: GameRepoDep,
     library_repo: LibraryRepoDep,
     platform_repo: PlatformRepoDep,
+    igdb_client: IGDBClientDep,
 ) -> LibraryService:
     """Provide a ``LibraryService`` wired to the current repositories."""
     return LibraryService(
@@ -51,6 +53,8 @@ def get_library_service(
         platform_repo,
         cache=get_cache(settings),
         reference_ttl_seconds=settings.reference_cache_ttl_seconds,
+        igdb_client=igdb_client,
+        match_min_score=settings.catalog_match_min_score,
     )
 
 

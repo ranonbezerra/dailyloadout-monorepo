@@ -4,11 +4,9 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from dailyloadout.core.library.exceptions import CatalogImmutableError
 from dailyloadout.core.library.schemas import (
     GameCreate,
     GameResponse,
-    GameUpdate,
     LibraryEntryCreate,
     LibraryEntryResponse,
     LibraryEntryUpdate,
@@ -35,50 +33,20 @@ async def create_game(
     current_user: CurrentUserDep,
     library_service: LibraryServiceDep,
 ) -> GameResponse:
-    """Create a game manually."""
-    try:
-        game = await library_service.create_game(
-            slug=body.slug,
-            title=body.title,
-            metadata_source=body.metadata_source,
-            summary=body.summary,
-            cover_url=body.cover_url,
-            first_release_date=body.first_release_date,
-            genres=body.genres,
-        )
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=str(exc),
-        ) from exc
+    """Create or resolve a game (DB-first, IGDB enrichment on the fly).
 
-    return GameResponse.model_validate(game)
-
-
-@router.patch("/games/{public_id}", response_model=GameResponse)
-async def update_game(
-    public_id: UUID,
-    body: GameUpdate,
-    current_user: CurrentUserDep,
-    library_service: LibraryServiceDep,
-) -> GameResponse:
-    """Update a game's details (e.g. genres)."""
-    update_fields = body.model_dump(exclude_unset=True)
-    try:
-        game = await library_service.update_game(
-            game_public_id=public_id,
-            **update_fields,
-        )
-    except CatalogImmutableError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=str(exc),
-        ) from exc
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(exc),
-        ) from exc
+    Idempotent: resolving an existing global row or the caller's own manual game
+    returns it rather than conflicting.
+    """
+    game = await library_service.create_game(
+        user_id=current_user.id,
+        slug=body.slug,
+        title=body.title,
+        summary=body.summary,
+        cover_url=body.cover_url,
+        first_release_date=body.first_release_date,
+        genres=body.genres,
+    )
     return GameResponse.model_validate(game)
 
 

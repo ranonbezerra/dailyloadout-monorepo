@@ -36,7 +36,11 @@ class GameRepository:
         return result.scalar_one_or_none()
 
     async def get_by_slug(self, slug: str) -> Game | None:
-        """Return the game with the given *slug*, or ``None``."""
+        """Return the game with the given *slug*, or ``None``.
+
+        ``slug`` is globally unique, so this returns the single shared catalogue
+        row (manual or IGDB) regardless of who created it.
+        """
         stmt = select(Game).where(Game.slug == slug)
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
@@ -44,6 +48,7 @@ class GameRepository:
     async def search(self, query: str, limit: int = 20) -> list[Game]:
         """Search games by title using trigram similarity (ILIKE fallback).
 
+        ``Game`` rows are global/shared, so every matching row is returned.
         Returns up to *limit* results ordered by relevance.
         """
         escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
@@ -62,6 +67,7 @@ class GameRepository:
         cover_url: str | None = None,
         first_release_date: date | None = None,
         genres: list[str] | None = None,
+        created_by_user_id: int | None = None,
     ) -> Game:
         """Insert a new game and return the persisted instance."""
         game = Game(
@@ -73,6 +79,7 @@ class GameRepository:
             cover_url=cover_url,
             first_release_date=first_release_date,
             genres=genres,
+            created_by_user_id=created_by_user_id,
         )
         self._session.add(game)
         await self._session.flush()

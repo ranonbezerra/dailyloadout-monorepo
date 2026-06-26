@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from dailyloadout.core.library.backfill import backfill_games
+from dailyloadout.core.library.backfill import backfill_games, enrich_game
 from dailyloadout.infrastructure.db.repositories.game import GameRepository
 from dailyloadout.infrastructure.igdb.schemas import IGDBGame
 from tests.conftest import _TestSessionFactory
@@ -152,3 +152,59 @@ class TestBackfillGames:
             assert report.scanned == 2
             assert len(report.enriched) == 1
             assert report.unmatched == ["No Match Here"]
+
+
+class TestEnrichGame:
+    """The single-game helper shared by create_game and backfill_games."""
+
+    async def test_enriches_and_returns_true(self) -> None:
+        async with _TestSessionFactory() as session:
+            repo = GameRepository(session)
+            game_id = await _make_game(repo, title="Hollow Knight")
+            await session.flush()
+            game = await repo.get_by_id(game_id)
+            assert game is not None
+
+            client = FakeIGDBClient(
+                {
+                    "Hollow Knight": [
+                        IGDBGame(
+                            igdb_id=1,
+                            title="Hollow Knight",
+                            genres=["Metroidvania"],
+                        )
+                    ]
+                }
+            )
+            enriched = await enrich_game(game, igdb_client=client, game_repo=repo, min_score=0.6)
+            assert enriched is True
+            assert game.igdb_id == 1
+            assert game.genres == ["Metroidvania"]
+            assert game.metadata_source == "igdb"
+
+    async def test_no_match_returns_false(self) -> None:
+        async with _TestSessionFactory() as session:
+            repo = GameRepository(session)
+            game_id = await _make_game(repo, title="Obscure")
+            await session.flush()
+            game = await repo.get_by_id(game_id)
+            assert game is not None
+
+            client = FakeIGDBClient({"Obscure": [IGDBGame(igdb_id=9, title="Different")]})
+            enriched = await enrich_game(game, igdb_client=client, game_repo=repo, min_score=0.6)
+            assert enriched is False
+            assert game.igdb_id is None
+
+    async def test_collision_returns_false(self) -> None:
+        async with _TestSessionFactory() as session:
+            repo = GameRepository(session)
+            await _make_game(repo, title="Hades (Canonical)", igdb_id=3)
+            dup_id = await _make_game(repo, title="Hades")
+            await session.flush()
+            dup = await repo.get_by_id(dup_id)
+            assert dup is not None
+
+            client = FakeIGDBClient({"Hades": [IGDBGame(igdb_id=3, title="Hades")]})
+            enriched = await enrich_game(dup, igdb_client=client, game_repo=repo, min_score=0.6)
+            assert enriched is False
+            assert dup.igdb_id is None

@@ -6,7 +6,7 @@ from datetime import date
 from uuid import UUID
 
 from dailyloadout.core.cache.invalidation import invalidate_user_stats
-from dailyloadout.core.library.exceptions import CatalogImmutableError
+from dailyloadout.core.library.backfill import enrich_in_place, reconcile_manual_title
 from dailyloadout.infrastructure.cache.base import AbstractCache, NullCache
 from dailyloadout.infrastructure.cache.keys import NS_REF, reference_key
 from dailyloadout.infrastructure.cache.layer import cached_call
@@ -14,6 +14,7 @@ from dailyloadout.infrastructure.db.models import Game, LibraryEntry, Platform
 from dailyloadout.infrastructure.db.repositories.game import GameRepository
 from dailyloadout.infrastructure.db.repositories.library import LibraryRepository
 from dailyloadout.infrastructure.db.repositories.platform import PlatformRepository
+from dailyloadout.infrastructure.igdb.base import IGDBSearchClient
 
 
 class LibraryService:
@@ -32,64 +33,74 @@ class LibraryService:
         platform_repo: PlatformRepository,
         cache: AbstractCache | None = None,
         reference_ttl_seconds: int = 3600,
+        igdb_client: IGDBSearchClient | None = None,
+        match_min_score: float = 0.6,
     ) -> None:
         self._game_repo = game_repo
         self._library_repo = library_repo
         self._platform_repo = platform_repo
         self._cache = cache or NullCache()
         self._reference_ttl = reference_ttl_seconds
+        self._igdb_client = igdb_client
+        self._match_min_score = match_min_score
 
     # ------------------------------------------------------------------
     # Games
     # ------------------------------------------------------------------
     async def create_game(
         self,
+        *,
+        user_id: int,
         slug: str,
         title: str,
-        metadata_source: str = "manual",
-        igdb_id: int | None = None,
         summary: str | None = None,
         cover_url: str | None = None,
         first_release_date: date | None = None,
         genres: list[str] | None = None,
     ) -> Game:
-        """Create a new game entry.
+        """Resolve *(slug, title)* to a shared global game, DB-first.
 
-        Raises:
-            ValueError: If a game with the same *slug* already exists.
+        ``Game`` rows are global/shared; the server — not the client — decides
+        ``metadata_source``. Resolution order:
+
+        1. If we already hold a row for *slug* (any creator), return it (enriching
+           it in place from IGDB first if it lacks IGDB metadata). Idempotent —
+           the next user relates to the existing row instead of duplicating it.
+        2. Else if IGDB confidently matches *title*, reuse/create a canonical
+           GLOBAL row.
+        3. Else create a manual GLOBAL row, attributed to *user_id*.
         """
         existing = await self._game_repo.get_by_slug(slug)
         if existing is not None:
-            raise ValueError(f"Game with slug '{slug}' already exists")
+            if existing.igdb_id is None:
+                await enrich_in_place(
+                    existing,
+                    igdb_client=self._igdb_client,
+                    game_repo=self._game_repo,
+                    min_score=self._match_min_score,
+                )
+            return existing
+
+        reconciled = await reconcile_manual_title(
+            title,
+            igdb_client=self._igdb_client,
+            game_repo=self._game_repo,
+            min_score=self._match_min_score,
+        )
+        if reconciled is not None:
+            return reconciled
 
         return await self._game_repo.create(
             slug=slug,
             title=title,
-            metadata_source=metadata_source,
-            igdb_id=igdb_id,
+            metadata_source="manual",
+            igdb_id=None,
             summary=summary,
             cover_url=cover_url,
             first_release_date=first_release_date,
             genres=genres,
+            created_by_user_id=user_id,
         )
-
-    async def update_game(self, game_public_id: UUID, **fields: object) -> Game:
-        """Update a game's fields.
-
-        ``Game`` is a shared global catalog row. IGDB-canonical rows
-        (``igdb_id is not None``) are visible to every user and must stay
-        immutable; only non-IGDB rows (manual / pre-IGDB capture) are editable.
-
-        Raises:
-            ValueError: If the game is not found.
-            CatalogImmutableError: If the game is IGDB-canonical.
-        """
-        game = await self._game_repo.get_by_public_id(game_public_id)
-        if game is None:
-            raise ValueError("Game not found")
-        if game.igdb_id is not None:
-            raise CatalogImmutableError("IGDB catalog entries cannot be edited")
-        return await self._game_repo.update(game, **fields)
 
     async def list_genres(self) -> list[str]:
         """Return all distinct genre names from the games catalog.
@@ -106,7 +117,7 @@ class LibraryService:
         )
 
     async def search_games(self, query: str, limit: int = 20) -> list[Game]:
-        """Search games by title."""
+        """Search games by title across the shared global catalogue."""
         return await self._game_repo.search(query, limit=limit)
 
     # ------------------------------------------------------------------
