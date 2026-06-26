@@ -2,6 +2,8 @@ import { MantineProvider } from "@mantine/core";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
+import { makeAuthContext } from "../test/wrapper";
+import type { User } from "../types/auth";
 import { ProtectedRoute } from "./ProtectedRoute";
 
 vi.mock("../contexts/AuthContext", () => ({
@@ -26,18 +28,7 @@ function renderProtected(initialEntries: string[] = ["/"]) {
 
 describe("ProtectedRoute", () => {
 	it("shows a loader when isLoading is true", () => {
-		mockedUseAuthContext.mockReturnValue({
-			user: null,
-			isLoading: true,
-			isAuthenticated: false,
-			login: vi.fn(),
-			logout: vi.fn(),
-			register: vi.fn(),
-			loginError: null,
-			registerError: null,
-			isLoginPending: false,
-			isRegisterPending: false,
-		});
+		mockedUseAuthContext.mockReturnValue(makeAuthContext({ isLoading: true }));
 
 		const { container } = renderProtected();
 
@@ -50,18 +41,7 @@ describe("ProtectedRoute", () => {
 	});
 
 	it("redirects to /login when the user is not authenticated", () => {
-		mockedUseAuthContext.mockReturnValue({
-			user: null,
-			isLoading: false,
-			isAuthenticated: false,
-			login: vi.fn(),
-			logout: vi.fn(),
-			register: vi.fn(),
-			loginError: null,
-			registerError: null,
-			isLoginPending: false,
-			isRegisterPending: false,
-		});
+		mockedUseAuthContext.mockReturnValue(makeAuthContext({ isAuthenticated: false }));
 
 		renderProtected();
 
@@ -70,18 +50,12 @@ describe("ProtectedRoute", () => {
 	});
 
 	it("renders children when the user is authenticated", () => {
-		mockedUseAuthContext.mockReturnValue({
-			user: { id: "1", email: "test@test.com", display_name: "Test" } as never,
-			isLoading: false,
-			isAuthenticated: true,
-			login: vi.fn(),
-			logout: vi.fn(),
-			register: vi.fn(),
-			loginError: null,
-			registerError: null,
-			isLoginPending: false,
-			isRegisterPending: false,
-		});
+		mockedUseAuthContext.mockReturnValue(
+			makeAuthContext({
+				user: { email: "test@test.com", display_name: "Test" } as User,
+				isAuthenticated: true,
+			}),
+		);
 
 		renderProtected();
 

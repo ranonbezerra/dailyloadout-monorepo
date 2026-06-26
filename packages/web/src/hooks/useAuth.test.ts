@@ -8,6 +8,7 @@ import {
 	refreshSession,
 	saveTokens,
 } from "../lib/api";
+import { resendVerification, verifyEmail } from "../lib/auth-api";
 import { createWrapper } from "../test/wrapper";
 import { useAuth } from "./useAuth";
 
@@ -22,6 +23,12 @@ vi.mock("../lib/api", () => ({
 	refreshSession: vi.fn(async () => false),
 	saveTokens: vi.fn(),
 	clearTokens: vi.fn(),
+	TURNSTILE_HEADER: "cf-turnstile-response",
+}));
+
+vi.mock("../lib/auth-api", () => ({
+	verifyEmail: vi.fn(),
+	resendVerification: vi.fn(),
 }));
 
 // AuthProvider inside createWrapper uses useAuth internally -- we need to
@@ -53,6 +60,10 @@ const fakeUser = {
 	timezone: "UTC",
 	created_at: "2024-01-01T00:00:00Z",
 };
+
+// The auth/me query normalizes the API's snake_case `email_verified` into a
+// camel-case `emailVerified` mirror, so the in-app `user` carries both.
+const normalizedUser = { ...fakeUser, emailVerified: true };
 
 const fakeTokens = {
 	access_token: "acc-123",
@@ -94,7 +105,7 @@ describe("useAuth", () => {
 		const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
 
 		await waitFor(() => {
-			expect(result.current.user).toEqual(fakeUser);
+			expect(result.current.user).toEqual(normalizedUser);
 		});
 
 		expect(result.current.isAuthenticated).toBe(true);
@@ -108,7 +119,7 @@ describe("useAuth", () => {
 		const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
 
 		await waitFor(() => {
-			expect(result.current.user).toEqual(fakeUser);
+			expect(result.current.user).toEqual(normalizedUser);
 		});
 
 		expect(mockedRefreshSession).not.toHaveBeenCalled();
@@ -130,7 +141,7 @@ describe("useAuth", () => {
 		expect(mockedSaveTokens).toHaveBeenCalledWith("acc-123");
 	});
 
-	it("register calls authFetch /v1/auth/register and saves only the access token", async () => {
+	it("register calls authFetch /v1/auth/register (no token header) and saves only the access token", async () => {
 		mockedAuthFetch.mockResolvedValueOnce(fakeTokens);
 
 		const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
@@ -139,12 +150,75 @@ describe("useAuth", () => {
 			await result.current.register("player@test.com", "secret123", "Player");
 		});
 
-		expect(mockedAuthFetch).toHaveBeenCalledWith("/v1/auth/register", {
-			email: "player@test.com",
-			password: "secret123",
-			display_name: "Player",
-		});
+		// No Turnstile token → no extra headers (third arg undefined).
+		expect(mockedAuthFetch).toHaveBeenCalledWith(
+			"/v1/auth/register",
+			{
+				email: "player@test.com",
+				password: "secret123",
+				display_name: "Player",
+			},
+			undefined,
+		);
 		expect(mockedSaveTokens).toHaveBeenCalledWith("acc-123");
+	});
+
+	it("register forwards the Turnstile token as the cf-turnstile-response header", async () => {
+		mockedAuthFetch.mockResolvedValueOnce(fakeTokens);
+
+		const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
+
+		await act(async () => {
+			await result.current.register("player@test.com", "secret123", "Player", "tok-xyz");
+		});
+
+		expect(mockedAuthFetch).toHaveBeenCalledWith(
+			"/v1/auth/register",
+			{
+				email: "player@test.com",
+				password: "secret123",
+				display_name: "Player",
+			},
+			{ "cf-turnstile-response": "tok-xyz" },
+		);
+	});
+
+	it("verify calls verifyEmail and resolves", async () => {
+		vi.mocked(verifyEmail).mockResolvedValueOnce({ message: "ok" });
+
+		const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
+
+		await act(async () => {
+			await result.current.verify("verify-token");
+		});
+
+		expect(verifyEmail).toHaveBeenCalledWith("verify-token");
+	});
+
+	it("resendVerification calls the resend API", async () => {
+		vi.mocked(resendVerification).mockResolvedValueOnce({ message: "sent" });
+
+		const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
+
+		await act(async () => {
+			await result.current.resendVerification();
+		});
+
+		expect(resendVerification).toHaveBeenCalledOnce();
+	});
+
+	it("normalizes email_verified into a camel-case emailVerified field", async () => {
+		mockedGetAccessToken.mockReturnValue("acc-123");
+		mockedApiFetch.mockResolvedValueOnce({ ...fakeUser, email_verified: false });
+
+		const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
+
+		await waitFor(() => {
+			expect(result.current.user?.email).toBe("player@test.com");
+		});
+
+		expect(result.current.user?.emailVerified).toBe(false);
+		expect(result.current.emailVerified).toBe(false);
 	});
 
 	it("logout calls authFetch /v1/auth/logout (clears the cookie) and clearTokens", async () => {
@@ -182,6 +256,6 @@ describe("useAuth", () => {
 			expect(result.current.isAuthenticated).toBe(true);
 		});
 
-		expect(result.current.user).toEqual(fakeUser);
+		expect(result.current.user).toEqual(normalizedUser);
 	});
 });

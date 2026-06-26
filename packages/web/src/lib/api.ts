@@ -11,6 +11,12 @@ export const BASE_URL =
 const AUTH_MODE_HEADER = "X-Auth-Mode";
 const AUTH_MODE_VALUE = "cookie";
 
+// Cloudflare Turnstile passes its solved-challenge token to the server via this
+// header (the server also accepts a JSON body field of the same name). When the
+// server's TURNSTILE_SECRET is unset the header is a no-op, so the client must
+// keep working when no token is available.
+export const TURNSTILE_HEADER = "cf-turnstile-response";
+
 // ---------------------------------------------------------------------------
 // Token helpers — access token lives in a module-level variable (in memory).
 // ---------------------------------------------------------------------------
@@ -163,12 +169,17 @@ export async function apiFetch<T = unknown>(path: string, options: RequestInit =
 // httpOnly refresh cookie. Does NOT go through the 401-refresh retry loop.
 // ---------------------------------------------------------------------------
 
-export async function authFetch<T = unknown>(path: string, body: unknown): Promise<T> {
+export async function authFetch<T = unknown>(
+	path: string,
+	body: unknown,
+	extraHeaders?: Record<string, string>,
+): Promise<T> {
 	const res = await fetch(`${BASE_URL}${path}`, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
 			[AUTH_MODE_HEADER]: AUTH_MODE_VALUE,
+			...extraHeaders,
 		},
 		credentials: "include",
 		body: JSON.stringify(body),

@@ -19,6 +19,28 @@ vi.mock("@mantine/notifications", () => ({
 	notifications: { show: vi.fn() },
 }));
 
+// Stand in for the real Turnstile widget: when a site key is "configured" it
+// hands a solved token up via onToken and exposes a reset() through the ref.
+const turnstileReset = vi.fn();
+vi.mock("../components/TurnstileWidget", () => ({
+	TurnstileWidget: ({
+		onToken,
+		ref,
+	}: {
+		onToken: (t: string | null) => void;
+		ref?: React.Ref<{ reset: () => void }>;
+	}) => {
+		if (ref && typeof ref === "object") {
+			(ref as { current: { reset: () => void } | null }).current = { reset: turnstileReset };
+		}
+		return (
+			<button type="button" data-testid="solve-turnstile" onClick={() => onToken("test-token")}>
+				solve
+			</button>
+		);
+	},
+}));
+
 const mockUseAuthContext = useAuthContext as Mock;
 
 const defaultAuth = {
@@ -178,7 +200,72 @@ describe("RegisterPage", () => {
 		fireEvent.submit(form);
 
 		await waitFor(() => {
-			expect(registerFn).toHaveBeenCalledWith("test@test.com", "password123", "John Doe");
+			// No Turnstile solved → token arg is undefined.
+			expect(registerFn).toHaveBeenCalledWith(
+				"test@test.com",
+				"password123",
+				"John Doe",
+				undefined,
+			);
+		});
+	});
+
+	it("passes the solved Turnstile token to register", async () => {
+		const registerFn = vi.fn().mockResolvedValueOnce(undefined);
+		mockUseAuthContext.mockReturnValue({ ...defaultAuth, register: registerFn });
+
+		renderRegisterPage();
+
+		fireEvent.change(screen.getByRole("textbox", { name: /display name/i }), {
+			target: { value: "John Doe" },
+		});
+		fireEvent.change(screen.getByRole("textbox", { name: /email/i }), {
+			target: { value: "test@test.com" },
+		});
+		fireEvent.change(screen.getByPlaceholderText("Choose a password"), {
+			target: { value: "password123" },
+		});
+
+		// Simulate Cloudflare solving the challenge before submit.
+		fireEvent.click(screen.getByTestId("solve-turnstile"));
+
+		const form = screen.getByRole("button", { name: /create account/i }).closest("form");
+		if (!form) throw new Error("form not found");
+		fireEvent.submit(form);
+
+		await waitFor(() => {
+			expect(registerFn).toHaveBeenCalledWith(
+				"test@test.com",
+				"password123",
+				"John Doe",
+				"test-token",
+			);
+		});
+	});
+
+	it("resets the Turnstile widget when registration fails", async () => {
+		const registerFn = vi.fn().mockRejectedValueOnce(new Error("Email already exists"));
+		mockUseAuthContext.mockReturnValue({ ...defaultAuth, register: registerFn });
+
+		renderRegisterPage();
+
+		fireEvent.change(screen.getByRole("textbox", { name: /display name/i }), {
+			target: { value: "John Doe" },
+		});
+		fireEvent.change(screen.getByRole("textbox", { name: /email/i }), {
+			target: { value: "test@test.com" },
+		});
+		fireEvent.change(screen.getByPlaceholderText("Choose a password"), {
+			target: { value: "password123" },
+		});
+		fireEvent.click(screen.getByTestId("solve-turnstile"));
+
+		const form = screen.getByRole("button", { name: /create account/i }).closest("form");
+		if (!form) throw new Error("form not found");
+		fireEvent.submit(form);
+
+		await waitFor(() => {
+			expect(turnstileReset).toHaveBeenCalled();
 		});
 	});
 

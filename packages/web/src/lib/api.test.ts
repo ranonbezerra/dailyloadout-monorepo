@@ -139,6 +139,24 @@ describe("authFetch", () => {
 		expect(JSON.parse(init.body as string)).toEqual({ email: "x@y.z", password: "p" });
 	});
 
+	it("forwards extra headers (e.g. the Turnstile token)", async () => {
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({ access_token: "a", refresh_token: "", token_type: "bearer" }),
+		);
+
+		await authFetch(
+			"/v1/auth/register",
+			{ email: "x@y.z", password: "p", display_name: "X" },
+			{ "cf-turnstile-response": "captcha-token" },
+		);
+
+		const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+		const headers = new Headers(init.headers);
+		expect(headers.get("cf-turnstile-response")).toBe("captcha-token");
+		// Still sends the standard auth headers.
+		expect(headers.get("X-Auth-Mode")).toBe("cookie");
+	});
+
 	it("returns undefined for a 204 logout", async () => {
 		mockFetch.mockResolvedValueOnce({
 			ok: true,
