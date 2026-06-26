@@ -25,15 +25,19 @@ Map<String, dynamic> _gameJson({String publicId = 'game-001'}) =>
       'created_at': '2025-01-01T00:00:00Z',
     };
 
-Map<String, dynamic> _libraryEntryJson({String publicId = 'entry-001'}) =>
+Map<String, dynamic> _platformStateJson({String publicId = 'entry-001'}) =>
     <String, dynamic>{
       'public_id': publicId,
-      'game': _gameJson(),
       'platform': _platformJson(),
       'status': 'playing',
       'created_at': '2025-01-01T00:00:00Z',
       'updated_at': '2025-01-01T00:00:00Z',
     };
+
+Map<String, dynamic> _gameGroupJson() => <String, dynamic>{
+  'game': _gameJson(),
+  'platforms': <Map<String, dynamic>>[_platformStateJson()],
+};
 
 Response<T> _response<T>(String path, T data) => Response<T>(
   requestOptions: RequestOptions(path: path),
@@ -158,7 +162,7 @@ void main() {
         ),
       ).thenAnswer(
         (_) async => _response('/v1/library', <String, dynamic>{
-          'items': <Map<String, dynamic>>[_libraryEntryJson()],
+          'items': <Map<String, dynamic>>[_gameGroupJson()],
           'total': 1,
           'limit': 50,
           'offset': 0,
@@ -169,6 +173,9 @@ void main() {
 
       expect(result, isA<LibraryListResponse>());
       expect(result.items, hasLength(1));
+      expect(result.items.first, isA<LibraryGameGroup>());
+      expect(result.items.first.platforms, hasLength(1));
+      expect(result.items.first.platforms.first.publicId, 'entry-001');
       final captured = verify(
         () => dio.get<Map<String, dynamic>>(
           '/v1/library',
@@ -209,19 +216,21 @@ void main() {
   });
 
   group('addToLibrary', () {
-    test('posts body and parses LibraryEntry', () async {
+    test('posts platform_ids and parses LibraryGameGroup', () async {
       when(
         () => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')),
-      ).thenAnswer((_) async => _response('/v1/library', _libraryEntryJson()));
+      ).thenAnswer((_) async => _response('/v1/library', _gameGroupJson()));
 
-      final entry = await repository.addToLibrary(
+      final group = await repository.addToLibrary(
         gamePublicId: 'game-001',
-        platformId: 48,
+        platformIds: [48, 6],
         status: 'playing',
         notes: 'Hi',
       );
 
-      expect(entry.publicId, 'entry-001');
+      expect(group, isA<LibraryGameGroup>());
+      expect(group.game.publicId, 'game-001');
+      expect(group.platforms.first.publicId, 'entry-001');
       final captured = verify(
         () => dio.post<Map<String, dynamic>>(
           captureAny(),
@@ -231,7 +240,7 @@ void main() {
       expect(captured[0], '/v1/library');
       final body = captured[1] as Map<String, dynamic>;
       expect(body['game_public_id'], 'game-001');
-      expect(body['platform_id'], 48);
+      expect(body['platform_ids'], [48, 6]);
       expect(body['status'], 'playing');
       expect(body['notes'], 'Hi');
     });
@@ -239,9 +248,9 @@ void main() {
     test('omits notes when null and defaults status to backlog', () async {
       when(
         () => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')),
-      ).thenAnswer((_) async => _response('/v1/library', _libraryEntryJson()));
+      ).thenAnswer((_) async => _response('/v1/library', _gameGroupJson()));
 
-      await repository.addToLibrary(gamePublicId: 'g', platformId: 1);
+      await repository.addToLibrary(gamePublicId: 'g', platformIds: [1]);
 
       final captured = verify(
         () => dio.post<Map<String, dynamic>>(
@@ -250,17 +259,18 @@ void main() {
         ),
       ).captured;
       final body = captured[0] as Map<String, dynamic>;
+      expect(body['platform_ids'], [1]);
       expect(body['status'], 'backlog');
       expect(body.containsKey('notes'), isFalse);
     });
   });
 
   group('updateEntry', () {
-    test('patches changed fields and parses LibraryEntry', () async {
+    test('patches changed fields and parses LibraryPlatformState', () async {
       when(
         () => dio.patch<Map<String, dynamic>>(any(), data: any(named: 'data')),
       ).thenAnswer(
-        (_) async => _response('/v1/library/entry-001', _libraryEntryJson()),
+        (_) async => _response('/v1/library/entry-001', _platformStateJson()),
       );
 
       final entry = await repository.updateEntry(
@@ -269,6 +279,7 @@ void main() {
         notes: 'Done',
       );
 
+      expect(entry, isA<LibraryPlatformState>());
       expect(entry.publicId, 'entry-001');
       final captured = verify(
         () => dio.patch<Map<String, dynamic>>(
@@ -286,7 +297,7 @@ void main() {
       when(
         () => dio.patch<Map<String, dynamic>>(any(), data: any(named: 'data')),
       ).thenAnswer(
-        (_) async => _response('/v1/library/entry-001', _libraryEntryJson()),
+        (_) async => _response('/v1/library/entry-001', _platformStateJson()),
       );
 
       await repository.updateEntry('entry-001');

@@ -57,7 +57,26 @@ class _MissionsListPageState extends State<MissionsListPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Mission History')),
-      body: BlocBuilder<MissionBloc, MissionState>(
+      body: BlocConsumer<MissionBloc, MissionState>(
+        listenWhen: (previous, current) =>
+            current is MissionListLoaded && current.loadMoreError != null,
+        listener: (context, state) {
+          if (state is! MissionListLoaded) return;
+          final message = state.loadMoreError;
+          if (message == null) return;
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              SnackBar(
+                content: Text('Could not load more: $message'),
+                action: SnackBarAction(
+                  label: 'Retry',
+                  onPressed: () =>
+                      context.read<MissionBloc>().add(const LoadMoreMissions()),
+                ),
+              ),
+            );
+        },
         builder: (context, state) {
           if (state is MissionLoading) {
             return const Center(child: CircularProgressIndicator());
@@ -94,8 +113,11 @@ class _MissionsListPageState extends State<MissionsListPage> {
             }
 
             // After the frame renders, check if the list
-            // doesn't fill the viewport and load more.
-            if (state.hasMore && !state.isLoadingMore) {
+            // doesn't fill the viewport and load more. Skip auto-loading
+            // when the last page failed so we don't spin on the error.
+            if (state.hasMore &&
+                !state.isLoadingMore &&
+                state.loadMoreError == null) {
               SchedulerBinding.instance.addPostFrameCallback((_) {
                 _maybeLoadMore();
               });

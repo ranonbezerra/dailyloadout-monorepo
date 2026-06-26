@@ -166,6 +166,47 @@ void main() {
       expect(find.text('No mission running'), findsNothing);
     });
 
+    testWidgets('shows error card and locks start doors on MissionError', (
+      tester,
+    ) async {
+      when(
+        () => missionBloc.state,
+      ).thenReturn(const MissionError(message: 'Network down'));
+
+      await tester.pumpWidget(buildSubject());
+
+      // Genuine error is surfaced (not silently treated as "no mission").
+      expect(find.text("Couldn't load your mission"), findsOneWidget);
+      expect(find.text('Network down'), findsOneWidget);
+      expect(find.text('No mission running'), findsNothing);
+
+      // Start doors are locked because the active mission is unknown.
+      expect(
+        find.text('Could not check your active mission'),
+        findsNWidgets(2),
+      );
+      expect(find.byIcon(Icons.lock_outline), findsNWidgets(2));
+
+      await tester.tap(find.text("What's the move?"));
+      await tester.pumpAndSettle();
+      expect(find.text('Loadout stub'), findsNothing);
+    });
+
+    testWidgets('tapping Retry on the error card re-dispatches '
+        'LoadActiveMission', (tester) async {
+      when(
+        () => missionBloc.state,
+      ).thenReturn(const MissionError(message: 'Network down'));
+
+      await tester.pumpWidget(buildSubject());
+      clearInteractions(missionBloc);
+
+      await tester.tap(find.text('Retry'));
+      await tester.pump();
+
+      verify(() => missionBloc.add(const LoadActiveMission())).called(1);
+    });
+
     testWidgets('shows active mission card with title, platform and briefing', (
       tester,
     ) async {

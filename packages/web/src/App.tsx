@@ -1,4 +1,15 @@
-import { Anchor, AppShell, Button, NavLink, Stack, Text } from "@mantine/core";
+import {
+	Anchor,
+	AppShell,
+	Burger,
+	Button,
+	Group,
+	Loader,
+	NavLink,
+	Stack,
+	Text,
+} from "@mantine/core";
+import { useDisclosure } from "@mantine/hooks";
 import {
 	IconBooks,
 	IconChartBar,
@@ -6,57 +17,104 @@ import {
 	IconHistory,
 	IconLogout,
 } from "@tabler/icons-react";
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { useAuthContext } from "./contexts/AuthContext";
 import { FEATURES } from "./lib/features";
-import { AnalyticsPage } from "./pages/AnalyticsPage";
-import { CapturesPage } from "./pages/CapturesPage";
-import { ConciergePage } from "./pages/ConciergePage";
-import { LibraryImportPage } from "./pages/LibraryImportPage";
-import { LibraryPage } from "./pages/LibraryPage";
-import { LoadoutPage } from "./pages/LoadoutPage";
 import { LoginPage } from "./pages/LoginPage";
-import { MissionsPage } from "./pages/MissionsPage";
-import { PlayPage } from "./pages/PlayPage";
 import { RegisterPage } from "./pages/RegisterPage";
+
+// Route-level code-splitting: each page (and its heavy chart/datatable deps)
+// loads on demand rather than shipping in one >1MB bundle. The shell stays eager.
+const AnalyticsPage = lazy(() =>
+	import("./pages/AnalyticsPage").then((m) => ({ default: m.AnalyticsPage })),
+);
+const CapturesPage = lazy(() =>
+	import("./pages/CapturesPage").then((m) => ({ default: m.CapturesPage })),
+);
+const ConciergePage = lazy(() =>
+	import("./pages/ConciergePage").then((m) => ({ default: m.ConciergePage })),
+);
+const LibraryImportPage = lazy(() =>
+	import("./pages/LibraryImportPage").then((m) => ({ default: m.LibraryImportPage })),
+);
+const LibraryPage = lazy(() =>
+	import("./pages/LibraryPage").then((m) => ({ default: m.LibraryPage })),
+);
+const LoadoutPage = lazy(() =>
+	import("./pages/LoadoutPage").then((m) => ({ default: m.LoadoutPage })),
+);
+const MissionsPage = lazy(() =>
+	import("./pages/MissionsPage").then((m) => ({ default: m.MissionsPage })),
+);
+const PlayPage = lazy(() => import("./pages/PlayPage").then((m) => ({ default: m.PlayPage })));
+
+function RouteFallback() {
+	return (
+		<Group justify="center" py="xl">
+			<Loader />
+		</Group>
+	);
+}
 
 function AppLayout() {
 	const { logout } = useAuthContext();
 	const location = useLocation();
 	const navigate = useNavigate();
+	const [opened, { toggle, close }] = useDisclosure();
+
+	// Collapse the mobile navbar after navigating to a new section.
+	const go = (path: string) => {
+		navigate(path);
+		close();
+	};
 
 	return (
-		<AppShell navbar={{ width: 250, breakpoint: "sm" }} padding="md">
+		<AppShell
+			header={{ height: 56 }}
+			navbar={{ width: 250, breakpoint: "sm", collapsed: { mobile: !opened } }}
+			padding="md"
+		>
+			<AppShell.Header>
+				<Group h="100%" px="md" gap="sm">
+					<Burger
+						opened={opened}
+						onClick={toggle}
+						hiddenFrom="sm"
+						size="sm"
+						aria-label="Toggle navigation"
+					/>
+					<Text fw={700}>DailyLoadout</Text>
+				</Group>
+			</AppShell.Header>
+
 			<AppShell.Navbar p="md">
 				<Stack justify="space-between" h="100%">
 					<Stack gap="xs">
-						<Text fw={700} mb="sm">
-							DailyLoadout
-						</Text>
 						<NavLink
 							label="Play"
 							leftSection={<IconDeviceGamepad2 size={18} />}
 							active={location.pathname.startsWith("/play")}
-							onClick={() => navigate("/play")}
+							onClick={() => go("/play")}
 						/>
 						<NavLink
 							label="Library"
 							leftSection={<IconBooks size={18} />}
 							active={location.pathname.startsWith("/library")}
-							onClick={() => navigate("/library")}
+							onClick={() => go("/library")}
 						/>
 						<NavLink
 							label="History"
 							leftSection={<IconHistory size={18} />}
 							active={location.pathname.startsWith("/history")}
-							onClick={() => navigate("/history")}
+							onClick={() => go("/history")}
 						/>
 						<NavLink
 							label="Stats"
 							leftSection={<IconChartBar size={18} />}
 							active={location.pathname.startsWith("/analytics")}
-							onClick={() => navigate("/analytics")}
+							onClick={() => go("/analytics")}
 						/>
 					</Stack>
 					<Stack gap="xs">
@@ -88,24 +146,26 @@ function AppLayout() {
 			</AppShell.Navbar>
 
 			<AppShell.Main>
-				<Routes>
-					<Route path="/play" element={<PlayPage />} />
-					<Route path="/play/loadout" element={<LoadoutPage />} />
-					{FEATURES.backlogConcierge && (
-						<Route path="/play/concierge" element={<ConciergePage />} />
-					)}
-					<Route path="/library" element={<LibraryPage />} />
-					<Route path="/library/import" element={<LibraryImportPage />} />
-					<Route path="/history" element={<MissionsPage />} />
-					<Route path="/captures" element={<CapturesPage />} />
-					<Route path="/analytics" element={<AnalyticsPage />} />
-					{/* Backward-compatible redirects from the old flat / nested routes. */}
-					<Route path="/loadout" element={<Navigate to="/play/loadout" replace />} />
-					<Route path="/missions" element={<Navigate to="/history" replace />} />
-					<Route path="/play/missions" element={<Navigate to="/history" replace />} />
-					<Route path="/concierge" element={<Navigate to="/play/concierge" replace />} />
-					<Route path="*" element={<Navigate to="/play" replace />} />
-				</Routes>
+				<Suspense fallback={<RouteFallback />}>
+					<Routes>
+						<Route path="/play" element={<PlayPage />} />
+						<Route path="/play/loadout" element={<LoadoutPage />} />
+						{FEATURES.backlogConcierge && (
+							<Route path="/play/concierge" element={<ConciergePage />} />
+						)}
+						<Route path="/library" element={<LibraryPage />} />
+						<Route path="/library/import" element={<LibraryImportPage />} />
+						<Route path="/history" element={<MissionsPage />} />
+						<Route path="/captures" element={<CapturesPage />} />
+						<Route path="/analytics" element={<AnalyticsPage />} />
+						{/* Backward-compatible redirects from the old flat / nested routes. */}
+						<Route path="/loadout" element={<Navigate to="/play/loadout" replace />} />
+						<Route path="/missions" element={<Navigate to="/history" replace />} />
+						<Route path="/play/missions" element={<Navigate to="/history" replace />} />
+						<Route path="/concierge" element={<Navigate to="/play/concierge" replace />} />
+						<Route path="*" element={<Navigate to="/play" replace />} />
+					</Routes>
+				</Suspense>
 			</AppShell.Main>
 		</AppShell>
 	);

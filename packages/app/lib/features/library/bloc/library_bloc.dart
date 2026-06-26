@@ -45,7 +45,7 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
 
       emit(
         LibraryLoaded(
-          entries: response.items,
+          groups: response.items,
           total: response.total,
           hasMore: hasMore,
         ),
@@ -64,7 +64,7 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
     try {
       await _libraryRepository.addToLibrary(
         gamePublicId: event.gamePublicId,
-        platformId: event.platformId,
+        platformIds: event.platformIds,
         status: event.status,
         notes: event.notes,
       );
@@ -149,7 +149,7 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
 
     emit(
       LibraryLoaded(
-        entries: response.items,
+        groups: response.items,
         total: response.total,
         hasMore: hasMore,
       ),

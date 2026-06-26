@@ -7,11 +7,11 @@ from fastapi import APIRouter, HTTPException, Query, status
 from dailyloadout.core.library.schemas import (
     GameCreate,
     GameResponse,
-    GameUpdate,
     LibraryEntryCreate,
     LibraryEntryResponse,
     LibraryEntryUpdate,
-    LibraryListResponse,
+    LibraryGameGroup,
+    LibraryGroupedResponse,
     PlatformResponse,
 )
 from dailyloadout.deps import CurrentUserDep, LibraryServiceDep
@@ -34,45 +34,20 @@ async def create_game(
     current_user: CurrentUserDep,
     library_service: LibraryServiceDep,
 ) -> GameResponse:
-    """Create a game manually."""
-    try:
-        game = await library_service.create_game(
-            slug=body.slug,
-            title=body.title,
-            metadata_source=body.metadata_source,
-            summary=body.summary,
-            cover_url=body.cover_url,
-            first_release_date=body.first_release_date,
-            genres=body.genres,
-        )
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=str(exc),
-        ) from exc
+    """Create or resolve a game (DB-first, IGDB enrichment on the fly).
 
-    return GameResponse.model_validate(game)
-
-
-@router.patch("/games/{public_id}", response_model=GameResponse)
-async def update_game(
-    public_id: UUID,
-    body: GameUpdate,
-    current_user: CurrentUserDep,
-    library_service: LibraryServiceDep,
-) -> GameResponse:
-    """Update a game's details (e.g. genres)."""
-    update_fields = body.model_dump(exclude_unset=True)
-    try:
-        game = await library_service.update_game(
-            game_public_id=public_id,
-            **update_fields,
-        )
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(exc),
-        ) from exc
+    Idempotent: resolving an existing global row or the caller's own manual game
+    returns it rather than conflicting.
+    """
+    game = await library_service.create_game(
+        user_id=current_user.id,
+        slug=body.slug,
+        title=body.title,
+        summary=body.summary,
+        cover_url=body.cover_url,
+        first_release_date=body.first_release_date,
+        genres=body.genres,
+    )
     return GameResponse.model_validate(game)
 
 
@@ -117,23 +92,28 @@ async def list_platforms(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/library", response_model=LibraryListResponse)
+@router.get("/library", response_model=LibraryGroupedResponse)
 async def list_library(
     current_user: CurrentUserDep,
     library_service: LibraryServiceDep,
     status_filter: str | None = Query(default=None, alias="status"),
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
-) -> LibraryListResponse:
-    """List the current user's library entries."""
-    entries, total = await library_service.list_library(
+) -> LibraryGroupedResponse:
+    """List the current user's library grouped by game.
+
+    A game owned on multiple platforms appears as ONE item with its per-platform
+    states nested. ``limit`` / ``offset`` page games; ``total`` is the number of
+    distinct games.
+    """
+    groups, total = await library_service.list_library(
         user_id=current_user.id,
         status=status_filter,
         limit=limit,
         offset=offset,
     )
-    return LibraryListResponse(
-        items=[LibraryEntryResponse.model_validate(e) for e in entries],
+    return LibraryGroupedResponse(
+        items=groups,
         total=total,
         limit=limit,
         offset=offset,
@@ -159,20 +139,24 @@ async def get_library_entry(
 
 @router.post(
     "/library",
-    response_model=LibraryEntryResponse,
+    response_model=LibraryGameGroup,
     status_code=status.HTTP_201_CREATED,
 )
 async def add_to_library(
     body: LibraryEntryCreate,
     current_user: CurrentUserDep,
     library_service: LibraryServiceDep,
-) -> LibraryEntryResponse:
-    """Add a game to the current user's library."""
+) -> LibraryGameGroup:
+    """Add a game to the current user's library on one or more platforms.
+
+    Returns the resulting grouped row for the game; re-adding a platform the user
+    already owns is idempotent (skipped, no error).
+    """
     try:
-        entry = await library_service.add_to_library(
+        return await library_service.add_to_library(
             user_id=current_user.id,
             game_public_id=body.game_public_id,
-            platform_id=body.platform_id,
+            platform_ids=body.platform_ids,
             status=body.status,
             notes=body.notes,
             acquired_at=body.acquired_at,
@@ -188,8 +172,6 @@ async def add_to_library(
             status_code=status.HTTP_409_CONFLICT,
             detail=detail,
         ) from exc
-
-    return LibraryEntryResponse.model_validate(entry)
 
 
 @router.patch("/library/{public_id}", response_model=LibraryEntryResponse)

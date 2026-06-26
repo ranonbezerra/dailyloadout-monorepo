@@ -20,7 +20,7 @@ class _LibraryDetailPageState extends State<LibraryDetailPage> {
   final _notesController = TextEditingController();
   late String _selectedStatus;
   bool _isDirty = false;
-  LibraryEntry? _entry;
+  LibraryPlatformState? _entry;
 
   @override
   void initState() {
@@ -34,7 +34,7 @@ class _LibraryDetailPageState extends State<LibraryDetailPage> {
     super.dispose();
   }
 
-  void _initFromEntry(LibraryEntry entry) {
+  void _initFromEntry(LibraryPlatformState entry) {
     if (_entry?.publicId == entry.publicId && _isDirty) return;
 
     _entry = entry;
@@ -65,9 +65,10 @@ class _LibraryDetailPageState extends State<LibraryDetailPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete entry'),
+        title: const Text('Remove platform'),
         content: const Text(
-          'Are you sure you want to remove this game from your library?',
+          'Are you sure you want to remove this platform from your library? '
+          'Other platforms for this game stay.',
         ),
         actions: [
           TextButton(
@@ -94,28 +95,37 @@ class _LibraryDetailPageState extends State<LibraryDetailPage> {
   Widget build(BuildContext context) {
     return BlocBuilder<LibraryBloc, LibraryState>(
       builder: (context, state) {
-        // Find the entry from the loaded state.
-        LibraryEntry? entry;
+        // Find the platform entry (and its parent game) from the loaded state.
+        LibraryPlatformState? entry;
+        Game? game;
         if (state is LibraryLoaded) {
-          final matches = state.entries.where(
-            (e) => e.publicId == widget.entryPublicId,
-          );
-          if (matches.isNotEmpty) {
-            entry = matches.first;
-            _initFromEntry(entry);
+          for (final group in state.groups) {
+            final matches = group.platforms.where(
+              (e) => e.publicId == widget.entryPublicId,
+            );
+            if (matches.isNotEmpty) {
+              entry = matches.first;
+              game = group.game;
+              _initFromEntry(entry);
+              break;
+            }
           }
         }
 
-        if (entry == null) {
+        if (entry == null || game == null) {
           return Scaffold(
             appBar: AppBar(title: const Text('Details')),
             body: const Center(child: CircularProgressIndicator()),
           );
         }
 
+        final resolvedEntry = entry;
+        final resolvedGame = game;
+        final genres = resolvedGame.genres;
+
         return Scaffold(
           appBar: AppBar(
-            title: Text(entry.game.title),
+            title: Text(resolvedGame.title),
             actions: [
               IconButton(
                 icon: const Icon(Icons.save),
@@ -130,12 +140,12 @@ class _LibraryDetailPageState extends State<LibraryDetailPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Cover image
-                if (entry.game.coverUrl != null)
+                if (resolvedGame.coverUrl != null)
                   Center(
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12),
                       child: Image.network(
-                        entry.game.coverUrl!,
+                        resolvedGame.coverUrl!,
                         height: 200,
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => const SizedBox.shrink(),
@@ -146,21 +156,40 @@ class _LibraryDetailPageState extends State<LibraryDetailPage> {
 
                 // Title
                 Text(
-                  entry.game.title,
+                  resolvedGame.title,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 8),
 
-                // Platform
+                // Platform (this entry's platform)
                 Text(
-                  entry.platform.label,
+                  resolvedEntry.platform.label,
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
+
+                // Genres (read-only — games are immutable)
+                if (genres != null && genres.isNotEmpty) ...[
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
+                      for (final genre in genres)
+                        Chip(
+                          label: Text(genre),
+                          visualDensity: VisualDensity.compact,
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ] else
+                  const SizedBox(height: 8),
 
                 // Status dropdown
                 DropdownButtonFormField<String>(
@@ -189,14 +218,14 @@ class _LibraryDetailPageState extends State<LibraryDetailPage> {
                 const SizedBox(height: 16),
 
                 // Summary
-                if (entry.game.summary != null) ...[
+                if (resolvedGame.summary != null) ...[
                   Text(
                     'Summary',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    entry.game.summary!,
+                    resolvedGame.summary!,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 16),
@@ -215,13 +244,28 @@ class _LibraryDetailPageState extends State<LibraryDetailPage> {
                 ),
                 const SizedBox(height: 24),
 
-                // Delete button
+                // Start Mission for this platform entry (only when playing).
+                if (resolvedEntry.status == 'playing') ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () => context.push(
+                        '/missions/briefing?entry=${resolvedEntry.publicId}',
+                      ),
+                      icon: const Icon(Icons.play_arrow),
+                      label: const Text('Start Mission'),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+
+                // Delete button (removes just this platform).
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
                     onPressed: _onDelete,
                     icon: const Icon(Icons.delete_outline),
-                    label: const Text('Remove from Library'),
+                    label: const Text('Remove this platform'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Theme.of(context).colorScheme.error,
                     ),

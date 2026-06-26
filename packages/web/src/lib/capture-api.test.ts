@@ -1,11 +1,24 @@
 import type { Mock } from "vitest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("./api", () => ({
-	apiFetch: vi.fn(),
-	BASE_URL: "http://test",
-	getAccessToken: vi.fn(() => "test-token"),
-}));
+vi.mock("./api", () => {
+	const getAccessToken = vi.fn(() => "test-token" as string | null);
+	// Mirror the real fetchWithAuthRetry: attach the bearer token as a Headers
+	// instance (never forcing Content-Type) and delegate to globalThis.fetch so
+	// per-test fetch mocks still drive responses.
+	const fetchWithAuthRetry = vi.fn((path: string, init: RequestInit = {}) => {
+		const headers = new Headers(init.headers);
+		const token = getAccessToken();
+		if (token) headers.set("Authorization", `Bearer ${token}`);
+		return fetch(`http://test${path}`, { ...init, headers });
+	});
+	return {
+		apiFetch: vi.fn(),
+		BASE_URL: "http://test",
+		getAccessToken,
+		fetchWithAuthRetry,
+	};
+});
 
 import { apiFetch, getAccessToken } from "./api";
 import {
@@ -145,7 +158,7 @@ describe("transcribeAudio", () => {
 		expect(callArgs[1].body).toBeInstanceOf(FormData);
 
 		// Verify Authorization header
-		expect(callArgs[1].headers).toHaveProperty("Authorization", "Bearer test-token");
+		expect((callArgs[1].headers as Headers).get("Authorization")).toBe("Bearer test-token");
 
 		expect(result.text).toBe("hello");
 		expect(result.language).toBe("en");
@@ -189,7 +202,7 @@ describe("transcribeAudio", () => {
 		await transcribeAudio(new Blob());
 
 		const callArgs = mockFetch.mock.calls[0];
-		expect(callArgs[1].headers).not.toHaveProperty("Authorization");
+		expect((callArgs[1].headers as Headers).get("Authorization")).toBeNull();
 	});
 });
 
@@ -241,7 +254,7 @@ describe("submitPhotoCapture", () => {
 		expect(callArgs[1].body).toBeInstanceOf(FormData);
 
 		// Verify Authorization header
-		expect(callArgs[1].headers).toHaveProperty("Authorization", "Bearer test-token");
+		expect((callArgs[1].headers as Headers).get("Authorization")).toBe("Bearer test-token");
 
 		expect(result.publicId).toBe("cap-photo-1");
 		expect(result.inputType).toBe("photo");
@@ -294,7 +307,7 @@ describe("submitPhotoCapture", () => {
 		await submitPhotoCapture(file);
 
 		const callArgs = mockFetch.mock.calls[0];
-		expect(callArgs[1].headers).not.toHaveProperty("Authorization");
+		expect((callArgs[1].headers as Headers).get("Authorization")).toBeNull();
 	});
 });
 
@@ -348,7 +361,7 @@ describe("submitLibraryImport", () => {
 		const body = callArgs[1].body as FormData;
 		expect(body).toBeInstanceOf(FormData);
 		expect(body.getAll("files")).toHaveLength(2);
-		expect(callArgs[1].headers).toHaveProperty("Authorization", "Bearer test-token");
+		expect((callArgs[1].headers as Headers).get("Authorization")).toBe("Bearer test-token");
 
 		expect(result.publicId).toBe("cap-import-1");
 		expect(result.candidates[0].igdbTitle).toBe("Hades");
@@ -400,7 +413,7 @@ describe("submitLibraryImport", () => {
 		await submitLibraryImport([new File(["x"], "a.png", { type: "image/png" })]);
 
 		const callArgs = mockFetch.mock.calls[0];
-		expect(callArgs[1].headers).not.toHaveProperty("Authorization");
+		expect((callArgs[1].headers as Headers).get("Authorization")).toBeNull();
 	});
 });
 

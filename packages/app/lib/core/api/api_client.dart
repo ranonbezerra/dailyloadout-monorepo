@@ -23,11 +23,10 @@ const deepBriefingReceiveTimeout = Duration(seconds: 75);
 class ApiClient {
   ApiClient({
     required AuthTokenStore tokenStore,
-    OnForceLogout? onForceLogout,
+    this.onForceLogout,
     String baseUrl = 'http://localhost:8100',
     Dio? dio,
-  }) : _tokenStore = tokenStore,
-       _onForceLogout = onForceLogout {
+  }) : _tokenStore = tokenStore {
     _dio =
         dio ??
         Dio(
@@ -46,16 +45,22 @@ class ApiClient {
       _AuthInterceptor(
         dio: _dio,
         tokenStore: _tokenStore,
-        onForceLogout: _onForceLogout,
+        // Read lazily so a callback wired after construction still fires.
+        onForceLogout: () => onForceLogout?.call(),
         logger: _logger,
       ),
     );
   }
 
   final AuthTokenStore _tokenStore;
-  final OnForceLogout? _onForceLogout;
   final Logger _logger = Logger(printer: PrettyPrinter(methodCount: 0));
   late final Dio _dio;
+
+  /// Invoked when token refresh fails and the user must re-authenticate.
+  ///
+  /// Mutable so it can be wired up after construction (the auth bloc that
+  /// handles the logout is created after this client).
+  OnForceLogout? onForceLogout;
 
   /// Exposes the configured [Dio] instance for direct use.
   Dio get dio => _dio;

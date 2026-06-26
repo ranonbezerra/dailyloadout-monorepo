@@ -288,7 +288,7 @@ class TestSubmitDebrief:
         resp = await async_client.get("/v1/library", headers=auth_headers)
         items = resp.json()["items"]
         assert len(items) == 1
-        assert items[0]["mission_next_action"] is not None
+        assert items[0]["platforms"][0]["mission_next_action"] is not None
 
     async def test_debrief_already_ended(
         self,

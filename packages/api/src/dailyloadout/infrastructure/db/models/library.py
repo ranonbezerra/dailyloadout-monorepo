@@ -59,6 +59,16 @@ class Game(TimestampMixin, Base):
     first_release_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     genres: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True)
     metadata_source: Mapped[str] = mapped_column(String, nullable=False)
+    # ATTRIBUTION only: who first added this manual row. ``Game`` rows are always
+    # global/shared (slug is globally unique); this records the creator so a
+    # future admin trash-review can audit/remove manual additions. NULL = IGDB /
+    # legacy row. Editing is gated on this in the service, but visibility is not.
+    created_by_user_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
 
     # Relationships
     library_entries: Mapped[list["LibraryEntry"]] = relationship(back_populates="game")

@@ -62,10 +62,13 @@ class LibraryRepository {
     return LibraryListResponse.fromJson(response.data!);
   }
 
-  /// Adds a game to the current user's library.
-  Future<LibraryEntry> addToLibrary({
+  /// Adds a game to the current user's library on one or more platforms.
+  ///
+  /// Returns the resulting grouped game with all its per-platform states.
+  /// Re-adding an already-owned platform is idempotent server-side.
+  Future<LibraryGameGroup> addToLibrary({
     required String gamePublicId,
-    required int platformId,
+    required List<int> platformIds,
     String status = 'backlog',
     String? notes,
   }) async {
@@ -73,16 +76,16 @@ class LibraryRepository {
       '/v1/library',
       data: {
         'game_public_id': gamePublicId,
-        'platform_id': platformId,
+        'platform_ids': platformIds,
         'status': status,
         if (notes != null) 'notes': notes,
       },
     );
-    return LibraryEntry.fromJson(response.data!);
+    return LibraryGameGroup.fromJson(response.data!);
   }
 
-  /// Updates a library entry.
-  Future<LibraryEntry> updateEntry(
+  /// Updates a single library entry (one platform) by its entry public_id.
+  Future<LibraryPlatformState> updateEntry(
     String publicId, {
     String? status,
     String? notes,
@@ -94,7 +97,7 @@ class LibraryRepository {
         if (notes != null) 'notes': notes,
       },
     );
-    return LibraryEntry.fromJson(response.data!);
+    return LibraryPlatformState.fromJson(response.data!);
   }
 
   /// Deletes a library entry.

@@ -8,6 +8,7 @@ import {
 	Text,
 	Title,
 	Tooltip,
+	UnstyledButton,
 } from "@mantine/core";
 import {
 	IconBook,
@@ -32,33 +33,49 @@ interface DoorCardProps {
 	onClick: () => void;
 }
 
+const DISABLED_REASON = "Finish your active mission first";
+
 function DoorCard({ title, subtitle, icon, accent, disabled, onClick }: DoorCardProps) {
+	// Render as a real <button> (UnstyledButton) so the door is keyboard
+	// focusable and fires on Enter/Space natively; the Card inside is purely
+	// visual. For the disabled state we use aria-disabled (not the native
+	// `disabled` attribute) so the element stays focusable/hoverable and its
+	// Tooltip reason remains reachable by both keyboard and pointer.
 	const card = (
-		<Card
-			withBorder
-			p="lg"
-			radius="md"
+		<UnstyledButton
 			onClick={disabled ? undefined : onClick}
+			aria-disabled={disabled}
+			aria-label={disabled ? `${title} — ${DISABLED_REASON}` : title}
 			style={{
 				cursor: disabled ? "not-allowed" : "pointer",
 				height: "100%",
-				opacity: disabled ? 0.55 : 1,
+				width: "100%",
+				display: "block",
+				textAlign: "left",
 			}}
-			bg={accent && !disabled ? "var(--mantine-primary-color-light)" : undefined}
 		>
-			<Stack gap="sm" align="flex-start">
-				{icon}
-				<Title order={4}>{title}</Title>
-				<Text size="sm" c="dimmed">
-					{subtitle}
-				</Text>
-			</Stack>
-		</Card>
+			<Card
+				withBorder
+				p="lg"
+				radius="md"
+				h="100%"
+				style={{ opacity: disabled ? 0.55 : 1 }}
+				bg={accent && !disabled ? "var(--mantine-primary-color-light)" : undefined}
+			>
+				<Stack gap="sm" align="flex-start">
+					{icon}
+					<Title order={4}>{title}</Title>
+					<Text size="sm" c="dimmed">
+						{subtitle}
+					</Text>
+				</Stack>
+			</Card>
+		</UnstyledButton>
 	);
 
 	if (disabled) {
 		return (
-			<Tooltip label="Finish your active mission first" withArrow>
+			<Tooltip label={DISABLED_REASON} withArrow>
 				{card}
 			</Tooltip>
 		);

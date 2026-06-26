@@ -5,6 +5,7 @@ import {
 	Group,
 	Loader,
 	Modal,
+	MultiSelect,
 	Select,
 	Stack,
 	Switch,
@@ -52,7 +53,7 @@ export function AddGameModal({ opened, onClose }: AddGameModalProps) {
 	const [manualGenres, setManualGenres] = useState<string[]>([]);
 
 	// -- Common fields --
-	const [platformId, setPlatformId] = useState<string | null>(null);
+	const [platformIds, setPlatformIds] = useState<string[]>([]);
 	const [status, setStatus] = useState<string | null>("backlog");
 	const [notes, setNotes] = useState("");
 
@@ -75,7 +76,7 @@ export function AddGameModal({ opened, onClose }: AddGameModalProps) {
 		setManualTitle("");
 		setManualSlug("");
 		setManualGenres([]);
-		setPlatformId(null);
+		setPlatformIds([]);
 		setStatus("backlog");
 		setNotes("");
 	};
@@ -86,10 +87,10 @@ export function AddGameModal({ opened, onClose }: AddGameModalProps) {
 	};
 
 	const handleSubmit = async () => {
-		if (!platformId) {
+		if (platformIds.length === 0) {
 			notifications.show({
 				title: "Missing platform",
-				message: "Please select a platform.",
+				message: "Please select at least one platform.",
 				color: "red",
 			});
 			return;
@@ -127,7 +128,7 @@ export function AddGameModal({ opened, onClose }: AddGameModalProps) {
 
 			await addMutation.mutateAsync({
 				gamePublicId,
-				platformId: Number(platformId),
+				platformIds: platformIds.map(Number),
 				status: (status as LibraryStatus) ?? "backlog",
 				notes: notes.trim() || undefined,
 			});
@@ -257,13 +258,13 @@ export function AddGameModal({ opened, onClose }: AddGameModalProps) {
 
 				<Divider />
 
-				<Select
-					label="Platform"
-					placeholder="Select a platform"
+				<MultiSelect
+					label="Platforms"
+					placeholder="Select one or more platforms"
 					data={platformOptions}
 					required
-					value={platformId}
-					onChange={setPlatformId}
+					value={platformIds}
+					onChange={setPlatformIds}
 					searchable
 				/>
 

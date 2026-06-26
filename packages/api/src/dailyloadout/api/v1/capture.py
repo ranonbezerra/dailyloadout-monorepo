@@ -8,8 +8,9 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, UploadFile, status
 
-from dailyloadout.api.v1._mime_helpers import guess_audio_extension, guess_image_extension
+from dailyloadout.api.v1._mime_helpers import guess_audio_extension
 from dailyloadout.config import settings
+from dailyloadout.core.capture.exceptions import InvalidUploadError
 from dailyloadout.core.capture.schemas import (
     CandidateConfirmRequest,
     CaptureListItem,
@@ -19,16 +20,8 @@ from dailyloadout.core.capture.schemas import (
     TranscribeResponse,
 )
 from dailyloadout.core.library.schemas import LibraryEntryResponse
-from dailyloadout.deps import CurrentUserDep
-from dailyloadout.deps.capture import (
-    CaptureCandidateRepoDep,
-    CaptureRepoDep,
-    CaptureServiceDep,
-    IGDBClientDep,
-    LLMClientDep,
-    STTClientDep,
-)
-from dailyloadout.workers.capture_processor import process_capture
+from dailyloadout.deps import CaptureServiceDep, CurrentUserDep
+from dailyloadout.deps.capture import STTClientDep
 
 router = APIRouter(prefix="/v1/captures", tags=["captures"])
 
@@ -47,33 +40,17 @@ async def submit_text_capture(
     body: CaptureTextRequest,
     current_user: CurrentUserDep,
     capture_service: CaptureServiceDep,
-    capture_repo: CaptureRepoDep,
-    candidate_repo: CaptureCandidateRepoDep,
-    llm_client: LLMClientDep,
-    igdb_client: IGDBClientDep,
 ) -> CaptureResponse:
     """Submit a text capture, process it inline (LLM + IGDB), and return candidates.
 
     NOTE: Processing is done inline for now. This will move to background
     processing via arq once the task queue is fully wired.
     """
-    capture = await capture_service.submit_text(
+    capture = await capture_service.submit_and_process_text(
         user_id=current_user.id,
         raw_text=body.raw_text,
         input_type=body.input_type,
     )
-
-    # Process inline (will become arq job later).
-    await process_capture(
-        capture=capture,
-        capture_repo=capture_repo,
-        candidate_repo=candidate_repo,
-        llm_client=llm_client,
-        igdb_client=igdb_client,
-    )
-
-    # Re-fetch with candidates eagerly loaded.
-    capture = await capture_service.get_capture(current_user.id, capture.public_id)
     return CaptureResponse.model_validate(capture)
 
 
@@ -91,56 +68,18 @@ async def submit_photo_capture(
     file: UploadFile,
     current_user: CurrentUserDep,
     capture_service: CaptureServiceDep,
-    capture_repo: CaptureRepoDep,
-    candidate_repo: CaptureCandidateRepoDep,
-    llm_client: LLMClientDep,
-    igdb_client: IGDBClientDep,
 ) -> CaptureResponse:
     """Submit a photo capture, process it inline (vision LLM + IGDB), and return candidates."""
-    # Validate MIME type.
-    if not file.content_type or not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="File must be an image.")
-
-    # Validate file size.
-    max_size = settings.capture_max_image_mb * 1024 * 1024
     contents = await file.read()
-    if len(contents) > max_size:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Image file must be under {settings.capture_max_image_mb}MB.",
-        )
-
-    # Save file to temp location.
-    upload_dir = settings.capture_upload_dir
-    os.makedirs(upload_dir, exist_ok=True)
-
-    ext = guess_image_extension(file.content_type)
-    with tempfile.NamedTemporaryFile(dir=upload_dir, suffix=ext, delete=False) as tmp:
-        tmp.write(contents)
-        image_path = tmp.name
-
     try:
-        capture = await capture_service.submit_photo(
+        capture = await capture_service.submit_and_process_photo(
             user_id=current_user.id,
-            image_path=image_path,
+            contents=contents,
+            content_type=file.content_type,
         )
-
-        # Process inline (will become arq job later).
-        await process_capture(
-            capture=capture,
-            capture_repo=capture_repo,
-            candidate_repo=candidate_repo,
-            llm_client=llm_client,
-            igdb_client=igdb_client,
-        )
-
-        # Re-fetch with candidates eagerly loaded.
-        capture = await capture_service.get_capture(current_user.id, capture.public_id)
-        return CaptureResponse.model_validate(capture)
-    finally:
-        # Clean up the temp file after processing.
-        if os.path.exists(image_path):
-            os.unlink(image_path)
+    except InvalidUploadError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return CaptureResponse.model_validate(capture)
 
 
 @router.post(

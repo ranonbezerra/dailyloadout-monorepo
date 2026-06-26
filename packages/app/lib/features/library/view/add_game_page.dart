@@ -33,7 +33,7 @@ class _AddGamePageState extends State<AddGamePage> {
 
   // Entry details
   List<Platform> _platforms = [];
-  int? _selectedPlatformId;
+  final Set<int> _selectedPlatformIds = {};
   String _selectedStatus = 'backlog';
   final _notesController = TextEditingController();
 
@@ -61,7 +61,7 @@ class _AddGamePageState extends State<AddGamePage> {
         setState(() {
           _platforms = platforms;
           if (platforms.isNotEmpty) {
-            _selectedPlatformId = platforms.first.id;
+            _selectedPlatformIds.add(platforms.first.id);
           }
         });
       }
@@ -137,7 +137,7 @@ class _AddGamePageState extends State<AddGamePage> {
   }
 
   Future<void> _onSubmit() async {
-    if (_selectedPlatformId == null) return;
+    if (_selectedPlatformIds.isEmpty) return;
 
     setState(() => _isSubmitting = true);
 
@@ -165,7 +165,7 @@ class _AddGamePageState extends State<AddGamePage> {
       context.read<LibraryBloc>().add(
         AddEntry(
           gamePublicId: gamePublicId,
-          platformId: _selectedPlatformId!,
+          platformIds: _selectedPlatformIds.toList()..sort(),
           status: _selectedStatus,
           notes: _notesController.text.trim().isEmpty
               ? null
@@ -301,21 +301,34 @@ class _AddGamePageState extends State<AddGamePage> {
           ],
           const SizedBox(height: 16),
 
-          // Platform dropdown
-          DropdownButtonFormField<int>(
-            initialValue: _selectedPlatformId,
-            decoration: const InputDecoration(
-              labelText: 'Platform',
-              border: OutlineInputBorder(),
+          // Platform multi-select — a game can be owned on several platforms.
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Platforms',
+              style: Theme.of(context).textTheme.titleSmall,
             ),
-            items: _platforms
-                .map((p) => DropdownMenuItem(value: p.id, child: Text(p.label)))
-                .toList(),
-            onChanged: (value) {
-              if (value != null) {
-                setState(() => _selectedPlatformId = value);
-              }
-            },
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: _platforms.map((p) {
+              final selected = _selectedPlatformIds.contains(p.id);
+              return FilterChip(
+                label: Text(p.label),
+                selected: selected,
+                onSelected: (value) {
+                  setState(() {
+                    if (value) {
+                      _selectedPlatformIds.add(p.id);
+                    } else {
+                      _selectedPlatformIds.remove(p.id);
+                    }
+                  });
+                },
+              );
+            }).toList(),
           ),
           const SizedBox(height: 16),
 
@@ -359,7 +372,9 @@ class _AddGamePageState extends State<AddGamePage> {
             width: double.infinity,
             height: 48,
             child: FilledButton(
-              onPressed: _isSubmitting ? null : _onSubmit,
+              onPressed: _isSubmitting || _selectedPlatformIds.isEmpty
+                  ? null
+                  : _onSubmit,
               child: _isSubmitting
                   ? const SizedBox(
                       height: 20,

@@ -73,11 +73,20 @@ class MissionBloc extends Bloc<MissionEvent, MissionState> {
         ),
       );
     } on DioException catch (e) {
-      emit(currentState.copyWith(isLoadingMore: false));
-      emit(MissionError(message: _extractErrorMessage(e)));
+      // Keep the loaded list visible; surface the error inline.
+      emit(
+        currentState.copyWith(
+          isLoadingMore: false,
+          loadMoreError: _extractErrorMessage(e),
+        ),
+      );
     } on Exception catch (e) {
-      emit(currentState.copyWith(isLoadingMore: false));
-      emit(MissionError(message: e.toString()));
+      emit(
+        currentState.copyWith(
+          isLoadingMore: false,
+          loadMoreError: e.toString(),
+        ),
+      );
     }
   }
 

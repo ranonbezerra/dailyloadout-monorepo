@@ -232,8 +232,8 @@ void main() {
       );
 
       blocTest<MissionBloc, MissionState>(
-        'resets isLoadingMore and emits MissionError '
-        'on DioException',
+        'keeps the loaded list and surfaces loadMoreError '
+        'on DioException (no full-screen MissionError)',
         setUp: () {
           when(
             () => mockMissionRepository.listMissions(
@@ -260,8 +260,39 @@ void main() {
             total: 2,
             isLoadingMore: true,
           ),
-          MissionListLoaded(missions: [_missionListItem], total: 2),
-          const MissionError(message: 'Server error'),
+          MissionListLoaded(
+            missions: [_missionListItem],
+            total: 2,
+            loadMoreError: 'Server error',
+          ),
+        ],
+      );
+
+      blocTest<MissionBloc, MissionState>(
+        'keeps the loaded list and surfaces loadMoreError '
+        'on a generic Exception',
+        setUp: () {
+          when(
+            () => mockMissionRepository.listMissions(
+              limit: any(named: 'limit'),
+              offset: any(named: 'offset'),
+            ),
+          ).thenThrow(Exception('boom'));
+        },
+        build: buildBloc,
+        seed: () => MissionListLoaded(missions: [_missionListItem], total: 2),
+        act: (bloc) => bloc.add(const LoadMoreMissions()),
+        expect: () => [
+          MissionListLoaded(
+            missions: [_missionListItem],
+            total: 2,
+            isLoadingMore: true,
+          ),
+          MissionListLoaded(
+            missions: [_missionListItem],
+            total: 2,
+            loadMoreError: 'Exception: boom',
+          ),
         ],
       );
     });

@@ -3,32 +3,41 @@ import {
 	Badge,
 	Button,
 	Card,
+	Divider,
 	Group,
+	MultiSelect,
 	Select,
 	Skeleton,
 	Stack,
-	TagsInput,
 	Text,
 	Textarea,
 	Title,
 } from "@mantine/core";
+import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
-import { IconHistory } from "@tabler/icons-react";
+import { IconHistory, IconPlus } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { DataTable } from "mantine-datatable";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ErrorState } from "../components/ErrorState";
 import { QuickAddMenu } from "../components/QuickAddMenu";
 import {
+	useAddToLibrary,
 	useDeleteEntry,
-	useGameGenres,
 	useLibrary,
+	usePlatforms,
 	useUpdateEntry,
-	useUpdateGame,
 } from "../hooks/useLibrary";
 import { useActiveMission } from "../hooks/useMission";
-import type { LibraryEntry, LibraryStatus } from "../types/library";
+import type {
+	Game,
+	LibraryEntry,
+	LibraryGameGroup,
+	LibraryPlatformState,
+	LibraryStatus,
+} from "../types/library";
 import type { Mission } from "../types/mission";
 import { AddGameModal } from "./AddGameModal";
 import { CapturePhotoModal } from "./CapturePhotoModal";
@@ -68,9 +77,32 @@ const STATUS_OPTIONS: { value: LibraryStatus; label: string }[] = [
 
 const PAGE_SIZE = 50;
 
+/**
+ * Build a flat LibraryEntry (the shape the rest of the app — missions,
+ * briefings — speaks) from a grouped game plus one of its platform states.
+ * This is a per-platform projection, NOT aggregation: each entry maps 1:1 to a
+ * library row the backend already gave us.
+ */
+function toEntry(game: Game, state: LibraryPlatformState): LibraryEntry {
+	return {
+		publicId: state.publicId,
+		game,
+		platform: state.platform,
+		status: state.status,
+		acquiredAt: state.acquiredAt,
+		lastPlayedAt: state.lastPlayedAt,
+		missionNextAction: state.missionNextAction,
+		notes: state.notes,
+		createdAt: state.createdAt,
+		updatedAt: state.updatedAt,
+	};
+}
+
 export function LibraryPage() {
 	const navigate = useNavigate();
 	const [statusFilter, setStatusFilter] = useState("all");
+	// How many pages (of PAGE_SIZE) to request; bumped by "Load more".
+	const [pageCount, setPageCount] = useState(1);
 	const [expandedIds, setExpandedIds] = useState<string[]>([]);
 	const [manualModalOpened, setManualModalOpened] = useState(false);
 	const [textModalOpened, setTextModalOpened] = useState(false);
@@ -81,24 +113,31 @@ export function LibraryPage() {
 
 	// View mode: viewing an existing mission's briefing
 	const [briefingMission, setBriefingMission] = useState<Mission | null>(null);
-	// Preview mode: starting a mission (briefing is fetched inside the modal,
-	// after the user picks quick vs deep — no pre-fetch here).
+	// Preview mode: starting a mission for a specific platform entry. The
+	// briefing is fetched inside the modal after the user picks quick vs deep.
 	const [previewEntry, setPreviewEntry] = useState<LibraryEntry | null>(null);
 
 	const [debriefMission, setDebriefMission] = useState<Mission | null>(null);
 
 	const queryParams = {
 		status: statusFilter === "all" ? undefined : statusFilter,
-		limit: PAGE_SIZE,
+		limit: PAGE_SIZE * pageCount,
 		offset: 0,
 	};
 
-	const { data, isLoading } = useLibrary(queryParams);
+	const { data, isLoading, isError, error, refetch } = useLibrary(queryParams);
 	const { data: activeMission } = useActiveMission();
 	const updateMutation = useUpdateEntry();
 	const deleteMutation = useDeleteEntry();
 
-	const entries = data?.items ?? [];
+	const groups = data?.items ?? [];
+	const total = data?.total ?? 0;
+	const hasMore = groups.length < total;
+
+	const selectStatus = (value: string) => {
+		setStatusFilter(value);
+		setPageCount(1);
+	};
 
 	if (isLoading) {
 		return (
@@ -145,7 +184,7 @@ export function LibraryPage() {
 						key={tab.value}
 						variant={statusFilter === tab.value ? "filled" : "default"}
 						size="xs"
-						onClick={() => setStatusFilter(tab.value)}
+						onClick={() => selectStatus(tab.value)}
 					>
 						{tab.label}
 					</Button>
@@ -185,7 +224,9 @@ export function LibraryPage() {
 				</Card>
 			)}
 
-			{entries.length === 0 ? (
+			{isError ? (
+				<ErrorState title="Couldn't load your library" error={error} onRetry={() => refetch()} />
+			) : groups.length === 0 ? (
 				<Text c="dimmed" ta="center" py="xl">
 					Your library is empty. Use Quick Add to add your first game!
 				</Text>
@@ -196,46 +237,41 @@ export function LibraryPage() {
 					striped
 					highlightOnHover
 					noRecordsText="No games match this filter"
-					records={entries}
-					idAccessor="publicId"
+					records={groups}
+					idAccessor="game.publicId"
 					columns={[
 						{
 							accessor: "game.title",
 							title: "Game",
-							render: (entry: LibraryEntry) => (
+							render: (group: LibraryGameGroup) => (
 								<Text size="sm" fw={500}>
-									{entry.game.title}
+									{group.game.title}
 								</Text>
 							),
 						},
 						{
-							accessor: "platform.label",
-							title: "Platform",
-							render: (entry: LibraryEntry) => <Text size="sm">{entry.platform.label}</Text>,
-						},
-						{
-							accessor: "status",
-							title: "Status",
-							render: (entry: LibraryEntry) => (
-								<Badge color={STATUS_COLORS[entry.status] ?? "gray"} variant="light">
-									{entry.status}
-								</Badge>
+							accessor: "platforms",
+							title: "Platforms",
+							render: (group: LibraryGameGroup) => (
+								<Group gap={4}>
+									{group.platforms.map((state) => (
+										<Badge
+											key={state.publicId}
+											color={STATUS_COLORS[state.status] ?? "gray"}
+											variant="light"
+											size="sm"
+										>
+											{state.platform.label}: {state.status}
+										</Badge>
+									))}
+								</Group>
 							),
 						},
 						{
-							accessor: "notes",
-							title: "Notes",
-							render: (entry: LibraryEntry) => (
-								<Text size="xs" c="dimmed" lineClamp={1}>
-									{entry.notes ?? "--"}
-								</Text>
-							),
-						},
-						{
-							accessor: "createdAt",
+							accessor: "game.createdAt",
 							title: "Added",
-							render: (entry: LibraryEntry) => (
-								<Text size="xs">{dayjs(entry.createdAt).format("MMM D, YYYY")}</Text>
+							render: (group: LibraryGameGroup) => (
+								<Text size="xs">{dayjs(group.game.createdAt).format("MMM D, YYYY")}</Text>
 							),
 						},
 					]}
@@ -246,12 +282,12 @@ export function LibraryPage() {
 							onRecordIdsChange: setExpandedIds,
 						},
 						content: ({ record }) => (
-							<ExpandedRow
-								entry={record}
-								onUpdate={async (entryData) => {
+							<ExpandedGameRow
+								group={record}
+								onUpdate={async (entryPublicId, entryData) => {
 									try {
 										await updateMutation.mutateAsync({
-											publicId: record.publicId,
+											publicId: entryPublicId,
 											data: entryData,
 										});
 										notifications.show({
@@ -259,7 +295,6 @@ export function LibraryPage() {
 											message: `"${record.game.title}" has been updated.`,
 											color: "green",
 										});
-										setExpandedIds([]);
 									} catch (err) {
 										notifications.show({
 											title: "Update failed",
@@ -268,9 +303,9 @@ export function LibraryPage() {
 										});
 									}
 								}}
-								onDelete={async () => {
+								onDelete={async (entryPublicId) => {
 									try {
-										await deleteMutation.mutateAsync(record.publicId);
+										await deleteMutation.mutateAsync(entryPublicId);
 										notifications.show({
 											title: "Entry deleted",
 											message: `"${record.game.title}" has been removed.`,
@@ -284,12 +319,20 @@ export function LibraryPage() {
 										});
 									}
 								}}
-								onStartMission={() => setPreviewEntry(record)}
+								onStartMission={(state) => setPreviewEntry(toEntry(record.game, state))}
 								isPending={updateMutation.isPending || deleteMutation.isPending}
 							/>
 						),
 					}}
 				/>
+			)}
+
+			{!isError && hasMore && (
+				<Group justify="center">
+					<Button variant="default" loading={isLoading} onClick={() => setPageCount((c) => c + 1)}>
+						Load more ({groups.length} of {total})
+					</Button>
+				</Group>
 			)}
 
 			<AddGameModal opened={manualModalOpened} onClose={() => setManualModalOpened(false)} />
@@ -354,87 +397,255 @@ export function LibraryPage() {
 }
 
 // ---------------------------------------------------------------------------
-// Expanded row editor
+// Expanded game row: one block per owned platform + an "add platform" form
 // ---------------------------------------------------------------------------
 
-interface ExpandedRowProps {
-	entry: LibraryEntry;
-	onUpdate: (data: { status?: LibraryStatus; notes?: string }) => Promise<void>;
-	onDelete: () => Promise<void>;
-	onStartMission: () => void;
+interface ExpandedGameRowProps {
+	group: LibraryGameGroup;
+	onUpdate: (
+		entryPublicId: string,
+		data: { status?: LibraryStatus; notes?: string },
+	) => Promise<void>;
+	onDelete: (entryPublicId: string) => Promise<void>;
+	onStartMission: (state: LibraryPlatformState) => void;
 	isPending: boolean;
 }
 
-function ExpandedRow({ entry, onUpdate, onDelete, onStartMission, isPending }: ExpandedRowProps) {
-	const [editStatus, setEditStatus] = useState<string | null>(entry.status);
-	const [editNotes, setEditNotes] = useState(entry.notes ?? "");
-	const [editGenres, setEditGenres] = useState<string[]>(entry.game.genres ?? []);
+function ExpandedGameRow({
+	group,
+	onUpdate,
+	onDelete,
+	onStartMission,
+	isPending,
+}: ExpandedGameRowProps) {
+	return (
+		<Stack p="md" gap="md">
+			{group.game.genres && group.game.genres.length > 0 && (
+				<div>
+					<Text size="sm" fw={500} mb={4}>
+						Genres
+					</Text>
+					<Group gap="xs">
+						{group.game.genres.map((g) => (
+							<Badge key={g} variant="light" size="sm">
+								{g}
+							</Badge>
+						))}
+					</Group>
+				</div>
+			)}
+
+			{group.platforms.map((state) => (
+				<PlatformRow
+					key={state.publicId}
+					game={group.game}
+					state={state}
+					onUpdate={onUpdate}
+					onDelete={onDelete}
+					onStartMission={onStartMission}
+					isPending={isPending}
+				/>
+			))}
+
+			<Divider />
+
+			<AddPlatformRow group={group} />
+		</Stack>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// Per-platform editor (status, notes, start mission, remove)
+// ---------------------------------------------------------------------------
+
+interface PlatformRowProps {
+	game: Game;
+	state: LibraryPlatformState;
+	onUpdate: (
+		entryPublicId: string,
+		data: { status?: LibraryStatus; notes?: string },
+	) => Promise<void>;
+	onDelete: (entryPublicId: string) => Promise<void>;
+	onStartMission: (state: LibraryPlatformState) => void;
+	isPending: boolean;
+}
+
+function PlatformRow({
+	game,
+	state,
+	onUpdate,
+	onDelete,
+	onStartMission,
+	isPending,
+}: PlatformRowProps) {
+	const [editStatus, setEditStatus] = useState<string | null>(state.status);
+	const [editNotes, setEditNotes] = useState(state.notes ?? "");
 	const { data: activeMission } = useActiveMission();
-	const updateGameMutation = useUpdateGame();
-	const { data: genreOptions = [] } = useGameGenres();
 
 	const hasActiveMission = activeMission != null;
-	const isThisEntryActive = activeMission?.libraryEntry.publicId === entry.publicId;
+	const isThisEntryActive = activeMission?.libraryEntry.publicId === state.publicId;
 
 	const handleSave = async () => {
-		// Update game genres if changed
-		const prev = [...(entry.game.genres ?? [])].sort();
-		const next = [...editGenres].sort();
-		if (JSON.stringify(prev) !== JSON.stringify(next)) {
-			await updateGameMutation.mutateAsync({
-				publicId: entry.game.publicId,
-				data: { genres: editGenres },
-			});
-		}
-		// Update library entry fields
-		await onUpdate({
+		// Game metadata (title/genres) is immutable — it's a cache of IGDB.
+		// Only this platform entry's own fields are editable here.
+		await onUpdate(state.publicId, {
 			status: (editStatus as LibraryStatus) ?? undefined,
 			notes: editNotes.trim() || undefined,
 		});
 	};
 
-	return (
-		<Stack p="md" gap="sm">
-			{entry.missionNextAction && (
-				<Text size="sm" c="dimmed">
-					Next objective: {entry.missionNextAction}
+	const confirmDelete = () => {
+		modals.openConfirmModal({
+			title: "Delete library entry",
+			centered: true,
+			children: (
+				<Text size="sm">
+					Permanently remove "{game.title}" on {state.platform.label} from your library? This can't
+					be undone.
 				</Text>
-			)}
-			<Group>
-				<Select
-					label="Status"
-					data={STATUS_OPTIONS}
-					value={editStatus}
-					onChange={setEditStatus}
-					w={200}
+			),
+			labels: { confirm: "Delete entry", cancel: "Cancel" },
+			confirmProps: { color: "red" },
+			onConfirm: () => {
+				void onDelete(state.publicId);
+			},
+		});
+	};
+
+	return (
+		<Card withBorder p="sm" radius="sm">
+			<Stack gap="sm">
+				<Group gap="xs">
+					<Badge variant="filled">{state.platform.label}</Badge>
+					{state.missionNextAction && (
+						<Text size="sm" c="dimmed">
+							Next objective: {state.missionNextAction}
+						</Text>
+					)}
+				</Group>
+				<Group align="flex-start">
+					<Select
+						label="Status"
+						data={STATUS_OPTIONS}
+						value={editStatus}
+						onChange={setEditStatus}
+						w={200}
+					/>
+				</Group>
+				<Textarea
+					label="Notes"
+					value={editNotes}
+					onChange={(e) => setEditNotes(e.currentTarget.value)}
+					autosize
+					minRows={2}
+					maxRows={4}
 				/>
-			</Group>
-			<TagsInput
-				label="Genres"
-				placeholder="Type a genre and press Enter"
-				data={genreOptions}
-				value={editGenres}
-				onChange={setEditGenres}
+				<Group>
+					<Button size="xs" loading={isPending} onClick={handleSave}>
+						Save
+					</Button>
+					<Button
+						size="xs"
+						color="teal"
+						disabled={hasActiveMission}
+						onClick={() => onStartMission(state)}
+					>
+						{isThisEntryActive ? "Mission active" : "Start Mission"}
+					</Button>
+					<Button
+						size="xs"
+						color="red"
+						variant="light"
+						loading={isPending}
+						onClick={confirmDelete}
+					>
+						Remove
+					</Button>
+				</Group>
+			</Stack>
+		</Card>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// Add-platform affordance: own this game on an additional platform
+// ---------------------------------------------------------------------------
+
+function AddPlatformRow({ group }: { group: LibraryGameGroup }) {
+	const { data: platforms = [] } = usePlatforms();
+	const addMutation = useAddToLibrary();
+	const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+	const ownedIds = useMemo(
+		() => new Set(group.platforms.map((p) => p.platform.id)),
+		[group.platforms],
+	);
+
+	const options = useMemo(
+		() =>
+			platforms
+				.filter((p) => !ownedIds.has(p.id))
+				.map((p) => ({ value: String(p.id), label: p.label })),
+		[platforms, ownedIds],
+	);
+
+	if (options.length === 0) {
+		return (
+			<Text size="xs" c="dimmed">
+				Owned on every available platform.
+			</Text>
+		);
+	}
+
+	const handleAdd = async () => {
+		if (selectedIds.length === 0) {
+			notifications.show({
+				title: "No platform selected",
+				message: "Pick at least one platform to add.",
+				color: "red",
+			});
+			return;
+		}
+		try {
+			await addMutation.mutateAsync({
+				gamePublicId: group.game.publicId,
+				platformIds: selectedIds.map(Number),
+			});
+			notifications.show({
+				title: "Platform added",
+				message: `"${group.game.title}" is now in your library on more platforms.`,
+				color: "green",
+			});
+			setSelectedIds([]);
+		} catch (err) {
+			notifications.show({
+				title: "Failed to add platform",
+				message: err instanceof Error ? err.message : "An unexpected error occurred",
+				color: "red",
+			});
+		}
+	};
+
+	return (
+		<Group align="flex-end" gap="sm">
+			<MultiSelect
+				label="Add platform"
+				placeholder="Pick platforms you also own"
+				data={options}
+				value={selectedIds}
+				onChange={setSelectedIds}
+				searchable
+				w={280}
 			/>
-			<Textarea
-				label="Notes"
-				value={editNotes}
-				onChange={(e) => setEditNotes(e.currentTarget.value)}
-				autosize
-				minRows={2}
-				maxRows={4}
-			/>
-			<Group>
-				<Button size="xs" loading={isPending || updateGameMutation.isPending} onClick={handleSave}>
-					Save
-				</Button>
-				<Button size="xs" color="teal" disabled={hasActiveMission} onClick={onStartMission}>
-					{isThisEntryActive ? "Mission active" : "Start Mission"}
-				</Button>
-				<Button size="xs" color="red" variant="light" loading={isPending} onClick={onDelete}>
-					Delete
-				</Button>
-			</Group>
-		</Stack>
+			<Button
+				size="xs"
+				variant="light"
+				leftSection={<IconPlus size={14} />}
+				loading={addMutation.isPending}
+				onClick={handleAdd}
+			>
+				Add
+			</Button>
+		</Group>
 	);
 }

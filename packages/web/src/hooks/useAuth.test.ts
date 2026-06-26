@@ -1,6 +1,13 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { apiFetch, clearTokens, getAccessToken, getRefreshToken, saveTokens } from "../lib/api";
+import {
+	apiFetch,
+	authFetch,
+	clearTokens,
+	getAccessToken,
+	refreshSession,
+	saveTokens,
+} from "../lib/api";
 import { createWrapper } from "../test/wrapper";
 import { useAuth } from "./useAuth";
 
@@ -10,8 +17,9 @@ import { useAuth } from "./useAuth";
 
 vi.mock("../lib/api", () => ({
 	apiFetch: vi.fn(),
+	authFetch: vi.fn(),
 	getAccessToken: vi.fn(() => null),
-	getRefreshToken: vi.fn(() => null),
+	refreshSession: vi.fn(async () => false),
 	saveTokens: vi.fn(),
 	clearTokens: vi.fn(),
 }));
@@ -25,8 +33,9 @@ vi.mock("../contexts/AuthContext", () => ({
 }));
 
 const mockedApiFetch = vi.mocked(apiFetch);
+const mockedAuthFetch = vi.mocked(authFetch);
 const mockedGetAccessToken = vi.mocked(getAccessToken);
-const mockedGetRefreshToken = vi.mocked(getRefreshToken);
+const mockedRefreshSession = vi.mocked(refreshSession);
 const mockedSaveTokens = vi.mocked(saveTokens);
 const mockedClearTokens = vi.mocked(clearTokens);
 
@@ -47,7 +56,7 @@ const fakeUser = {
 
 const fakeTokens = {
 	access_token: "acc-123",
-	refresh_token: "ref-456",
+	refresh_token: "",
 	token_type: "bearer",
 };
 
@@ -59,29 +68,30 @@ describe("useAuth", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockedGetAccessToken.mockReturnValue(null);
-		mockedGetRefreshToken.mockReturnValue(null);
+		mockedRefreshSession.mockResolvedValue(false);
 	});
 
-	it("returns user=null and isAuthenticated=false when no access token", async () => {
-		const { result } = renderHook(() => useAuth(), {
-			wrapper: createWrapper(),
-		});
+	it("bootstraps via silent refresh; user=null when refresh fails", async () => {
+		const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
 
 		await waitFor(() => {
 			expect(result.current.isLoading).toBe(false);
 		});
 
+		expect(mockedRefreshSession).toHaveBeenCalledOnce();
 		expect(result.current.user).toBeNull();
 		expect(result.current.isAuthenticated).toBe(false);
 	});
 
-	it("fetches user when access token is present", async () => {
-		mockedGetAccessToken.mockReturnValue("acc-123");
+	it("restores the session when bootstrap refresh succeeds", async () => {
+		// Refresh succeeds and populates the in-memory token.
+		mockedRefreshSession.mockImplementation(async () => {
+			mockedGetAccessToken.mockReturnValue("acc-123");
+			return true;
+		});
 		mockedApiFetch.mockResolvedValueOnce(fakeUser);
 
-		const { result } = renderHook(() => useAuth(), {
-			wrapper: createWrapper(),
-		});
+		const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
 
 		await waitFor(() => {
 			expect(result.current.user).toEqual(fakeUser);
@@ -91,97 +101,74 @@ describe("useAuth", () => {
 		expect(mockedApiFetch).toHaveBeenCalledWith("/v1/auth/me");
 	});
 
-	it("login calls apiFetch POST /v1/auth/login and saveTokens", async () => {
-		mockedApiFetch.mockResolvedValueOnce(fakeTokens);
+	it("does not call refresh during bootstrap when a token is already present", async () => {
+		mockedGetAccessToken.mockReturnValue("acc-123");
+		mockedApiFetch.mockResolvedValueOnce(fakeUser);
 
-		const { result } = renderHook(() => useAuth(), {
-			wrapper: createWrapper(),
+		const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
+
+		await waitFor(() => {
+			expect(result.current.user).toEqual(fakeUser);
 		});
+
+		expect(mockedRefreshSession).not.toHaveBeenCalled();
+	});
+
+	it("login calls authFetch /v1/auth/login and saves only the access token", async () => {
+		mockedAuthFetch.mockResolvedValueOnce(fakeTokens);
+
+		const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
 
 		await act(async () => {
 			await result.current.login("player@test.com", "secret123");
 		});
 
-		expect(mockedApiFetch).toHaveBeenCalledWith("/v1/auth/login", {
-			method: "POST",
-			body: JSON.stringify({
-				email: "player@test.com",
-				password: "secret123",
-			}),
+		expect(mockedAuthFetch).toHaveBeenCalledWith("/v1/auth/login", {
+			email: "player@test.com",
+			password: "secret123",
 		});
-		expect(mockedSaveTokens).toHaveBeenCalledWith("acc-123", "ref-456");
+		expect(mockedSaveTokens).toHaveBeenCalledWith("acc-123");
 	});
 
-	it("register calls apiFetch POST /v1/auth/register and saveTokens", async () => {
-		mockedApiFetch.mockResolvedValueOnce(fakeTokens);
+	it("register calls authFetch /v1/auth/register and saves only the access token", async () => {
+		mockedAuthFetch.mockResolvedValueOnce(fakeTokens);
 
-		const { result } = renderHook(() => useAuth(), {
-			wrapper: createWrapper(),
-		});
+		const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
 
 		await act(async () => {
 			await result.current.register("player@test.com", "secret123", "Player");
 		});
 
-		expect(mockedApiFetch).toHaveBeenCalledWith("/v1/auth/register", {
-			method: "POST",
-			body: JSON.stringify({
-				email: "player@test.com",
-				password: "secret123",
-				display_name: "Player",
-			}),
+		expect(mockedAuthFetch).toHaveBeenCalledWith("/v1/auth/register", {
+			email: "player@test.com",
+			password: "secret123",
+			display_name: "Player",
 		});
-		expect(mockedSaveTokens).toHaveBeenCalledWith("acc-123", "ref-456");
+		expect(mockedSaveTokens).toHaveBeenCalledWith("acc-123");
 	});
 
-	it("logout calls apiFetch POST /v1/auth/logout and clearTokens", async () => {
-		mockedGetRefreshToken.mockReturnValue("ref-456");
-		mockedApiFetch.mockResolvedValueOnce(undefined);
+	it("logout calls authFetch /v1/auth/logout (clears the cookie) and clearTokens", async () => {
+		mockedAuthFetch.mockResolvedValueOnce(undefined);
 
-		const { result } = renderHook(() => useAuth(), {
-			wrapper: createWrapper(),
-		});
+		const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
 
 		await act(async () => {
 			await result.current.logout();
 		});
 
-		expect(mockedApiFetch).toHaveBeenCalledWith("/v1/auth/logout", {
-			method: "POST",
-			body: JSON.stringify({ refresh_token: "ref-456" }),
-		});
+		expect(mockedAuthFetch).toHaveBeenCalledWith("/v1/auth/logout", {});
 		expect(mockedClearTokens).toHaveBeenCalledOnce();
 	});
 
-	it("logout still clears tokens if API call fails", async () => {
-		mockedGetRefreshToken.mockReturnValue("ref-456");
-		mockedApiFetch.mockRejectedValueOnce(new Error("Network error"));
+	it("logout still clears the in-memory token if the API call fails", async () => {
+		mockedAuthFetch.mockRejectedValueOnce(new Error("Network error"));
 
-		const { result } = renderHook(() => useAuth(), {
-			wrapper: createWrapper(),
-		});
+		const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
 
 		await act(async () => {
 			await result.current.logout();
 		});
 
-		// Even though the API call failed, clearTokens should still be called
-		expect(mockedClearTokens).toHaveBeenCalledOnce();
-	});
-
-	it("logout skips API call when no refresh token", async () => {
-		mockedGetRefreshToken.mockReturnValue(null);
-
-		const { result } = renderHook(() => useAuth(), {
-			wrapper: createWrapper(),
-		});
-
-		await act(async () => {
-			await result.current.logout();
-		});
-
-		// apiFetch should NOT have been called for /v1/auth/logout
-		expect(mockedApiFetch).not.toHaveBeenCalledWith("/v1/auth/logout", expect.anything());
 		expect(mockedClearTokens).toHaveBeenCalledOnce();
 	});
 
@@ -189,9 +176,7 @@ describe("useAuth", () => {
 		mockedGetAccessToken.mockReturnValue("acc-123");
 		mockedApiFetch.mockResolvedValueOnce(fakeUser);
 
-		const { result } = renderHook(() => useAuth(), {
-			wrapper: createWrapper(),
-		});
+		const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
 
 		await waitFor(() => {
 			expect(result.current.isAuthenticated).toBe(true);

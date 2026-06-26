@@ -127,7 +127,12 @@ async def process_capture(
             error=str(exc),
             exc_info=True,
         )
-        await capture_repo.update_status(capture.id, "failed", error_message=str(exc))
+        # Persist a generic, user-facing message. The full exception (with its
+        # traceback) is logged server-side above; raw internals must never reach
+        # the client via the capture's error_message.
+        await capture_repo.update_status(
+            capture.id, "failed", error_message="Processing failed. Please try again."
+        )
 
     return capture
 

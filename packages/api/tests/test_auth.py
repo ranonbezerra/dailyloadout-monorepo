@@ -276,6 +276,133 @@ class TestMe:
         assert resp.status_code == 401
 
 
+_COOKIE_HEADER = {"X-Auth-Mode": "cookie"}
+_COOKIE_NAME = "dl_refresh_token"
+
+
+class TestCookieMode:
+    """Web cookie-mode contract (X-Auth-Mode: cookie)."""
+
+    async def test_register_sets_httponly_cookie_and_empty_body(
+        self, async_client: AsyncClient
+    ) -> None:
+        resp = await async_client.post(
+            "/v1/auth/register",
+            json={
+                "email": "cookie-reg@example.com",
+                "password": "SecurePass1",
+                "display_name": "Cookie Reg",
+            },
+            headers=_COOKIE_HEADER,
+        )
+        assert resp.status_code == 201
+        # Body never exposes the refresh token in cookie mode.
+        assert resp.json()["refresh_token"] == ""
+        assert resp.json()["access_token"]
+        # An httpOnly refresh cookie was set.
+        assert _COOKIE_NAME in resp.cookies
+        set_cookie = resp.headers.get("set-cookie", "")
+        assert "httponly" in set_cookie.lower()
+
+    async def test_login_sets_httponly_cookie_and_empty_body(
+        self, async_client: AsyncClient
+    ) -> None:
+        await async_client.post(
+            "/v1/auth/register",
+            json={
+                "email": "cookie-login@example.com",
+                "password": "SecurePass1",
+                "display_name": "Cookie Login",
+            },
+            headers=_COOKIE_HEADER,
+        )
+        resp = await async_client.post(
+            "/v1/auth/login",
+            json={"email": "cookie-login@example.com", "password": "SecurePass1"},
+            headers=_COOKIE_HEADER,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["refresh_token"] == ""
+        assert resp.json()["access_token"]
+        assert _COOKIE_NAME in resp.cookies
+
+    async def test_refresh_from_cookie_only_rotates_cookie(
+        self, async_client: AsyncClient
+    ) -> None:
+        # The async_client persists cookies across requests like a browser.
+        reg = await async_client.post(
+            "/v1/auth/register",
+            json={
+                "email": "cookie-refresh@example.com",
+                "password": "SecurePass1",
+                "display_name": "Cookie Refresh",
+            },
+            headers=_COOKIE_HEADER,
+        )
+        old_cookie = reg.cookies[_COOKIE_NAME]
+
+        # POST with no body, just the header — the cookie carries the token.
+        resp = await async_client.post("/v1/auth/refresh", headers=_COOKIE_HEADER)
+        assert resp.status_code == 200
+        assert resp.json()["refresh_token"] == ""
+        assert resp.json()["access_token"]
+        # The cookie was rotated to a new value.
+        assert _COOKIE_NAME in resp.cookies
+        assert resp.cookies[_COOKIE_NAME] != old_cookie
+
+    async def test_refresh_without_cookie_or_body_returns_401(
+        self, async_client: AsyncClient
+    ) -> None:
+        resp = await async_client.post("/v1/auth/refresh", headers=_COOKIE_HEADER)
+        assert resp.status_code == 401
+
+    async def test_logout_clears_cookie_and_revokes(self, async_client: AsyncClient) -> None:
+        await async_client.post(
+            "/v1/auth/register",
+            json={
+                "email": "cookie-logout@example.com",
+                "password": "SecurePass1",
+                "display_name": "Cookie Logout",
+            },
+            headers=_COOKIE_HEADER,
+        )
+        resp = await async_client.post("/v1/auth/logout", headers=_COOKIE_HEADER)
+        assert resp.status_code == 200
+        # The Set-Cookie header clears the cookie (max-age=0 / expires in past).
+        set_cookie = resp.headers.get("set-cookie", "")
+        assert _COOKIE_NAME in set_cookie
+
+        # After logout the cookie is gone, so a fresh refresh has no token → 401.
+        async_client.cookies.delete(_COOKIE_NAME)
+        resp_refresh = await async_client.post("/v1/auth/refresh", headers=_COOKIE_HEADER)
+        assert resp_refresh.status_code == 401
+
+    async def test_body_mode_still_returns_both_tokens(self, async_client: AsyncClient) -> None:
+        """Regression: without the header the app contract is unchanged."""
+        resp = await async_client.post(
+            "/v1/auth/register",
+            json={
+                "email": "body-mode@example.com",
+                "password": "SecurePass1",
+                "display_name": "Body Mode",
+            },
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["access_token"]
+        assert data["refresh_token"]  # non-empty
+        # No refresh cookie is set in body mode.
+        assert _COOKIE_NAME not in resp.cookies
+
+        # Body-mode refresh reads the token from the JSON body as before.
+        resp_refresh = await async_client.post(
+            "/v1/auth/refresh",
+            json={"refresh_token": data["refresh_token"]},
+        )
+        assert resp_refresh.status_code == 200
+        assert resp_refresh.json()["refresh_token"]
+
+
 class TestRefreshDeletedUser:
     """Refresh token for a deleted user returns 401."""
 

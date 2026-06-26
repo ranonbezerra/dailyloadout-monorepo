@@ -100,7 +100,7 @@ class _LibraryListPageState extends State<LibraryListPage> {
                 }
 
                 if (state is LibraryLoaded) {
-                  if (state.entries.isEmpty) {
+                  if (state.groups.isEmpty) {
                     return _EmptyState(
                       onAdd: () => context.push('/library/add'),
                     );
@@ -113,18 +113,14 @@ class _LibraryListPageState extends State<LibraryListPage> {
                         horizontal: 16,
                         vertical: 8,
                       ),
-                      itemCount: state.entries.length,
+                      itemCount: state.groups.length,
                       itemBuilder: (context, index) {
-                        final entry = state.entries[index];
-                        return _LibraryEntryCard(
-                          entry: entry,
-                          onTap: () =>
-                              context.push('/library/${entry.publicId}'),
-                          onStartMission: entry.status == 'playing'
-                              ? () => context.push(
-                                  '/missions/briefing?entry=${entry.publicId}',
-                                )
-                              : null,
+                        final group = state.groups[index];
+                        return _LibraryGameCard(
+                          group: group,
+                          onStartMission: (entryPublicId) => context.push(
+                            '/missions/briefing?entry=$entryPublicId',
+                          ),
                         );
                       },
                     ),
@@ -210,14 +206,114 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-class _LibraryEntryCard extends StatelessWidget {
-  const _LibraryEntryCard({
-    required this.entry,
+/// One card per owned GAME, listing each platform the user owns it on.
+///
+/// Renders the grouped response as-is — no client-side grouping.
+class _LibraryGameCard extends StatelessWidget {
+  const _LibraryGameCard({required this.group, required this.onStartMission});
+
+  final LibraryGameGroup group;
+
+  /// Called with the chosen platform's entry public_id.
+  final void Function(String entryPublicId) onStartMission;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final genres = group.game.genres;
+    // The game header opens the first platform's entry detail; per-platform
+    // rows below open their own entry. Games themselves are immutable.
+    final firstEntryId = group.platforms.isNotEmpty
+        ? group.platforms.first.publicId
+        : null;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Game header (cover + title + read-only genres).
+            InkWell(
+              onTap: firstEntryId != null
+                  ? () => context.push('/library/$firstEntryId')
+                  : null,
+              borderRadius: BorderRadius.circular(8),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: SizedBox(
+                      width: 56,
+                      height: 72,
+                      child: group.game.coverUrl != null
+                          ? Image.network(
+                              group.game.coverUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) =>
+                                  const _CoverPlaceholder(),
+                            )
+                          : const _CoverPlaceholder(),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          group.game.title,
+                          style: theme.textTheme.titleSmall,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (genres != null && genres.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            genres.join(', '),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Divider(height: 1),
+            const SizedBox(height: 4),
+            // One row per owned platform.
+            for (final state in group.platforms)
+              _PlatformRow(
+                state: state,
+                onTap: () => context.push('/library/${state.publicId}'),
+                onStartMission: state.status == 'playing'
+                    ? () => onStartMission(state.publicId)
+                    : null,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A single platform row inside a game card: platform chip + status + actions.
+class _PlatformRow extends StatelessWidget {
+  const _PlatformRow({
+    required this.state,
     required this.onTap,
     this.onStartMission,
   });
 
-  final LibraryEntry entry;
+  final LibraryPlatformState state;
   final VoidCallback onTap;
   final VoidCallback? onStartMission;
 
@@ -225,70 +321,32 @@ class _LibraryEntryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              // Cover image or placeholder
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: SizedBox(
-                  width: 56,
-                  height: 72,
-                  child: entry.game.coverUrl != null
-                      ? Image.network(
-                          entry.game.coverUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              const _CoverPlaceholder(),
-                        )
-                      : const _CoverPlaceholder(),
-                ),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          children: [
+            Chip(
+              label: Text(state.platform.label),
+              visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              labelStyle: theme.textTheme.labelSmall,
+            ),
+            const SizedBox(width: 8),
+            _StatusChip(status: state.status),
+            const Spacer(),
+            if (onStartMission != null)
+              IconButton(
+                icon: const Icon(Icons.play_arrow),
+                onPressed: onStartMission,
+                tooltip: 'Start Mission',
+                iconSize: 20,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
               ),
-              const SizedBox(width: 12),
-              // Game info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      entry.game.title,
-                      style: theme.textTheme.titleSmall,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      entry.platform.label,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _StatusChip(status: entry.status),
-                  ],
-                ),
-              ),
-              if (entry.status == 'playing' && onStartMission != null)
-                IconButton(
-                  icon: const Icon(Icons.play_arrow),
-                  onPressed: onStartMission,
-                  tooltip: 'Start Mission',
-                  iconSize: 20,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(
-                    minWidth: 32,
-                    minHeight: 32,
-                  ),
-                ),
-              const Icon(Icons.chevron_right),
-            ],
-          ),
+          ],
         ),
       ),
     );

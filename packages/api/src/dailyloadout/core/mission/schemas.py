@@ -3,12 +3,31 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Literal
+from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from dailyloadout.core.library.schemas import LibraryEntryResponse
+
+
+class ExtractedState(BaseModel):
+    """Structured state extracted from a mission debrief by the LLM.
+
+    Mirrors the shape persisted by ``extract_debrief_state_task`` /
+    ``ConciergeService`` (see ``infrastructure.llm.base.ExtractedState``). All
+    fields are optional so older rows and partial extractions still validate;
+    unknown keys are ignored for forward/backward compatibility with the JSONB
+    column.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    location: str | None = None
+    next_action: str | None = None
+    level: str | None = None
+    current_quest: str | None = None
+
 
 # ---------------------------------------------------------------------------
 # Request schemas
@@ -92,13 +111,13 @@ class MissionResponse(BaseModel):
     mission_type: str = "regular"
     briefing_text: str | None = None
     debrief_text: str | None = None
-    extracted_state: dict[str, Any] | None = None
+    extracted_state: ExtractedState | None = None
     ended_via: str | None = None
     started_at: datetime
     ended_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
-    last_session_context: dict[str, Any] | None = None
+    last_session_context: ExtractedState | None = None
 
     model_config = {"from_attributes": True}
 
@@ -128,7 +147,7 @@ class BriefingPreviewResponse(BaseModel):
 
     library_entry: LibraryEntryResponse
     briefing_text: str | None = None
-    last_session_context: dict[str, Any] | None = None
+    last_session_context: ExtractedState | None = None
 
     model_config = {"from_attributes": True}
 
@@ -145,6 +164,7 @@ __all__ = [
     "BriefingPreviewRequest",
     "BriefingPreviewResponse",
     "EndedVia",
+    "ExtractedState",
     "MissionDebriefRequest",
     "MissionEndRequest",
     "MissionListItem",

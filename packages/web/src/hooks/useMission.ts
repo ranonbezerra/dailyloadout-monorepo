@@ -18,6 +18,7 @@ import {
 
 const MISSIONS_KEY = ["missions"] as const;
 const LIBRARY_KEY = ["library"] as const;
+const STATS_KEY = ["stats"] as const;
 
 // ---------------------------------------------------------------------------
 // Queries
@@ -70,6 +71,7 @@ export function useRetroactiveDebrief() {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: MISSIONS_KEY });
 			queryClient.invalidateQueries({ queryKey: LIBRARY_KEY });
+			queryClient.invalidateQueries({ queryKey: STATS_KEY });
 		},
 	});
 }
@@ -86,6 +88,7 @@ export function useStartMission() {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: MISSIONS_KEY });
 			queryClient.invalidateQueries({ queryKey: LIBRARY_KEY });
+			queryClient.invalidateQueries({ queryKey: STATS_KEY });
 		},
 	});
 }
@@ -99,6 +102,7 @@ export function useSubmitDebrief() {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: MISSIONS_KEY });
 			queryClient.invalidateQueries({ queryKey: LIBRARY_KEY });
+			queryClient.invalidateQueries({ queryKey: STATS_KEY });
 		},
 	});
 }
@@ -112,6 +116,7 @@ export function useEndMission() {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: MISSIONS_KEY });
 			queryClient.invalidateQueries({ queryKey: LIBRARY_KEY });
+			queryClient.invalidateQueries({ queryKey: STATS_KEY });
 		},
 	});
 }

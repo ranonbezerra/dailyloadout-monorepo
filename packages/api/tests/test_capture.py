@@ -467,4 +467,4 @@ class TestMixedCandidateFlow:
         data = resp.json()
         assert data["total"] == 1
         assert data["items"][0]["game"]["title"] == "Hades"
-        assert data["items"][0]["status"] == "playing"
+        assert data["items"][0]["platforms"][0]["status"] == "playing"

@@ -42,6 +42,16 @@ class _PlayPageState extends State<PlayPage> {
               builder: (context, state) {
                 final hasActiveMission =
                     state is ActiveMissionLoaded && state.mission != null;
+                final hasError = state is MissionError;
+
+                // While the mission state is unknown (loading or errored) we
+                // can't safely confirm there is no active mission, so the
+                // start-doors stay locked to avoid double-starting.
+                final doorsDisabledHint = hasActiveMission
+                    ? 'Finish your active mission first'
+                    : hasError
+                    ? 'Could not check your active mission'
+                    : null;
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -50,6 +60,11 @@ class _PlayPageState extends State<PlayPage> {
                       _ActiveMissionCard(mission: state.mission!)
                     else if (state is MissionLoading)
                       const _ActiveMissionPlaceholder()
+                    else if (hasError)
+                      _ActiveMissionError(
+                        message: state.message,
+                        onRetry: _onRefresh,
+                      )
                     else
                       const _NoActiveMissionCard(),
                     const SizedBox(height: 24),
@@ -63,10 +78,9 @@ class _PlayPageState extends State<PlayPage> {
                       title: "What's the move?",
                       subtitle: 'One tap — we pick, you play.',
                       accent: DLColors.coral,
-                      // Starting a new mission is blocked while one is active.
-                      disabledHint: hasActiveMission
-                          ? 'Finish your active mission first'
-                          : null,
+                      // Starting a new mission is blocked while one is active
+                      // or while we couldn't confirm there isn't one.
+                      disabledHint: doorsDisabledHint,
                       onTap: () => context.go('/play/loadout'),
                     ),
                     const SizedBox(height: 12),
@@ -75,9 +89,7 @@ class _PlayPageState extends State<PlayPage> {
                       title: "I'll choose",
                       subtitle: 'Pick a game yourself.',
                       accent: DLColors.violet,
-                      disabledHint: hasActiveMission
-                          ? 'Finish your active mission first'
-                          : null,
+                      disabledHint: doorsDisabledHint,
                       onTap: () => context.go('/library'),
                     ),
                     if (widget.conciergeEnabled) ...[
@@ -230,6 +242,50 @@ class _NoActiveMissionCard extends StatelessWidget {
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: colors.onSurfaceVariant,
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Error card shown when the active mission could not be loaded.
+class _ActiveMissionError extends StatelessWidget {
+  const _ActiveMissionError({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.error_outline, size: 40, color: colors.error),
+            const SizedBox(height: 12),
+            Text(
+              "Couldn't load your mission",
+              style: theme.textTheme.titleMedium,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              message,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colors.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
             ),
           ],
         ),

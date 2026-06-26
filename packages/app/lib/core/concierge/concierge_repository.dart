@@ -26,7 +26,9 @@ class ConciergeRepository {
       cancelToken: cancelToken,
       options: Options(
         responseType: ResponseType.stream,
-        receiveTimeout: llmReceiveTimeout,
+        // Inter-chunk timeout. Use the longer deep-briefing budget so slow
+        // tool/research turns aren't aborted mid-stream.
+        receiveTimeout: deepBriefingReceiveTimeout,
       ),
     );
 

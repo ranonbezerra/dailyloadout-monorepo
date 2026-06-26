@@ -1,6 +1,6 @@
 import type { Capture, CaptureListResponse } from "../types/capture";
 import type { LibraryEntry, LibraryStatus } from "../types/library";
-import { apiFetch, BASE_URL, getAccessToken } from "./api";
+import { apiFetch, fetchWithAuthRetry } from "./api";
 import { snakeToCamel } from "./case-convert";
 
 // ---------------------------------------------------------------------------
@@ -29,15 +29,8 @@ export async function transcribeAudio(audioBlob: Blob): Promise<TranscribeResult
 	const formData = new FormData();
 	formData.append("file", audioBlob, "recording.webm");
 
-	const headers: Record<string, string> = {};
-	const accessToken = getAccessToken();
-	if (accessToken) {
-		headers.Authorization = `Bearer ${accessToken}`;
-	}
-
-	const res = await fetch(`${BASE_URL}/v1/captures/transcribe`, {
+	const res = await fetchWithAuthRetry("/v1/captures/transcribe", {
 		method: "POST",
-		headers,
 		body: formData,
 	});
 
@@ -58,15 +51,8 @@ export async function submitPhotoCapture(imageFile: File): Promise<Capture> {
 	const formData = new FormData();
 	formData.append("file", imageFile);
 
-	const headers: Record<string, string> = {};
-	const accessToken = getAccessToken();
-	if (accessToken) {
-		headers.Authorization = `Bearer ${accessToken}`;
-	}
-
-	const res = await fetch(`${BASE_URL}/v1/captures/photo`, {
+	const res = await fetchWithAuthRetry("/v1/captures/photo", {
 		method: "POST",
-		headers,
 		body: formData,
 	});
 
@@ -89,15 +75,8 @@ export async function submitLibraryImport(files: File[]): Promise<Capture> {
 		formData.append("files", file);
 	}
 
-	const headers: Record<string, string> = {};
-	const accessToken = getAccessToken();
-	if (accessToken) {
-		headers.Authorization = `Bearer ${accessToken}`;
-	}
-
-	const res = await fetch(`${BASE_URL}/v1/captures/library-import`, {
+	const res = await fetchWithAuthRetry("/v1/captures/library-import", {
 		method: "POST",
-		headers,
 		body: formData,
 	});
 

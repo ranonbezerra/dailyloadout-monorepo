@@ -19,6 +19,7 @@ import type { LibraryStatus } from "../types/library";
 
 const CAPTURES_KEY = ["captures"] as const;
 const LIBRARY_KEY = ["library"] as const;
+const STATS_KEY = ["stats"] as const;
 
 // ---------------------------------------------------------------------------
 // Queries
@@ -107,6 +108,7 @@ export function useBulkConfirmCandidates() {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: CAPTURES_KEY });
 			queryClient.invalidateQueries({ queryKey: LIBRARY_KEY });
+			queryClient.invalidateQueries({ queryKey: STATS_KEY });
 		},
 	});
 }
@@ -130,6 +132,7 @@ export function useConfirmCandidate() {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: CAPTURES_KEY });
 			queryClient.invalidateQueries({ queryKey: LIBRARY_KEY });
+			queryClient.invalidateQueries({ queryKey: STATS_KEY });
 		},
 	});
 }

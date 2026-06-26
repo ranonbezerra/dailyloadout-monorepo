@@ -6,7 +6,7 @@ from datetime import date, datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 # Valid statuses for library entries.
 LibraryStatus = Literal["backlog", "playing", "paused", "completed", "dropped"]
@@ -40,10 +40,6 @@ class GameResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class GameUpdate(BaseModel):
-    genres: list[str] | None = None
-
-
 class GameSearchResponse(BaseModel):
     items: list[GameResponse]
     total: int
@@ -66,10 +62,22 @@ class PlatformResponse(BaseModel):
 # ---------------------------------------------------------------------------
 class LibraryEntryCreate(BaseModel):
     game_public_id: UUID
-    platform_id: int
+    platform_ids: list[int] = Field(min_length=1)
     status: LibraryStatus = "backlog"
     notes: str | None = None
     acquired_at: date | None = None
+
+    @field_validator("platform_ids")
+    @classmethod
+    def _dedupe_platform_ids(cls, value: list[int]) -> list[int]:
+        """Drop duplicate platform ids while preserving first-seen order."""
+        seen: set[int] = set()
+        deduped: list[int] = []
+        for platform_id in value:
+            if platform_id not in seen:
+                seen.add(platform_id)
+                deduped.append(platform_id)
+        return deduped
 
 
 class LibraryEntryUpdate(BaseModel):
@@ -100,15 +108,61 @@ class LibraryListResponse(BaseModel):
     offset: int
 
 
+# ---------------------------------------------------------------------------
+# Grouped-by-game library schemas
+# ---------------------------------------------------------------------------
+class LibraryPlatformState(BaseModel):
+    """A single per-platform play state for one game.
+
+    ``public_id`` is the underlying :class:`LibraryEntry`'s public id, so the
+    client can target this exact platform row for update / delete / mission
+    start while still seeing the game as one grouped item.
+    """
+
+    public_id: UUID
+    platform: PlatformResponse
+    status: str
+    acquired_at: date | None = None
+    last_played_at: datetime | None = None
+    mission_next_action: str | None = None
+    notes: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class LibraryGameGroup(BaseModel):
+    """One game the user owns, with all of its per-platform states nested."""
+
+    game: GameResponse
+    platforms: list[LibraryPlatformState]
+
+
+class LibraryGroupedResponse(BaseModel):
+    """Grouped library list: one item per distinct game.
+
+    ``total`` is the number of distinct GAMES (game-level pagination); ``limit``
+    and ``offset`` page games, not per-platform entries.
+    """
+
+    items: list[LibraryGameGroup]
+    total: int
+    limit: int
+    offset: int
+
+
 __all__ = [
     "GameCreate",
     "GameResponse",
     "GameSearchResponse",
-    "GameUpdate",
     "LibraryEntryCreate",
     "LibraryEntryResponse",
     "LibraryEntryUpdate",
+    "LibraryGameGroup",
+    "LibraryGroupedResponse",
     "LibraryListResponse",
+    "LibraryPlatformState",
     "LibraryStatus",
     "PlatformResponse",
 ]

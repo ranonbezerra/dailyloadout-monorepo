@@ -147,7 +147,91 @@ class LibraryEntry extends Equatable {
   ];
 }
 
-/// Paginated response for library entries.
+/// Per-platform state for an owned game.
+///
+/// `publicId` is the library ENTRY id — the target for update, delete, and
+/// mission-start operations on this specific platform.
+class LibraryPlatformState extends Equatable {
+  const LibraryPlatformState({
+    required this.publicId,
+    required this.platform,
+    required this.status,
+    required this.createdAt,
+    required this.updatedAt,
+    this.acquiredAt,
+    this.lastPlayedAt,
+    this.missionNextAction,
+    this.notes,
+  });
+
+  factory LibraryPlatformState.fromJson(Map<String, dynamic> json) {
+    return LibraryPlatformState(
+      publicId: json['public_id'] as String,
+      platform: Platform.fromJson(json['platform'] as Map<String, dynamic>),
+      status: json['status'] as String,
+      acquiredAt: json['acquired_at'] != null
+          ? DateTime.parse(json['acquired_at'] as String)
+          : null,
+      lastPlayedAt: json['last_played_at'] != null
+          ? DateTime.parse(json['last_played_at'] as String)
+          : null,
+      missionNextAction: json['mission_next_action'] as String?,
+      notes: json['notes'] as String?,
+      createdAt: DateTime.parse(json['created_at'] as String),
+      updatedAt: DateTime.parse(json['updated_at'] as String),
+    );
+  }
+
+  final String publicId;
+  final Platform platform;
+  final String status;
+  final DateTime? acquiredAt;
+  final DateTime? lastPlayedAt;
+  final String? missionNextAction;
+  final String? notes;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  @override
+  List<Object?> get props => [
+    publicId,
+    platform,
+    status,
+    acquiredAt,
+    lastPlayedAt,
+    missionNextAction,
+    notes,
+    createdAt,
+    updatedAt,
+  ];
+}
+
+/// A single game owned across one or more platforms.
+///
+/// The backend groups library rows by game; the client renders this shape
+/// as-is without any further grouping or aggregation.
+class LibraryGameGroup extends Equatable {
+  const LibraryGameGroup({required this.game, required this.platforms});
+
+  factory LibraryGameGroup.fromJson(Map<String, dynamic> json) {
+    return LibraryGameGroup(
+      game: Game.fromJson(json['game'] as Map<String, dynamic>),
+      platforms: (json['platforms'] as List<dynamic>)
+          .map((e) => LibraryPlatformState.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+
+  final Game game;
+  final List<LibraryPlatformState> platforms;
+
+  @override
+  List<Object?> get props => [game, platforms];
+}
+
+/// Paginated response for the grouped library.
+///
+/// `total` is the count of distinct GAMES (pagination is by game).
 class LibraryListResponse extends Equatable {
   const LibraryListResponse({
     required this.items,
@@ -159,7 +243,7 @@ class LibraryListResponse extends Equatable {
   factory LibraryListResponse.fromJson(Map<String, dynamic> json) {
     return LibraryListResponse(
       items: (json['items'] as List<dynamic>)
-          .map((e) => LibraryEntry.fromJson(e as Map<String, dynamic>))
+          .map((e) => LibraryGameGroup.fromJson(e as Map<String, dynamic>))
           .toList(),
       total: json['total'] as int,
       limit: json['limit'] as int,
@@ -167,7 +251,7 @@ class LibraryListResponse extends Equatable {
     );
   }
 
-  final List<LibraryEntry> items;
+  final List<LibraryGameGroup> items;
   final int total;
   final int limit;
   final int offset;

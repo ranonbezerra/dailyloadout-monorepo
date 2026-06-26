@@ -63,13 +63,15 @@ async def library_entry(
         "/v1/library",
         json={
             "game_public_id": create_game["public_id"],
-            "platform_id": seed_platforms[0]["id"],
+            "platform_ids": [seed_platforms[0]["id"]],
             "status": "backlog",
         },
         headers=auth_headers,
     )
     assert resp.status_code == 201, resp.text
-    return resp.json()
+    # The grouped POST returns the game group; tests that want the single entry
+    # use the nested platform state's public_id.
+    return resp.json()["platforms"][0]
 
 
 # =====================================================================
@@ -134,18 +136,21 @@ class TestCreateGame:
         assert "public_id" in data
         assert "created_at" in data
 
-    async def test_create_game_duplicate_slug(
+    async def test_create_game_same_slug_is_idempotent(
         self,
         async_client: AsyncClient,
         auth_headers: dict[str, str],
         seed_platforms: list[dict[str, Any]],
     ) -> None:
+        # Re-posting the same slug (no IGDB client) resolves to the same manual
+        # row for the caller rather than conflicting.
         payload = _game_payload(slug="hollow-knight", title="Hollow Knight")
         resp1 = await async_client.post("/v1/games", json=payload, headers=auth_headers)
         assert resp1.status_code == 201
 
         resp2 = await async_client.post("/v1/games", json=payload, headers=auth_headers)
-        assert resp2.status_code == 409
+        assert resp2.status_code == 201
+        assert resp2.json()["public_id"] == resp1.json()["public_id"]
 
     async def test_create_game_unauthorized(
         self,
@@ -214,6 +219,35 @@ class TestSearchGames:
         assert data == []
 
 
+class TestCreateGameDedup:
+    """POST /v1/games is deduped by slug (no duplicate rows)."""
+
+    async def test_existing_slug_does_not_duplicate(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+        seed_platforms: list[dict[str, Any]],
+    ) -> None:
+        from sqlalchemy import select
+
+        from dailyloadout.infrastructure.db.models import Game
+        from tests.conftest import _TestSessionFactory
+
+        payload = _game_payload(slug="dedup-me", title="Dedup Me")
+        first = await async_client.post("/v1/games", json=payload, headers=auth_headers)
+        assert first.status_code == 201
+
+        # Re-posting the same slug resolves to the same row (no second catalog row).
+        second = await async_client.post("/v1/games", json=payload, headers=auth_headers)
+        assert second.status_code == 201
+        assert second.json()["public_id"] == first.json()["public_id"]
+
+        async with _TestSessionFactory() as session:
+            stmt = select(Game).where(Game.title == "Dedup Me")
+            matches = list((await session.execute(stmt)).scalars().all())
+        assert len([g for g in matches if g.slug == "dedup-me"]) == 1
+
+
 # =====================================================================
 # Add to Library
 # =====================================================================
@@ -233,12 +267,12 @@ class TestGetLibraryEntry:
             "/v1/library",
             json={
                 "game_public_id": create_game["public_id"],
-                "platform_id": seed_platforms[0]["id"],
+                "platform_ids": [seed_platforms[0]["id"]],
                 "status": "playing",
             },
             headers=auth_headers,
         )
-        public_id = created.json()["public_id"]
+        public_id = created.json()["platforms"][0]["public_id"]
 
         resp = await async_client.get(f"/v1/library/{public_id}", headers=auth_headers)
 
@@ -275,7 +309,7 @@ class TestAddToLibrary:
             "/v1/library",
             json={
                 "game_public_id": create_game["public_id"],
-                "platform_id": seed_platforms[0]["id"],
+                "platform_ids": [seed_platforms[0]["id"]],
                 "status": "playing",
                 "notes": "First playthrough",
             },
@@ -284,28 +318,93 @@ class TestAddToLibrary:
         assert resp.status_code == 201
 
         data = resp.json()
-        assert "public_id" in data
-        assert data["status"] == "playing"
-        assert data["notes"] == "First playthrough"
+        # Grouped response: one game, one platform state.
         assert data["game"]["slug"] == "elden-ring"
-        assert data["platform"]["id"] == seed_platforms[0]["id"]
+        assert len(data["platforms"]) == 1
+        state = data["platforms"][0]
+        assert "public_id" in state
+        assert state["status"] == "playing"
+        assert state["notes"] == "First playthrough"
+        assert state["platform"]["id"] == seed_platforms[0]["id"]
 
-    async def test_add_to_library_duplicate(
+    async def test_add_to_library_multiple_platforms(
         self,
         async_client: AsyncClient,
         auth_headers: dict[str, str],
         create_game: dict[str, Any],
         seed_platforms: list[dict[str, Any]],
     ) -> None:
+        """Two platform_ids create two entries under one game group."""
+        resp = await async_client.post(
+            "/v1/library",
+            json={
+                "game_public_id": create_game["public_id"],
+                "platform_ids": [seed_platforms[0]["id"], seed_platforms[1]["id"]],
+                "status": "backlog",
+            },
+            headers=auth_headers,
+        )
+        assert resp.status_code == 201
+
+        data = resp.json()
+        assert data["game"]["slug"] == "elden-ring"
+        assert len(data["platforms"]) == 2
+        platform_ids = {p["platform"]["id"] for p in data["platforms"]}
+        assert platform_ids == {seed_platforms[0]["id"], seed_platforms[1]["id"]}
+        # Each platform state carries its own distinct entry public_id.
+        public_ids = {p["public_id"] for p in data["platforms"]}
+        assert len(public_ids) == 2
+
+    async def test_add_to_library_dedupes_platform_ids(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+        create_game: dict[str, Any],
+        seed_platforms: list[dict[str, Any]],
+    ) -> None:
+        """Duplicate platform_ids in one request collapse to a single entry."""
+        resp = await async_client.post(
+            "/v1/library",
+            json={
+                "game_public_id": create_game["public_id"],
+                "platform_ids": [seed_platforms[0]["id"], seed_platforms[0]["id"]],
+            },
+            headers=auth_headers,
+        )
+        assert resp.status_code == 201
+        assert len(resp.json()["platforms"]) == 1
+
+    async def test_add_to_library_reattach_is_idempotent(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+        create_game: dict[str, Any],
+        seed_platforms: list[dict[str, Any]],
+    ) -> None:
+        """Re-adding an already-owned platform is a no-op (no duplicate, no error)."""
         body = {
             "game_public_id": create_game["public_id"],
-            "platform_id": seed_platforms[0]["id"],
+            "platform_ids": [seed_platforms[0]["id"]],
         }
         resp1 = await async_client.post("/v1/library", json=body, headers=auth_headers)
         assert resp1.status_code == 201
+        first_public_id = resp1.json()["platforms"][0]["public_id"]
 
-        resp2 = await async_client.post("/v1/library", json=body, headers=auth_headers)
-        assert resp2.status_code == 409
+        # Re-add the same platform plus a new one: existing is skipped, new added.
+        resp2 = await async_client.post(
+            "/v1/library",
+            json={
+                "game_public_id": create_game["public_id"],
+                "platform_ids": [seed_platforms[0]["id"], seed_platforms[1]["id"]],
+            },
+            headers=auth_headers,
+        )
+        assert resp2.status_code == 201
+        states = resp2.json()["platforms"]
+        assert len(states) == 2
+        by_platform = {s["platform"]["id"]: s["public_id"] for s in states}
+        # The originally-added entry keeps its public_id (not recreated).
+        assert by_platform[seed_platforms[0]["id"]] == first_public_id
 
     async def test_add_to_library_game_not_found(
         self,
@@ -317,7 +416,7 @@ class TestAddToLibrary:
             "/v1/library",
             json={
                 "game_public_id": str(uuid4()),
-                "platform_id": seed_platforms[0]["id"],
+                "platform_ids": [seed_platforms[0]["id"]],
             },
             headers=auth_headers,
         )
@@ -333,11 +432,27 @@ class TestAddToLibrary:
             "/v1/library",
             json={
                 "game_public_id": create_game["public_id"],
-                "platform_id": 99999,
+                "platform_ids": [99999],
             },
             headers=auth_headers,
         )
         assert resp.status_code == 404
+
+    async def test_add_to_library_empty_platform_ids_rejected(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+        create_game: dict[str, Any],
+    ) -> None:
+        resp = await async_client.post(
+            "/v1/library",
+            json={
+                "game_public_id": create_game["public_id"],
+                "platform_ids": [],
+            },
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
 
 
 # =====================================================================
@@ -360,7 +475,7 @@ class TestListLibrary:
         assert data["items"] == []
         assert data["total"] == 0
 
-    async def test_list_library_with_entries(
+    async def test_list_library_single_platform_game(
         self,
         async_client: AsyncClient,
         auth_headers: dict[str, str],
@@ -374,68 +489,118 @@ class TestListLibrary:
         assert len(data["items"]) == 1
 
         item = data["items"][0]
-        assert item["public_id"] == library_entry["public_id"]
         assert "game" in item
-        assert "platform" in item
         assert item["game"]["slug"] == "elden-ring"
+        assert len(item["platforms"]) == 1
+        assert item["platforms"][0]["public_id"] == library_entry["public_id"]
 
-    async def test_list_library_filter_by_status(
+    async def test_list_library_groups_multi_platform_game(
         self,
         async_client: AsyncClient,
         auth_headers: dict[str, str],
         create_game: dict[str, Any],
         seed_platforms: list[dict[str, Any]],
     ) -> None:
-        # Add two entries with different statuses via different platforms.
-        await async_client.post(
+        """A game owned on two platforms is ONE grouped item with two states."""
+        resp_add = await async_client.post(
             "/v1/library",
             json={
                 "game_public_id": create_game["public_id"],
-                "platform_id": seed_platforms[0]["id"],
+                "platform_ids": [seed_platforms[0]["id"], seed_platforms[1]["id"]],
                 "status": "playing",
             },
             headers=auth_headers,
         )
-        # Create a second game for the second entry.
+        assert resp_add.status_code == 201
+
+        resp = await async_client.get("/v1/library", headers=auth_headers)
+        assert resp.status_code == 200
+        data = resp.json()
+
+        # One distinct game => one item, two nested platform states.
+        assert data["total"] == 1
+        assert len(data["items"]) == 1
+        item = data["items"][0]
+        assert item["game"]["slug"] == "elden-ring"
+        assert len(item["platforms"]) == 2
+        public_ids = {p["public_id"] for p in item["platforms"]}
+        assert len(public_ids) == 2
+        platform_ids = {p["platform"]["id"] for p in item["platforms"]}
+        assert platform_ids == {seed_platforms[0]["id"], seed_platforms[1]["id"]}
+
+    async def test_list_library_filter_by_status_narrows_platforms(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+        create_game: dict[str, Any],
+        seed_platforms: list[dict[str, Any]],
+    ) -> None:
+        """A status filter surfaces only matching platform states (and games)."""
+        # Same game on two platforms with different statuses.
+        add = await async_client.post(
+            "/v1/library",
+            json={
+                "game_public_id": create_game["public_id"],
+                "platform_ids": [seed_platforms[0]["id"], seed_platforms[1]["id"]],
+                "status": "playing",
+            },
+            headers=auth_headers,
+        )
+        assert add.status_code == 201
+        # Move the second platform to "completed".
+        completed_entry = next(
+            p for p in add.json()["platforms"] if p["platform"]["id"] == seed_platforms[1]["id"]
+        )
+        patch = await async_client.patch(
+            f"/v1/library/{completed_entry['public_id']}",
+            json={"status": "completed"},
+            headers=auth_headers,
+        )
+        assert patch.status_code == 200
+
+        # A second, fully-completed game must be excluded from a "playing" view.
         resp_g2 = await async_client.post(
             "/v1/games",
             json=_game_payload(slug="celeste", title="Celeste"),
             headers=auth_headers,
         )
         assert resp_g2.status_code == 201
-        game2 = resp_g2.json()
-
         await async_client.post(
             "/v1/library",
             json={
-                "game_public_id": game2["public_id"],
-                "platform_id": seed_platforms[0]["id"],
+                "game_public_id": resp_g2.json()["public_id"],
+                "platform_ids": [seed_platforms[0]["id"]],
                 "status": "completed",
             },
             headers=auth_headers,
         )
 
-        # Filter by "playing"
         resp = await async_client.get(
             "/v1/library",
             params={"status": "playing"},
             headers=auth_headers,
         )
         assert resp.status_code == 200
-
         data = resp.json()
-        assert data["total"] == 1
-        assert data["items"][0]["status"] == "playing"
 
-    async def test_list_library_pagination(
+        # Only Elden Ring qualifies, and only its "playing" platform is shown.
+        assert data["total"] == 1
+        assert len(data["items"]) == 1
+        item = data["items"][0]
+        assert item["game"]["slug"] == "elden-ring"
+        assert len(item["platforms"]) == 1
+        assert item["platforms"][0]["status"] == "playing"
+        assert item["platforms"][0]["platform"]["id"] == seed_platforms[0]["id"]
+
+    async def test_list_library_paginates_by_game(
         self,
         async_client: AsyncClient,
         auth_headers: dict[str, str],
         seed_platforms: list[dict[str, Any]],
     ) -> None:
-        # Create 3 games and add them all to the library.
+        # Create 3 games; the first one spans two platforms (still one game).
         slugs = ["game-a", "game-b", "game-c"]
-        for slug in slugs:
+        for index, slug in enumerate(slugs):
             resp_g = await async_client.post(
                 "/v1/games",
                 json=_game_payload(slug=slug, title=slug.replace("-", " ").title()),
@@ -443,25 +608,29 @@ class TestListLibrary:
             )
             assert resp_g.status_code == 201
             game = resp_g.json()
+            platform_ids = [seed_platforms[0]["id"]]
+            if index == 0:
+                platform_ids.append(seed_platforms[1]["id"])
             resp_l = await async_client.post(
                 "/v1/library",
                 json={
                     "game_public_id": game["public_id"],
-                    "platform_id": seed_platforms[0]["id"],
+                    "platform_ids": platform_ids,
                 },
                 headers=auth_headers,
             )
             assert resp_l.status_code == 201
 
-        # Total should be 3.
+        # total = distinct GAMES (3), not entries (4).
         resp_all = await async_client.get(
             "/v1/library",
             params={"limit": 100, "offset": 0},
             headers=auth_headers,
         )
         assert resp_all.json()["total"] == 3
+        assert len(resp_all.json()["items"]) == 3
 
-        # Limit 2 offset 0 => 2 items, total still 3.
+        # Limit 2 offset 0 => 2 game items, total still 3.
         resp_page1 = await async_client.get(
             "/v1/library",
             params={"limit": 2, "offset": 0},
@@ -471,7 +640,7 @@ class TestListLibrary:
         assert len(page1["items"]) == 2
         assert page1["total"] == 3
 
-        # Limit 2 offset 2 => 1 item.
+        # Limit 2 offset 2 => 1 game item.
         resp_page2 = await async_client.get(
             "/v1/library",
             params={"limit": 2, "offset": 2},
@@ -480,6 +649,11 @@ class TestListLibrary:
         page2 = resp_page2.json()
         assert len(page2["items"]) == 1
         assert page2["total"] == 3
+
+        # No game is split across pages: distinct game ids across both pages == 3.
+        slugs_seen = {item["game"]["slug"] for item in page1["items"]}
+        slugs_seen |= {item["game"]["slug"] for item in page2["items"]}
+        assert len(slugs_seen) == 3
 
 
 # =====================================================================

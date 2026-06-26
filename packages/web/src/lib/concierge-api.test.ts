@@ -1,9 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("./api", () => ({
-	BASE_URL: "http://test",
-	getAccessToken: vi.fn(() => "test-token"),
-}));
+vi.mock("./api", () => {
+	const getAccessToken = vi.fn(() => "test-token" as string | null);
+	// Mirror the real fetchWithAuthRetry: prepend BASE_URL, attach the bearer
+	// token as a Headers instance, and delegate to the global fetch mock.
+	const fetchWithAuthRetry = vi.fn((path: string, init: RequestInit = {}) => {
+		const headers = new Headers(init.headers);
+		const token = getAccessToken();
+		if (token) headers.set("Authorization", `Bearer ${token}`);
+		return fetch(`http://test${path}`, { ...init, headers });
+	});
+	return {
+		BASE_URL: "http://test",
+		getAccessToken,
+		fetchWithAuthRetry,
+	};
+});
 
 import type { ConciergeEvent } from "../types/concierge";
 import { getAccessToken } from "./api";
@@ -69,8 +81,8 @@ describe("streamConcierge request", () => {
 		const [url, opts] = fetchMock.mock.calls[0];
 		expect(url).toBe("http://test/v1/concierge/chat");
 		expect(opts.method).toBe("POST");
-		expect(opts.headers["Content-Type"]).toBe("application/json");
-		expect(opts.headers.Authorization).toBe("Bearer test-token");
+		expect((opts.headers as Headers).get("Content-Type")).toBe("application/json");
+		expect((opts.headers as Headers).get("Authorization")).toBe("Bearer test-token");
 		expect(JSON.parse(opts.body)).toEqual({ message: "hello", thread_id: "thread-7" });
 	});
 
@@ -81,7 +93,7 @@ describe("streamConcierge request", () => {
 		await collect("hi");
 
 		const [, opts] = fetchMock.mock.calls[0];
-		expect(opts.headers.Authorization).toBeUndefined();
+		expect((opts.headers as Headers).get("Authorization")).toBeNull();
 		expect(JSON.parse(opts.body)).toEqual({ message: "hi", thread_id: undefined });
 	});
 });

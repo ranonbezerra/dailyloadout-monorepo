@@ -24,6 +24,11 @@ export interface Game {
 	createdAt: string;
 }
 
+/**
+ * A single platform's library entry for a game. This is the unit that the API
+ * lets you update/delete/start-a-mission for — its `publicId` is the library
+ * ENTRY id, used to target this specific platform.
+ */
 export interface LibraryEntry {
 	publicId: string;
 	game: Game;
@@ -37,8 +42,35 @@ export interface LibraryEntry {
 	updatedAt: string;
 }
 
+/**
+ * Per-platform state inside a grouped library game. Mirrors a single library
+ * entry minus the game (which lives on the parent group). `publicId` is the
+ * library ENTRY id — use it to target this platform for update/delete/mission.
+ */
+export interface LibraryPlatformState {
+	publicId: string;
+	platform: Platform;
+	status: LibraryStatus;
+	acquiredAt?: string | null;
+	lastPlayedAt?: string | null;
+	missionNextAction?: string | null;
+	notes?: string | null;
+	createdAt: string;
+	updatedAt: string;
+}
+
+/**
+ * A game owned on one or more platforms, grouped into a single row by the API.
+ * The frontend renders this as-is — it must NOT group or aggregate anything.
+ */
+export interface LibraryGameGroup {
+	game: Game;
+	platforms: LibraryPlatformState[];
+}
+
 export interface LibraryListResponse {
-	items: LibraryEntry[];
+	/** Distinct games (pagination is by game). */
+	items: LibraryGameGroup[];
 	total: number;
 	limit: number;
 	offset: number;
@@ -50,9 +82,10 @@ export interface LibraryListResponse {
 
 export interface LibraryEntryCreate {
 	gamePublicId: string;
-	platformId: number;
+	platformIds: number[];
 	status?: LibraryStatus;
 	notes?: string;
+	acquiredAt?: string;
 }
 
 export interface LibraryEntryUpdate {
@@ -65,9 +98,5 @@ export interface GameCreate {
 	title: string;
 	summary?: string;
 	coverUrl?: string;
-	genres?: string[];
-}
-
-export interface GameUpdate {
 	genres?: string[];
 }

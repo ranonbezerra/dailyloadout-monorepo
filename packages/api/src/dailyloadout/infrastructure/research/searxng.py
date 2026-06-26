@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import ipaddress
+import socket
+from urllib.parse import urlsplit
+
 import httpx
 import structlog
 
@@ -13,6 +17,33 @@ from .base import AbstractResearchClient, ResearchUnavailableError, SearchResult
 logger = structlog.get_logger()
 
 _SCRAPE_MAX_CHARS = 4000
+
+
+def _is_public_host(hostname: str) -> bool:
+    """Return ``True`` only if *hostname* resolves exclusively to public IPs.
+
+    SSRF guard: ``fetch`` follows search-result URLs, which are attacker-influenced
+    (they come from the open web). We resolve the host and reject it if ANY
+    resolved address is loopback, private, link-local, reserved, or otherwise
+    non-global, so a result can't trick us into hitting internal services.
+    """
+    try:
+        infos = socket.getaddrinfo(hostname, None)
+    except (socket.gaierror, UnicodeError):
+        return False
+
+    addresses = {info[4][0] for info in infos}
+    if not addresses:
+        return False
+
+    for addr in addresses:
+        try:
+            ip = ipaddress.ip_address(addr)
+        except ValueError:
+            return False
+        if not ip.is_global or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+            return False
+    return True
 
 
 class SearxngResearchClient(AbstractResearchClient):
@@ -59,12 +90,24 @@ class SearxngResearchClient(AbstractResearchClient):
         return results
 
     async def fetch(self, url: str) -> str:
-        """Fetch *url* and return cleaned page text for briefing grounding."""
+        """Fetch *url* and return cleaned page text for briefing grounding.
+
+        SSRF guard: result URLs come from the open web, so before fetching we
+        validate the target host resolves to a public IP. Redirects are disabled
+        so a public URL can't 30x us into an internal address; on the rare
+        legitimate redirect we simply skip the page rather than chase it blindly.
+        """
         if not url.startswith(("http://", "https://")):
             return ""
+
+        hostname = urlsplit(url).hostname
+        if not hostname or not _is_public_host(hostname):
+            logger.warning("searxng_scrape_blocked", url=url)
+            return ""
+
         client = await self._get_client()
         try:
-            resp = await client.get(url, follow_redirects=True)
+            resp = await client.get(url, follow_redirects=False)
             resp.raise_for_status()
         except httpx.HTTPError as exc:
             logger.warning("searxng_scrape_failed", url=url, error=str(exc))

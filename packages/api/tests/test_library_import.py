@@ -223,6 +223,22 @@ class TestLibraryImportEndpoint:
         )
         assert resp.status_code == 400
 
+    async def test_import_rejects_oversized_image(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+        monkeypatch: Any,
+    ) -> None:
+        # Shrink the cap so a tiny payload trips the per-image size guard.
+        monkeypatch.setattr(settings, "capture_max_image_mb", 0)
+        resp = await async_client.post(
+            "/v1/captures/library-import",
+            files=_image_files("Hollow Knight"),
+            headers=auth_headers,
+        )
+        assert resp.status_code == 400
+        assert "under" in resp.json()["detail"].lower()
+
     async def test_import_daily_cap_returns_429(
         self,
         async_client: AsyncClient,

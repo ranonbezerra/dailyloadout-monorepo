@@ -14,7 +14,9 @@ from tests.test_cache_layer import FakeCache
 # ── /v1/cache/stats endpoint ─────────────────────────────────────────────
 
 
-async def test_cache_stats_endpoint_reports_counters(async_client: AsyncClient) -> None:
+async def test_cache_stats_endpoint_reports_counters(
+    async_client: AsyncClient, auth_headers: dict[str, str]
+) -> None:
     reset_cache_stats()
     cache = FakeCache()
 
@@ -25,11 +27,17 @@ async def test_cache_stats_endpoint_reports_counters(async_client: AsyncClient) 
     await cached_call(cache=cache, key="k", ttl_seconds=10, namespace="probe", compute=compute)
     await cached_call(cache=cache, key="k", ttl_seconds=10, namespace="probe", compute=compute)
 
-    resp = await async_client.get("/v1/cache/stats")
+    resp = await async_client.get("/v1/cache/stats", headers=auth_headers)
 
     assert resp.status_code == 200
     body = resp.json()
     assert body["probe"] == {"hit": 1, "miss": 1, "hit_rate": 0.5}
+
+
+async def test_cache_stats_endpoint_requires_auth(async_client: AsyncClient) -> None:
+    """The namespace telemetry is internal — unauthenticated calls are rejected."""
+    resp = await async_client.get("/v1/cache/stats")
+    assert resp.status_code == 401
 
 
 # ── Reference tier: list_genres ──────────────────────────────────────────

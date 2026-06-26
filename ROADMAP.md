@@ -82,7 +82,7 @@ The vitrine starts with the **first impression**. A recruiter cloning the repo a
 - [ ] App: `flutter_secure_storage` for refresh token, in-memory for access token
 - [ ] App: dio interceptor that auto-refreshes access on 401
 - [ ] Web: login screen with Mantine `<TextInput>`, `<PasswordInput>`, `<Button>`
-- [ ] Web: stores tokens in httpOnly cookie (preferred) or localStorage (simpler; document the choice)
+- [ ] Web: stores refresh tokens in httpOnly cookie
 - [ ] Web: TanStack Query setup with `useAuth` hook
 
 ### Definition of Done

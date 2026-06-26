@@ -9,7 +9,6 @@ from .auth import AuthServiceDep, CurrentUserDep
 from .capture import (
     CaptureCandidateRepoDep,
     CaptureRepoDep,
-    CaptureServiceDep,
     IGDBClientDep,
     LLMClientDep,
     STTClientDep,
@@ -29,6 +28,7 @@ from .mission import (
     MissionRepoDep,
     MissionServiceDep,
 )
+from .ocr import CaptureServiceDep
 from .stats import StatsRepoDep, StatsServiceDep
 
 __all__ = [

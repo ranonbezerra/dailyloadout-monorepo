@@ -99,7 +99,10 @@ function MessageBubble({ message, onPlay }: { message: ChatMessage; onPlay: () =
 }
 
 export function ConciergePage() {
-	const { messages, isStreaming, activeTool, error, send, cancel } = useConcierge();
+	// Errors surface inline as an assistant bubble (see useConcierge); we
+	// deliberately don't also render a separate banner to avoid showing the
+	// same failure twice.
+	const { messages, isStreaming, activeTool, send, cancel } = useConcierge();
 	const [input, setInput] = useState("");
 	// The recommended library entry the user tapped "Play" on — opens the
 	// briefing-choice dialog once the full entry loads.
@@ -164,12 +167,6 @@ export function ConciergePage() {
 					)}
 				</Stack>
 			</ScrollArea>
-
-			{error && (
-				<Text c="red" size="sm">
-					{error}
-				</Text>
-			)}
 
 			<Box>
 				<TextInput

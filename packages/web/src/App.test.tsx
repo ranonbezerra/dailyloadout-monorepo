@@ -111,9 +111,9 @@ describe("App - authenticated layout", () => {
 		setAuthenticated();
 	});
 
-	it("redirects authenticated user on '/' to /play", () => {
+	it("redirects authenticated user on '/' to /play", async () => {
 		renderApp(["/"]);
-		expect(screen.getByText("PlayPage")).toBeInTheDocument();
+		expect(await screen.findByText("PlayPage")).toBeInTheDocument();
 	});
 
 	it("displays the DailyLoadout brand text in the navbar", () => {
@@ -140,44 +140,44 @@ describe("App - authenticated layout", () => {
 		expect(credit).toHaveAttribute("href", "https://www.igdb.com");
 	});
 
-	it("renders PlayPage at /play", () => {
+	it("renders PlayPage at /play", async () => {
 		renderApp(["/play"]);
-		expect(screen.getByText("PlayPage")).toBeInTheDocument();
+		expect(await screen.findByText("PlayPage")).toBeInTheDocument();
 	});
 
-	it("renders LoadoutPage at /play/loadout", () => {
+	it("renders LoadoutPage at /play/loadout", async () => {
 		renderApp(["/play/loadout"]);
-		expect(screen.getByText("LoadoutPage")).toBeInTheDocument();
+		expect(await screen.findByText("LoadoutPage")).toBeInTheDocument();
 	});
 
-	it("renders MissionsPage (Mission History) at /history", () => {
+	it("renders MissionsPage (Mission History) at /history", async () => {
 		renderApp(["/history"]);
-		expect(screen.getByText("MissionsPage")).toBeInTheDocument();
+		expect(await screen.findByText("MissionsPage")).toBeInTheDocument();
 	});
 
-	it("redirects the old /loadout route to /play/loadout", () => {
+	it("redirects the old /loadout route to /play/loadout", async () => {
 		renderApp(["/loadout"]);
-		expect(screen.getByText("LoadoutPage")).toBeInTheDocument();
+		expect(await screen.findByText("LoadoutPage")).toBeInTheDocument();
 	});
 
-	it("redirects the old /missions route to /history", () => {
+	it("redirects the old /missions route to /history", async () => {
 		renderApp(["/missions"]);
-		expect(screen.getByText("MissionsPage")).toBeInTheDocument();
+		expect(await screen.findByText("MissionsPage")).toBeInTheDocument();
 	});
 
-	it("redirects the old /play/missions route to /history", () => {
+	it("redirects the old /play/missions route to /history", async () => {
 		renderApp(["/play/missions"]);
-		expect(screen.getByText("MissionsPage")).toBeInTheDocument();
+		expect(await screen.findByText("MissionsPage")).toBeInTheDocument();
 	});
 
-	it("renders CapturesPage at /captures", () => {
+	it("renders CapturesPage at /captures", async () => {
 		renderApp(["/captures"]);
-		expect(screen.getByText("CapturesPage")).toBeInTheDocument();
+		expect(await screen.findByText("CapturesPage")).toBeInTheDocument();
 	});
 
-	it("renders AnalyticsPage at /analytics", () => {
+	it("renders AnalyticsPage at /analytics", async () => {
 		renderApp(["/analytics"]);
-		expect(screen.getByText("AnalyticsPage")).toBeInTheDocument();
+		expect(await screen.findByText("AnalyticsPage")).toBeInTheDocument();
 	});
 
 	it("calls logout when Sign out button is clicked", () => {
@@ -206,7 +206,7 @@ describe("App - NavLink navigation", () => {
 		renderApp(["/library"]);
 
 		// Verify we start at LibraryPage
-		expect(screen.getByText("LibraryPage")).toBeInTheDocument();
+		expect(await screen.findByText("LibraryPage")).toBeInTheDocument();
 
 		fireEvent.click(screen.getByText("Play"));
 
@@ -219,7 +219,7 @@ describe("App - NavLink navigation", () => {
 		renderApp(["/play"]);
 
 		// Verify we start at PlayPage
-		expect(screen.getByText("PlayPage")).toBeInTheDocument();
+		expect(await screen.findByText("PlayPage")).toBeInTheDocument();
 
 		fireEvent.click(screen.getByText("Library"));
 
@@ -231,7 +231,7 @@ describe("App - NavLink navigation", () => {
 	it("clicking 'History' NavLink navigates to /history and shows the mission history", async () => {
 		renderApp(["/play"]);
 
-		expect(screen.getByText("PlayPage")).toBeInTheDocument();
+		expect(await screen.findByText("PlayPage")).toBeInTheDocument();
 
 		fireEvent.click(screen.getByText("History"));
 
@@ -243,7 +243,7 @@ describe("App - NavLink navigation", () => {
 	it("clicking 'Stats' NavLink navigates to /analytics and shows AnalyticsPage", async () => {
 		renderApp(["/play"]);
 
-		expect(screen.getByText("PlayPage")).toBeInTheDocument();
+		expect(await screen.findByText("PlayPage")).toBeInTheDocument();
 
 		fireEvent.click(screen.getByText("Stats"));
 

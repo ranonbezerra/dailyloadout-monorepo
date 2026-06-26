@@ -2,6 +2,7 @@ import { Badge, Card, Group, Stack, Text, Title } from "@mantine/core";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { DataTable } from "mantine-datatable";
+import { ErrorState } from "../components/ErrorState";
 import { useMissions } from "../hooks/useMission";
 import type { MissionListItem } from "../types/mission";
 
@@ -34,7 +35,7 @@ function formatDuration(startedAt: string, endedAt: string | null): string {
 }
 
 export function MissionsPage() {
-	const { data, isLoading } = useMissions({ limit: 50 });
+	const { data, isLoading, isError, error, refetch } = useMissions({ limit: 50 });
 	const missions = data?.items ?? [];
 
 	return (
@@ -48,7 +49,9 @@ export function MissionsPage() {
 				)}
 			</Group>
 
-			{!isLoading && missions.length === 0 ? (
+			{isError ? (
+				<ErrorState title="Couldn't load missions" error={error} onRetry={() => refetch()} />
+			) : !isLoading && missions.length === 0 ? (
 				<Card withBorder p="xl">
 					<Text c="dimmed" ta="center">
 						No missions yet. Start one from the Play page.

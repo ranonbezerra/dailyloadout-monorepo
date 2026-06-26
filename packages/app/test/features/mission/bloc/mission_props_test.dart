@@ -171,12 +171,17 @@ void main() {
         [_listItem],
         2,
         false,
+        null,
       ]);
 
       final updated = a.copyWith(isLoadingMore: true);
       expect(updated.isLoadingMore, true);
       expect(updated.missions, [_listItem]);
       expect(updated.total, 2);
+
+      final errored = a.copyWith(loadMoreError: 'oops');
+      expect(errored.loadMoreError, 'oops');
+      expect(errored.props.last, 'oops');
     });
 
     test('ActiveMissionLoaded supports value equality and props', () {

@@ -19,22 +19,22 @@ final class LoadLibrary extends LibraryEvent {
   List<Object?> get props => [status, limit, offset];
 }
 
-/// Dispatched to add a game to the user's library.
+/// Dispatched to add a game to the user's library on one or more platforms.
 final class AddEntry extends LibraryEvent {
   const AddEntry({
     required this.gamePublicId,
-    required this.platformId,
+    required this.platformIds,
     this.status = 'backlog',
     this.notes,
   });
 
   final String gamePublicId;
-  final int platformId;
+  final List<int> platformIds;
   final String status;
   final String? notes;
 
   @override
-  List<Object?> get props => [gamePublicId, platformId, status, notes];
+  List<Object?> get props => [gamePublicId, platformIds, status, notes];
 }
 
 /// Dispatched to update an existing library entry.

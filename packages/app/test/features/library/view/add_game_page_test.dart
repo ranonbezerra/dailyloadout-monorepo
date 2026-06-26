@@ -33,7 +33,7 @@ final _searchGame = Game(
 
 void main() {
   setUpAll(() {
-    registerFallbackValue(const AddEntry(gamePublicId: 'x', platformId: 0));
+    registerFallbackValue(const AddEntry(gamePublicId: 'x', platformIds: []));
   });
 
   late MockLibraryRepository repository;
@@ -176,7 +176,8 @@ void main() {
 
       expect(find.text('Add to Library'), findsWidgets);
       expect(find.text('An action RPG by FromSoftware.'), findsOneWidget);
-      expect(find.byType(DropdownButtonFormField<int>), findsOneWidget);
+      // Platforms are now a multi-select of FilterChips.
+      expect(find.byType(FilterChip), findsNWidgets(2));
       expect(find.byType(DropdownButtonFormField<String>), findsOneWidget);
       expect(
         find.widgetWithText(TextFormField, 'Notes (optional)'),
@@ -189,11 +190,27 @@ void main() {
     ) async {
       await selectGame(tester);
 
-      await tester.tap(find.byType(DropdownButtonFormField<int>));
+      // Each platform from the repository is rendered as a FilterChip.
+      expect(find.widgetWithText(FilterChip, 'PlayStation 5'), findsOneWidget);
+      expect(find.widgetWithText(FilterChip, 'PC'), findsOneWidget);
+    });
+
+    testWidgets('can select multiple platforms', (tester) async {
+      await selectGame(tester);
+
+      // The first platform (PlayStation 5) is selected by default; also
+      // select PC so two platforms are submitted.
+      await tester.tap(find.widgetWithText(FilterChip, 'PC'));
       await tester.pumpAndSettle();
 
-      expect(find.text('PlayStation 5'), findsWidgets);
-      expect(find.text('PC'), findsWidgets);
+      await tester.tap(find.widgetWithText(FilledButton, 'Add to Library'));
+      await tester.pumpAndSettle();
+
+      verify(
+        () => libraryBloc.add(
+          const AddEntry(gamePublicId: 'game-1', platformIds: [1, 2]),
+        ),
+      ).called(1);
     });
 
     testWidgets('details step shows status options', (tester) async {
@@ -236,7 +253,7 @@ void main() {
         () => libraryBloc.add(
           const AddEntry(
             gamePublicId: 'game-1',
-            platformId: 1,
+            platformIds: [1],
             notes: 'Loving it',
           ),
         ),
@@ -252,7 +269,7 @@ void main() {
 
       verify(
         () => libraryBloc.add(
-          const AddEntry(gamePublicId: 'game-1', platformId: 1),
+          const AddEntry(gamePublicId: 'game-1', platformIds: [1]),
         ),
       ).called(1);
     });
@@ -333,7 +350,7 @@ void main() {
       ).called(1);
       verify(
         () => libraryBloc.add(
-          const AddEntry(gamePublicId: 'created-1', platformId: 1),
+          const AddEntry(gamePublicId: 'created-1', platformIds: [1]),
         ),
       ).called(1);
       expect(find.text('Library stub'), findsOneWidget);

@@ -13,10 +13,9 @@ class MockLibraryRepository extends Mock implements LibraryRepository {}
 class MockLibraryBloc extends MockBloc<LibraryEvent, LibraryState>
     implements LibraryBloc {}
 
-/// Two sample entries used by tests that need loaded data.
-final _sampleEntries = [
-  LibraryEntry(
-    publicId: 'entry-1',
+/// Two sample game groups used by tests that need loaded data.
+final _sampleGroups = [
+  LibraryGameGroup(
     game: Game(
       publicId: 'game-1',
       slug: 'elden-ring',
@@ -25,18 +24,22 @@ final _sampleEntries = [
       createdAt: DateTime(2024),
       summary: 'An action RPG.',
     ),
-    platform: const Platform(
-      id: 1,
-      slug: 'ps5',
-      label: 'PlayStation 5',
-      family: 'playstation',
-    ),
-    status: 'playing',
-    createdAt: DateTime(2024),
-    updatedAt: DateTime(2024),
+    platforms: [
+      LibraryPlatformState(
+        publicId: 'entry-1',
+        platform: const Platform(
+          id: 1,
+          slug: 'ps5',
+          label: 'PlayStation 5',
+          family: 'playstation',
+        ),
+        status: 'playing',
+        createdAt: DateTime(2024),
+        updatedAt: DateTime(2024),
+      ),
+    ],
   ),
-  LibraryEntry(
-    publicId: 'entry-2',
+  LibraryGameGroup(
     game: Game(
       publicId: 'game-2',
       slug: 'zelda-totk',
@@ -44,15 +47,20 @@ final _sampleEntries = [
       metadataSource: 'igdb',
       createdAt: DateTime(2024),
     ),
-    platform: const Platform(
-      id: 2,
-      slug: 'switch',
-      label: 'Nintendo Switch',
-      family: 'nintendo',
-    ),
-    status: 'backlog',
-    createdAt: DateTime(2024),
-    updatedAt: DateTime(2024),
+    platforms: [
+      LibraryPlatformState(
+        publicId: 'entry-2',
+        platform: const Platform(
+          id: 2,
+          slug: 'switch',
+          label: 'Nintendo Switch',
+          family: 'nintendo',
+        ),
+        status: 'backlog',
+        createdAt: DateTime(2024),
+        updatedAt: DateTime(2024),
+      ),
+    ],
   ),
 ];
 
@@ -102,9 +110,9 @@ void main() {
       'shows empty state with Your backlog is empty when LibraryLoaded '
       'with empty list',
       (tester) async {
-        when(() => libraryBloc.state).thenReturn(
-          const LibraryLoaded(entries: [], total: 0, hasMore: false),
-        );
+        when(
+          () => libraryBloc.state,
+        ).thenReturn(const LibraryLoaded(groups: [], total: 0, hasMore: false));
 
         await tester.pumpWidget(buildSubject());
 
@@ -117,7 +125,7 @@ void main() {
       'shows list of library entries when LibraryLoaded with entries',
       (tester) async {
         when(() => libraryBloc.state).thenReturn(
-          LibraryLoaded(entries: _sampleEntries, total: 2, hasMore: false),
+          LibraryLoaded(groups: _sampleGroups, total: 2, hasMore: false),
         );
 
         await tester.pumpWidget(buildSubject());
@@ -130,7 +138,7 @@ void main() {
     testWidgets('shows the IGDB attribution credit', (tester) async {
       when(
         () => libraryBloc.state,
-      ).thenReturn(const LibraryLoaded(entries: [], total: 0, hasMore: false));
+      ).thenReturn(const LibraryLoaded(groups: [], total: 0, hasMore: false));
 
       await tester.pumpWidget(buildSubject());
 
@@ -141,7 +149,7 @@ void main() {
       'each entry card shows game title, platform label, status chip',
       (tester) async {
         when(() => libraryBloc.state).thenReturn(
-          LibraryLoaded(entries: _sampleEntries, total: 2, hasMore: false),
+          LibraryLoaded(groups: _sampleGroups, total: 2, hasMore: false),
         );
 
         await tester.pumpWidget(buildSubject());
@@ -163,7 +171,7 @@ void main() {
     testWidgets('FABs are present (capture, import, and add)', (tester) async {
       when(
         () => libraryBloc.state,
-      ).thenReturn(const LibraryLoaded(entries: [], total: 0, hasMore: false));
+      ).thenReturn(const LibraryLoaded(groups: [], total: 0, hasMore: false));
 
       await tester.pumpWidget(buildSubject());
 
@@ -187,7 +195,7 @@ void main() {
     ) async {
       when(
         () => libraryBloc.state,
-      ).thenReturn(const LibraryLoaded(entries: [], total: 0, hasMore: false));
+      ).thenReturn(const LibraryLoaded(groups: [], total: 0, hasMore: false));
 
       await tester.pumpWidget(buildSubject());
 

@@ -1,5 +1,5 @@
 import type { ConciergeEvent } from "../types/concierge";
-import { BASE_URL, getAccessToken } from "./api";
+import { fetchWithAuthRetry } from "./api";
 
 // ---------------------------------------------------------------------------
 // Backlog Concierge chat — consumes the SSE endpoint as an async generator
@@ -13,13 +13,9 @@ export async function* streamConcierge(
 	threadId?: string,
 	signal?: AbortSignal,
 ): AsyncGenerator<ConciergeEvent> {
-	const accessToken = getAccessToken();
-	const res = await fetch(`${BASE_URL}/v1/concierge/chat`, {
+	const res = await fetchWithAuthRetry("/v1/concierge/chat", {
 		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-			...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-		},
+		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({ message, thread_id: threadId }),
 		signal,
 	});

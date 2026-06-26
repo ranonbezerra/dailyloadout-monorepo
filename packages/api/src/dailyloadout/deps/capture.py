@@ -7,7 +7,6 @@ from typing import Annotated
 from fastapi import Depends
 
 from dailyloadout.config import settings
-from dailyloadout.core.capture.service import CaptureService
 from dailyloadout.infrastructure.cache.factory import get_cache
 from dailyloadout.infrastructure.db.repositories.capture import (
     CaptureCandidateRepository,
@@ -23,7 +22,6 @@ from dailyloadout.infrastructure.stt.base import AbstractSTTClient
 from dailyloadout.infrastructure.stt.factory import get_stt_client
 
 from .db import DbSession
-from .library import GameRepoDep, LibraryRepoDep, PlatformRepoDep
 
 # ── Repositories ───────────────────────────────────────────────────────
 
@@ -85,17 +83,7 @@ STTClientDep = Annotated[AbstractSTTClient | None, Depends(get_stt_client_dep)]
 
 
 # ── Service ────────────────────────────────────────────────────────────
-
-
-def get_capture_service(
-    capture_repo: CaptureRepoDep,
-    candidate_repo: CaptureCandidateRepoDep,
-    game_repo: GameRepoDep,
-    library_repo: LibraryRepoDep,
-    platform_repo: PlatformRepoDep,
-) -> CaptureService:
-    """Provide a ``CaptureService`` wired to the current repositories."""
-    return CaptureService(capture_repo, candidate_repo, game_repo, library_repo, platform_repo)
-
-
-CaptureServiceDep = Annotated[CaptureService, Depends(get_capture_service)]
+#
+# ``CaptureServiceDep`` lives in ``deps/ocr.py``: the service now also takes the
+# OCR/catalog/usage collaborators, and ``deps/ocr.py`` already imports from this
+# module (the LLM/IGDB deps), so wiring it there avoids an import cycle.

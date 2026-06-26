@@ -14,14 +14,15 @@ final _game = Game(
   createdAt: _now,
 );
 
-final _entry = LibraryEntry(
+final _platformState = LibraryPlatformState(
   publicId: 'lib-001',
-  game: _game,
   platform: _platform,
   status: 'playing',
   createdAt: _now,
   updatedAt: _now,
 );
+
+final _group = LibraryGameGroup(game: _game, platforms: [_platformState]);
 
 void main() {
   group('LibraryEvent', () {
@@ -37,25 +38,35 @@ void main() {
     test('AddEntry supports value equality and props', () {
       const a = AddEntry(
         gamePublicId: 'g-1',
-        platformId: 1,
+        platformIds: [1, 2],
         status: 'playing',
         notes: 'fun',
       );
       const b = AddEntry(
         gamePublicId: 'g-1',
-        platformId: 1,
+        platformIds: [1, 2],
         status: 'playing',
         notes: 'fun',
       );
       expect(a, b);
-      expect(a.props, ['g-1', 1, 'playing', 'fun']);
+      expect(a.props, [
+        'g-1',
+        [1, 2],
+        'playing',
+        'fun',
+      ]);
     });
 
     test('AddEntry uses default status and null notes', () {
-      const a = AddEntry(gamePublicId: 'g-1', platformId: 2);
+      const a = AddEntry(gamePublicId: 'g-1', platformIds: [2]);
       expect(a.status, 'backlog');
       expect(a.notes, isNull);
-      expect(a.props, ['g-1', 2, 'backlog', null]);
+      expect(a.props, [
+        'g-1',
+        [2],
+        'backlog',
+        null,
+      ]);
     });
 
     test('UpdateEntry supports value equality and props', () {
@@ -102,17 +113,17 @@ void main() {
     });
 
     test('LibraryLoaded supports value equality and props', () {
-      final a = LibraryLoaded(entries: [_entry], total: 1, hasMore: false);
-      final b = LibraryLoaded(entries: [_entry], total: 1, hasMore: false);
+      final a = LibraryLoaded(groups: [_group], total: 1, hasMore: false);
+      final b = LibraryLoaded(groups: [_group], total: 1, hasMore: false);
       expect(a, b);
       expect(a.props, [
-        [_entry],
+        [_group],
         1,
         false,
       ]);
       expect(
         a,
-        isNot(LibraryLoaded(entries: [_entry], total: 1, hasMore: true)),
+        isNot(LibraryLoaded(groups: [_group], total: 1, hasMore: true)),
       );
     });
 

@@ -82,6 +82,10 @@ api-test-cov: ## Run API tests with coverage (fail under 80%)
 igdb-check: ## Smoke-test the live IGDB client (make igdb-check q="Hollow Knight")
 	cd $(API_DIR) && poetry run python scripts/check_igdb.py "$(or $(q),Hollow Knight)"
 
+.PHONY: igdb-backfill
+igdb-backfill: ## Backfill IGDB metadata onto pre-IGDB games (dry-run; make igdb-backfill args="--apply")
+	cd $(API_DIR) && poetry run python scripts/backfill_igdb.py $(args)
+
 .PHONY: cache-stats
 cache-stats: ## Show per-namespace cache hit/miss rates from the running API
 	@curl -s http://localhost:$${API_PORT:-8100}/v1/cache/stats | python3 -m json.tool
@@ -170,6 +174,10 @@ web-fmt: ## Format web code
 web-install: ## Install web dependencies
 	cd $(WEB_DIR) && bun install
 
+.PHONY: web-e2e
+web-e2e: ## Run Playwright e2e tests (API mocked, headless Chromium)
+	cd $(WEB_DIR) && bun run e2e
+
 # ─────────────────────────────────────────────
 # App (packages/app) — Flutter
 # ─────────────────────────────────────────────
@@ -185,6 +193,10 @@ app-devices: ## List available Flutter devices
 .PHONY: app-test
 app-test: ## Run Flutter tests
 	cd $(APP_DIR) && $(FLUTTER) test
+
+.PHONY: app-e2e
+app-e2e: ## Run Flutter integration tests headless (flutter-tester)
+	cd $(APP_DIR) && $(FLUTTER) test integration_test/ -d flutter-tester
 
 .PHONY: app-lint
 app-lint: ## Analyze Flutter code

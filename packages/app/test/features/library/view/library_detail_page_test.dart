@@ -14,8 +14,7 @@ class MockLibraryRepository extends Mock implements LibraryRepository {}
 class MockLibraryBloc extends MockBloc<LibraryEvent, LibraryState>
     implements LibraryBloc {}
 
-final _entryWithSummary = LibraryEntry(
-  publicId: 'entry-1',
+final _groupWithSummary = LibraryGameGroup(
   game: Game(
     publicId: 'game-1',
     slug: 'elden-ring',
@@ -24,20 +23,24 @@ final _entryWithSummary = LibraryEntry(
     createdAt: DateTime(2024),
     summary: 'An action RPG by FromSoftware.',
   ),
-  platform: const Platform(
-    id: 1,
-    slug: 'ps5',
-    label: 'PlayStation 5',
-    family: 'playstation',
-  ),
-  status: 'playing',
-  notes: 'Beat Margit!',
-  createdAt: DateTime(2024),
-  updatedAt: DateTime(2024),
+  platforms: [
+    LibraryPlatformState(
+      publicId: 'entry-1',
+      platform: const Platform(
+        id: 1,
+        slug: 'ps5',
+        label: 'PlayStation 5',
+        family: 'playstation',
+      ),
+      status: 'playing',
+      notes: 'Beat Margit!',
+      createdAt: DateTime(2024),
+      updatedAt: DateTime(2024),
+    ),
+  ],
 );
 
-final _entryWithoutSummary = LibraryEntry(
-  publicId: 'entry-2',
+final _groupWithoutSummary = LibraryGameGroup(
   game: Game(
     publicId: 'game-2',
     slug: 'zelda-totk',
@@ -45,15 +48,20 @@ final _entryWithoutSummary = LibraryEntry(
     metadataSource: 'igdb',
     createdAt: DateTime(2024),
   ),
-  platform: const Platform(
-    id: 2,
-    slug: 'switch',
-    label: 'Nintendo Switch',
-    family: 'nintendo',
-  ),
-  status: 'backlog',
-  createdAt: DateTime(2024),
-  updatedAt: DateTime(2024),
+  platforms: [
+    LibraryPlatformState(
+      publicId: 'entry-2',
+      platform: const Platform(
+        id: 2,
+        slug: 'switch',
+        label: 'Nintendo Switch',
+        family: 'nintendo',
+      ),
+      status: 'backlog',
+      createdAt: DateTime(2024),
+      updatedAt: DateTime(2024),
+    ),
+  ],
 );
 
 void main() {
@@ -106,7 +114,7 @@ void main() {
       // LibraryLoaded but with an entry that does not match our ID.
       when(
         () => libraryBloc.state,
-      ).thenReturn(const LibraryLoaded(entries: [], total: 0, hasMore: false));
+      ).thenReturn(const LibraryLoaded(groups: [], total: 0, hasMore: false));
 
       await tester.pumpWidget(buildSubject(entryPublicId: 'nonexistent'));
 
@@ -116,7 +124,7 @@ void main() {
 
     testWidgets('shows game title in AppBar when entry found', (tester) async {
       when(() => libraryBloc.state).thenReturn(
-        LibraryLoaded(entries: [_entryWithSummary], total: 1, hasMore: false),
+        LibraryLoaded(groups: [_groupWithSummary], total: 1, hasMore: false),
       );
 
       await tester.pumpWidget(buildSubject());
@@ -132,7 +140,7 @@ void main() {
 
     testWidgets('shows platform label', (tester) async {
       when(() => libraryBloc.state).thenReturn(
-        LibraryLoaded(entries: [_entryWithSummary], total: 1, hasMore: false),
+        LibraryLoaded(groups: [_groupWithSummary], total: 1, hasMore: false),
       );
 
       await tester.pumpWidget(buildSubject());
@@ -142,7 +150,7 @@ void main() {
 
     testWidgets('shows status dropdown with current status', (tester) async {
       when(() => libraryBloc.state).thenReturn(
-        LibraryLoaded(entries: [_entryWithSummary], total: 1, hasMore: false),
+        LibraryLoaded(groups: [_groupWithSummary], total: 1, hasMore: false),
       );
 
       await tester.pumpWidget(buildSubject());
@@ -155,7 +163,7 @@ void main() {
 
     testWidgets('shows notes TextFormField', (tester) async {
       when(() => libraryBloc.state).thenReturn(
-        LibraryLoaded(entries: [_entryWithSummary], total: 1, hasMore: false),
+        LibraryLoaded(groups: [_groupWithSummary], total: 1, hasMore: false),
       );
 
       await tester.pumpWidget(buildSubject());
@@ -165,7 +173,7 @@ void main() {
 
     testWidgets('shows summary when game has summary', (tester) async {
       when(() => libraryBloc.state).thenReturn(
-        LibraryLoaded(entries: [_entryWithSummary], total: 1, hasMore: false),
+        LibraryLoaded(groups: [_groupWithSummary], total: 1, hasMore: false),
       );
 
       await tester.pumpWidget(buildSubject());
@@ -178,11 +186,7 @@ void main() {
       tester,
     ) async {
       when(() => libraryBloc.state).thenReturn(
-        LibraryLoaded(
-          entries: [_entryWithoutSummary],
-          total: 1,
-          hasMore: false,
-        ),
+        LibraryLoaded(groups: [_groupWithoutSummary], total: 1, hasMore: false),
       );
 
       await tester.pumpWidget(buildSubject(entryPublicId: 'entry-2'));
@@ -192,7 +196,7 @@ void main() {
 
     testWidgets('shows save IconButton', (tester) async {
       when(() => libraryBloc.state).thenReturn(
-        LibraryLoaded(entries: [_entryWithSummary], total: 1, hasMore: false),
+        LibraryLoaded(groups: [_groupWithSummary], total: 1, hasMore: false),
       );
 
       await tester.pumpWidget(buildSubject());
@@ -203,7 +207,7 @@ void main() {
 
     testWidgets('shows Remove from Library OutlinedButton', (tester) async {
       when(() => libraryBloc.state).thenReturn(
-        LibraryLoaded(entries: [_entryWithSummary], total: 1, hasMore: false),
+        LibraryLoaded(groups: [_groupWithSummary], total: 1, hasMore: false),
       );
 
       await tester.pumpWidget(buildSubject());
@@ -211,42 +215,40 @@ void main() {
       // The button may be off-screen in the SingleChildScrollView,
       // so scroll until it is visible.
       await tester.scrollUntilVisible(
-        find.text('Remove from Library'),
+        find.text('Remove this platform'),
         200,
         scrollable: find.byType(Scrollable).first,
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Remove from Library'), findsOneWidget);
+      expect(find.text('Remove this platform'), findsOneWidget);
       expect(find.byIcon(Icons.delete_outline), findsOneWidget);
     });
 
     testWidgets('delete button shows confirmation dialog', (tester) async {
       when(() => libraryBloc.state).thenReturn(
-        LibraryLoaded(entries: [_entryWithSummary], total: 1, hasMore: false),
+        LibraryLoaded(groups: [_groupWithSummary], total: 1, hasMore: false),
       );
 
       await tester.pumpWidget(buildSubject());
 
       // Scroll until the delete button is visible.
       await tester.scrollUntilVisible(
-        find.text('Remove from Library'),
+        find.text('Remove this platform'),
         200,
         scrollable: find.byType(Scrollable).first,
       );
       await tester.pumpAndSettle();
 
       // Tap the delete button by finding the text.
-      await tester.tap(find.text('Remove from Library'));
+      await tester.tap(find.text('Remove this platform'));
       await tester.pumpAndSettle();
 
       // Verify the confirmation dialog appears.
       expect(find.byType(AlertDialog), findsOneWidget);
-      expect(find.text('Delete entry'), findsOneWidget);
+      expect(find.text('Remove platform'), findsOneWidget);
       expect(
-        find.text(
-          'Are you sure you want to remove this game from your library?',
-        ),
+        find.textContaining('Are you sure you want to remove this platform'),
         findsOneWidget,
       );
       expect(find.text('Cancel'), findsOneWidget);
@@ -257,7 +259,7 @@ void main() {
       tester,
     ) async {
       when(() => libraryBloc.state).thenReturn(
-        LibraryLoaded(entries: [_entryWithSummary], total: 1, hasMore: false),
+        LibraryLoaded(groups: [_groupWithSummary], total: 1, hasMore: false),
       );
 
       await tester.pumpWidget(buildSubject());
@@ -285,18 +287,18 @@ void main() {
       tester,
     ) async {
       when(() => libraryBloc.state).thenReturn(
-        LibraryLoaded(entries: [_entryWithSummary], total: 1, hasMore: false),
+        LibraryLoaded(groups: [_groupWithSummary], total: 1, hasMore: false),
       );
 
       await tester.pumpWidget(buildSubject());
 
       await tester.scrollUntilVisible(
-        find.text('Remove from Library'),
+        find.text('Remove this platform'),
         200,
         scrollable: find.byType(Scrollable).first,
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Remove from Library'));
+      await tester.tap(find.text('Remove this platform'));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Cancel'));
@@ -309,19 +311,19 @@ void main() {
       tester,
     ) async {
       when(() => libraryBloc.state).thenReturn(
-        LibraryLoaded(entries: [_entryWithSummary], total: 1, hasMore: false),
+        LibraryLoaded(groups: [_groupWithSummary], total: 1, hasMore: false),
       );
 
       await tester.pumpWidget(buildRoutedSubject());
       await tester.pumpAndSettle();
 
       await tester.scrollUntilVisible(
-        find.text('Remove from Library'),
+        find.text('Remove this platform'),
         200,
         scrollable: find.byType(Scrollable).first,
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Remove from Library'));
+      await tester.tap(find.text('Remove this platform'));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Delete'));

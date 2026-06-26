@@ -24,24 +24,25 @@ final _game = Game(
   createdAt: _now,
 );
 
-final _entry = LibraryEntry(
+final _platformState = LibraryPlatformState(
   publicId: 'lib-001',
-  game: _game,
   platform: _platform,
   status: 'backlog',
   createdAt: _now,
   updatedAt: _now,
 );
 
+final _group = LibraryGameGroup(game: _game, platforms: [_platformState]);
+
 final _listResponse = LibraryListResponse(
-  items: [_entry],
+  items: [_group],
   total: 3,
   limit: 50,
   offset: 0,
 );
 
 final _listResponseNoMore = LibraryListResponse(
-  items: [_entry],
+  items: [_group],
   total: 1,
   limit: 50,
   offset: 0,
@@ -91,7 +92,7 @@ void main() {
         act: (bloc) => bloc.add(const LoadLibrary()),
         expect: () => [
           const LibraryLoading(),
-          LibraryLoaded(entries: [_entry], total: 3, hasMore: true),
+          LibraryLoaded(groups: [_group], total: 3, hasMore: true),
         ],
       );
 
@@ -107,7 +108,7 @@ void main() {
         act: (bloc) => bloc.add(const LoadLibrary()),
         expect: () => [
           const LibraryLoading(),
-          LibraryLoaded(entries: [_entry], total: 1, hasMore: false),
+          LibraryLoaded(groups: [_group], total: 1, hasMore: false),
         ],
       );
 
@@ -122,7 +123,7 @@ void main() {
         act: (bloc) => bloc.add(const LoadLibrary(status: 'playing')),
         expect: () => const [
           LibraryLoading(),
-          LibraryLoaded(entries: [], total: 0, hasMore: false),
+          LibraryLoaded(groups: [], total: 0, hasMore: false),
         ],
         verify: (_) {
           verify(
@@ -189,20 +190,21 @@ void main() {
           when(
             () => mockLibraryRepository.addToLibrary(
               gamePublicId: 'game-001',
-              platformId: 1,
+              platformIds: [1],
             ),
-          ).thenAnswer((_) async => _entry);
+          ).thenAnswer((_) async => _group);
           // Reload call
           when(
             () => mockLibraryRepository.listLibrary(),
           ).thenAnswer((_) async => _listResponseNoMore);
         },
         build: buildBloc,
-        act: (bloc) =>
-            bloc.add(const AddEntry(gamePublicId: 'game-001', platformId: 1)),
+        act: (bloc) => bloc.add(
+          const AddEntry(gamePublicId: 'game-001', platformIds: [1]),
+        ),
         expect: () => [
           const LibraryLoading(),
-          LibraryLoaded(entries: [_entry], total: 1, hasMore: false),
+          LibraryLoaded(groups: [_group], total: 1, hasMore: false),
         ],
       );
 
@@ -212,7 +214,7 @@ void main() {
           when(
             () => mockLibraryRepository.addToLibrary(
               gamePublicId: any(named: 'gamePublicId'),
-              platformId: any(named: 'platformId'),
+              platformIds: any(named: 'platformIds'),
               status: any(named: 'status'),
               notes: any(named: 'notes'),
             ),
@@ -228,8 +230,9 @@ void main() {
           );
         },
         build: buildBloc,
-        act: (bloc) =>
-            bloc.add(const AddEntry(gamePublicId: 'game-001', platformId: 1)),
+        act: (bloc) => bloc.add(
+          const AddEntry(gamePublicId: 'game-001', platformIds: [1]),
+        ),
         expect: () => const [
           LibraryLoading(),
           LibraryError(message: 'Already in library'),
@@ -247,7 +250,7 @@ void main() {
           when(
             () =>
                 mockLibraryRepository.updateEntry('lib-001', status: 'playing'),
-          ).thenAnswer((_) async => _entry);
+          ).thenAnswer((_) async => _platformState);
           when(
             () => mockLibraryRepository.listLibrary(),
           ).thenAnswer((_) async => _listResponseNoMore);
@@ -257,7 +260,7 @@ void main() {
             bloc.add(const UpdateEntry(publicId: 'lib-001', status: 'playing')),
         expect: () => [
           const LibraryLoading(),
-          LibraryLoaded(entries: [_entry], total: 1, hasMore: false),
+          LibraryLoaded(groups: [_group], total: 1, hasMore: false),
         ],
       );
 
@@ -304,7 +307,7 @@ void main() {
         act: (bloc) => bloc.add(const DeleteEntry(publicId: 'lib-001')),
         expect: () => const [
           LibraryLoading(),
-          LibraryLoaded(entries: [], total: 0, hasMore: false),
+          LibraryLoaded(groups: [], total: 0, hasMore: false),
         ],
       );
 
@@ -375,10 +378,10 @@ void main() {
           when(
             () => mockLibraryRepository.addToLibrary(
               gamePublicId: 'game-002',
-              platformId: 1,
+              platformIds: [1],
               status: 'playing',
             ),
-          ).thenAnswer((_) async => _entry);
+          ).thenAnswer((_) async => _group);
         },
         build: buildBloc,
         act: (bloc) async {
@@ -387,16 +390,16 @@ void main() {
           bloc.add(
             const AddEntry(
               gamePublicId: 'game-002',
-              platformId: 1,
+              platformIds: [1],
               status: 'playing',
             ),
           );
         },
         expect: () => [
           const LibraryLoading(),
-          LibraryLoaded(entries: [_entry], total: 1, hasMore: false),
+          LibraryLoaded(groups: [_group], total: 1, hasMore: false),
           const LibraryLoading(),
-          LibraryLoaded(entries: [_entry], total: 1, hasMore: false),
+          LibraryLoaded(groups: [_group], total: 1, hasMore: false),
         ],
         verify: (_) {
           // listLibrary was called twice: once for LoadLibrary and once

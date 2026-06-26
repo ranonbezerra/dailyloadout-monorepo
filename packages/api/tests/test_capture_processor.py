@@ -71,12 +71,17 @@ class TestProcessCaptureEdgeCases:
         candidate_repo = AsyncMock()
 
         llm = AsyncMock()
-        llm.parse_capture_text = AsyncMock(side_effect=RuntimeError("boom"))
+        llm.parse_capture_text = AsyncMock(side_effect=RuntimeError("secret internal detail"))
 
         await process_capture(capture, capture_repo, candidate_repo, llm, None)
 
         last_call = capture_repo.update_status.call_args_list[-1]
         assert last_call.args[1] == "failed"
+        # The persisted error_message is generic — raw exception text (which can
+        # leak internals to the client) must never be stored.
+        error_message = last_call.kwargs["error_message"]
+        assert error_message == "Processing failed. Please try again."
+        assert "secret internal detail" not in error_message
 
     async def test_igdb_enrichment_adds_metadata(self) -> None:
         from dailyloadout.infrastructure.igdb.schemas import IGDBGame
