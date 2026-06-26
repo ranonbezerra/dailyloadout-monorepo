@@ -31,9 +31,7 @@ void main() {
   Widget buildSubject() {
     return BlocProvider<AuthBloc>.value(
       value: authBloc,
-      child: const MaterialApp(
-        home: Scaffold(body: VerifyEmailBanner()),
-      ),
+      child: const MaterialApp(home: Scaffold(body: VerifyEmailBanner())),
     );
   }
 
@@ -82,9 +80,7 @@ void main() {
       await tester.tap(find.text(VerifyEmailStrings.resend));
       await tester.pump();
 
-      verify(
-        () => authBloc.add(const ResendVerificationRequested()),
-      ).called(1);
+      verify(() => authBloc.add(const ResendVerificationRequested())).called(1);
     });
 
     testWidgets('dispatches RefreshUserRequested on Refresh tap', (

@@ -209,11 +209,12 @@ void main() {
       when(
         () => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')),
       ).thenAnswer(
-        (_) async => _response(
-          '/v1/auth/resend-verification',
-          <String, dynamic>{'message': 'If the address exists, an email '
-              'was sent.'},
-        ),
+        (_) async =>
+            _response('/v1/auth/resend-verification', <String, dynamic>{
+              'message':
+                  'If the address exists, an email '
+                  'was sent.',
+            }),
       );
 
       final message = await repository.resendVerification();
@@ -226,13 +227,9 @@ void main() {
     });
 
     test('returns empty string when message is absent', () async {
-      when(
-        () => dio.post<Map<String, dynamic>>(any()),
-      ).thenAnswer(
-        (_) async => _response(
-          '/v1/auth/resend-verification',
-          <String, dynamic>{},
-        ),
+      when(() => dio.post<Map<String, dynamic>>(any())).thenAnswer(
+        (_) async =>
+            _response('/v1/auth/resend-verification', <String, dynamic>{}),
       );
 
       final message = await repository.resendVerification();
