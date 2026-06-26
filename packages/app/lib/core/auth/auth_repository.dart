@@ -63,6 +63,27 @@ class AuthRepository {
     return User.fromJson(response.data!);
   }
 
+  /// Confirms an email address using the token from the verification link.
+  ///
+  /// Returns the human-readable message from the API. The verification link
+  /// itself opens the web app; this exists for completeness / deep-link use.
+  Future<String> verifyEmail({required String token}) async {
+    final response = await _apiClient.dio.post<Map<String, dynamic>>(
+      '/v1/auth/verify',
+      data: {'token': token},
+    );
+    return response.data?['message'] as String? ?? '';
+  }
+
+  /// Requests a fresh verification email. Rate-limited and neutral on the
+  /// server (always returns a generic message regardless of account state).
+  Future<String> resendVerification() async {
+    final response = await _apiClient.dio.post<Map<String, dynamic>>(
+      '/v1/auth/resend-verification',
+    );
+    return response.data?['message'] as String? ?? '';
+  }
+
   /// Saves tokens to the token store.
   Future<void> saveTokens(AuthTokens tokens) async {
     await _tokenStore.saveTokens(

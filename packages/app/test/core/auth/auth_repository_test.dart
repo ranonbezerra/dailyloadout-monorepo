@@ -168,6 +168,76 @@ void main() {
     });
   });
 
+  group('verifyEmail', () {
+    test('posts token and returns message', () async {
+      when(
+        () => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')),
+      ).thenAnswer(
+        (_) async => _response('/v1/auth/verify', <String, dynamic>{
+          'message': 'Email verified.',
+        }),
+      );
+
+      final message = await repository.verifyEmail(token: 'tok-123');
+
+      expect(message, 'Email verified.');
+      final captured = verify(
+        () => dio.post<Map<String, dynamic>>(
+          captureAny(),
+          data: captureAny(named: 'data'),
+        ),
+      ).captured;
+      expect(captured[0], '/v1/auth/verify');
+      expect((captured[1] as Map)['token'], 'tok-123');
+    });
+
+    test('returns empty string when message is absent', () async {
+      when(
+        () => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')),
+      ).thenAnswer(
+        (_) async => _response('/v1/auth/verify', <String, dynamic>{}),
+      );
+
+      final message = await repository.verifyEmail(token: 'tok');
+
+      expect(message, '');
+    });
+  });
+
+  group('resendVerification', () {
+    test('posts to resend endpoint and returns message', () async {
+      when(
+        () => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')),
+      ).thenAnswer(
+        (_) async =>
+            _response('/v1/auth/resend-verification', <String, dynamic>{
+              'message':
+                  'If the address exists, an email '
+                  'was sent.',
+            }),
+      );
+
+      final message = await repository.resendVerification();
+
+      expect(message, 'If the address exists, an email was sent.');
+      final captured = verify(
+        () => dio.post<Map<String, dynamic>>(captureAny()),
+      ).captured;
+      expect(captured[0], '/v1/auth/resend-verification');
+    });
+
+    test('returns empty string when message is absent', () async {
+      when(() => dio.post<Map<String, dynamic>>(any())).thenAnswer(
+        (_) async =>
+            _response('/v1/auth/resend-verification', <String, dynamic>{}),
+      );
+
+      final message = await repository.resendVerification();
+
+      expect(message, '');
+    });
+  });
+
   group('token store delegation', () {
     test('saveTokens forwards to store', () async {
       when(

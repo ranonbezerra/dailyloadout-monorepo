@@ -8,7 +8,38 @@ import { MantineProvider } from "@mantine/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
+import { vi } from "vitest";
 import { AuthProvider } from "../contexts/AuthContext";
+import type { useAuth } from "../hooks/useAuth";
+
+type AuthContextValue = ReturnType<typeof useAuth>;
+
+/**
+ * Build a fully-typed `useAuthContext()` return value for tests, with sane
+ * defaults (unauthenticated, verified). Pass `overrides` to tailor a scenario.
+ */
+export function makeAuthContext(overrides: Partial<AuthContextValue> = {}): AuthContextValue {
+	return {
+		user: null,
+		isLoading: false,
+		isAuthenticated: false,
+		emailVerified: true,
+		login: vi.fn(),
+		register: vi.fn(),
+		logout: vi.fn(),
+		verify: vi.fn(),
+		resendVerification: vi.fn(),
+		refetchUser: vi.fn(),
+		loginError: null,
+		registerError: null,
+		verifyError: null,
+		isLoginPending: false,
+		isRegisterPending: false,
+		isVerifyPending: false,
+		isResendPending: false,
+		...overrides,
+	};
+}
 
 interface WrapperOptions {
 	/** Initial route entries for MemoryRouter (default: ["/"]) */

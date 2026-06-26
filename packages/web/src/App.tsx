@@ -20,10 +20,12 @@ import {
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { VerifyEmailBanner } from "./components/VerifyEmailBanner";
 import { useAuthContext } from "./contexts/AuthContext";
 import { FEATURES } from "./lib/features";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
+import { VerifyEmailPage } from "./pages/VerifyEmailPage";
 
 // Route-level code-splitting: each page (and its heavy chart/datatable deps)
 // loads on demand rather than shipping in one >1MB bundle. The shell stays eager.
@@ -146,6 +148,7 @@ function AppLayout() {
 			</AppShell.Navbar>
 
 			<AppShell.Main>
+				<VerifyEmailBanner />
 				<Suspense fallback={<RouteFallback />}>
 					<Routes>
 						<Route path="/play" element={<PlayPage />} />
@@ -176,6 +179,9 @@ function App() {
 		<Routes>
 			<Route path="/login" element={<LoginPage />} />
 			<Route path="/register" element={<RegisterPage />} />
+			{/* Public: the verification link is opened straight from the email,
+			    possibly while signed out. */}
+			<Route path="/verify-email" element={<VerifyEmailPage />} />
 			<Route
 				path="/*"
 				element={

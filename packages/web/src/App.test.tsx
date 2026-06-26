@@ -69,16 +69,19 @@ function setUnauthenticated() {
 
 function setAuthenticated(logoutFn?: ReturnType<typeof vi.fn>) {
 	mockUseAuthContext.mockReturnValue({
-		user: { public_id: "u1", email: "test@test.com", display_name: "Test" },
+		user: { public_id: "u1", email: "test@test.com", display_name: "Test", emailVerified: true },
 		isLoading: false,
 		isAuthenticated: true,
+		emailVerified: true,
 		login: vi.fn(),
 		logout: logoutFn ?? vi.fn(),
 		register: vi.fn(),
+		resendVerification: vi.fn(),
 		loginError: null,
 		registerError: null,
 		isLoginPending: false,
 		isRegisterPending: false,
+		isResendPending: false,
 	});
 }
 

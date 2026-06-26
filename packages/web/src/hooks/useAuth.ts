@@ -6,8 +6,18 @@ import {
 	getAccessToken,
 	refreshSession,
 	saveTokens,
+	TURNSTILE_HEADER,
 } from "../lib/api";
+import { resendVerification as resendVerificationApi, verifyEmail } from "../lib/auth-api";
 import type { AuthTokens, User } from "../types/auth";
+
+/**
+ * Normalize the API's `UserResponse` so UI code can read a camel-case
+ * `emailVerified` field. The API only returns `email_verified`; we mirror it.
+ */
+function normalizeUser(raw: User): User {
+	return { ...raw, emailVerified: raw.email_verified };
+}
 
 const USER_QUERY_KEY = ["auth", "me"] as const;
 const BOOTSTRAP_QUERY_KEY = ["auth", "bootstrap"] as const;
@@ -38,7 +48,7 @@ export function useAuth() {
 		queryKey: USER_QUERY_KEY,
 		queryFn: async () => {
 			if (!getAccessToken()) return null;
-			return apiFetch<User>("/v1/auth/me");
+			return normalizeUser(await apiFetch<User>("/v1/auth/me"));
 		},
 		// Only fetch /me once bootstrap has resolved and produced a token.
 		enabled: bootstrapped && !!getAccessToken(),
@@ -64,19 +74,48 @@ export function useAuth() {
 	});
 
 	// ---- Register mutation --------------------------------------------------
+	// When a Turnstile site key is configured the form supplies a solved-challenge
+	// token; we forward it as the `cf-turnstile-response` header. With no key the
+	// token is undefined and the header is omitted — the server treats it as a
+	// no-op, so registration still works in dev / when CAPTCHA is disabled.
 	const registerMutation = useMutation({
-		mutationFn: async (vars: { email: string; password: string; displayName: string }) => {
-			const data = await authFetch<AuthTokens>("/v1/auth/register", {
-				email: vars.email,
-				password: vars.password,
-				display_name: vars.displayName,
-			});
+		mutationFn: async (vars: {
+			email: string;
+			password: string;
+			displayName: string;
+			turnstileToken?: string;
+		}) => {
+			const headers = vars.turnstileToken
+				? { [TURNSTILE_HEADER]: vars.turnstileToken }
+				: undefined;
+			const data = await authFetch<AuthTokens>(
+				"/v1/auth/register",
+				{
+					email: vars.email,
+					password: vars.password,
+					display_name: vars.displayName,
+				},
+				headers,
+			);
 			saveTokens(data.access_token);
 		},
 		onSuccess: () => {
 			queryClient.setQueryData(BOOTSTRAP_QUERY_KEY, true);
 			queryClient.invalidateQueries({ queryKey: USER_QUERY_KEY });
 		},
+	});
+
+	// ---- Email-verification mutations --------------------------------------
+	const verifyEmailMutation = useMutation({
+		mutationFn: (token: string) => verifyEmail(token),
+		onSuccess: () => {
+			// The flag just flipped server-side — refetch /me so the banner clears.
+			queryClient.invalidateQueries({ queryKey: USER_QUERY_KEY });
+		},
+	});
+
+	const resendVerificationMutation = useMutation({
+		mutationFn: () => resendVerificationApi(),
 	});
 
 	// ---- Logout mutation ----------------------------------------------------
@@ -102,9 +141,25 @@ export function useAuth() {
 		await loginMutation.mutateAsync({ email, password });
 	};
 
-	const register = async (email: string, password: string, displayName: string) => {
-		await registerMutation.mutateAsync({ email, password, displayName });
+	const register = async (
+		email: string,
+		password: string,
+		displayName: string,
+		turnstileToken?: string,
+	) => {
+		await registerMutation.mutateAsync({ email, password, displayName, turnstileToken });
 	};
+
+	const verify = async (token: string): Promise<void> => {
+		await verifyEmailMutation.mutateAsync(token);
+	};
+
+	const resendVerification = async (): Promise<void> => {
+		await resendVerificationMutation.mutateAsync();
+	};
+
+	/** Force a refetch of /me (e.g. after verifying via the email link). */
+	const refetchUser = () => queryClient.invalidateQueries({ queryKey: USER_QUERY_KEY });
 
 	const logout = async () => {
 		await logoutMutation.mutateAsync();
@@ -114,12 +169,19 @@ export function useAuth() {
 		user,
 		isLoading,
 		isAuthenticated: !!user,
+		emailVerified: user?.emailVerified ?? false,
 		login,
 		register,
 		logout,
+		verify,
+		resendVerification,
+		refetchUser,
 		loginError: loginMutation.error,
 		registerError: registerMutation.error,
+		verifyError: verifyEmailMutation.error,
 		isLoginPending: loginMutation.isPending,
 		isRegisterPending: registerMutation.isPending,
+		isVerifyPending: verifyEmailMutation.isPending,
+		isResendPending: resendVerificationMutation.isPending,
 	};
 }

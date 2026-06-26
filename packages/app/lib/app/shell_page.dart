@@ -1,4 +1,5 @@
 import 'package:app/core/theme/dailyloadout_theme.dart';
+import 'package:app/features/auth/view/verify_email_banner.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -41,7 +42,14 @@ class ShellPage extends StatelessWidget {
     final tabs = _tabs();
 
     return Scaffold(
-      body: child,
+      // A persistent "verify your email" banner sits above the active tab
+      // whenever the user is unverified; it renders nothing otherwise.
+      body: Column(
+        children: [
+          const VerifyEmailBanner(),
+          Expanded(child: child),
+        ],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex(context, tabs),
         onTap: (index) => context.go(tabs[index].path),

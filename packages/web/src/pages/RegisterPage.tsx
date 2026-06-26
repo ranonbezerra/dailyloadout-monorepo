@@ -11,8 +11,9 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
+import { type TurnstileHandle, TurnstileWidget } from "../components/TurnstileWidget";
 import { useAuthContext } from "../contexts/AuthContext";
 
 interface RegisterFormValues {
@@ -24,6 +25,10 @@ interface RegisterFormValues {
 export function RegisterPage() {
 	const { register, isAuthenticated, isLoading } = useAuthContext();
 	const [submitting, setSubmitting] = useState(false);
+	// Solved Turnstile token (null when no site key is configured or before the
+	// challenge resolves). Held in a ref so it doesn't trigger re-renders.
+	const turnstileTokenRef = useRef<string | null>(null);
+	const turnstileRef = useRef<TurnstileHandle>(null);
 
 	const form = useForm<RegisterFormValues>({
 		initialValues: { email: "", password: "", displayName: "" },
@@ -42,8 +47,17 @@ export function RegisterPage() {
 	const handleSubmit = async (values: RegisterFormValues) => {
 		setSubmitting(true);
 		try {
-			await register(values.email, values.password, values.displayName);
+			await register(
+				values.email,
+				values.password,
+				values.displayName,
+				turnstileTokenRef.current ?? undefined,
+			);
 		} catch (err) {
+			// Turnstile tokens are single-use — re-arm the widget so a retry gets a
+			// fresh token instead of replaying a consumed one.
+			turnstileTokenRef.current = null;
+			turnstileRef.current?.reset();
 			notifications.show({
 				title: "Registration failed",
 				message: err instanceof Error ? err.message : "An unexpected error occurred",
@@ -83,6 +97,12 @@ export function RegisterPage() {
 							placeholder="Choose a password"
 							required
 							{...form.getInputProps("password")}
+						/>
+						<TurnstileWidget
+							ref={turnstileRef}
+							onToken={(token) => {
+								turnstileTokenRef.current = token;
+							}}
 						/>
 						<Button type="submit" fullWidth loading={submitting}>
 							Create account

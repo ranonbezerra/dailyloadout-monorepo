@@ -23,6 +23,9 @@ const user = {
 	updated_at: NOW,
 };
 
+/** Same user but still unverified — drives the "Verify your email" banner. */
+export const unverifiedUser = { ...user, email_verified: false };
+
 const platform = { id: 1, slug: "pc", label: "PC", family: "computer" };
 const switchPlatform = { id: 2, slug: "switch", label: "Nintendo Switch", family: "console" };
 
@@ -71,6 +74,11 @@ export const DEFAULT_ROUTES: Record<string, Canned> = {
 	"POST /v1/auth/refresh": {
 		status: 200,
 		body: { access_token: "e2e-access-token", refresh_token: "" },
+	},
+	"POST /v1/auth/verify": { status: 200, body: { message: "Email verified" } },
+	"POST /v1/auth/resend-verification": {
+		status: 200,
+		body: { message: "Verification email sent" },
 	},
 	"GET /v1/library": {
 		status: 200,
