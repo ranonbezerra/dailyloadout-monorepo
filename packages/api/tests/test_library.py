@@ -215,6 +215,100 @@ class TestSearchGames:
 
 
 # =====================================================================
+# Update Game (PATCH /v1/games/{public_id}) — shared-catalog lockdown
+# =====================================================================
+
+
+async def _create_igdb_game(slug: str = "igdb-game", igdb_id: int = 4242) -> str:
+    """Create a shared IGDB-canonical game directly and return its public_id."""
+    from dailyloadout.infrastructure.db.repositories.game import GameRepository
+    from tests.conftest import _TestSessionFactory
+
+    async with _TestSessionFactory() as session:
+        game = await GameRepository(session).create(
+            slug=slug,
+            title="IGDB Game",
+            metadata_source="igdb",
+            igdb_id=igdb_id,
+            genres=["action"],
+        )
+        await session.commit()
+        return str(game.public_id)
+
+
+class TestUpdateGame:
+    """PATCH /v1/games/{public_id}"""
+
+    async def test_update_non_igdb_game_succeeds(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+        create_game: dict[str, Any],
+    ) -> None:
+        # ``create_game`` is metadata_source="manual" (igdb_id is None) -> editable.
+        resp = await async_client.patch(
+            f"/v1/games/{create_game['public_id']}",
+            json={"genres": ["strategy"]},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["genres"] == ["strategy"]
+
+    async def test_update_igdb_game_forbidden(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+        seed_platforms: list[dict[str, Any]],
+    ) -> None:
+        public_id = await _create_igdb_game()
+        resp = await async_client.patch(
+            f"/v1/games/{public_id}",
+            json={"genres": ["strategy"]},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 403
+        assert "igdb" in resp.json()["detail"].lower()
+
+    async def test_update_missing_game_404(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+        seed_platforms: list[dict[str, Any]],
+    ) -> None:
+        resp = await async_client.patch(
+            f"/v1/games/{uuid4()}",
+            json={"genres": ["strategy"]},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 404
+
+
+class TestCreateGameDedup:
+    """POST /v1/games is deduped by slug (no duplicate rows)."""
+
+    async def test_existing_slug_does_not_duplicate(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+        seed_platforms: list[dict[str, Any]],
+    ) -> None:
+        from dailyloadout.infrastructure.db.repositories.game import GameRepository
+        from tests.conftest import _TestSessionFactory
+
+        payload = _game_payload(slug="dedup-me", title="Dedup Me")
+        first = await async_client.post("/v1/games", json=payload, headers=auth_headers)
+        assert first.status_code == 201
+
+        # Re-posting the same slug must not create a second catalog row.
+        second = await async_client.post("/v1/games", json=payload, headers=auth_headers)
+        assert second.status_code == 409
+
+        async with _TestSessionFactory() as session:
+            matches = await GameRepository(session).search("Dedup Me", limit=10)
+        assert len([g for g in matches if g.slug == "dedup-me"]) == 1
+
+
+# =====================================================================
 # Add to Library
 # =====================================================================
 

@@ -4,6 +4,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
 
+from dailyloadout.core.library.exceptions import CatalogImmutableError
 from dailyloadout.core.library.schemas import (
     GameCreate,
     GameResponse,
@@ -68,6 +69,11 @@ async def update_game(
             game_public_id=public_id,
             **update_fields,
         )
+    except CatalogImmutableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(exc),
+        ) from exc
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

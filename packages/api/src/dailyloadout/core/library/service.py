@@ -6,6 +6,7 @@ from datetime import date
 from uuid import UUID
 
 from dailyloadout.core.cache.invalidation import invalidate_user_stats
+from dailyloadout.core.library.exceptions import CatalogImmutableError
 from dailyloadout.infrastructure.cache.base import AbstractCache, NullCache
 from dailyloadout.infrastructure.cache.keys import NS_REF, reference_key
 from dailyloadout.infrastructure.cache.layer import cached_call
@@ -75,12 +76,19 @@ class LibraryService:
     async def update_game(self, game_public_id: UUID, **fields: object) -> Game:
         """Update a game's fields.
 
+        ``Game`` is a shared global catalog row. IGDB-canonical rows
+        (``igdb_id is not None``) are visible to every user and must stay
+        immutable; only non-IGDB rows (manual / pre-IGDB capture) are editable.
+
         Raises:
             ValueError: If the game is not found.
+            CatalogImmutableError: If the game is IGDB-canonical.
         """
         game = await self._game_repo.get_by_public_id(game_public_id)
         if game is None:
             raise ValueError("Game not found")
+        if game.igdb_id is not None:
+            raise CatalogImmutableError("IGDB catalog entries cannot be edited")
         return await self._game_repo.update(game, **fields)
 
     async def list_genres(self) -> list[str]:
