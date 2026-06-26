@@ -71,7 +71,7 @@ class TestStatsOverview:
 
         lib_json = {
             "game_public_id": game_id,
-            "platform_id": seed_platforms[0]["id"],
+            "platform_ids": [seed_platforms[0]["id"]],
             "status": "playing",
         }
         await async_client.post("/v1/library", json=lib_json, headers=auth_headers)
@@ -105,11 +105,11 @@ class TestPlayHeatmap:
         game_id = game_resp.json()["public_id"]
         lib_json = {
             "game_public_id": game_id,
-            "platform_id": seed_platforms[0]["id"],
+            "platform_ids": [seed_platforms[0]["id"]],
             "status": "playing",
         }
         entry_resp = await async_client.post("/v1/library", json=lib_json, headers=auth_headers)
-        entry_id = entry_resp.json()["public_id"]
+        entry_id = entry_resp.json()["platforms"][0]["public_id"]
         mission_resp = await async_client.post(
             "/v1/missions",
             json={"library_entry_public_id": entry_id},
@@ -153,7 +153,7 @@ class TestPlatformStats:
         game_id = game_resp.json()["public_id"]
         lib_json = {
             "game_public_id": game_id,
-            "platform_id": seed_platforms[0]["id"],
+            "platform_ids": [seed_platforms[0]["id"]],
             "status": "backlog",
         }
         await async_client.post("/v1/library", json=lib_json, headers=auth_headers)
@@ -184,11 +184,11 @@ class TestTimeline:
         game_id = game_resp.json()["public_id"]
         lib_json = {
             "game_public_id": game_id,
-            "platform_id": seed_platforms[0]["id"],
+            "platform_ids": [seed_platforms[0]["id"]],
             "status": "playing",
         }
         entry_resp = await async_client.post("/v1/library", json=lib_json, headers=auth_headers)
-        entry_id = entry_resp.json()["public_id"]
+        entry_id = entry_resp.json()["platforms"][0]["public_id"]
         mission_resp = await async_client.post(
             "/v1/missions",
             json={"library_entry_public_id": entry_id},

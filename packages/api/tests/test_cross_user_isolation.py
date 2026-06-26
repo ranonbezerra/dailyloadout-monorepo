@@ -73,13 +73,15 @@ async def _add_to_library(
         "/v1/library",
         json={
             "game_public_id": game_public_id,
-            "platform_id": platform_id,
+            "platform_ids": [platform_id],
             "status": status,
         },
         headers=headers,
     )
     assert resp.status_code == 201, resp.text
-    return resp.json()
+    # The grouped POST returns the game group; callers expect a single entry,
+    # so unwrap the one platform state created here.
+    return resp.json()["platforms"][0]
 
 
 async def _create_capture(
@@ -265,15 +267,17 @@ class TestLibraryListingIsolation:
             async_client, headers_b, game_b["public_id"], seed_platforms[0]["id"]
         )
 
-        # User A sees only their entry.
+        # User A sees only their entry (grouped: one game, its platform state).
         resp_a = await async_client.get("/v1/library", headers=headers_a)
         assert resp_a.json()["total"] == 1
-        assert resp_a.json()["items"][0]["public_id"] == entry_a["public_id"]
+        state_a = resp_a.json()["items"][0]["platforms"][0]
+        assert state_a["public_id"] == entry_a["public_id"]
 
         # User B sees only their entry.
         resp_b = await async_client.get("/v1/library", headers=headers_b)
         assert resp_b.json()["total"] == 1
-        assert resp_b.json()["items"][0]["public_id"] == entry_b["public_id"]
+        state_b = resp_b.json()["items"][0]["platforms"][0]
+        assert state_b["public_id"] == entry_b["public_id"]
 
 
 # =====================================================================

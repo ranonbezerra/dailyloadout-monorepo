@@ -90,12 +90,44 @@ async def test_auto_clamp_no_stale_does_not_bust(spy_cache: SpyCache) -> None:
 # ── Library service ──────────────────────────────────────────────────────
 
 
+class _FakeGame:
+    def __init__(self) -> None:
+        self.id = 1
+        self.public_id = uuid4()
+        self.slug = "game"
+        self.title = "Game"
+        self.igdb_id = None
+        self.summary = None
+        self.cover_url = None
+        self.first_release_date = None
+        self.genres = None
+        self.metadata_source = "manual"
+        self.created_at = "2026-01-01T00:00:00Z"
+
+
+class _FakePlatform:
+    def __init__(self) -> None:
+        self.id = 1
+        self.slug = "pc"
+        self.label = "PC"
+        self.family = "pc"
+
+
 class _Entry:
     def __init__(self, user_id: int) -> None:
         self.id = 1
         self.user_id = user_id
-        self.game: Any = None
-        self.platform: Any = None
+        self.game_id = 1
+        self.public_id = uuid4()
+        self.status = "backlog"
+        self.acquired_at = None
+        self.last_played_at = None
+        self.mission_next_action = None
+        self.notes = None
+        self.created_at = "2026-01-01T00:00:00Z"
+        self.updated_at = "2026-01-01T00:00:00Z"
+        self.game: Any = _FakeGame()
+        self.platform: Any = _FakePlatform()
 
 
 class _LibRepo:
@@ -107,6 +139,9 @@ class _LibRepo:
 
     async def create(self, **kwargs: Any) -> _Entry:
         return self.entry
+
+    async def list_for_user_game(self, user_id: int, game_id: int) -> list[_Entry]:
+        return [self.entry]
 
     async def get_by_public_id(self, public_id: Any, user_id: int) -> _Entry:
         return self.entry
@@ -135,7 +170,7 @@ def _library_service() -> Any:
 
 
 async def test_add_to_library_busts_stats(spy_cache: SpyCache) -> None:
-    await _library_service().add_to_library(5, uuid4(), platform_id=1)
+    await _library_service().add_to_library(5, uuid4(), platform_ids=[1])
     assert spy_cache.busted == [stats_namespace(5)]
 
 

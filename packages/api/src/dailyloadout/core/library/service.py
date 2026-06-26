@@ -7,6 +7,11 @@ from uuid import UUID
 
 from dailyloadout.core.cache.invalidation import invalidate_user_stats
 from dailyloadout.core.library.backfill import enrich_in_place, reconcile_manual_title
+from dailyloadout.core.library.schemas import (
+    GameResponse,
+    LibraryGameGroup,
+    LibraryPlatformState,
+)
 from dailyloadout.infrastructure.cache.base import AbstractCache, NullCache
 from dailyloadout.infrastructure.cache.keys import NS_REF, reference_key
 from dailyloadout.infrastructure.cache.layer import cached_call
@@ -134,41 +139,46 @@ class LibraryService:
         self,
         user_id: int,
         game_public_id: UUID,
-        platform_id: int,
+        platform_ids: list[int],
         status: str = "backlog",
         notes: str | None = None,
         acquired_at: date | None = None,
-    ) -> LibraryEntry:
-        """Add a game to the user's library.
+    ) -> LibraryGameGroup:
+        """Add a game to the user's library on one or more platforms.
+
+        Creates one per-platform entry for each requested platform, SKIPPING any
+        platform the user already owns for this game (idempotent re-add). Returns
+        the resulting grouped row for the game, including all its platform states.
 
         Raises:
-            ValueError: If the game or platform does not exist, or the entry
-                is a duplicate.
+            ValueError: If the game or any requested platform does not exist.
         """
         game = await self._game_repo.get_by_public_id(game_public_id)
         if game is None:
             raise ValueError("Game not found")
 
-        platform = await self._platform_repo.get_by_id(platform_id)
-        if platform is None:
-            raise ValueError("Platform not found")
+        for platform_id in platform_ids:
+            platform = await self._platform_repo.get_by_id(platform_id)
+            if platform is None:
+                raise ValueError("Platform not found")
 
-        if await self._library_repo.exists(user_id, game.id, platform_id):
-            raise ValueError("Library entry already exists for this game and platform")
+            if await self._library_repo.exists(user_id, game.id, platform_id):
+                # Idempotent re-add: skip platforms already owned for this game.
+                continue
 
-        entry = await self._library_repo.create(
-            user_id=user_id,
-            game_id=game.id,
-            platform_id=platform_id,
-            status=status,
-            notes=notes,
-            acquired_at=acquired_at,
-        )
-        # Attach resolved relationships so callers can serialize immediately.
-        entry.game = game
-        entry.platform = platform
+            await self._library_repo.create(
+                user_id=user_id,
+                game_id=game.id,
+                platform_id=platform_id,
+                status=status,
+                notes=notes,
+                acquired_at=acquired_at,
+            )
+
         await invalidate_user_stats(user_id)
-        return entry
+
+        entries = await self._library_repo.list_for_user_game(user_id, game.id)
+        return self._group_entries(entries)[0]
 
     async def list_library(
         self,
@@ -176,13 +186,40 @@ class LibraryService:
         status: str | None = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> tuple[list[LibraryEntry], int]:
-        """Return the user's library entries along with the total count."""
-        entries = await self._library_repo.list_for_user(
+    ) -> tuple[list[LibraryGameGroup], int]:
+        """Return the user's library grouped by game, with the distinct-game total.
+
+        Entries are fetched for one page of games (game-level pagination) and
+        grouped on the backend into :class:`LibraryGameGroup`s. When *status* is
+        given, only matching platform states are included, and *total* counts
+        only games that have at least one matching entry.
+        """
+        entries = await self._library_repo.list_grouped_for_user(
             user_id, status=status, limit=limit, offset=offset
         )
-        total = await self._library_repo.count_for_user(user_id, status=status)
-        return entries, total
+        total = await self._library_repo.count_games_for_user(user_id, status=status)
+        return self._group_entries(entries), total
+
+    @staticmethod
+    def _group_entries(entries: list[LibraryEntry]) -> list[LibraryGameGroup]:
+        """Group pre-ordered per-platform *entries* into per-game groups.
+
+        Relies on the repository having ordered entries so a game's rows are
+        contiguous; preserves that game order and the per-platform order.
+        """
+        groups: list[LibraryGameGroup] = []
+        index: dict[int, LibraryGameGroup] = {}
+        for entry in entries:
+            group = index.get(entry.game_id)
+            if group is None:
+                group = LibraryGameGroup(
+                    game=GameResponse.model_validate(entry.game),
+                    platforms=[],
+                )
+                index[entry.game_id] = group
+                groups.append(group)
+            group.platforms.append(LibraryPlatformState.model_validate(entry))
+        return groups
 
     async def get_entry(self, user_id: int, entry_public_id: UUID) -> LibraryEntry:
         """Return a single library entry owned by the user.
