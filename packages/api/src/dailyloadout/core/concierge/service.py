@@ -86,6 +86,18 @@ _DEGRADE_NOTE = (
 )
 
 
+def _namespace_thread_id(user_id: int, thread_id: str) -> str:
+    """Bind a client-supplied thread id to its owner.
+
+    The ``thread_id`` is client-controlled and used as the LangGraph
+    checkpointer key. Without a user prefix, one user could read or extend
+    another user's chat history by guessing/reusing their opaque id. Namespacing
+    by ``user_id`` keeps each user's conversation memory fully isolated; the
+    original ``thread_id`` is still echoed back to the client unchanged.
+    """
+    return f"{user_id}:{thread_id}"
+
+
 class ConciergeService:
     def __init__(
         self,
@@ -139,10 +151,11 @@ class ConciergeService:
         with a single reroll, else degrades. ``reply_stream`` is the live path.
         """
         tools = self._build_tools(user_id, user_created_at)
+        agent_thread_id = _namespace_thread_id(user_id, thread_id)
 
         reply = await self._agent.respond(
             ConciergeRequest(
-                thread_id=thread_id, message=message, system=SYSTEM_PROMPT, tools=tools
+                thread_id=agent_thread_id, message=message, system=SYSTEM_PROMPT, tools=tools
             )
         )
         prose, rec_id = split_recommendation(reply.text)
@@ -151,7 +164,7 @@ class ConciergeService:
             # Reroll once with a correction (Epic 7 guard pattern, MAX_REROLLS=1).
             reply = await self._agent.respond(
                 ConciergeRequest(
-                    thread_id=thread_id,
+                    thread_id=agent_thread_id,
                     message=_CORRECTION_MESSAGE,
                     system=SYSTEM_PROMPT,
                     tools=tools,
@@ -183,10 +196,11 @@ class ConciergeService:
         """
         tools = self._build_tools(user_id, user_created_at)
         gate = RecommendationGate()
+        agent_thread_id = _namespace_thread_id(user_id, thread_id)
 
         async for event in self._agent.astream(
             ConciergeRequest(
-                thread_id=thread_id, message=message, system=SYSTEM_PROMPT, tools=tools
+                thread_id=agent_thread_id, message=message, system=SYSTEM_PROMPT, tools=tools
             )
         ):
             if isinstance(event, ToolEvent):

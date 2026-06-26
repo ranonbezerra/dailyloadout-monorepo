@@ -75,6 +75,74 @@ class _NoPickAgent(AbstractConciergeAgent):
         return ConciergeReply(text="Tell me how much time you have and I'll suggest something.")
 
 
+class _CapturingAgent(AbstractConciergeAgent):
+    """Records the thread_id it is invoked with (no pick, so no reroll)."""
+
+    def __init__(self) -> None:
+        self.seen_thread_ids: list[str] = []
+
+    async def respond(self, req: ConciergeRequest) -> ConciergeReply:
+        self.seen_thread_ids.append(req.thread_id)
+        return ConciergeReply(text="Hi there.")
+
+
+async def test_thread_id_is_namespaced_per_user() -> None:
+    """Two users sharing one raw thread_id must get distinct checkpointer keys.
+
+    The client-supplied thread_id is namespaced with the user id before it is
+    handed to the agent, so one user can never read/extend another user's chat
+    history by reusing the same opaque id.
+    """
+    async with _TestSessionFactory() as session:
+        user_a, _ = await _seed(session, with_entry=False)
+        user_b, _ = await _seed(session, with_entry=False)
+        await session.commit()
+
+    raw_thread_id = "shared-thread"
+    async with _TestSessionFactory() as session:
+        agent = _CapturingAgent()
+        service = _service(session, agent)
+        await service.reply(
+            user_id=user_a,
+            user_created_at=datetime.now(UTC),
+            thread_id=raw_thread_id,
+            message="hi",
+        )
+        await service.reply(
+            user_id=user_b,
+            user_created_at=datetime.now(UTC),
+            thread_id=raw_thread_id,
+            message="hi",
+        )
+
+    assert agent.seen_thread_ids == [
+        f"{user_a}:{raw_thread_id}",
+        f"{user_b}:{raw_thread_id}",
+    ]
+    # The namespaced keys differ even though the raw thread_id was identical.
+    assert agent.seen_thread_ids[0] != agent.seen_thread_ids[1]
+
+
+async def test_reply_stream_namespaces_thread_id() -> None:
+    """The streaming path applies the same per-user namespacing."""
+    async with _TestSessionFactory() as session:
+        user_id, _ = await _seed(session, with_entry=False)
+        await session.commit()
+
+    async with _TestSessionFactory() as session:
+        agent = _CapturingAgent()  # astream falls back to respond()
+        service = _service(session, agent)
+        await _collect(
+            service,
+            user_id=user_id,
+            user_created_at=datetime.now(UTC),
+            thread_id="opaque",
+            message="hi",
+        )
+
+    assert agent.seen_thread_ids == [f"{user_id}:opaque"]
+
+
 def test_split_recommendation() -> None:
     assert _split_recommendation("Play this.\nRECOMMEND: abc") == ("Play this.", "abc")
     assert _split_recommendation("Just chatting.") == ("Just chatting.", None)

@@ -142,6 +142,73 @@ class TestSearxngResearchClient:
         assert results[0].title == "ok"
 
 
+class TestSearxngFetchSsrfGuard:
+    async def test_blocks_private_ip_host(self, make_searxng_client, monkeypatch) -> None:
+        """A host resolving to a private IP is rejected before any request."""
+        import dailyloadout.infrastructure.research.searxng as mod
+
+        def fake_getaddrinfo(host, *args, **kwargs):
+            return [(2, 1, 6, "", ("10.0.0.5", 0))]
+
+        monkeypatch.setattr(mod.socket, "getaddrinfo", fake_getaddrinfo)
+
+        called = {"hit": False}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            called["hit"] = True
+            return httpx.Response(200, text="<p>internal</p>")
+
+        client = make_searxng_client(handler)
+        text = await client.fetch("http://internal.test/admin")
+        assert text == ""
+        assert called["hit"] is False  # never reached the network
+
+    async def test_blocks_loopback_host(self, make_searxng_client, monkeypatch) -> None:
+        import dailyloadout.infrastructure.research.searxng as mod
+
+        monkeypatch.setattr(
+            mod.socket,
+            "getaddrinfo",
+            lambda *a, **k: [(2, 1, 6, "", ("127.0.0.1", 0))],
+        )
+        client = make_searxng_client(lambda r: httpx.Response(200, text="x"))
+        assert await client.fetch("http://localhost/secret") == ""
+
+    async def test_allows_public_host(self, make_searxng_client, monkeypatch) -> None:
+        """A host resolving to a public IP is fetched and its text returned."""
+        import dailyloadout.infrastructure.research.searxng as mod
+
+        monkeypatch.setattr(
+            mod.socket,
+            "getaddrinfo",
+            lambda *a, **k: [(2, 1, 6, "", ("93.184.216.34", 0))],
+        )
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, text="<h1>Greenpath</h1><p>Head west.</p>")
+
+        client = make_searxng_client(handler)
+        text = await client.fetch("https://example.test/guide")
+        assert "Greenpath" in text
+        assert "Head west." in text
+
+    async def test_rejects_unresolvable_host(self, make_searxng_client, monkeypatch) -> None:
+        import socket as _socket
+
+        import dailyloadout.infrastructure.research.searxng as mod
+
+        def boom(*a, **k):
+            raise _socket.gaierror("no such host")
+
+        monkeypatch.setattr(mod.socket, "getaddrinfo", boom)
+        client = make_searxng_client(lambda r: httpx.Response(200, text="x"))
+        assert await client.fetch("https://does-not-exist.test/") == ""
+
+    async def test_rejects_non_http_scheme(self, make_searxng_client) -> None:
+        client = make_searxng_client(lambda r: httpx.Response(200, text="x"))
+        assert await client.fetch("file:///etc/passwd") == ""
+
+
 class TestResearchFactory:
     def test_dummy_provider(self) -> None:
         client = get_research_client(Settings(research_provider="dummy"))

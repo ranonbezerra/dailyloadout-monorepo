@@ -82,9 +82,14 @@ class IGDBClient:
         Returns up to *limit* results enriched with cover URL, summary,
         genres, and release date.
         """
+        # Sanitize before interpolating into the Apicalypse query: strip
+        # backslashes and double-quotes (which could break out of the quoted
+        # search term and inject clauses) and cap the length.
+        safe = query.replace("\\", "").replace('"', "")[:200]
+
         # Apicalypse query body.
         body = (
-            f'search "{query}";'
+            f'search "{safe}";'
             f" fields name,cover.image_id,summary,genres.name,first_release_date;"
             f" limit {limit};"
         )

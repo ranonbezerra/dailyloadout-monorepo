@@ -67,4 +67,9 @@ class Mission(TimestampMixin, Base):
             postgresql_where=text("ended_at IS NULL"),
         ),
         Index("idx_missions_entry_ended", "library_entry_id", text("ended_at DESC")),
+        # Stats/history queries filter by user and ended missions — the inverse
+        # of the partial active index above. These composite indexes back the
+        # "ended missions for a user, newest first" and timeline scans.
+        Index("idx_missions_user_ended_at", "user_id", text("ended_at DESC")),
+        Index("idx_missions_user_started_at", "user_id", text("started_at DESC")),
     )
