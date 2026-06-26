@@ -244,7 +244,7 @@ async def limited_auth_client(in_memory_limiter: dict[str, Limiter]) -> Any:
 
 
 async def test_login_limiter_429_after_limit(limited_auth_client: AsyncClient) -> None:
-    payload = {"email": "nobody@example.com", "password": "whatever123"}
+    payload = {"email": "nobody@example.com", "password": "whatever123"}  # pragma: allowlist secret`
     statuses = [
         (await limited_auth_client.post("/v1/auth/login", json=payload)).status_code
         for _ in range(settings.rate_limit_login_per_minute + 2)
@@ -261,7 +261,7 @@ async def test_register_limiter_429_after_limit(
             "/v1/auth/register",
             json={
                 "email": f"user{i}@example.com",
-                "password": "SecurePass1",
+                "password": "SecurePass1",  # pragma: allowlist secret`
                 "display_name": "User",
             },
         )
