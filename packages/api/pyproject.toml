@@ -57,6 +57,7 @@ greenlet = "^3.5.1"
 bandit = "^1.9.4"
 typos = "^1.47.2"
 pytest-env = "^1.6.0"
+pytest-xdist = "^3.6"
 
 [build-system]
 requires = ["poetry-core"]

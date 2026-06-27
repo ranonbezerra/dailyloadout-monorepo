@@ -1,0 +1,27 @@
+name: Deploy API to staging
+
+# Continuous deploy of the API to the STAGING VPS on every merge to main that
+# touches the backend. Staging = "what's on main right now"; production is the
+# last released tag (see release-please.yml). Validate on staging, then merge the
+# release PR to cut the production release.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/api/**"
+      - "infra/**"
+      - ".github/workflows/deploy-staging.yml"
+      - ".github/workflows/deploy-api.yml"
+  workflow_dispatch:
+
+jobs:
+  staging:
+    # Inert until you opt in — set the repository variable DEPLOY_ENABLED=true
+    # once the staging VPS + its environment secrets exist. Until then: SKIPPED.
+    if: vars.DEPLOY_ENABLED == 'true'
+    uses: ./.github/workflows/deploy-api.yml
+    with:
+      environment: staging
+      ref: ${{ github.sha }}
+    secrets: inherit # pragma: allowlist secret

@@ -2,6 +2,8 @@
 
 This document covers deploying DailyLoadout beyond local development. All examples assume you have a working local setup first (`make up && make api`).
 
+> **Going to production?** Follow the ordered [Pre-Launch Runbook](./PRELAUNCH.md) — the step-by-step checklist (register apps → `.env` → migrations → edge → backups → verify) that links back into the detailed sections here.
+
 ---
 
 ## Prerequisites
@@ -315,6 +317,94 @@ recreates objects over the existing DB. Run a restore drill periodically.
 > The **uploads** dir needs no backup — capture temp files are deleted right
 > after processing (steady-state ~0 bytes on disk). Only Postgres holds durable
 > state.
+
+### 1.10 CI/CD — one pipeline per surface
+
+The monorepo ships **independent deploys per surface** — they have different
+targets and lifecycles, so they are separate workflows (mirroring the
+path-filtered `ci-*` jobs):
+
+| Surface | Deploy target | Pipeline | Migration gate? |
+| --- | --- | --- | --- |
+| **API + infra** | the VPS (systemd + compose) | `deploy-api.yml` → `infra/deploy/deploy.sh` | **Yes** |
+| **Web** | static `dist/` → Caddy / a CDN (Cloudflare Pages, Netlify) | `deploy-web.yml` (build + publish) | No (static) |
+| **App** | App Store / Play Store | Fastlane / Xcode Cloud / Play Console | No (store release) |
+| **Backoffice** (Epic 21) | with the web, or its own admin SPA | decided when built | No |
+
+Only the **API** carries a database, so only it needs the migration gate. Web is
+a static artifact; the mobile app ships through store review (independent of
+whether it stays Flutter or moves to native Swift/Kotlin — the API contract is
+the same).
+
+#### API deploy: staging on merge, production on release (migration-gated)
+
+Two environments, two **separate VPSs** (full isolation), one reusable deploy
+job (`deploy-api.yml`) invoked by:
+
+- **`deploy-staging.yml`** — on every merge to `main` (path `packages/api`/`infra`)
+  → deploys `main` to the **staging** VPS. *Staging = what's on main now.*
+- **`release-please.yml`** — when a surface's release PR is merged, it cuts the
+  `api/vX.Y.Z` tag and chains a deploy of that tag to **production**. *Production
+  = the last released tag.* See [VERSIONING.md](./VERSIONING.md) for the full
+  release flow.
+
+Both run from a **GitHub-hosted ephemeral runner** that SSHes to the box and runs
+`infra/deploy/deploy.sh`. The rule — *try the migrations first; if they fail,
+abort and keep the previous version live* — is enforced by **step order**:
+backup → fetch → `alembic upgrade head` **(gate)** → restart → health-check →
+rollback. A failed migration restores the old code and exits non-zero **before**
+any service restart, so the new version never takes traffic; Postgres
+transactional DDL auto-rolls-back a half-applied migration.
+
+> **Why SSH-from-hosted, not a self-hosted runner:** hosted runners are
+> ephemeral/clean — they can't be persistently compromised — and a self-hosted
+> runner on a **public** repo can be hijacked by a fork's PR. You only expose a
+> deploy key. (On AWS/GCP you'd use OIDC; on a bare VPS, an SSH deploy key is the
+> equivalent.)
+
+**One-time setup (per environment — repeat for staging and production):**
+
+1. Create a dedicated **deploy SSH key**; put the public key in the deploy user's
+   `~/.ssh/authorized_keys`. Harden it with a forced command so the key can
+   ONLY run the deploy:
+
+   ```text
+   command="/opt/dailyloadout/infra/deploy/deploy.sh",no-port-forwarding,no-pty ssh-ed25519 AAAA... deploy@dailyloadout
+   ```
+
+   > The forced command pins the deploy script; the ref (tag vs `origin/main`) is
+   > forwarded via `$SSH_ORIGINAL_COMMAND` (handled by `deploy.sh`).
+
+2. Grant the deploy user **passwordless sudo** for just the restarts
+   (`sudo visudo -f /etc/sudoers.d/dailyloadout`):
+
+   ```text
+   deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart dailyloadout-api, /usr/bin/systemctl restart dailyloadout-worker
+   ```
+
+3. Create the GitHub **Environments** `staging` and `production` (Settings →
+   Environments), each with its own scoped secrets `VPS_HOST`, `VPS_USER`,
+   `VPS_SSH_KEY` (the private key), and ideally `VPS_SSH_KNOWN_HOSTS` (the host
+   key, to pin it instead of trust-on-first-use). Optionally add a required
+   reviewer on `production` for a manual approval gate.
+4. Enable release PRs: Settings → Actions → "Allow GitHub Actions to create and
+   approve pull requests".
+5. **Require the CI checks on `main`** (branch protection) so only green code
+   reaches a deploy.
+6. **Flip the switch:** set the repository **variable** `DEPLOY_ENABLED=true`
+   (Settings → Secrets and variables → Actions → Variables). Until this is set,
+   `release-please.yml` and `deploy-staging.yml` are **skipped** (never failed),
+   so they don't break pushes before the infra exists.
+
+A broken migration is also caught **before merge** by the `ci-api` job (it runs
+`alembic upgrade head` against a fresh Postgres). The deploy-time gate is the
+backstop for failures that only surface against real production data.
+
+> **For safe rollbacks, write expand/contract migrations** (backward-compatible:
+> add columns/tables in one release, remove the old ones a release later). Then
+> the still-running old version keeps working with the new schema during the
+> brief migrate-before-restart window, and a rollback never needs a lossy
+> `downgrade`.
 
 ---
 

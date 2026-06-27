@@ -1,0 +1,75 @@
+name: Deploy API (reusable)
+
+# Reusable, migration-gated API deploy over SSH from a GitHub-hosted (ephemeral)
+# runner. Called by:
+#   - deploy-staging.yml  → environment=staging, ref=origin/main  (every merge)
+#   - release-please.yml  → environment=production, ref=api/vX.Y.Z (on release)
+# and runnable manually via workflow_dispatch. The migrate-first / rollback logic
+# lives in infra/deploy/deploy.sh (on the VPS); this just invokes it with a ref.
+#
+# Per-environment secrets (Settings → Environments → staging|production):
+#   VPS_HOST · VPS_USER · VPS_SSH_KEY · VPS_SSH_KNOWN_HOSTS (optional)
+# The staging and production VPSs are separate boxes with their own secrets.
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      ref:
+        description: "git ref to deploy (tag for prod; blank => origin/main)"
+        required: false
+        type: string
+        default: ""
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: target environment
+        required: true
+        type: choice
+        options: [staging, production]
+      ref:
+        description: "git ref (tag api/vX.Y.Z for prod; blank => origin/main)"
+        required: false
+        type: string
+
+# One deploy at a time per environment; never cancel an in-flight deploy.
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # Inert until you opt in: set the repository variable DEPLOY_ENABLED=true.
+    # Also blocks an accidental manual workflow_dispatch before the infra exists.
+    if: vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 15
+    steps:
+      - name: Deploy over SSH (migration-gated)
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_KNOWN_HOSTS: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
+          DEPLOY_REF: ${{ inputs.ref }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          if [ -n "${VPS_SSH_KNOWN_HOSTS:-}" ]; then
+            printf '%s\n' "$VPS_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          else
+            # TOFU fallback — prefer pinning VPS_SSH_KNOWN_HOSTS in prod.
+            ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          fi
+          # On the VPS: backup -> fetch -> alembic upgrade head (gate) -> restart
+          # -> health-check -> rollback. A non-zero exit fails the deploy and the
+          # previous version keeps serving. DEPLOY_REF blank => deploy.sh uses
+          # origin/main (staging); a tag is passed for production.
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes \
+            "$VPS_USER@$VPS_HOST" \
+            "/opt/dailyloadout/infra/deploy/deploy.sh ${DEPLOY_REF}"

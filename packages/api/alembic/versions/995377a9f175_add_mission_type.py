@@ -21,7 +21,10 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    op.add_column("loadouts", sa.Column("context", sa.String(length=120), nullable=True))
+    # NOTE: loadouts.context is created by b8d4e2f3a561 (create_loadouts_table).
+    # It was previously also added here, which double-added it on a from-scratch
+    # `upgrade head` (existing DBs were unaffected). Removed — the create_table is
+    # the column's single owner.
     op.add_column(
         "missions",
         sa.Column("mission_type", sa.String(), server_default="regular", nullable=False),
@@ -31,4 +34,3 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Downgrade schema."""
     op.drop_column("missions", "mission_type")
-    op.drop_column("loadouts", "context")

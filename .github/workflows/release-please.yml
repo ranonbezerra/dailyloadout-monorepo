@@ -1,0 +1,46 @@
+name: release-please
+
+# Per-surface versioning + changelogs in the monorepo (config: release-please-
+# config.json). On push to main it maintains one "release PR" per component
+# (api, web), each with a PATH-SCOPED changelog from the conventional commits —
+# so the API release notes never mix in web/app commits. Merging a release PR
+# cuts the prefixed tag (api/vX.Y.Z) + GitHub release, which then deploys to prod.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    # Inert until you opt in: set the repository VARIABLE DEPLOY_ENABLED=true
+    # (Settings → Secrets and variables → Actions → Variables) once the GitHub
+    # setup is done ("Allow GitHub Actions to create and approve pull requests"
+    # + the deploy secrets/environments). Until then this job is SKIPPED (not
+    # failed), so it never breaks a push.
+    if: vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      api_released: ${{ steps.rp.outputs['packages/api--release_created'] }}
+      api_tag: ${{ steps.rp.outputs['packages/api--tag_name'] }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: rp
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  # When the API release PR is merged (→ a new api/vX.Y.Z tag), deploy that tag
+  # to production. Chained here (not a tag-triggered workflow) because a tag
+  # created by the GITHUB_TOKEN does not itself trigger other workflows.
+  deploy-api-production:
+    needs: release-please
+    if: needs.release-please.outputs.api_released == 'true'
+    uses: ./.github/workflows/deploy-api.yml
+    with:
+      environment: production
+      ref: ${{ needs.release-please.outputs.api_tag }}
+    secrets: inherit # pragma: allowlist secret
