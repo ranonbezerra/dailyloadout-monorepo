@@ -7,7 +7,7 @@ depend on a running PostgreSQL instance.
 from __future__ import annotations
 
 import json
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from typing import Any
 
 import pytest
@@ -24,6 +24,7 @@ from sqlalchemy.types import TypeDecorator
 
 from dailyloadout.infrastructure.db.base import Base
 from dailyloadout.infrastructure.db.models import (  # noqa: F401  — ensure models registered
+    AppConfig,
     Capture,
     CaptureCandidate,
     Game,
@@ -73,8 +74,9 @@ class _JSONEncodedList(TypeDecorator):
 Game.__table__.c.genres.type = _JSONEncodedList()
 CaptureCandidate.__table__.c.igdb_genres.type = _JSONEncodedList()
 
-# Swap JSONB → JSON-encoded TEXT for SQLite.
+# Swap JSONB → JSON-encoded TEXT for SQLite (round-trips scalars too: bool/int).
 Mission.__table__.c.extracted_state.type = _JSONEncodedList()
+AppConfig.__table__.c.value.type = _JSONEncodedList()
 
 
 # ---------------------------------------------------------------------------
@@ -91,6 +93,33 @@ _TestSessionFactory = async_sessionmaker(
     _test_engine,
     expire_on_commit=False,
 )
+
+
+@pytest.fixture(autouse=True)
+def _reset_dynamic_config() -> Iterator[None]:
+    """Point the dynamic-config overlay at the test DB and reset its cache.
+
+    The overlay self-sources a session (it has no request scope). On the shared
+    in-memory SQLite connection, opening that nested session *mid-transaction*
+    would reset the caller's transaction — harmless in production (separate
+    Postgres connections) but a hazard here. So we pre-warm the cache as
+    "no override" for every key: consumers fall back to the settings baseline
+    without ever touching the DB. Tests that exercise real overrides
+    ``invalidate``/``clear`` the relevant key to force a fresh read in a clean
+    context. Clearing before and after stops cross-test leakage.
+    """
+    import time
+
+    from dailyloadout.infrastructure.config.dynamic import _MISSING, dynamic_config
+    from dailyloadout.infrastructure.config.registry import CONFIG_REGISTRY
+
+    dynamic_config._session_factory = _TestSessionFactory
+    dynamic_config.clear()
+    far_future = time.monotonic() + 3600
+    for key in CONFIG_REGISTRY:
+        dynamic_config._cache[key] = (_MISSING, far_future)
+    yield
+    dynamic_config.clear()
 
 
 @event.listens_for(_test_engine.sync_engine, "connect")

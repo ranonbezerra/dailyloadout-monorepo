@@ -33,6 +33,7 @@ from dailyloadout.infrastructure.agent.concierge.tools import (
     validate_recommendation,
 )
 from dailyloadout.infrastructure.agent.concierge.tools_write import build_concierge_write_tools
+from dailyloadout.infrastructure.config.dynamic import dynamic_config
 from dailyloadout.infrastructure.db.repositories.library import LibraryRepository
 from dailyloadout.infrastructure.db.repositories.mission import MissionRepository
 from dailyloadout.infrastructure.llm.base import AbstractLLMClient
@@ -138,7 +139,9 @@ class ConciergeService:
         self._briefing_agent = briefing_agent
         self._settings = settings or default_settings
 
-    def _build_tools(self, user_id: int, user_created_at: datetime) -> list[ConciergeTool]:
+    def _build_tools(
+        self, user_id: int, user_created_at: datetime, *, write_tools_enabled: bool
+    ) -> list[ConciergeTool]:
         tools = build_concierge_tools(
             user_id=user_id,
             user_created_at=user_created_at,
@@ -146,7 +149,7 @@ class ConciergeService:
             mission_repo=self._mission_repo,
             stats_service=self._stats_service,
         )
-        if self._settings.concierge_write_tools_enabled:
+        if write_tools_enabled:
             tools += build_concierge_write_tools(
                 user_id=user_id,
                 library_repo=self._library_repo,
@@ -170,7 +173,10 @@ class ConciergeService:
         Buffered path (non-streaming): runs to completion, validates the pick
         with a single reroll, else degrades. ``reply_stream`` is the live path.
         """
-        tools = self._build_tools(user_id, user_created_at)
+        write_tools_enabled = await dynamic_config.get_bool("concierge_write_tools_enabled")
+        tools = self._build_tools(
+            user_id, user_created_at, write_tools_enabled=write_tools_enabled
+        )
         agent_thread_id = _namespace_thread_id(user_id, thread_id)
 
         reply = await self._agent.respond(
@@ -214,7 +220,10 @@ class ConciergeService:
         degrade-in-stream; the guard guarantee (no invalid pick shown as valid)
         is preserved.
         """
-        tools = self._build_tools(user_id, user_created_at)
+        write_tools_enabled = await dynamic_config.get_bool("concierge_write_tools_enabled")
+        tools = self._build_tools(
+            user_id, user_created_at, write_tools_enabled=write_tools_enabled
+        )
         gate = RecommendationGate()
         agent_thread_id = _namespace_thread_id(user_id, thread_id)
 

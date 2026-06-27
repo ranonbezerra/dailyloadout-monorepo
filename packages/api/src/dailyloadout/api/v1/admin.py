@@ -16,15 +16,19 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
 
+from dailyloadout.core.admin.config_service import UnknownConfigKeyError
 from dailyloadout.core.admin.schemas import (
     AdminAuditListResponse,
     AdminMeResponse,
     AdminUserDetail,
     AdminUserListResponse,
     BanRequest,
+    ConfigListResponse,
+    ConfigSetRequest,
 )
 from dailyloadout.core.admin.service import AdminUserNotFoundError, CannotModerateAdminError
-from dailyloadout.deps.auth import AdminUserDep, AdminUserServiceDep
+from dailyloadout.deps.auth import AdminConfigServiceDep, AdminUserDep, AdminUserServiceDep
+from dailyloadout.infrastructure.config.registry import ConfigValidationError
 
 router = APIRouter(prefix="/internal/v1", tags=["internal"])
 
@@ -131,5 +135,54 @@ async def list_audit(
     return await service.list_audit(limit=limit, offset=offset)
 
 
+# ── Dynamic operational config ──────────────────────────────────────────
+
+
+@router.get("/config", response_model=ConfigListResponse)
+async def list_config(
+    _admin: AdminUserDep,
+    service: AdminConfigServiceDep,
+) -> ConfigListResponse:
+    """List every curated knob with effective/override/baseline values."""
+    return await service.list_config()
+
+
+@router.put("/config/{key}", response_model=ConfigListResponse)
+async def set_config(
+    key: str,
+    body: ConfigSetRequest,
+    admin: AdminUserDep,
+    service: AdminConfigServiceDep,
+) -> ConfigListResponse:
+    """Set a runtime override for *key* (validated, audited, cache-invalidated)."""
+    try:
+        return await service.set_override(admin, key, body.value)
+    except UnknownConfigKeyError:
+        raise _unknown_key(key) from None
+    except ConfigValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+        ) from None
+
+
+@router.delete("/config/{key}", response_model=ConfigListResponse)
+async def clear_config(
+    key: str,
+    admin: AdminUserDep,
+    service: AdminConfigServiceDep,
+) -> ConfigListResponse:
+    """Clear *key*'s override, reverting it to the env/code baseline (audited)."""
+    try:
+        return await service.clear_override(admin, key)
+    except UnknownConfigKeyError:
+        raise _unknown_key(key) from None
+
+
 def _not_found() -> HTTPException:
     return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+
+def _unknown_key(key: str) -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND, detail=f"Unknown config key: {key}"
+    )

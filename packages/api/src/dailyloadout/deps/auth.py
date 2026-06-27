@@ -8,14 +8,17 @@ from fastapi.security import OAuth2PasswordBearer
 from jwt import PyJWTError
 
 from dailyloadout.config import settings
+from dailyloadout.core.admin.config_service import AdminConfigService
 from dailyloadout.core.admin.service import AdminUserService
 from dailyloadout.core.auth.security import decode_access_token
 from dailyloadout.core.auth.service import AuthService
+from dailyloadout.infrastructure.config.dynamic import dynamic_config
 from dailyloadout.infrastructure.db.models import User
 from dailyloadout.infrastructure.db.repositories.admin import (
     AdminAuditRepository,
     AdminRepository,
 )
+from dailyloadout.infrastructure.db.repositories.app_config import AppConfigRepository
 from dailyloadout.infrastructure.db.repositories.oauth import OAuthIdentityRepository
 from dailyloadout.infrastructure.db.repositories.refresh_token import (
     RefreshTokenRepository,
@@ -217,3 +220,15 @@ def get_admin_user_service(
 
 
 AdminUserServiceDep = Annotated[AdminUserService, Depends(get_admin_user_service)]
+
+
+def get_admin_config_service(db: DbSession) -> AdminConfigService:
+    """Provide an ``AdminConfigService`` over the process-wide config overlay."""
+    return AdminConfigService(
+        AppConfigRepository(db),
+        AdminAuditRepository(db),
+        dynamic_config,
+    )
+
+
+AdminConfigServiceDep = Annotated[AdminConfigService, Depends(get_admin_config_service)]

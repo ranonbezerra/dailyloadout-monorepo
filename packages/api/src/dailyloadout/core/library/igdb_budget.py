@@ -19,8 +19,8 @@ from __future__ import annotations
 
 import structlog
 
-from dailyloadout.config import settings
 from dailyloadout.infrastructure.cache.usage_counter import day_bucket, incr_window
+from dailyloadout.infrastructure.config.dynamic import dynamic_config
 
 logger = structlog.get_logger()
 
@@ -34,7 +34,7 @@ async def igdb_budget_allows(user_id: int) -> bool:
     error (or the limiter being disabled) returns True so library writes are
     never blocked by the budget.
     """
-    if not settings.rate_limit_enabled:
+    if not await dynamic_config.get_bool("rate_limit_enabled"):
         return True
     key = f"igdb:budget:{user_id}:{day_bucket()}"
     try:
@@ -42,12 +42,13 @@ async def igdb_budget_allows(user_id: int) -> bool:
     except Exception:
         logger.warning("igdb_budget_redis_error", user_id=user_id, exc_info=True)
         return True
-    if count > settings.igdb_user_budget_per_day:
+    budget = await dynamic_config.get_int("igdb_user_budget_per_day")
+    if count > budget:
         logger.warning(
             "igdb_budget_exceeded",
             user_id=user_id,
             count=count,
-            limit=settings.igdb_user_budget_per_day,
+            limit=budget,
         )
         return False
     return True

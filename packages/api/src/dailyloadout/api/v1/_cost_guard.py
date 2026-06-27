@@ -38,6 +38,7 @@ from dailyloadout.infrastructure.cache.usage_counter import (
     minute_bucket,
     month_bucket,
 )
+from dailyloadout.infrastructure.config.dynamic import dynamic_config
 
 logger = structlog.get_logger()
 
@@ -55,8 +56,15 @@ class _Window:
     limit: int
 
 
-def _windows(user_id: int, scope: str) -> list[_Window]:
-    """Build the four cost windows checked on every cost-bearing request."""
+async def _build_windows(user_id: int, scope: str) -> list[_Window]:
+    """Build the four cost windows checked on every cost-bearing request.
+
+    The two daily ceilings are read from the dynamic overlay so an admin can
+    retighten them mid-incident without a redeploy; the minute/month windows
+    stay on the env baseline.
+    """
+    cost_global_per_day = await dynamic_config.get_int("cost_global_per_day")
+    cost_user_per_day = await dynamic_config.get_int("cost_user_per_day")
     return [
         _Window(
             "global_minute",
@@ -68,7 +76,7 @@ def _windows(user_id: int, scope: str) -> list[_Window]:
             "global_day",
             f"cost:g:day:{day_bucket()}",
             _DAY_SECONDS,
-            settings.cost_global_per_day,
+            cost_global_per_day,
         ),
         _Window(
             "global_month",
@@ -80,7 +88,7 @@ def _windows(user_id: int, scope: str) -> list[_Window]:
             "user_day",
             f"cost:u:{user_id}:day:{day_bucket()}",
             _DAY_SECONDS,
-            settings.cost_user_per_day,
+            cost_user_per_day,
         ),
     ]
 
@@ -122,13 +130,13 @@ def _local_limit(window: _Window) -> int:
     return max(1, math.ceil(window.limit / workers))
 
 
-async def _enforce_redis(user_id: int, scope: str) -> None:
+async def _enforce_redis(windows: list[_Window], scope: str) -> None:
     """Consume one permit from each Redis-backed window; raise 503 over a cap.
 
     Raises a non-``HTTPException`` (propagated to the caller) on any Redis
     error, so the caller can decide between degraded fallback and fail-closed.
     """
-    for window in _windows(user_id, scope):
+    for window in windows:
         count = await incr_window(window.key, window.ttl_seconds)
         _maybe_alert(window, count, scope)
         if count > window.limit:
@@ -142,14 +150,14 @@ async def _enforce_redis(user_id: int, scope: str) -> None:
             raise _over_capacity()
 
 
-def _enforce_local(user_id: int, scope: str) -> None:
+def _enforce_local(windows: list[_Window], scope: str) -> None:
     """Degraded fallback: enforce the ceilings with per-process counters.
 
     Conservative and imprecise by design (per-process, lost on restart). Global
     caps are divided by the worker count; a breach still 503s, so spend stays
     bounded even with Redis down.
     """
-    for window in _windows(user_id, scope):
+    for window in windows:
         limit = _local_limit(window)
         count = incr_local_window(window.key, window.ttl_seconds)
         if count > limit:
@@ -171,8 +179,9 @@ async def _enforce(user_id: int, scope: str) -> None:
     single point of failure) or fails closed with 503 (strict mode). Either way
     a broken counter never silently authorises unbounded spend.
     """
+    windows = await _build_windows(user_id, scope)
     try:
-        await _enforce_redis(user_id, scope)
+        await _enforce_redis(windows, scope)
     except HTTPException:
         raise
     except Exception:
@@ -184,7 +193,7 @@ async def _enforce(user_id: int, scope: str) -> None:
                 headers={"Retry-After": "60"},
             ) from None
         logger.warning("cost_guard_redis_degraded", scope=scope, exc_info=True)
-        _enforce_local(user_id, scope)
+        _enforce_local(windows, scope)
 
 
 def cost_guard(scope: str) -> Callable[..., Awaitable[None]]:
@@ -199,7 +208,7 @@ def cost_guard(scope: str) -> Callable[..., Awaitable[None]]:
     """
 
     async def _dep(current_user: CurrentUserDep) -> None:
-        if not settings.cost_guard_enabled:
+        if not await dynamic_config.get_bool("cost_guard_enabled"):
             return
         await _enforce(current_user.id, scope)
 

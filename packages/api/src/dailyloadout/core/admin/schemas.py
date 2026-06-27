@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt
 
 
 class AdminMeResponse(BaseModel):
@@ -88,3 +88,45 @@ class AdminAuditListResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+# ── Dynamic operational config ──────────────────────────────────────────
+
+
+class ConfigEntry(BaseModel):
+    """One curated operational knob: its effective value, override, and baseline.
+
+    ``effective_value`` is what the app actually uses now (override if set, else
+    baseline). ``override_value`` is the runtime override (``None`` when unset).
+    ``baseline_value`` is the env/code default the override sits on top of.
+    """
+
+    key: str
+    kind: str
+    category: str
+    description: str
+    effective_value: bool | int
+    override_value: bool | int | None
+    baseline_value: bool | int
+    is_overridden: bool
+    min_value: int | None
+    max_value: int | None
+    updated_at: datetime | None
+    updated_by: UUID | None
+
+
+class ConfigListResponse(BaseModel):
+    """Every curated knob with its current effective/override/baseline values."""
+
+    items: list[ConfigEntry]
+
+
+class ConfigSetRequest(BaseModel):
+    """A new override value for a curated key.
+
+    ``StrictBool | StrictInt`` (bool first) prevents Pydantic from coercing
+    ``5`` into ``True`` or ``true`` into ``1``; the registry then enforces the
+    key's actual type and bounds.
+    """
+
+    value: StrictBool | StrictInt

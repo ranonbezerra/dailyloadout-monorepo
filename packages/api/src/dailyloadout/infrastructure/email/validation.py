@@ -22,6 +22,7 @@ import dns.resolver
 import structlog
 
 from dailyloadout.config import settings
+from dailyloadout.infrastructure.config.dynamic import dynamic_config
 from dailyloadout.infrastructure.email.disposable_domains import is_disposable_domain
 
 logger = structlog.get_logger()
@@ -44,7 +45,7 @@ async def assert_email_acceptable(email: str) -> None:
     a definitive "no mail records" rejects. Both checks are domain-based, so
     neither is an account-existence oracle.
     """
-    if settings.block_disposable_emails and is_disposable_email(email):
+    if await dynamic_config.get_bool("block_disposable_emails") and is_disposable_email(email):
         raise EmailRejectedError("Disposable email addresses are not allowed.")
 
     mx_enabled = settings.check_email_mx and settings.is_production
