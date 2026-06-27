@@ -171,7 +171,7 @@ class TestGamesModeration:
 
     async def test_edit_updates_fields_and_audits(self, async_client: AsyncClient) -> None:
         headers = await _admin_headers(async_client)
-        pid = await _make_game(slug="typo", title="Tpyo Title", is_shared=True)
+        pid = await _make_game(slug="typo", title="Typo Title", is_shared=True)
         resp = await async_client.patch(
             f"/internal/v1/games/{pid}",
             headers=headers,

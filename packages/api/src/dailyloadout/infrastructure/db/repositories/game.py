@@ -77,9 +77,7 @@ class GameRepository:
         elif source == "manual":
             conditions.append(Game.igdb_id.is_(None))
 
-        total = (
-            await self._session.scalar(select(func.count(Game.id)).where(*conditions))
-        ) or 0
+        total = (await self._session.scalar(select(func.count(Game.id)).where(*conditions))) or 0
         owner_count = func.count(LibraryEntry.id)
         result = await self._session.execute(
             select(Game, owner_count)

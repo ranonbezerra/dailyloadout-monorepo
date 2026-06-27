@@ -250,9 +250,7 @@ def get_admin_dashboard_service(db: DbSession) -> AdminDashboardService:
     )
 
 
-AdminDashboardServiceDep = Annotated[
-    AdminDashboardService, Depends(get_admin_dashboard_service)
-]
+AdminDashboardServiceDep = Annotated[AdminDashboardService, Depends(get_admin_dashboard_service)]
 
 
 def get_admin_game_service(db: DbSession) -> AdminGameService:

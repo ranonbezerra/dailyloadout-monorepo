@@ -80,9 +80,7 @@ class AdminGameService:
         """Demote a shared row back to private (removes it from the catalogue)."""
         game = await self._require_game(public_id)
         await self._games.update(game, is_shared=False)
-        await self._audit.record(
-            admin_user_id=actor.id, action=ACTION_DEMOTE, detail=game.slug
-        )
+        await self._audit.record(admin_user_id=actor.id, action=ACTION_DEMOTE, detail=game.slug)
         await self._games.refresh(game)
         return await self._detail(game)
 
@@ -90,9 +88,7 @@ class AdminGameService:
         """Promote a private manual row into the shared catalogue."""
         game = await self._require_game(public_id)
         await self._games.update(game, is_shared=True)
-        await self._audit.record(
-            admin_user_id=actor.id, action=ACTION_PROMOTE, detail=game.slug
-        )
+        await self._audit.record(admin_user_id=actor.id, action=ACTION_PROMOTE, detail=game.slug)
         await self._games.refresh(game)
         return await self._detail(game)
 
