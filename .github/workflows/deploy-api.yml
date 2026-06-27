@@ -41,6 +41,9 @@ concurrency:
 
 jobs:
   deploy:
+    # Inert until you opt in: set the repository variable DEPLOY_ENABLED=true.
+    # Also blocks an accidental manual workflow_dispatch before the infra exists.
+    if: vars.DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     timeout-minutes: 15
