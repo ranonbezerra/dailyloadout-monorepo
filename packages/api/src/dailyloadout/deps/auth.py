@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError
+from jwt import PyJWTError
 
 from dailyloadout.config import settings
 from dailyloadout.core.auth.security import decode_access_token
@@ -105,7 +105,7 @@ async def get_current_user(
             )
         public_id = UUID(subject)
         token_version = payload.get("tv")
-    except (JWTError, ValueError) as exc:
+    except (PyJWTError, ValueError) as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",

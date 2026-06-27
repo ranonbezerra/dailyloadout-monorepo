@@ -21,8 +21,6 @@ redis = { version = "*", extras = ["hiredis"] }
 httpx = "*"
 structlog = "*"
 pyrate-limiter = ">=4.4"
-python-jose = { version = "*", extras = ["cryptography"] }
-passlib = { version = "*", extras = ["bcrypt"] }
 python-multipart = "*"
 jinja2 = "*"
 sentry-sdk = { version = "*", extras = ["fastapi"], optional = true }
@@ -40,6 +38,8 @@ langchain-ollama = "*"
 langgraph-checkpoint-postgres = "^3.1.0"
 psycopg-pool = "^3.3.1"
 psycopg = {extras = ["binary"], version = "^3.3.4"}
+pyjwt = "^2.10"
+bcrypt = "^5.0.0"
 
 [tool.poetry.extras]
 sentry = ["sentry-sdk"]
@@ -96,6 +96,9 @@ filterwarnings = ["error"]
 env = [
     "APP_ENV=testing",
     "DATABASE_URL=sqlite+aiosqlite://",
+    # >= 32 chars so PyJWT doesn't emit InsecureKeyLengthWarning (which
+    # filterwarnings=["error"] would escalate to a failure).
+    "SECRET_KEY=test-secret-key-at-least-32-bytes-long", # pragma: allowlist secret
     "BCRYPT_ROUNDS=4",
     # Rate limiting is Redis-backed; tests never start Redis. Off by default so
     # the suite never sees a false 429. The dedicated rate-limit test re-enables

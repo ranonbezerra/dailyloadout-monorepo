@@ -23,15 +23,15 @@ from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.types import TypeDecorator
 
 from dailyloadout.infrastructure.db.base import Base
-from dailyloadout.infrastructure.db.models import (
-    Capture,  # noqa: F401  — ensure models registered
+from dailyloadout.infrastructure.db.models import (  # noqa: F401  — ensure models registered
+    Capture,
     CaptureCandidate,
     Game,
-    LibraryEntry,  # noqa: F401  — ensure models registered
-    Loadout,  # noqa: F401  — ensure models registered
+    LibraryEntry,
+    Loadout,
     Mission,
     Platform,
-    User,  # noqa: F401  — ensure models registered
+    User,
 )
 
 

@@ -72,7 +72,11 @@ services:
       retries: 5
 
   searxng:
-    image: searxng/searxng:latest
+    # Pinned by digest (was :latest) — reproducible builds; an upstream tag can't
+    # silently swap the image on the internet-adjacent search service. Bump the
+    # digest deliberately. Resolve a new one with:
+    #   docker image inspect searxng/searxng:latest --format '{{index .RepoDigests 0}}'
+    image: searxng/searxng@sha256:f66b296a6fdfe3f656a19e98ac999a9acffa780773e39b3cbbdf673e9c474deb
     container_name: dl-searxng
     # No `ports:` here — internal-only. Reachable as `searxng:8080`. The limiter
     # is enabled (infra/searxng/settings.yml) as defense-in-depth.

@@ -8,7 +8,8 @@ import secrets
 from datetime import UTC, datetime, timedelta
 
 import bcrypt
-from jose import JWTError, jwt
+import jwt
+from jwt import PyJWTError
 
 from dailyloadout.config import settings
 
@@ -122,7 +123,7 @@ def decode_email_verification_token(token: str) -> str:
     """
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[_ALGORITHM])
-    except JWTError as exc:
+    except PyJWTError as exc:
         raise ValueError("Invalid or expired verification token") from exc
 
     if payload.get("purpose") != _EMAIL_VERIFY_PURPOSE:
@@ -151,7 +152,7 @@ def hash_refresh_token(token: str) -> str:
 __all__ = [
     "ACCESS_TOKEN_EXPIRE_MINUTES",
     "REFRESH_TOKEN_EXPIRE_DAYS",
-    "JWTError",
+    "PyJWTError",
     "create_access_token",
     "create_email_verification_token",
     "decode_access_token",
