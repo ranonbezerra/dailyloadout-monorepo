@@ -71,7 +71,10 @@ def test_scrub_redacts_headers_body_and_query() -> None:
     event = {
         "request": {
             "headers": {"Authorization": "Bearer x", "Cookie": "a=b", "User-Agent": "ua"},
-            "data": {"email": "a@b.com", "password": "hunter2"},
+            "data": {
+                "email": "a@b.com",
+                "password": "hunter2",  # pragma: allowlist secret
+            },
             "query_string": "code=SECRET&state=y",
             "url": "https://api/v1/auth/oauth/google/callback?code=SECRET",
         }
@@ -91,7 +94,7 @@ def test_scrub_redacts_headers_body_and_query() -> None:
 
 def test_prod_rejects_short_secret_key() -> None:
     with pytest.raises(RuntimeError, match="too short"):
-        _validate_production_settings(_prod(secret_key="short"))
+        _validate_production_settings(_prod(secret_key="short"))  # pragma: allowlist secret
 
 
 def test_prod_accepts_long_secret_key() -> None:
