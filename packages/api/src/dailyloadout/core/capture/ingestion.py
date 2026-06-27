@@ -19,6 +19,7 @@ from PIL import Image
 
 from dailyloadout.api.v1._mime_helpers import guess_image_extension
 from dailyloadout.config import Settings
+from dailyloadout.core.capture import _pil_safety  # noqa: F401 - sets PIL bomb guard
 from dailyloadout.core.capture.exceptions import ImportQuotaExceededError, InvalidUploadError
 from dailyloadout.infrastructure.db.repositories.usage import UsageCounterRepository
 

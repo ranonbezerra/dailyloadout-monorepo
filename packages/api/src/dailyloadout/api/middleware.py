@@ -160,9 +160,12 @@ async def _send_429(send: Send) -> None:
 class SecurityHeadersMiddleware:
     """Attach baseline security headers to every HTTP response.
 
-    Sets HSTS, ``X-Content-Type-Options``, ``X-Frame-Options`` and
-    ``Referrer-Policy``. HSTS is advertised regardless of scheme — browsers only
-    honor it over HTTPS, and behind a TLS-terminating proxy the app sees http.
+    Sets HSTS, ``X-Content-Type-Options``, ``X-Frame-Options``,
+    ``Referrer-Policy``, a lock-everything-down ``Content-Security-Policy`` and a
+    deny ``Permissions-Policy``. HSTS is advertised regardless of scheme —
+    browsers only honor it over HTTPS, and behind a TLS-terminating proxy the app
+    sees http. CSP/Permissions-Policy are cheap belt-and-suspenders for any
+    HTML/error surface even though this is a JSON API.
     """
 
     def __init__(self, app: ASGIApp, hsts_max_age: int) -> None:
@@ -175,6 +178,9 @@ class SecurityHeadersMiddleware:
             (b"x-content-type-options", b"nosniff"),
             (b"x-frame-options", b"DENY"),
             (b"referrer-policy", b"no-referrer"),
+            # JSON API: nothing should ever be loaded/framed from a response.
+            (b"content-security-policy", b"default-src 'none'; frame-ancestors 'none'"),
+            (b"permissions-policy", b"geolocation=(), microphone=(), camera=()"),
         ]
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:

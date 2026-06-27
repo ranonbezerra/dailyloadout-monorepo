@@ -28,7 +28,7 @@ def test_production_rejects_default_secret() -> None:
 
 
 def test_production_rejects_insecure_cookie() -> None:
-    s = Settings(app_env="production", secret_key="real-secret", auth_cookie_secure=False)
+    s = Settings(app_env="production", secret_key="s" * 40, auth_cookie_secure=False)
     with pytest.raises(RuntimeError, match="auth_cookie_secure"):
         _validate_production_settings(s)
 
@@ -36,7 +36,7 @@ def test_production_rejects_insecure_cookie() -> None:
 def test_production_accepts_hardened_settings() -> None:
     s = Settings(
         app_env="production",
-        secret_key="real-secret",  # pragma: allowlist secret
+        secret_key="s" * 40,  # pragma: allowlist secret
         auth_cookie_secure=True,
         auth_cookie_samesite="none",
         turnstile_secret="ts-secret",  # pragma: allowlist secret
@@ -47,7 +47,7 @@ def test_production_accepts_hardened_settings() -> None:
 def test_production_requires_turnstile_secret() -> None:
     s = Settings(
         app_env="production",
-        secret_key="real-secret",  # pragma: allowlist secret
+        secret_key="s" * 40,  # pragma: allowlist secret
         auth_cookie_secure=True,
         turnstile_secret="",
     )

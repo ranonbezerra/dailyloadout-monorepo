@@ -1033,6 +1033,42 @@ Epic 17 is a tactical fix for one adapter. This is a **cross-cutting architectur
 
 ---
 
+## Epic 21 — Backoffice (admin panel) + dynamic operational config (v1.1+)
+
+**Goal:** an internal **admin panel** to manage users, the game catalogue, and the data, plus a **dynamic operational config** layer so a curated set of operational knobs (kill-switches, abuse caps, feature flags) can be changed **at runtime without a redeploy** — backed by Postgres, surfaced as one screen of the backoffice.
+
+**Status:** not started. Planned. The anti-abuse work (Epics 11–19) shipped incident-response *primitives* — ban (`scripts/ban_user.py`), catalogue demote (`scripts/demote_game.py`), token kill-switch, cost-guard caps — but they live in CLIs/env. This epic gives them a UI and makes the tunable ones live-editable, so reacting to abuse is a panel action, not an SSH + redeploy.
+
+### Decision (2026-06): config split — env baseline + Postgres-backed dynamic overrides
+
+Two kinds of config, two mechanisms (do **not** put everything in one place):
+
+- **Secrets / infra** (`SECRET_KEY`, `DATABASE_URL`, `REDIS_URL`, OAuth secrets, SMTP, provider toggles, DB pool) → stay in **env / secret manager**. They change rarely and changing them *is* a deploy concern. (You also can't store `DATABASE_URL` in the DB you reach via `DATABASE_URL`.)
+- **Operational knobs / flags** (a CURATED subset) → a **Postgres `app_config` table** the backoffice edits, with an optional short read-cache. Precedence: **runtime override (Postgres) > env var > code default**. `config.py` stays the baseline; the overlay only overrides the curated keys.
+
+**Why Postgres, not Redis, as the source of truth:** with a backoffice that already CRUDs Postgres, config is just another table — **durable** (survives a Redis flush/restart) and **auditable** (who changed what, when), which a control panel needs. Redis stays a *cache* at most (read the Postgres value, cache it ~15–30s in-process, invalidate on write); it is never the source of truth for config. This also keeps Redis lean — its job stays rate-limit/cost counters + cache, not durable settings. A `maxmemory` + `allkeys-lru` policy on the VPS Redis bounds its RAM regardless (operational note, not part of this epic).
+
+**Curated dynamic set (~10–12, not all ~120 settings):** kill-switches (`rate_limit_enabled`, `cost_guard_enabled`, `concierge_write_tools_enabled`), incident-tunable caps (`cost_user_per_day`, `cost_global_per_day`, `rate_limit_register_per_minute`, `igdb_user_budget_per_day`), product rules (`catalog_share_threshold`, `block_disposable_emails`), and future feature flags. Everything else stays env-only.
+
+### Tasks
+
+- [ ] `app_config` table (key, value (JSON), updated_by, updated_at) + a typed `get_dynamic(key, default=settings.x)` overlay with a short cache and write-through invalidation
+- [ ] Admin authz: an `is_admin`/role on the user (or a separate admin model) gating all backoffice routes
+- [ ] Backoffice API: users (list/search, ban/unban, verify, view sessions), games (list, demote/promote, edit/merge catalogue), config (read/edit the curated keys with validation + audit), basic data browse
+- [ ] Backoffice UI (web): a separate admin area (or app) reusing the existing auth/session; tables for users/games + a config screen
+- [ ] Wire the existing primitives into it: ban, demote, token kill-switch, cost-guard toggles — surfaced as panel actions instead of CLIs
+- [ ] Audit log for admin actions; tests (authz, config precedence/validation, audit)
+
+### Definition of Done
+
+- An admin can manage users (ban/verify/sessions), curate the catalogue (demote/promote/edit), and flip the curated operational knobs **live without a redeploy**, with every change audited. Non-admins cannot reach any of it. Secrets/infra remain env-only. Coverage at parity with the rest of the API.
+
+### Technical highlight
+
+> **Incident response becomes a panel action, not a redeploy.** The kill-switches and caps already exist as code/CLIs; this epic gives them a durable, audited, runtime-editable home (Postgres overlay over the env baseline) and a UI — so tightening a rate limit or flipping the cost kill-switch mid-incident is a click, while secrets stay safely deploy-time.
+
+---
+
 ## Descope guide if time runs short
 
 If at some point you feel you're pushing, these are the epics to defer to **v1.1** without destroying the vitrine:

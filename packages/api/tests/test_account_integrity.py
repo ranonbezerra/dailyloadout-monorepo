@@ -346,7 +346,7 @@ class TestSingleUserProductionGuard:
     def test_production_rejects_single_user_mode(self) -> None:
         s = Settings(
             app_env="production",
-            secret_key="real-secret",  # pragma: allowlist secret
+            secret_key="s" * 40,  # pragma: allowlist secret
             auth_cookie_secure=True,
             single_user_mode=True,
         )
@@ -356,7 +356,7 @@ class TestSingleUserProductionGuard:
     def test_production_allows_single_user_mode_off(self) -> None:
         s = Settings(
             app_env="production",
-            secret_key="real-secret",  # pragma: allowlist secret
+            secret_key="s" * 40,  # pragma: allowlist secret
             auth_cookie_secure=True,
             single_user_mode=False,
             turnstile_secret="ts-secret",  # pragma: allowlist secret

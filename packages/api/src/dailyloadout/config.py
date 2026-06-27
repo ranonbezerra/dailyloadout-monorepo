@@ -13,6 +13,8 @@ class Settings(BaseSettings):
         "http://localhost:3200",
         "http://localhost:5173",
     ]
+    # Host allowlist (TrustedHostMiddleware). ["*"]=dev; set API domain(s) in prod.
+    trusted_hosts: list[str] = ["*"]
 
     # ── Database ─────────────────────────────────────────────────────────
     database_url: str = (
@@ -28,10 +30,8 @@ class Settings(BaseSettings):
     # Deep briefings are content-addressed on the session context (Epic 18). 7d.
     briefing_cache_ttl_seconds: int = 7 * 24 * 3600
     research_cache_ttl_seconds: int = 6 * 3600  # web-research network-hop cache
-    # Idempotent LLM completions, de-duped by content. 1 day.
-    llm_cache_ttl_seconds: int = 24 * 3600
-    # Reference data (genre list, etc.) — tiny, hot, rarely changes. 1 hour.
-    reference_cache_ttl_seconds: int = 3600
+    llm_cache_ttl_seconds: int = 24 * 3600  # idempotent LLM completions, by content
+    reference_cache_ttl_seconds: int = 3600  # genre list etc. — tiny, hot
 
     # ── Single-user mode ─────────────────────────────────────────────────
     single_user_mode: bool = False
@@ -44,14 +44,12 @@ class Settings(BaseSettings):
     ollama_smart_model: str = "gemma3:12b"
     ollama_vision_model: str = "qwen3-vl:4b"
     llm_timeout_seconds: int = 60
-    # Preload these Ollama models in the background on startup so the first real
-    # request isn't a slow cold-load (the concierge agent especially). Empty =
-    # disabled. Local example: '["qwen2.5:7b-instruct"]'. Only on LLM_PROVIDER=ollama.
+    # Background-preload these Ollama models on startup (avoid cold first call).
+    # Empty = disabled. JSON list. Only on LLM_PROVIDER=ollama.
     ollama_warmup_models: list[str] = []
     # How long warmed models stay resident after idle ('-1' pins them forever).
     ollama_warmup_keep_alive: str = "30m"
-    # Per-process ceiling on concurrent host-Ollama model calls; bounds queue
-    # depth so a burst serves a few requests fast instead of thrashing the GPU.
+    # Per-process cap on concurrent host-Ollama calls (avoids GPU thrash).
     ollama_max_concurrency: int = 2
 
     # ── Agent / Deep Research Briefing (Epic 10) ─────────────────────────
@@ -61,27 +59,22 @@ class Settings(BaseSettings):
     deep_briefing_deadline_seconds: int = 60
     deep_briefing_max_refines: int = 2
     deep_briefing_max_results: int = 6
-    # Scrape the top-N result URLs into full text for richer synthesis grounding.
-    # 0 = snippets only (cheaper/faster, less specific). Trade-off: scraping adds
-    # latency + tokens and enlarges the spoiler surface the filter must catch.
+    # Scrape the top-N result URLs into full text for grounding (0 = snippets
+    # only). More specific, but adds latency/tokens + spoiler surface.
     deep_briefing_scrape_top_n: int = 2
 
     # ── Backlog Concierge (Epic 11) ──────────────────────────────────────
     concierge_provider: str = "dummy"  # langgraph | dummy
-    # Tool-calling model — Gemma is weak at function-calling. qwen2.5-instruct does
-    # fast, coherent tool use with no <think> overhead (qwen3 reasoning is slow;
-    # qwen3 without reasoning is incoherent on multi-step grounded tasks).
+    # Tool-calling model — qwen2.5-instruct does fast, coherent tool use (Gemma is
+    # weak at it; qwen3 reasoning is slow). Reasoning off for fast ReAct steps.
     ollama_agent_model: str = "qwen2.5:7b-instruct"
-    # Qwen3 is a reasoning model: its <think> chains add huge latency to every
-    # ReAct step. Disable for fast tool-calling; enable only if quality demands it.
     concierge_agent_reasoning: bool = False
     concierge_max_tool_loops: int = 6
     # Thread checkpoint store (Epic 16): 'postgres' survives restarts, 'memory'
     # is in-process. Falls back to memory if Postgres init fails. Langgraph only.
     concierge_checkpointer: str = "postgres"
-    # Give the Concierge write tools (start_mission, generate_briefing,
-    # submit_retroactive_debrief, set_status) so it can drive the mission
-    # pipeline, not just recommend (ROADMAP Epic 12).
+    # Concierge write tools (start_mission/set_status/…) so it drives the mission
+    # pipeline, not just recommends (Epic 12).
     concierge_write_tools_enabled: bool = True
 
     # ── STT ──────────────────────────────────────────────────────────────
@@ -271,6 +264,12 @@ def _validate_production_settings(s: Settings) -> None:
         raise RuntimeError(
             "FATAL: secret_key is still the default value. "
             "Set the SECRET_KEY environment variable before running in production."
+        )
+
+    if len(s.secret_key) < 32:
+        raise RuntimeError(
+            "FATAL: secret_key is too short for production (< 32 chars). "
+            "Use a high-entropy value (e.g. `secrets.token_urlsafe(48)`)."
         )
 
     if not s.auth_cookie_secure:

@@ -6,9 +6,11 @@ from contextlib import asynccontextmanager
 import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import HTMLResponse
 from scalar_fastapi import get_scalar_api_reference
 
+from dailyloadout.api._access_log import install_access_log_redaction
 from dailyloadout.api.middleware import (
     DefaultUserRateLimitMiddleware,
     MaxBodySizeMiddleware,
@@ -108,6 +110,13 @@ async def _auto_ignore_loop() -> None:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    # Redact query strings (OAuth code/state, tokens) from uvicorn access logs.
+    install_access_log_redaction()
+    # Optional error reporting — OFF unless SENTRY_DSN is set; always scrubs PII.
+    from dailyloadout.infrastructure.observability import init_sentry
+
+    init_sentry()
+
     # Single-user mode: ensure the default account exists.
     if settings.single_user_mode:
         await _ensure_single_user()
@@ -156,7 +165,15 @@ def create_app() -> FastAPI:
         openapi_url="/openapi.json" if docs_on else None,
     )
 
-    # Security response headers (HSTS, nosniff, frame-deny, referrer policy).
+    # Host allowlist (defense-in-depth behind Caddy; default ["*"] = allow all in
+    # dev). Set TRUSTED_HOSTS to the API domain(s) in prod to reject Host-header
+    # spoofing / routing confusion.
+    application.add_middleware(
+        TrustedHostMiddleware,
+        allowed_hosts=settings.trusted_hosts,
+    )
+
+    # Security response headers (HSTS, nosniff, frame-deny, referrer policy, CSP).
     application.add_middleware(
         SecurityHeadersMiddleware,
         hsts_max_age=settings.hsts_max_age_seconds,
