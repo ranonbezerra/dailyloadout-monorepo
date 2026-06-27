@@ -148,6 +148,25 @@ Content-Type: application/json
 | GET | `/overview` | KPI summary (games, missions, durations) |
 | GET | `/sessions` | Recent sessions (paginated) |
 
+### Backoffice (`/internal/v1`)
+
+Internal admin surface. Every route requires a backoffice admin grant
+(`admin_users` table — never a JWT claim, re-checked on each request). The
+`/internal` prefix is non-advertising so the reverse proxy can deny it from the
+public origin; single-user mode is rejected outright. Non-admins get `403`.
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/me` | Current admin identity (panel access check) |
+| GET | `/users` | List/search users — `q`, `banned`, `verified`, `limit`, `offset` |
+| GET | `/users/{public_id}` | Full user detail (sessions, admin/password flags) |
+| POST | `/users/{public_id}/ban` | Ban + kill sessions; body `{ "reason": str? }`; refuses admins |
+| POST | `/users/{public_id}/unban` | Lift a ban (does not re-mint sessions) |
+| POST | `/users/{public_id}/verify` | Force-verify the user's email (idempotent) |
+| GET | `/audit` | Audited admin actions, newest first (`limit`, `offset`) |
+
+Every mutation appends an `admin_audit_log` row (actor, action, target, optional reason).
+
 ---
 
 ## Common patterns

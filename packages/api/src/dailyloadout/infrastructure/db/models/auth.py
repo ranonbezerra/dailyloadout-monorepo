@@ -101,6 +101,38 @@ class AdminUser(Base):
     __table_args__ = (UniqueConstraint("user_id", name="uq_admin_users_user_id"),)
 
 
+class AdminAuditLog(Base):
+    """Append-only record of a mutating backoffice action.
+
+    The backoffice DoD requires that *every* admin change be audited. Each row
+    captures who acted (``admin_user_id``), what they did (``action``, e.g.
+    ``user.ban``), on whom (``target_user_id``, NULL for non-user actions), and
+    an optional free-text ``detail`` (e.g. a ban reason). Both user FKs are
+    ``SET NULL`` on delete so the trail survives even if a referenced account is
+    ever hard-deleted — an audit log that vanishes with its subject is no audit
+    log. Rows are never updated or deleted by the application.
+    """
+
+    __tablename__ = "admin_audit_log"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    # The acting admin. Nullable + SET NULL so the entry outlives the actor row.
+    admin_user_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    action: Mapped[str] = mapped_column(String, nullable=False)
+    # The user this action targeted (NULL for actions not about a user).
+    target_user_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    detail: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (Index("idx_admin_audit_created", "created_at"),)
+
+
 class OAuthIdentity(Base):
     __tablename__ = "oauth_identities"
 

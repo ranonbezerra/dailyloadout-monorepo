@@ -8,10 +8,32 @@ immediately.
 
 from __future__ import annotations
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from dataclasses import dataclass
+from datetime import datetime
+from uuid import UUID
 
-from dailyloadout.infrastructure.db.models import AdminUser
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
+
+from dailyloadout.infrastructure.db.models import AdminAuditLog, AdminUser, User
+
+
+@dataclass(frozen=True, slots=True)
+class AuditEntryRow:
+    """A denormalised audit entry: the action plus the actor/target identities.
+
+    The repository resolves both user FKs to their public_id + email in one
+    query so the service never has to issue per-row lookups for display.
+    """
+
+    action: str
+    detail: str | None
+    created_at: datetime
+    admin_public_id: UUID | None
+    admin_email: str | None
+    target_public_id: UUID | None
+    target_email: str | None
 
 
 class AdminRepository:
@@ -51,3 +73,70 @@ class AdminRepository:
         await self._session.delete(grant)
         await self._session.flush()
         return True
+
+
+class AdminAuditRepository:
+    """Append-only writer/reader for the ``admin_audit_log`` table."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def record(
+        self,
+        *,
+        admin_user_id: int,
+        action: str,
+        target_user_id: int | None = None,
+        detail: str | None = None,
+    ) -> AdminAuditLog:
+        """Append an audit entry for a mutating admin action."""
+        entry = AdminAuditLog(
+            admin_user_id=admin_user_id,
+            action=action,
+            target_user_id=target_user_id,
+            detail=detail,
+        )
+        self._session.add(entry)
+        await self._session.flush()
+        return entry
+
+    async def list_recent(
+        self, *, limit: int = 50, offset: int = 0
+    ) -> tuple[list[AuditEntryRow], int]:
+        """Return a newest-first page of audit entries plus the total count.
+
+        Both user FKs are resolved (LEFT JOIN — a ``SET NULL`` actor/target
+        still yields a row) to their public_id + email for display.
+        """
+        actor = aliased(User)
+        target = aliased(User)
+        total = await self._session.scalar(select(func.count()).select_from(AdminAuditLog))
+        result = await self._session.execute(
+            select(
+                AdminAuditLog.action,
+                AdminAuditLog.detail,
+                AdminAuditLog.created_at,
+                actor.public_id,
+                actor.email,
+                target.public_id,
+                target.email,
+            )
+            .outerjoin(actor, AdminAuditLog.admin_user_id == actor.id)
+            .outerjoin(target, AdminAuditLog.target_user_id == target.id)
+            .order_by(AdminAuditLog.created_at.desc(), AdminAuditLog.id.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        rows = [
+            AuditEntryRow(
+                action=r[0],
+                detail=r[1],
+                created_at=r[2],
+                admin_public_id=r[3],
+                admin_email=r[4],
+                target_public_id=r[5],
+                target_email=r[6],
+            )
+            for r in result.all()
+        ]
+        return rows, total or 0

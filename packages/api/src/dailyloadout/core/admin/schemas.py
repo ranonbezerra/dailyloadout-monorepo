@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class AdminMeResponse(BaseModel):
@@ -17,3 +18,73 @@ class AdminMeResponse(BaseModel):
     public_id: UUID
     email: str
     display_name: str
+
+
+# ── Users management ────────────────────────────────────────────────────
+
+
+class AdminUserSummary(BaseModel):
+    """A user as shown in the backoffice list/search table."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    public_id: UUID
+    email: str
+    display_name: str
+    email_verified: bool
+    is_banned: bool
+    created_at: datetime
+
+
+class AdminUserListResponse(BaseModel):
+    """A page of users plus the total matching count for pagination."""
+
+    items: list[AdminUserSummary]
+    total: int
+    limit: int
+    offset: int
+
+
+class AdminUserDetail(AdminUserSummary):
+    """The full backoffice view of a single user.
+
+    Adds fields the list omits: profile metadata, whether the account is an
+    admin / has a password (vs. OAuth-only), and the live active-session count.
+    """
+
+    avatar_url: str | None
+    locale: str
+    timezone: str
+    is_admin: bool
+    has_password: bool
+    active_sessions: int
+
+
+class BanRequest(BaseModel):
+    """Optional reason recorded in the audit trail when banning a user."""
+
+    reason: str | None = Field(default=None, max_length=500)
+
+
+# ── Audit log ───────────────────────────────────────────────────────────
+
+
+class AdminAuditEntry(BaseModel):
+    """One audited admin action, with actor and target identities resolved."""
+
+    action: str
+    detail: str | None
+    created_at: datetime
+    admin_public_id: UUID | None
+    admin_email: str | None
+    target_public_id: UUID | None
+    target_email: str | None
+
+
+class AdminAuditListResponse(BaseModel):
+    """A page of audit entries plus the total count for pagination."""
+
+    items: list[AdminAuditEntry]
+    total: int
+    limit: int
+    offset: int

@@ -5,6 +5,7 @@ All models are re-exported here so existing imports stay unchanged:
 """
 
 from dailyloadout.infrastructure.db.models.auth import (
+    AdminAuditLog,
     AdminUser,
     OAuthIdentity,
     RefreshToken,
@@ -17,6 +18,7 @@ from dailyloadout.infrastructure.db.models.mission import Mission
 from dailyloadout.infrastructure.db.models.usage import UsageCounter
 
 __all__ = [
+    "AdminAuditLog",
     "AdminUser",
     "Capture",
     "CaptureCandidate",

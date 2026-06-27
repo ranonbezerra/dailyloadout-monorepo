@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from dailyloadout.infrastructure.db.models import RefreshToken
@@ -61,6 +61,20 @@ class RefreshTokenRepository:
         now = datetime.now(UTC)
         stmt = update(RefreshToken).where(RefreshToken.id == token_id).values(revoked_at=now)
         await self._session.execute(stmt)
+
+    async def count_active_for_user(self, user_id: int) -> int:
+        """Return how many non-revoked, non-expired sessions *user_id* has."""
+        now = datetime.now(UTC)
+        total = await self._session.scalar(
+            select(func.count())
+            .select_from(RefreshToken)
+            .where(
+                RefreshToken.user_id == user_id,
+                RefreshToken.revoked_at.is_(None),
+                RefreshToken.expires_at > now,
+            )
+        )
+        return total or 0
 
     async def revoke_all_for_user(self, user_id: int) -> None:
         """Revoke every active refresh token belonging to *user_id*."""

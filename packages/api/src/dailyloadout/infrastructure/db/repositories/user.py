@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import ColumnElement, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from dailyloadout.infrastructure.db.models import User
@@ -105,3 +105,45 @@ class UserRepository:
         """Set *user_id*'s ``is_banned`` flag to *banned*."""
         stmt = update(User).where(User.id == user_id).values(is_banned=banned)
         await self._session.execute(stmt)
+
+    async def search(
+        self,
+        *,
+        query: str | None = None,
+        is_banned: bool | None = None,
+        email_verified: bool | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list[User], int]:
+        """Return a page of active users plus the total matching count.
+
+        *query* matches case-insensitively against email or display name;
+        *is_banned* / *email_verified* filter by those flags when not ``None``.
+        Results are newest-first. The total reflects all matches, not the page.
+        """
+        conditions: list[ColumnElement[bool]] = [User.deleted_at.is_(None)]
+        if query:
+            pattern = f"%{query.strip()}%"
+            conditions.append(or_(User.email.ilike(pattern), User.display_name.ilike(pattern)))
+        if is_banned is not None:
+            conditions.append(User.is_banned.is_(is_banned))
+        if email_verified is not None:
+            conditions.append(User.email_verified.is_(email_verified))
+
+        total = await self._session.scalar(
+            select(func.count()).select_from(User).where(*conditions)
+        )
+        rows = (
+            (
+                await self._session.execute(
+                    select(User)
+                    .where(*conditions)
+                    .order_by(User.created_at.desc(), User.id.desc())
+                    .limit(limit)
+                    .offset(offset)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        return list(rows), total or 0

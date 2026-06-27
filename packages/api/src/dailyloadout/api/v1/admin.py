@@ -5,17 +5,26 @@ reverse proxy can deny from the public web origin (edge defense-in-depth),
 while the URL avoids the word "admin" that invites drive-by exploit scans.
 
 Every route here is gated by ``AdminUserDep`` (a backoffice admin grant in the
-``admin_users`` table). This Phase-1 surface only exposes a whoami check the
-backoffice SPA uses to confirm access; user/game/config management lands in
-later phases.
+``admin_users`` table). Phase 1 exposed only a whoami check; Phase 2 adds user
+management (list/search, inspect, ban/unban/verify) and the audit log that
+records every mutation.
 """
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from uuid import UUID
 
-from dailyloadout.core.admin.schemas import AdminMeResponse
-from dailyloadout.deps.auth import AdminUserDep
+from fastapi import APIRouter, HTTPException, Query, status
+
+from dailyloadout.core.admin.schemas import (
+    AdminAuditListResponse,
+    AdminMeResponse,
+    AdminUserDetail,
+    AdminUserListResponse,
+    BanRequest,
+)
+from dailyloadout.core.admin.service import AdminUserNotFoundError, CannotModerateAdminError
+from dailyloadout.deps.auth import AdminUserDep, AdminUserServiceDep
 
 router = APIRouter(prefix="/internal/v1", tags=["internal"])
 
@@ -24,3 +33,103 @@ router = APIRouter(prefix="/internal/v1", tags=["internal"])
 async def admin_me(admin: AdminUserDep) -> AdminMeResponse:
     """Return the current admin's identity; 403 for non-admins."""
     return AdminMeResponse.model_validate(admin)
+
+
+# ── Users management ────────────────────────────────────────────────────
+
+
+@router.get("/users", response_model=AdminUserListResponse)
+async def list_users(
+    _admin: AdminUserDep,
+    service: AdminUserServiceDep,
+    q: str | None = Query(default=None, description="Match email or display name"),
+    banned: bool | None = Query(default=None),
+    verified: bool | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> AdminUserListResponse:
+    """List/search users with optional ban/verification filters (paginated)."""
+    return await service.list_users(
+        query=q,
+        is_banned=banned,
+        email_verified=verified,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get("/users/{public_id}", response_model=AdminUserDetail)
+async def get_user(
+    public_id: UUID,
+    _admin: AdminUserDep,
+    service: AdminUserServiceDep,
+) -> AdminUserDetail:
+    """Return the full backoffice view of a single user."""
+    try:
+        return await service.get_user(public_id)
+    except AdminUserNotFoundError:
+        raise _not_found() from None
+
+
+@router.post("/users/{public_id}/ban", response_model=AdminUserDetail)
+async def ban_user(
+    public_id: UUID,
+    admin: AdminUserDep,
+    service: AdminUserServiceDep,
+    body: BanRequest | None = None,
+) -> AdminUserDetail:
+    """Ban a user (cuts off all access). Refuses to ban another admin."""
+    reason = body.reason if body else None
+    try:
+        return await service.ban_user(admin, public_id, reason)
+    except AdminUserNotFoundError:
+        raise _not_found() from None
+    except CannotModerateAdminError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot ban an admin user; revoke the admin grant first.",
+        ) from None
+
+
+@router.post("/users/{public_id}/unban", response_model=AdminUserDetail)
+async def unban_user(
+    public_id: UUID,
+    admin: AdminUserDep,
+    service: AdminUserServiceDep,
+) -> AdminUserDetail:
+    """Lift a user's ban (they may log in again; sessions are not re-minted)."""
+    try:
+        return await service.unban_user(admin, public_id)
+    except AdminUserNotFoundError:
+        raise _not_found() from None
+
+
+@router.post("/users/{public_id}/verify", response_model=AdminUserDetail)
+async def verify_user(
+    public_id: UUID,
+    admin: AdminUserDep,
+    service: AdminUserServiceDep,
+) -> AdminUserDetail:
+    """Force-mark a user's email as verified (idempotent)."""
+    try:
+        return await service.verify_user(admin, public_id)
+    except AdminUserNotFoundError:
+        raise _not_found() from None
+
+
+# ── Audit log ───────────────────────────────────────────────────────────
+
+
+@router.get("/audit", response_model=AdminAuditListResponse)
+async def list_audit(
+    _admin: AdminUserDep,
+    service: AdminUserServiceDep,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> AdminAuditListResponse:
+    """Return a newest-first page of audited admin actions."""
+    return await service.list_audit(limit=limit, offset=offset)
+
+
+def _not_found() -> HTTPException:
+    return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")

@@ -8,12 +8,18 @@ from fastapi.security import OAuth2PasswordBearer
 from jwt import PyJWTError
 
 from dailyloadout.config import settings
+from dailyloadout.core.admin.service import AdminUserService
 from dailyloadout.core.auth.security import decode_access_token
 from dailyloadout.core.auth.service import AuthService
 from dailyloadout.infrastructure.db.models import User
-from dailyloadout.infrastructure.db.repositories.admin import AdminRepository
+from dailyloadout.infrastructure.db.repositories.admin import (
+    AdminAuditRepository,
+    AdminRepository,
+)
 from dailyloadout.infrastructure.db.repositories.oauth import OAuthIdentityRepository
-from dailyloadout.infrastructure.db.repositories.refresh_token import RefreshTokenRepository
+from dailyloadout.infrastructure.db.repositories.refresh_token import (
+    RefreshTokenRepository,
+)
 from dailyloadout.infrastructure.db.repositories.user import UserRepository
 
 from .db import DbSession
@@ -188,3 +194,26 @@ async def get_admin_user(current_user: CurrentUserDep, db: DbSession) -> User:
 
 
 AdminUserDep = Annotated[User, Depends(get_admin_user)]
+
+
+def get_admin_user_service(
+    user_repo: UserRepoDep,
+    rt_repo: RefreshTokenRepoDep,
+    auth_service: AuthServiceDep,
+    db: DbSession,
+) -> AdminUserService:
+    """Provide an ``AdminUserService`` wired to the current repositories.
+
+    Reuses the request's ``AuthService`` for the ban primitive (session
+    kill-switch) so the backoffice never re-implements that incident logic.
+    """
+    return AdminUserService(
+        user_repo,
+        AdminRepository(db),
+        AdminAuditRepository(db),
+        rt_repo,
+        auth_service,
+    )
+
+
+AdminUserServiceDep = Annotated[AdminUserService, Depends(get_admin_user_service)]
