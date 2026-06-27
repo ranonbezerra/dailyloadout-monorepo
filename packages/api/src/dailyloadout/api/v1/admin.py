@@ -25,9 +25,15 @@ from dailyloadout.core.admin.schemas import (
     BanRequest,
     ConfigListResponse,
     ConfigSetRequest,
+    DashboardSummary,
 )
 from dailyloadout.core.admin.service import AdminUserNotFoundError, CannotModerateAdminError
-from dailyloadout.deps.auth import AdminConfigServiceDep, AdminUserDep, AdminUserServiceDep
+from dailyloadout.deps.auth import (
+    AdminConfigServiceDep,
+    AdminDashboardServiceDep,
+    AdminUserDep,
+    AdminUserServiceDep,
+)
 from dailyloadout.infrastructure.config.registry import ConfigValidationError
 
 router = APIRouter(prefix="/internal/v1", tags=["internal"])
@@ -37,6 +43,15 @@ router = APIRouter(prefix="/internal/v1", tags=["internal"])
 async def admin_me(admin: AdminUserDep) -> AdminMeResponse:
     """Return the current admin's identity; 403 for non-admins."""
     return AdminMeResponse.model_validate(admin)
+
+
+@router.get("/dashboard", response_model=DashboardSummary)
+async def dashboard(
+    _admin: AdminUserDep,
+    service: AdminDashboardServiceDep,
+) -> DashboardSummary:
+    """Return at-a-glance backoffice metrics for the admin landing screen."""
+    return await service.summary()
 
 
 # ── Users management ────────────────────────────────────────────────────

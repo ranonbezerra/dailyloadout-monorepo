@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date
 from uuid import UUID
 
-from sqlalchemy import ColumnElement, or_, select
+from sqlalchemy import ColumnElement, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from dailyloadout.infrastructure.db.models import Game
@@ -31,6 +31,13 @@ class GameRepository:
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
+
+    async def count_catalogue(self) -> int:
+        """Return how many games are in the shared catalogue (canonical/shared)."""
+        stmt = select(func.count(Game.id)).where(
+            or_(Game.igdb_id.is_not(None), Game.is_shared.is_(True))
+        )
+        return (await self._session.scalar(stmt)) or 0
 
     async def get_by_id(self, game_id: int) -> Game | None:
         """Return the game with the given internal *game_id*, or ``None``."""

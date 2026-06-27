@@ -48,6 +48,11 @@ class AdminRepository:
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none() is not None
 
+    async def count(self) -> int:
+        """Return how many users hold an admin grant."""
+        total = await self._session.scalar(select(func.count()).select_from(AdminUser))
+        return total or 0
+
     async def grant(self, user_id: int, granted_by: int | None = None) -> AdminUser:
         """Grant admin to *user_id* (idempotent: returns the existing grant).
 

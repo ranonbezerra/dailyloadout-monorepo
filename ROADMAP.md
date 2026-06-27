@@ -1050,14 +1050,19 @@ Two kinds of config, two mechanisms (do **not** put everything in one place):
 
 **Curated dynamic set (~10–12, not all ~120 settings):** kill-switches (`rate_limit_enabled`, `cost_guard_enabled`, `concierge_write_tools_enabled`), incident-tunable caps (`cost_user_per_day`, `cost_global_per_day`, `rate_limit_register_per_minute`, `igdb_user_budget_per_day`), product rules (`catalog_share_threshold`, `block_disposable_emails`), and future feature flags. Everything else stays env-only.
 
-### Tasks
+### Tasks (delivered in phases)
 
-- [ ] `app_config` table (key, value (JSON), updated_by, updated_at) + a typed `get_dynamic(key, default=settings.x)` overlay with a short cache and write-through invalidation
-- [ ] Admin authz: an `is_admin`/role on the user (or a separate admin model) gating all backoffice routes
-- [ ] Backoffice API: users (list/search, ban/unban, verify, view sessions), games (list, demote/promote, edit/merge catalogue), config (read/edit the curated keys with validation + audit), basic data browse
-- [ ] Backoffice UI (web): a separate admin area (or app) reusing the existing auth/session; tables for users/games + a config screen
-- [ ] Wire the existing primitives into it: ban, demote, token kill-switch, cost-guard toggles — surfaced as panel actions instead of CLIs
-- [ ] Audit log for admin actions; tests (authz, config precedence/validation, audit)
+**API foundation (done):**
+
+- [x] **Phase 1 — Admin authz** (#44): admin grant in a separate `admin_users` table (never on the user row, never a JWT claim), `require_admin` boundary, `/internal/v1` non-advertising prefix, `grant_admin.py` bootstrap.
+- [x] **Phase 2 — Users + audit** (#45): `/internal/v1/users` list/search/detail + ban/unban/verify (reuses the session kill-switch; refuses to ban an admin), and the append-only `admin_audit_log` written on every mutation + `/internal/v1/audit`.
+- [x] **Phase 3 — Dynamic operational config** (#46): `app_config` Postgres overlay (`override > env > default`) with a typed curated registry, short in-process cache + write-through invalidation; `/internal/v1/config` (list/set/clear, validated + audited); all 9 curated knobs wired live through the overlay; seed migration for the standard values.
+
+**Backoffice web UI + domain expansion (in progress):**
+
+- [ ] **Phase 4 — Backoffice web foundation + ready domains** (this PR): a distinct admin shell (separate `/backoffice` area reusing the existing auth/session, visually marked as a backoffice) + admin guard; **Dashboard** (new `GET /internal/v1/dashboard` aggregate endpoint: user/ban/verify/admin counts, active missions, catalogue size, config overrides, recent admin actions); **Users**, **Config**, and **Audit** management screens over the existing APIs.
+- [ ] **Phase 5 — Games / catalogue admin**: backoffice API for games (list/search, demote/promote, edit/merge catalogue — surfacing the `demote_game.py` primitive as a panel action) + a Games management screen + catalogue charts on the dashboard.
+- [ ] **Phase 6 — Other domains (moderation & data browse)**: missions (browse/force-clamp), captures (browse/reprocess/purge), loadouts, and basic read-only data browse across domains — each behind the same audited admin boundary.
 
 ### Definition of Done
 

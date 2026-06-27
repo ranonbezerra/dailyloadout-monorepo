@@ -146,6 +146,13 @@ class MissionRepository:
         result = await self._session.execute(stmt)
         return result.scalar_one()
 
+    async def count_active(self) -> int:
+        """Return how many missions are active (not ended) across all users."""
+        from sqlalchemy import func
+
+        stmt = select(func.count(Mission.id)).where(Mission.ended_at.is_(None))
+        return (await self._session.scalar(stmt)) or 0
+
     async def set_debrief(
         self,
         mission_id: int,

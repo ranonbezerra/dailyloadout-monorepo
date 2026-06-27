@@ -121,6 +121,19 @@ class ConfigListResponse(BaseModel):
     items: list[ConfigEntry]
 
 
+class DashboardSummary(BaseModel):
+    """At-a-glance backoffice metrics for the dashboard landing screen."""
+
+    users_total: int
+    users_banned: int
+    users_unverified: int
+    admins: int
+    missions_active: int
+    catalogue_size: int
+    config_overrides: int
+    recent_actions: list[AdminAuditEntry]
+
+
 class ConfigSetRequest(BaseModel):
     """A new override value for a curated key.
 

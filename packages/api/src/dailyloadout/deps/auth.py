@@ -9,6 +9,7 @@ from jwt import PyJWTError
 
 from dailyloadout.config import settings
 from dailyloadout.core.admin.config_service import AdminConfigService
+from dailyloadout.core.admin.dashboard_service import AdminDashboardService
 from dailyloadout.core.admin.service import AdminUserService
 from dailyloadout.core.auth.security import decode_access_token
 from dailyloadout.core.auth.service import AuthService
@@ -19,6 +20,8 @@ from dailyloadout.infrastructure.db.repositories.admin import (
     AdminRepository,
 )
 from dailyloadout.infrastructure.db.repositories.app_config import AppConfigRepository
+from dailyloadout.infrastructure.db.repositories.game import GameRepository
+from dailyloadout.infrastructure.db.repositories.mission import MissionRepository
 from dailyloadout.infrastructure.db.repositories.oauth import OAuthIdentityRepository
 from dailyloadout.infrastructure.db.repositories.refresh_token import (
     RefreshTokenRepository,
@@ -232,3 +235,20 @@ def get_admin_config_service(db: DbSession) -> AdminConfigService:
 
 
 AdminConfigServiceDep = Annotated[AdminConfigService, Depends(get_admin_config_service)]
+
+
+def get_admin_dashboard_service(db: DbSession) -> AdminDashboardService:
+    """Provide an ``AdminDashboardService`` wired to the read-side repositories."""
+    return AdminDashboardService(
+        UserRepository(db),
+        AdminRepository(db),
+        AdminAuditRepository(db),
+        AppConfigRepository(db),
+        MissionRepository(db),
+        GameRepository(db),
+    )
+
+
+AdminDashboardServiceDep = Annotated[
+    AdminDashboardService, Depends(get_admin_dashboard_service)
+]
