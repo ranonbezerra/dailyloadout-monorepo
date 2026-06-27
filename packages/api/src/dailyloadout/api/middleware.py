@@ -102,9 +102,9 @@ class DefaultUserRateLimitMiddleware:
         from fastapi import HTTPException
 
         from dailyloadout.api.v1._rate_limit import _enforce
-        from dailyloadout.config import settings
+        from dailyloadout.infrastructure.config.dynamic import dynamic_config
 
-        if settings.rate_limit_enabled:
+        if await dynamic_config.get_bool("rate_limit_enabled"):
             identity = _bearer_subject(scope)
             if identity is not None:
                 try:

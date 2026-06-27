@@ -29,9 +29,9 @@ import structlog
 from fastapi import HTTPException, Request, status
 from pyrate_limiter import Duration, Limiter, Rate, RedisBucket
 
-from dailyloadout.config import settings
 from dailyloadout.deps.auth import CurrentUserDep
 from dailyloadout.infrastructure.cache.redis_client import get_redis_client
+from dailyloadout.infrastructure.config.dynamic import dynamic_config
 
 logger = structlog.get_logger()
 
@@ -113,6 +113,7 @@ def rate_limit(
     seconds: int,
     by: RateLimitBy = "user",
     fail_closed: bool = False,
+    times_key: str | None = None,
 ) -> Callable[..., Awaitable[None]]:
     """Build a FastAPI dependency enforcing ``times`` requests per ``seconds``.
 
@@ -121,21 +122,30 @@ def rate_limit(
     IP (``"ip"``). When ``fail_closed`` is True a limiter/Redis error denies the
     request (503) instead of allowing it — use for account-minting/auth routes.
 
-    The returned dependency is a no-op when rate limiting is disabled in
-    settings, regardless of ``fail_closed``.
+    Both the master switch (``rate_limit_enabled``) and — when ``times_key`` names
+    a curated config key — the per-window allowance are resolved from the dynamic
+    overlay at request time, so an admin can flip the limiter or retune the cap
+    live without a redeploy. The returned dependency is a no-op when rate limiting
+    is disabled, regardless of ``fail_closed``.
     """
+
+    async def _resolve_times() -> int:
+        return await dynamic_config.get_int(times_key) if times_key else times
+
     if by == "user":
 
         async def _dep_user(current_user: CurrentUserDep) -> None:
-            if not settings.rate_limit_enabled:
+            if not await dynamic_config.get_bool("rate_limit_enabled"):
                 return
-            await _enforce(scope, str(current_user.id), times, seconds, fail_closed)
+            await _enforce(
+                scope, str(current_user.id), await _resolve_times(), seconds, fail_closed
+            )
 
         return _dep_user
 
     async def _dep_ip(request: Request) -> None:
-        if not settings.rate_limit_enabled:
+        if not await dynamic_config.get_bool("rate_limit_enabled"):
             return
-        await _enforce(scope, _client_ip(request), times, seconds, fail_closed)
+        await _enforce(scope, _client_ip(request), await _resolve_times(), seconds, fail_closed)
 
     return _dep_ip

@@ -163,9 +163,21 @@ public origin; single-user mode is rejected outright. Non-admins get `403`.
 | POST | `/users/{public_id}/ban` | Ban + kill sessions; body `{ "reason": str? }`; refuses admins |
 | POST | `/users/{public_id}/unban` | Lift a ban (does not re-mint sessions) |
 | POST | `/users/{public_id}/verify` | Force-verify the user's email (idempotent) |
+| GET | `/config` | List the curated operational knobs (effective/override/baseline) |
+| PUT | `/config/{key}` | Set a runtime override (validated); `422` on bad type/range, `404` unknown key |
+| DELETE | `/config/{key}` | Clear the override, reverting to the env/code baseline |
 | GET | `/audit` | Audited admin actions, newest first (`limit`, `offset`) |
 
 Every mutation appends an `admin_audit_log` row (actor, action, target, optional reason).
+
+**Dynamic config** (`/config`): a curated set of operational knobs — kill-switches
+(`rate_limit_enabled`, `cost_guard_enabled`, `concierge_write_tools_enabled`), abuse
+caps (`cost_user_per_day`, `cost_global_per_day`, `rate_limit_register_per_minute`,
+`igdb_user_budget_per_day`), and product rules (`catalog_share_threshold`,
+`block_disposable_emails`) — overridable at **runtime without a redeploy**. Precedence
+is **override (Postgres `app_config`) > env var > code default**; the change is read by
+consumers within a short cache TTL. Secrets/infra stay env-only. `PUT` body is
+`{ "value": <bool|int> }`.
 
 ---
 

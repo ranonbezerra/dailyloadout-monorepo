@@ -7,6 +7,7 @@ from fastapi import Depends
 from dailyloadout.config import settings
 from dailyloadout.core.library.service import LibraryService
 from dailyloadout.infrastructure.cache.factory import get_cache
+from dailyloadout.infrastructure.config.dynamic import dynamic_config
 from dailyloadout.infrastructure.db.repositories.game import GameRepository
 from dailyloadout.infrastructure.db.repositories.library import LibraryRepository
 from dailyloadout.infrastructure.db.repositories.platform import PlatformRepository
@@ -40,13 +41,17 @@ PlatformRepoDep = Annotated[PlatformRepository, Depends(get_platform_repo)]
 # ── Service ────────────────────────────────────────────────────────────
 
 
-def get_library_service(
+async def get_library_service(
     game_repo: GameRepoDep,
     library_repo: LibraryRepoDep,
     platform_repo: PlatformRepoDep,
     igdb_client: IGDBClientDep,
 ) -> LibraryService:
-    """Provide a ``LibraryService`` wired to the current repositories."""
+    """Provide a ``LibraryService`` wired to the current repositories.
+
+    ``share_threshold`` is read from the dynamic overlay so it can be adjusted
+    live (curating the shared catalogue is a product knob, not a redeploy).
+    """
     return LibraryService(
         game_repo,
         library_repo,
@@ -55,7 +60,7 @@ def get_library_service(
         reference_ttl_seconds=settings.reference_cache_ttl_seconds,
         igdb_client=igdb_client,
         match_min_score=settings.catalog_match_min_score,
-        share_threshold=settings.catalog_share_threshold,
+        share_threshold=await dynamic_config.get_int("catalog_share_threshold"),
     )
 
 

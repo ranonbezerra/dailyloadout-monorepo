@@ -12,6 +12,7 @@ from dailyloadout.infrastructure.db.models.auth import (
     User,
 )
 from dailyloadout.infrastructure.db.models.capture import Capture, CaptureCandidate
+from dailyloadout.infrastructure.db.models.config import AppConfig
 from dailyloadout.infrastructure.db.models.library import Game, LibraryEntry, Platform
 from dailyloadout.infrastructure.db.models.loadout import Loadout
 from dailyloadout.infrastructure.db.models.mission import Mission
@@ -20,6 +21,7 @@ from dailyloadout.infrastructure.db.models.usage import UsageCounter
 __all__ = [
     "AdminAuditLog",
     "AdminUser",
+    "AppConfig",
     "Capture",
     "CaptureCandidate",
     "Game",

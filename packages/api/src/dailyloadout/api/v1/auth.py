@@ -31,12 +31,21 @@ _check_login_rate = rate_limit(
     "auth_login", settings.rate_limit_login_per_minute, 60, by="ip", fail_closed=True
 )
 _check_register_rate = rate_limit(
-    "auth_register", settings.rate_limit_register_per_minute, 60, by="ip", fail_closed=True
+    "auth_register",
+    settings.rate_limit_register_per_minute,
+    60,
+    by="ip",
+    fail_closed=True,
+    times_key="rate_limit_register_per_minute",
 )
 # Resend-verification is per-IP and abuse-prone (email bombing); reuse the
 # register rate as a conservative cap. Fail-open is fine here (no account mint).
 _check_resend_rate = rate_limit(
-    "auth_resend_verification", settings.rate_limit_register_per_minute, 60, by="ip"
+    "auth_resend_verification",
+    settings.rate_limit_register_per_minute,
+    60,
+    by="ip",
+    times_key="rate_limit_register_per_minute",
 )
 
 
