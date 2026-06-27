@@ -17,7 +17,7 @@ from fastapi import HTTPException
 
 from dailyloadout.api.v1 import _cost_guard
 from dailyloadout.config import settings
-from dailyloadout.infrastructure.cache import usage_counter
+from dailyloadout.infrastructure.cache import cost_fallback, usage_counter
 
 
 class _FakeRedis:
@@ -70,6 +70,8 @@ _COST_FIELDS = (
     "cost_global_per_month",
     "cost_user_per_day",
     "cost_alert_threshold",
+    "cost_guard_degraded_fallback_enabled",
+    "cost_guard_fallback_workers",
 )
 
 
@@ -77,9 +79,11 @@ _COST_FIELDS = (
 def _enable_cost_guard() -> object:
     saved = {f: getattr(settings, f) for f in _COST_FIELDS}
     settings.cost_guard_enabled = True
+    cost_fallback.reset_local_windows()
     yield
     for field, value in saved.items():
         setattr(settings, field, value)
+    cost_fallback.reset_local_windows()
 
 
 # ---------------------------------------------------------------------------
@@ -168,13 +172,76 @@ async def test_cost_guard_disabled_is_noop(monkeypatch: pytest.MonkeyPatch) -> N
         await dep(current_user=_User(1))  # type: ignore[arg-type]
 
 
-async def test_cost_guard_fails_closed_on_redis_error(
+async def test_cost_guard_strict_fails_closed_on_redis_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    # Strict mode (fallback disabled): a Redis error denies with 503, never a
+    # silent allow.
+    settings.cost_guard_degraded_fallback_enabled = False
     monkeypatch.setattr(usage_counter, "get_redis_client", lambda: _BrokenRedis())
     dep = _cost_guard.cost_guard("test")
     with pytest.raises(HTTPException) as exc:
         await dep(current_user=_User(1))  # type: ignore[arg-type]
+    assert exc.value.status_code == 503
+
+
+async def test_cost_guard_degrades_to_local_on_redis_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Default mode: a Redis error drops to per-process counters and ALLOWS the
+    # request while it is under the (degraded) ceiling — Redis is not a SPOF.
+    settings.cost_guard_degraded_fallback_enabled = True
+    settings.cost_global_per_minute = 1000
+    settings.cost_global_per_day = 1000
+    settings.cost_global_per_month = 1000
+    settings.cost_user_per_day = 1000
+    monkeypatch.setattr(usage_counter, "get_redis_client", lambda: _BrokenRedis())
+    dep = _cost_guard.cost_guard("test")
+    for _ in range(5):
+        await dep(current_user=_User(1))  # type: ignore[arg-type]
+
+
+async def test_cost_guard_degraded_trips_on_divided_global_cap(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # In degraded mode the GLOBAL ceiling is divided by the worker count: a
+    # per-minute cap of 4 over 2 workers => 2 permits per process before 503.
+    settings.cost_guard_degraded_fallback_enabled = True
+    settings.cost_guard_fallback_workers = 2
+    settings.cost_global_per_minute = 4
+    settings.cost_global_per_day = 1000
+    settings.cost_global_per_month = 1000
+    settings.cost_user_per_day = 1000
+    monkeypatch.setattr(usage_counter, "get_redis_client", lambda: _BrokenRedis())
+    dep = _cost_guard.cost_guard("test")
+
+    # Distinct users so the per-user window can't trip first.
+    await dep(current_user=_User(1))  # type: ignore[arg-type]
+    await dep(current_user=_User(2))  # type: ignore[arg-type]
+    with pytest.raises(HTTPException) as exc:
+        await dep(current_user=_User(3))  # type: ignore[arg-type]
+    assert exc.value.status_code == 503
+
+
+async def test_cost_guard_degraded_keeps_per_user_cap_whole(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Per-user ceilings are NOT divided by the worker count (already scoped to
+    # one account): a user/day cap of 2 trips on the 3rd call even with 4 workers.
+    settings.cost_guard_degraded_fallback_enabled = True
+    settings.cost_guard_fallback_workers = 4
+    settings.cost_global_per_minute = 1000
+    settings.cost_global_per_day = 1000
+    settings.cost_global_per_month = 1000
+    settings.cost_user_per_day = 2
+    monkeypatch.setattr(usage_counter, "get_redis_client", lambda: _BrokenRedis())
+    dep = _cost_guard.cost_guard("test")
+    user = _User(42)
+
+    await dep(current_user=user)  # type: ignore[arg-type]
+    await dep(current_user=user)  # type: ignore[arg-type]
+    with pytest.raises(HTTPException) as exc:
+        await dep(current_user=user)  # type: ignore[arg-type]
     assert exc.value.status_code == 503
 
 

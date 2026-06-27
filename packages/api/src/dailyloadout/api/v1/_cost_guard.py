@@ -22,6 +22,7 @@ A metric/alert hook (``cost_alert``) is logged once usage crosses
 
 from __future__ import annotations
 
+import math
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
@@ -30,6 +31,7 @@ from fastapi import HTTPException, status
 
 from dailyloadout.config import settings
 from dailyloadout.deps.auth import CurrentUserDep
+from dailyloadout.infrastructure.cache.cost_fallback import incr_local_window
 from dailyloadout.infrastructure.cache.usage_counter import (
     day_bucket,
     incr_window,
@@ -98,38 +100,91 @@ def _maybe_alert(window: _Window, count: int, scope: str) -> None:
         )
 
 
+def _over_capacity() -> HTTPException:
+    """The 503 raised when a cost ceiling is exceeded."""
+    return HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="Service temporarily over capacity. Please try again later.",
+        headers={"Retry-After": "60"},
+    )
+
+
+def _local_limit(window: _Window) -> int:
+    """The per-process ceiling used in degraded mode.
+
+    Global windows are divided by the configured worker count so the aggregate
+    cap across all processes stays near the intended global limit; per-user
+    windows are kept whole (they are already scoped to one account).
+    """
+    if not window.name.startswith("global_"):
+        return window.limit
+    workers = max(1, settings.cost_guard_fallback_workers)
+    return max(1, math.ceil(window.limit / workers))
+
+
+async def _enforce_redis(user_id: int, scope: str) -> None:
+    """Consume one permit from each Redis-backed window; raise 503 over a cap.
+
+    Raises a non-``HTTPException`` (propagated to the caller) on any Redis
+    error, so the caller can decide between degraded fallback and fail-closed.
+    """
+    for window in _windows(user_id, scope):
+        count = await incr_window(window.key, window.ttl_seconds)
+        _maybe_alert(window, count, scope)
+        if count > window.limit:
+            logger.warning(
+                "cost_guard_tripped",
+                window=window.name,
+                scope=scope,
+                count=count,
+                limit=window.limit,
+            )
+            raise _over_capacity()
+
+
+def _enforce_local(user_id: int, scope: str) -> None:
+    """Degraded fallback: enforce the ceilings with per-process counters.
+
+    Conservative and imprecise by design (per-process, lost on restart). Global
+    caps are divided by the worker count; a breach still 503s, so spend stays
+    bounded even with Redis down.
+    """
+    for window in _windows(user_id, scope):
+        limit = _local_limit(window)
+        count = incr_local_window(window.key, window.ttl_seconds)
+        if count > limit:
+            logger.warning(
+                "cost_guard_tripped_degraded",
+                window=window.name,
+                scope=scope,
+                count=count,
+                limit=limit,
+            )
+            raise _over_capacity()
+
+
 async def _enforce(user_id: int, scope: str) -> None:
     """Consume one permit from each cost window; raise 503 over any ceiling.
 
-    Fail-closed: any Redis error denies the request (503) so a broken counter
-    never silently authorises unbounded spend.
+    On a Redis error the guard either degrades to per-process counters
+    (``cost_guard_degraded_fallback_enabled``, the default — Redis is not a
+    single point of failure) or fails closed with 503 (strict mode). Either way
+    a broken counter never silently authorises unbounded spend.
     """
     try:
-        for window in _windows(user_id, scope):
-            count = await incr_window(window.key, window.ttl_seconds)
-            _maybe_alert(window, count, scope)
-            if count > window.limit:
-                logger.warning(
-                    "cost_guard_tripped",
-                    window=window.name,
-                    scope=scope,
-                    count=count,
-                    limit=window.limit,
-                )
-                raise HTTPException(
-                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail="Service temporarily over capacity. Please try again later.",
-                    headers={"Retry-After": "60"},
-                )
+        await _enforce_redis(user_id, scope)
     except HTTPException:
         raise
     except Exception:
-        logger.warning("cost_guard_redis_error", scope=scope, exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Cost guard unavailable. Please try again shortly.",
-            headers={"Retry-After": "60"},
-        ) from None
+        if not settings.cost_guard_degraded_fallback_enabled:
+            logger.warning("cost_guard_redis_error", scope=scope, exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Cost guard unavailable. Please try again shortly.",
+                headers={"Retry-After": "60"},
+            ) from None
+        logger.warning("cost_guard_redis_degraded", scope=scope, exc_info=True)
+        _enforce_local(user_id, scope)
 
 
 def cost_guard(scope: str) -> Callable[..., Awaitable[None]]:

@@ -189,8 +189,7 @@ class Settings(BaseSettings):
     # tests and any deploy that wants it off). The limiter ALSO fails open if
     # Redis is unreachable, so the API never hard-fails on a limiter error.
     rate_limit_enabled: bool = True
-    # Auth limiters (per client IP) — migrated from in-memory pyrate_limiter to
-    # Redis so the window is shared across worker processes.
+    # Auth limiters (per client IP) — Redis-backed, shared across workers.
     rate_limit_login_per_minute: int = 10
     rate_limit_register_per_minute: int = 5
     # Per-USER limits on the expensive (LLM / IGDB / research) routes. Tuned
@@ -201,23 +200,24 @@ class Settings(BaseSettings):
     rate_limit_loadout_create_per_minute: int = 10
     rate_limit_capture_submit_per_minute: int = 15
     rate_limit_library_import_per_minute: int = 5
-    # Cost-bearing limit on POST /v1/games (LLM/IGDB resolve); generous anti-abuse
-    # backstops on library CRUD writes and read-only catalogue/stats/cache reads.
+    # POST /v1/games (LLM/IGDB resolve) + generous backstops on writes/reads.
     rate_limit_game_create_per_minute: int = 20
     rate_limit_library_write_per_minute: int = 60
     rate_limit_read_per_minute: int = 120
 
     # ── Cost kill-switch (aggregate $ guard, provider-agnostic) ──────────
-    # Counts LLM-bearing requests as a proxy for spend; hard-fails 503 over a
-    # global minute/day/month ceiling plus a per-user/day budget. False =>
-    # cost_guard() is a no-op (tests), independent of rate_limit_enabled. FAIL-
-    # CLOSED: a Redis error denies (503), unlike the rate limiter (fails open).
+    # Spend proxy: 503s over a global minute/day/month + per-user/day budget
+    # (False => no-op, tests). On a Redis error, degrade to per-process counters
+    # (global caps ÷ worker count) so Redis is not a SPOF — or set the fallback
+    # flag False to fail closed. AWS Budgets is the outer provider-side backstop.
     cost_guard_enabled: bool = True
     cost_global_per_minute: int = 120
     cost_global_per_day: int = 5000
     cost_global_per_month: int = 100000
     cost_user_per_day: int = 200
     cost_alert_threshold: float = 0.8
+    cost_guard_degraded_fallback_enabled: bool = True
+    cost_guard_fallback_workers: int = 1
 
     # Generous default per-user limit the middleware applies to every
     # authenticated request (backstop for routes lacking an explicit limiter).
