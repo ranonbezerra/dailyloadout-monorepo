@@ -11,6 +11,7 @@ from dailyloadout.config import settings
 from dailyloadout.core.auth.security import decode_access_token
 from dailyloadout.core.auth.service import AuthService
 from dailyloadout.infrastructure.db.models import User
+from dailyloadout.infrastructure.db.repositories.oauth import OAuthIdentityRepository
 from dailyloadout.infrastructure.db.repositories.refresh_token import RefreshTokenRepository
 from dailyloadout.infrastructure.db.repositories.user import UserRepository
 
@@ -32,8 +33,14 @@ def get_refresh_token_repo(db: DbSession) -> RefreshTokenRepository:
     return RefreshTokenRepository(db)
 
 
+def get_oauth_repo(db: DbSession) -> OAuthIdentityRepository:
+    """Provide an ``OAuthIdentityRepository`` bound to the current session."""
+    return OAuthIdentityRepository(db)
+
+
 UserRepoDep = Annotated[UserRepository, Depends(get_user_repo)]
 RefreshTokenRepoDep = Annotated[RefreshTokenRepository, Depends(get_refresh_token_repo)]
+OAuthRepoDep = Annotated[OAuthIdentityRepository, Depends(get_oauth_repo)]
 
 
 # ── Service ────────────────────────────────────────────────────────────
@@ -42,12 +49,13 @@ RefreshTokenRepoDep = Annotated[RefreshTokenRepository, Depends(get_refresh_toke
 def get_auth_service(
     user_repo: UserRepoDep,
     rt_repo: RefreshTokenRepoDep,
+    oauth_repo: OAuthRepoDep,
 ) -> AuthService:
     """Provide an ``AuthService`` wired to the current repositories.
 
     The mailer is resolved internally (best-effort SMTP; no-op when unconfigured).
     """
-    return AuthService(user_repo, rt_repo)
+    return AuthService(user_repo, rt_repo, oauth_repo=oauth_repo)
 
 
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]

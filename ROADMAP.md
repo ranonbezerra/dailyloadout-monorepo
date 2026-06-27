@@ -976,7 +976,9 @@ Epic 17 is a tactical fix for one adapter. This is a **cross-cutting architectur
 
 **Goal:** let users register & sign in via **Google, Apple, and Twitch** (Authorization Code + PKCE), in addition to email/password — behind the existing auth layer, issuing the same access/refresh tokens so the rest of the app is unchanged.
 
-**Status:** not started. Planned feature. Pairs naturally with the anti-abuse work — a verified social identity is a much stronger anti-abuse signal than an unverified email, and **Apple/Google logins arrive pre-verified**, sidestepping the email-verification + CAPTCHA cost for those users.
+**Status:** in progress. Planned feature. Pairs naturally with the anti-abuse work — a verified social identity is a much stronger anti-abuse signal than an unverified email, and **Apple/Google logins arrive pre-verified**, sidestepping the email-verification + CAPTCHA cost for those users.
+
+**Scope (this epic): Google + Twitch, on API + Web.** Both are standard Authorization Code + PKCE with no paid developer account. **Apple Sign In and the native Flutter app surface are split into [Epic 20](#epic-20--apple-sign-in--native-app-oauth-v11)** — Apple needs a paid Apple Developer account and an ES256-signed JWT client-secret, and the native mobile flow (Sign in with Apple/Google) needs iOS/Android platform config, so it is a deliberate follow-up rather than a blocker for the web rollout.
 
 ### Context
 
@@ -985,21 +987,49 @@ Epic 17 is a tactical fix for one adapter. This is a **cross-cutting architectur
 
 ### Tasks
 
-- [ ] `oauth_identities` (provider, provider_user_id, user_id, linked email) — confirm/extend the model; unique (provider, provider_user_id)
-- [ ] Provider configs (Google, Apple, Twitch): client id/secret, redirect URIs, scopes; Apple needs the JWT client-secret + key id dance
+- [ ] `oauth_identities` (provider, provider_uid, user_id, email) — confirm/extend the model; unique (provider, provider_uid) *(scaffold already exists)*
+- [ ] Provider configs (**Google, Twitch**): client id/secret, redirect URIs, scopes
 - [ ] `GET /v1/auth/oauth/{provider}/start` (PKCE + state) and `/callback` → resolve/link/create user → issue our tokens (reuse the cookie/body dual-mode)
-- [ ] Account linking + collision policy: link to an existing account **only** on a provider-verified email match; otherwise create new (never silently merge)
+- [ ] Account linking + collision policy: link to an existing account **only** on a provider-verified email match; otherwise create new — and **reject** (ask to log in + link) when an unverified provider email collides with an existing account (never silently merge / never enable takeover)
 - [ ] Mark socially-authenticated users `email_verified = true` when the provider asserts a verified email (skips our email-verify gate)
-- [ ] Web: provider buttons on login/register; App (Flutter): native Sign in with Apple/Google + Twitch web flow
+- [ ] Web: provider buttons on login/register
 - [ ] Tests: start/callback, state/PKCE validation, linking, collision, token issuance; mocked provider (no real OAuth in CI)
 
 ### Definition of Done
 
-- A user can sign up / log in with Google, Apple, or Twitch and land authenticated with our tokens; email/password still works; linking is safe (no account takeover via unverified email); provider-verified users skip the email-verification gate. Coverage at parity with the password flow.
+- A user can sign up / log in with **Google or Twitch** on the web and land authenticated with our tokens; email/password still works; linking is safe (no account takeover via unverified email); provider-verified users skip the email-verification gate. Coverage at parity with the password flow. *(Apple + native app: [Epic 20](#epic-20--apple-sign-in--native-app-oauth-v11).)*
 
 ### Technical highlight
 
 > **One auth core, many front doors.** Social login resolves to the *same* `User` + JWT the rest of the app already speaks, so adding Google/Apple/Twitch is new adapters + a callback, not an auth rewrite — and it doubles as anti-abuse hardening (a verified Google/Apple/Twitch identity is far costlier to mass-create than throwaway emails).
+
+---
+
+## Epic 20 — Apple Sign In + native app OAuth (v1.1+)
+
+**Goal:** add **Apple Sign In** to the OAuth core built in [Epic 19](#epic-19--social-login--oauth-google-apple-twitch-v11), and bring **all three providers (Google, Apple, Twitch) to the Flutter app** with the native mobile flows — reusing the same callback → our-JWT machinery, so it stays "new front doors, one auth core".
+
+**Status:** not started. Split out of Epic 19 because both pieces carry external/platform dependencies that shouldn't block the web rollout:
+
+- **Apple is materially more complex than Google/Twitch.** The "client secret" is not a static string — it's an **ES256-signed JWT** built from a private key (`.p8`), a Key ID, and the Team ID, re-minted before expiry (max 6 months). Apple also returns the user's name/email **only on first authorization** (must be captured then), supports a private-relay email, and requires the Sign in with Apple capability on a **paid Apple Developer account ($99/yr)**.
+- **Native mobile is not just Dart.** `Sign in with Apple` (iOS) and native Google Sign-In require **iOS/Android platform configuration** (capabilities, URL schemes, OAuth client per platform, redirect/deep-link handling) on top of the Flutter code.
+
+### Tasks
+
+- [ ] Apple provider config: Team ID, Key ID, `.p8` private key; ES256 client-secret JWT minting (with safe re-mint/caching before the ≤6-month expiry)
+- [ ] Apple specifics: capture name/email on first auth only; handle private-relay addresses; map Apple's `email_verified` semantics into our linking/collision policy
+- [ ] `apple` provider behind the existing `OAuthProvider` abstraction + `/oauth/apple/start|callback`; web buttons
+- [ ] App (Flutter): native **Sign in with Apple** + **Google Sign-In**; **Twitch** via the web Authorization Code flow in a web view / external browser with a deep-link return; exchange the provider result for our access/refresh tokens (body-mode)
+- [ ] iOS/Android platform config: Sign in with Apple capability, Google OAuth clients per platform, custom URL scheme / deep-link callback handling
+- [ ] Tests: Apple JWT secret minting + flow; app-side bloc/flow tests with a mocked provider/token exchange
+
+### Definition of Done
+
+- A user can sign up / log in with **Apple** on the web, and with **Google, Apple, and Twitch** in the Flutter app, landing authenticated with our tokens. Account linking/collision safety matches Epic 19. Apple's client-secret JWT is minted and refreshed correctly. Coverage at parity with the password + web-OAuth flows.
+
+### Technical highlight
+
+> **The hard provider, isolated.** By shipping Google/Twitch-on-web first (Epic 19) and quarantining Apple's JWT-secret ceremony + the native-mobile platform config here, the auth core proves itself before taking on the provider with a paid account and a signed-secret refresh loop — and Apple still lands as just one more adapter behind the same port.
 
 ---
 

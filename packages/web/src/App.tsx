@@ -24,6 +24,7 @@ import { VerifyEmailBanner } from "./components/VerifyEmailBanner";
 import { useAuthContext } from "./contexts/AuthContext";
 import { FEATURES } from "./lib/features";
 import { LoginPage } from "./pages/LoginPage";
+import { OAuthCallbackPage } from "./pages/OAuthCallbackPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { VerifyEmailPage } from "./pages/VerifyEmailPage";
 
@@ -182,6 +183,9 @@ function App() {
 			{/* Public: the verification link is opened straight from the email,
 			    possibly while signed out. */}
 			<Route path="/verify-email" element={<VerifyEmailPage />} />
+			{/* Public: the API redirects the browser here after a social login;
+			    the page completes the cookie→session bootstrap. */}
+			<Route path="/oauth/callback" element={<OAuthCallbackPage />} />
 			<Route
 				path="/*"
 				element={

@@ -13,6 +13,7 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useRef, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
+import { SocialLoginButtons } from "../components/SocialLoginButtons";
 import { type TurnstileHandle, TurnstileWidget } from "../components/TurnstileWidget";
 import { useAuthContext } from "../contexts/AuthContext";
 
@@ -107,6 +108,7 @@ export function RegisterPage() {
 						<Button type="submit" fullWidth loading={submitting}>
 							Create account
 						</Button>
+						<SocialLoginButtons label="or sign up with" />
 					</Stack>
 				</form>
 

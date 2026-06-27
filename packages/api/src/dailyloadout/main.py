@@ -15,6 +15,7 @@ from dailyloadout.api.middleware import (
     SecurityHeadersMiddleware,
 )
 from dailyloadout.api.v1.auth import router as auth_router
+from dailyloadout.api.v1.auth_oauth import router as auth_oauth_router
 from dailyloadout.api.v1.cache import router as cache_router
 from dailyloadout.api.v1.capture import router as capture_router
 from dailyloadout.api.v1.concierge import router as concierge_router
@@ -187,6 +188,7 @@ def create_app() -> FastAPI:
 
     # Routers
     application.include_router(auth_router)
+    application.include_router(auth_oauth_router)
     application.include_router(cache_router)
     application.include_router(capture_router)
     application.include_router(library_import_router)

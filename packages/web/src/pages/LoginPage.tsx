@@ -11,9 +11,11 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
-import { useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, Navigate, useSearchParams } from "react-router-dom";
+import { SocialLoginButtons } from "../components/SocialLoginButtons";
 import { useAuthContext } from "../contexts/AuthContext";
+import { oauthErrorMessage } from "../lib/oauth";
 
 interface LoginFormValues {
 	email: string;
@@ -23,6 +25,21 @@ interface LoginFormValues {
 export function LoginPage() {
 	const { login, isAuthenticated, isLoading } = useAuthContext();
 	const [submitting, setSubmitting] = useState(false);
+	const [searchParams, setSearchParams] = useSearchParams();
+
+	// A failed social-login flow redirects the browser back here with an
+	// `?error=<reason>` param. Surface a human message once, then clear the param
+	// so a reload/back-nav doesn't re-toast.
+	useEffect(() => {
+		const error = searchParams.get("error");
+		if (!error) return;
+		notifications.show({
+			title: "Sign-in failed",
+			message: oauthErrorMessage(error),
+			color: "red",
+		});
+		setSearchParams({}, { replace: true });
+	}, [searchParams, setSearchParams]);
 
 	const form = useForm<LoginFormValues>({
 		initialValues: { email: "", password: "" },
@@ -78,6 +95,7 @@ export function LoginPage() {
 						<Button type="submit" fullWidth loading={submitting}>
 							Sign in
 						</Button>
+						<SocialLoginButtons />
 					</Stack>
 				</form>
 

@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
 import {
 	apiFetch,
 	authFetch,
@@ -136,6 +137,18 @@ export function useAuth() {
 		},
 	});
 
+	// ---- OAuth completion ---------------------------------------------------
+	// Called by /oauth/callback after a social login redirect. The browser holds
+	// only the refresh cookie at this point, so a silent refresh exchanges it for
+	// an in-memory access token; we then invalidate bootstrap + /me so the app
+	// re-derives authenticated state and loads the user.
+	const completeOAuth = useCallback(async () => {
+		const ok = await refreshSession();
+		await queryClient.invalidateQueries({ queryKey: BOOTSTRAP_QUERY_KEY });
+		if (ok) await queryClient.invalidateQueries({ queryKey: USER_QUERY_KEY });
+		return ok;
+	}, [queryClient]);
+
 	// ---- Public API ---------------------------------------------------------
 	const login = async (email: string, password: string) => {
 		await loginMutation.mutateAsync({ email, password });
@@ -173,6 +186,7 @@ export function useAuth() {
 		login,
 		register,
 		logout,
+		completeOAuth,
 		verify,
 		resendVerification,
 		refetchUser,

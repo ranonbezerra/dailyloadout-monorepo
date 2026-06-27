@@ -57,6 +57,30 @@ class UserRepository:
         await self._session.flush()
         return user
 
+    async def create_oauth_user(
+        self,
+        email: str,
+        display_name: str,
+        *,
+        email_verified: bool,
+        avatar_url: str | None = None,
+    ) -> User:
+        """Insert a passwordless user from a social login and return it.
+
+        ``password_hash`` is ``None`` (the account has no password until the
+        user sets one); login() already rejects passwordless accounts.
+        """
+        user = User(
+            email=_normalize_email(email),
+            password_hash=None,
+            display_name=display_name,
+            email_verified=email_verified,
+            avatar_url=avatar_url,
+        )
+        self._session.add(user)
+        await self._session.flush()
+        return user
+
     async def email_exists(self, email: str) -> bool:
         """Return ``True`` if an active user with *email* (normalized) exists."""
         stmt = (

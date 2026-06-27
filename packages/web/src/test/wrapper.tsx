@@ -27,6 +27,7 @@ export function makeAuthContext(overrides: Partial<AuthContextValue> = {}): Auth
 		login: vi.fn(),
 		register: vi.fn(),
 		logout: vi.fn(),
+		completeOAuth: vi.fn(),
 		verify: vi.fn(),
 		resendVerification: vi.fn(),
 		refetchUser: vi.fn(),

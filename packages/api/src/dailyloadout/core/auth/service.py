@@ -8,6 +8,7 @@ from uuid import UUID
 import structlog
 
 from dailyloadout.config import settings
+from dailyloadout.core.auth.oauth_login import resolve_oauth_login
 from dailyloadout.core.auth.security import (
     REFRESH_TOKEN_EXPIRE_DAYS,
     create_access_token,
@@ -20,6 +21,7 @@ from dailyloadout.core.auth.security import (
     verify_password_dummy,
 )
 from dailyloadout.infrastructure.db.models import User
+from dailyloadout.infrastructure.db.repositories.oauth import OAuthIdentityRepository
 from dailyloadout.infrastructure.db.repositories.refresh_token import RefreshTokenRepository
 from dailyloadout.infrastructure.db.repositories.user import UserRepository
 from dailyloadout.infrastructure.email import Mailer, get_mailer, send_verification_email
@@ -27,6 +29,7 @@ from dailyloadout.infrastructure.email.validation import (
     EmailRejectedError,
     assert_email_acceptable,
 )
+from dailyloadout.infrastructure.oauth import OAuthError, OAuthUserInfo
 
 logger = structlog.get_logger()
 
@@ -41,14 +44,14 @@ class AuthService:
         user_repo: UserRepository,
         refresh_token_repo: RefreshTokenRepository,
         mailer: Mailer | None = None,
+        oauth_repo: OAuthIdentityRepository | None = None,
     ) -> None:
         self._user_repo = user_repo
         self._refresh_token_repo = refresh_token_repo
         self._mailer = mailer or get_mailer()
+        self._oauth_repo = oauth_repo
 
-    # ------------------------------------------------------------------
-    # Registration
-    # ------------------------------------------------------------------
+    # ── Registration ──
     async def register(
         self,
         email: str,
@@ -90,9 +93,7 @@ class AuthService:
 
         return user, access_token, raw_refresh
 
-    # ------------------------------------------------------------------
-    # Email verification
-    # ------------------------------------------------------------------
+    # ── Email verification ──
     async def verify_email(self, token: str) -> None:
         """Validate a verification *token* and mark the email verified.
 
@@ -128,9 +129,7 @@ class AuthService:
         token = create_email_verification_token(str(user.public_id))
         send_verification_email(self._mailer, to=user.email, token=token)
 
-    # ------------------------------------------------------------------
-    # Login
-    # ------------------------------------------------------------------
+    # ── Login ──
     async def login(
         self,
         email: str,
@@ -161,9 +160,26 @@ class AuthService:
 
         return user, access_token, raw_refresh
 
-    # ------------------------------------------------------------------
-    # Token refresh (rotation)
-    # ------------------------------------------------------------------
+    # ── Social login (OAuth) — resolve/link/create, then issue our tokens ──
+    async def oauth_resolve_user(
+        self, provider: str, info: OAuthUserInfo
+    ) -> tuple[User, str, str]:
+        """Resolve a social identity to a user and issue our tokens.
+
+        Delegates to :func:`resolve_oauth_login` (see it for the link/collision
+        policy). Returns ``(user, access_token, raw_refresh_token)``.
+        """
+        if self._oauth_repo is None:  # pragma: no cover - wiring guard
+            raise OAuthError("OAuth repository not configured")
+        return await resolve_oauth_login(
+            user_repo=self._user_repo,
+            oauth_repo=self._oauth_repo,
+            rt_repo=self._refresh_token_repo,
+            provider=provider,
+            info=info,
+        )
+
+    # ── Token refresh (rotation) ──
     async def refresh(self, raw_refresh_token: str) -> tuple[str, str]:
         """Rotate a refresh token and issue a new access token.
 
@@ -212,9 +228,7 @@ class AuthService:
 
         return new_access, new_raw_refresh
 
-    # ------------------------------------------------------------------
-    # Logout
-    # ------------------------------------------------------------------
+    # ── Logout ──
     async def logout(self, raw_refresh_token: str) -> None:
         """Revoke the refresh token identified by *raw_refresh_token*."""
         token_hash = hash_refresh_token(raw_refresh_token)
@@ -248,9 +262,7 @@ class AuthService:
         await self._user_repo.bump_token_version(user_id)
         await self._refresh_token_repo.revoke_all_for_user(user_id)
 
-    # ------------------------------------------------------------------
-    # Current user lookup
-    # ------------------------------------------------------------------
+    # ── Current user lookup ──
     async def get_current_user(self, public_id: UUID) -> User:
         """Return the user with *public_id*.
 

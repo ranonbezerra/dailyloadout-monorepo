@@ -38,10 +38,10 @@ const defaultAuth = {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function renderLoginPage() {
+function renderLoginPage(initialEntry = "/login") {
 	return render(
 		<MantineProvider>
-			<MemoryRouter initialEntries={["/login"]}>
+			<MemoryRouter initialEntries={[initialEntry]}>
 				<Routes>
 					<Route path="/login" element={<LoginPage />} />
 					<Route path="/library" element={<div data-testid="library-page">Library</div>} />
@@ -204,6 +204,27 @@ describe("LoginPage", () => {
 				expect.objectContaining({
 					title: "Login failed",
 					message: "An unexpected error occurred",
+					color: "red",
+				}),
+			);
+		});
+	});
+
+	it("renders the social login buttons", () => {
+		renderLoginPage();
+
+		expect(screen.getByRole("button", { name: /continue with google/i })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /continue with twitch/i })).toBeInTheDocument();
+	});
+
+	it("toasts a mapped message when an oauth ?error= param is present", async () => {
+		renderLoginPage("/login?error=account_exists");
+
+		await waitFor(() => {
+			expect(notifications.show).toHaveBeenCalledWith(
+				expect.objectContaining({
+					title: "Sign-in failed",
+					message: expect.stringContaining("An account with this email already exists"),
 					color: "red",
 				}),
 			);

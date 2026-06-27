@@ -54,11 +54,8 @@ class Settings(BaseSettings):
     # How long warmed models stay resident after idle. Default frees the RAM after
     # 30 min; set '-1' to pin them loaded indefinitely (always fast, holds memory).
     ollama_warmup_keep_alive: str = "30m"
-    # Process-wide ceiling on concurrent model calls to the host Ollama server
-    # (per worker process). A burst of concierge/briefing requests would otherwise
-    # oversubscribe the GPU/CPU and stall every in-flight call; this bounds the
-    # queue depth so the model serves a few requests fast rather than thrashing all
-    # of them. Holds only around the model HTTP call.
+    # Per-process ceiling on concurrent host-Ollama model calls; bounds queue
+    # depth so a burst serves a few requests fast instead of thrashing the GPU.
     ollama_max_concurrency: int = 2
 
     # ── Agent / Deep Research Briefing (Epic 10) ─────────────────────────
@@ -130,9 +127,16 @@ class Settings(BaseSettings):
     # Cache IGDB search results this long (game metadata is stable). 7 days.
     igdb_cache_ttl_seconds: int = 7 * 24 * 3600
 
-    # ── OAuth Google (optional) ──────────────────────────────────────────
+    # ── Social login / OAuth (optional, Auth Code + PKCE) — provider available
+    # only when its client id is set; Twitch user auth ≠ the IGDB app token. ──
     google_oauth_client_id: str = ""
     google_oauth_client_secret: str = ""
+    twitch_oauth_client_id: str = ""
+    twitch_oauth_client_secret: str = ""
+    oauth_redirect_base_url: str = "http://localhost:8100"
+    oauth_web_success_url: str = "http://localhost:5173/oauth/callback"
+    oauth_web_error_url: str = "http://localhost:5173/login"
+    oauth_state_ttl_seconds: int = 600  # single-use PKCE/state entry in Redis
 
     # ── Email (optional) ─────────────────────────────────────────────────
     smtp_host: str = ""
@@ -142,8 +146,7 @@ class Settings(BaseSettings):
     smtp_from: str = "DailyLoadout <noreply@dailyloadout.local>"
 
     # ── Registration identity hygiene (anti-abuse) ───────────────────────
-    # Disposable-provider blocklist + MX/A DNS probe (FAILS OPEN, prod-only so
-    # CI/dev do no network; short per-lookup budget).
+    # Disposable blocklist + MX/A DNS probe (FAILS OPEN, prod-only, short budget).
     block_disposable_emails: bool = True
     check_email_mx: bool = True
     email_mx_timeout_seconds: float = 3.0
@@ -163,10 +166,8 @@ class Settings(BaseSettings):
     bcrypt_rounds: int = 12
 
     # ── Auth refresh cookie (web cookie-mode, X-Auth-Mode: cookie) ───────
-    # The Flutter app uses BODY mode (no cookie); these only affect web.
-    # Dev-friendly defaults: Secure off + SameSite lax so http://localhost
-    # works. PRODUCTION: set auth_cookie_secure=True, and if web/api live on
-    # different domains set auth_cookie_samesite="none" (which requires Secure).
+    # App uses BODY mode (no cookie); web only. PROD: auth_cookie_secure=True,
+    # and samesite="none" (requires Secure) if web/api are on different domains.
     auth_cookie_name: str = "dl_refresh_token"
     # Secure by default; dev/test may override to False so http://localhost works.
     # Production startup refuses to boot with this False (see guard below).
@@ -206,10 +207,9 @@ class Settings(BaseSettings):
     rate_limit_read_per_minute: int = 120
 
     # ── Cost kill-switch (aggregate $ guard, provider-agnostic) ──────────
-    # Spend proxy: 503s over a global minute/day/month + per-user/day budget
-    # (False => no-op, tests). On a Redis error, degrade to per-process counters
-    # (global caps ÷ worker count) so Redis is not a SPOF — or set the fallback
-    # flag False to fail closed. AWS Budgets is the outer provider-side backstop.
+    # Spend proxy: 503s over global minute/day/month + per-user/day (False =>
+    # no-op). On Redis error, degrade to per-process counters (global caps ÷
+    # workers) so Redis isn't a SPOF, or set fallback False to fail closed.
     cost_guard_enabled: bool = True
     cost_global_per_minute: int = 120
     cost_global_per_day: int = 5000
