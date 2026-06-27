@@ -686,7 +686,15 @@ SearXNG finds URLs → Firecrawl `/scrape` turns the top 1–2 into markdown →
 **Build vs. buy — call Bedrock directly, build the cost layer ourselves.** We deliberately do **not** route through an LLM gateway (LiteLLM proxy/SDK). Two reasons: (1) we already own the `AbstractLLMClient` port, so a gateway is a redundant second abstraction; (2) the cost-governance layer is the *differentiated, interview-worthy* part — offloading it to a tool would hide exactly the engineering worth showing.
 
 - **Buy (don't build):** the Bedrock call itself → boto3 / Anthropic `AnthropicBedrock` SDK (commodity plumbing; also the "AWS / Bedrock" résumé keyword).
-- **Build (the showcase):** a cost-governance layer on top — per-call cost from token usage (token→$), a per-user **monthly budget** and a **global spend kill-switch** with graceful degradation, backed by Redis counters, plus **AWS Budgets** as the outer alarm.
+- **Build (the showcase):** a cost-governance layer on top — per-call cost from token usage (token→$), a per-user **monthly budget** and a **global spend kill-switch** with graceful degradation, backed by Redis counters, plus **AWS Budgets** as the provider-side outer alarm.
+
+**Defense-in-depth — three independent tiers so Redis is not a single point of failure.** The in-house cost guard (PR #35) counts spend in Redis and **fails closed** (a Redis outage 503s every cost-bearing route), which makes Redis critical infra for anything that costs money. To remove that single point of failure we layer the controls so no one component being down can either run up cost *or* take the LLM features offline:
+
+1. **Redis counters (primary, fast):** the existing global/per-user fixed-window kill-switch — the precise, low-latency tier.
+2. **In-process degraded fallback:** when Redis is unreachable the guard drops to a conservative per-worker in-memory counter (global cap ÷ worker count) instead of hard-503-ing, so a Redis blip *degrades* the feature (tighter, less precise cap) rather than taking it down. Imprecise across workers by design — its job is to *bound* spend, not to be exact. **(Shipped ahead of this epic — see PR for the cost-guard fallback.)**
+3. **AWS Budgets (provider-side backstop, independent):** a hard monthly budget on the AWS account with a **budget action that disables Bedrock access** (or revokes the inference role) on breach. Fully independent of the app — if every in-app guard fails (Redis *and* the fallback *and* a bug), the provider itself stops the spend. Coarse and billing-delayed, but the absolute last line. **Must be configured at deploy, before any public launch.**
+
+The principle: the goal is not "remove Redis" but "never depend on a single component being up for the money to stay safe." Tier 3 alone removes the worst case (runaway bill); tier 2 removes the "LLM dies with Redis" case; together they cost little and cover the essentials.
 
 This mirrors the rate-limiting call in PR #34: keep the solved commodity (`pyrate_limiter`), build the bespoke differentiated piece. The per-minute per-user limits already shipped (#34) bound bursts; this epic adds the **monthly + global $ caps** that bound *sustained* cost — a hard prerequisite before opening the app to the public (without them a scripted account can run up cost via the per-minute ceiling).
 
@@ -729,7 +737,9 @@ A deep briefing fires up to ~4 LLM calls (`grade` → `refine`×0–2 → `synth
 - [ ] Add `anthropic[bedrock]` (and/or `[vertex]` / a Gemini client) as **optional** deps
 - [ ] `BedrockLLMClient(AbstractLLMClient)` (and/or `VertexLLMClient`) implementing all methods incl. `complete(prompt, role, json)`; map `role`→tier; JSON via `output_config.format`/strict tools; adaptive thinking
 - [ ] Extend the LLM factory: `LLM_PROVIDER=bedrock|vertex|ollama|dummy`; env for creds (AWS region/IAM or GCP project/location/service account), per-tier model IDs
-- [ ] Cost governance (built in-house, **no gateway**): token→$ metering from usage; per-user **monthly** budget + **global spend kill-switch** with graceful degradation (Redis counters); **AWS Budgets** alarm as the outer net; structured usage logging; prompt caching on the deep-research context. Prerequisite before any public launch.
+- [ ] Cost governance (built in-house, **no gateway**): token→$ metering from usage; per-user **monthly** budget + **global spend kill-switch** with graceful degradation (Redis counters); structured usage logging; prompt caching on the deep-research context. Prerequisite before any public launch.
+- [x] **Tier 2 — degraded fallback:** cost guard drops to a conservative in-process counter when Redis is unreachable (no longer hard-503s every cost route on a Redis blip). *Shipped ahead of the epic.*
+- [ ] **Tier 3 — AWS Budgets backstop (deploy-time):** monthly budget on the AWS account with a budget action that disables Bedrock / revokes the inference role on breach — provider-side, app-independent. Document the setup in `docs/DEPLOYMENT.md`. **Prerequisite before any public launch.**
 - [ ] Tests with a mocked cloud client (no real cloud calls in CI; `dummy` stays the CI default)
 - [ ] ADR: the build-vs-buy write-up (Bedrock-direct + in-house cost governance vs. an LLM gateway like LiteLLM; why we own the cost layer given the existing port) + measured per-briefing cost on cheap-tier Bedrock
 
