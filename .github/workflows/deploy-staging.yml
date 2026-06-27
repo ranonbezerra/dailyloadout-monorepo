@@ -24,4 +24,4 @@ jobs:
     with:
       environment: staging
       ref: ${{ github.sha }}
-    secrets: inherit
+    secrets: inherit # pragma: allowlist secret

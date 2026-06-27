@@ -43,4 +43,4 @@ jobs:
     with:
       environment: production
       ref: ${{ needs.release-please.outputs.api_tag }}
-    secrets: inherit
+    secrets: inherit # pragma: allowlist secret
