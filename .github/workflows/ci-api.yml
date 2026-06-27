@@ -122,7 +122,7 @@ jobs:
           # production guards; "test" is treated as prod and the secret-key guard
           # would fail config import. (pytest gets this from pyproject env.)
           APP_ENV: testing
-          SECRET_KEY: test-secret-not-used-because-testing-skips-prod-guard
+          SECRET_KEY: test-secret-not-used-because-testing-skips-prod-guard # pragma: allowlist secret
         run: |
           poetry run alembic upgrade head
           # Reversibility smoke (non-blocking): a full down+up roundtrip.

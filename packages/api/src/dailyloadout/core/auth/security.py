@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import hashlib
 import secrets
 from datetime import UTC, datetime, timedelta
@@ -35,19 +36,26 @@ def verify_password(plain: str, hashed: str) -> bool:
     return bcrypt.checkpw(plain.encode(), hashed.encode())
 
 
-# A fixed, valid bcrypt hash used to burn a constant amount of CPU when an email
-# has no account, so login latency does not reveal whether an account exists
-# (timing oracle). It must never match any real password.
-_DUMMY_PASSWORD_HASH = "$2b$12$kvmNR0MR13T307hhWccwteBB9QQXyczwzCHlmjy00BiSf0ukr/4yO"
+@functools.lru_cache(maxsize=4)
+def _dummy_hash(rounds: int) -> bytes:
+    """A throwaway bcrypt hash at *rounds*, computed once per rounds value.
+
+    Used to equalise login timing on the no-user branch. Generated at the SAME
+    cost factor as real password hashes (``settings.bcrypt_rounds``) so the dummy
+    verification takes the same time as a real one — exact timing parity, and
+    fast when the test config lowers the rounds.
+    """
+    return bcrypt.hashpw(b"timing-equaliser", bcrypt.gensalt(rounds=rounds))
 
 
 def verify_password_dummy(plain: str) -> None:
     """Run a throwaway bcrypt verification to equalise login timing.
 
     Called on the "no such user" branch of login so an attacker cannot tell a
-    missing account from a wrong password by response time.
+    missing account from a wrong password by response time. The return value is
+    intentionally ignored (login fails regardless).
     """
-    bcrypt.checkpw(plain.encode(), _DUMMY_PASSWORD_HASH.encode())
+    bcrypt.checkpw(plain.encode(), _dummy_hash(settings.bcrypt_rounds))
 
 
 # ---------------------------------------------------------------------------
