@@ -5,6 +5,8 @@
  * enough to send as-is.
  */
 import type {
+	AdminGameDetail,
+	AdminGameList,
 	AdminMe,
 	AdminUserDetail,
 	AdminUserList,
@@ -12,6 +14,8 @@ import type {
 	ConfigList,
 	ConfigValue,
 	DashboardSummary,
+	GameEdit,
+	GameListParams,
 	UserListParams,
 } from "../types/backoffice";
 import { apiFetch } from "./api";
@@ -82,6 +86,40 @@ export async function setConfig(key: string, value: ConfigValue): Promise<Config
 export async function clearConfig(key: string): Promise<ConfigList> {
 	return snakeToCamel<ConfigList>(
 		await apiFetch<unknown>(`${BASE}/config/${key}`, { method: "DELETE" }),
+	);
+}
+
+export async function fetchGames(params: GameListParams = {}): Promise<AdminGameList> {
+	const sp = new URLSearchParams();
+	if (params.q) sp.set("q", params.q);
+	if (params.shared !== undefined) sp.set("shared", String(params.shared));
+	if (params.source) sp.set("source", params.source);
+	if (params.limit !== undefined) sp.set("limit", String(params.limit));
+	if (params.offset !== undefined) sp.set("offset", String(params.offset));
+	const qs = sp.toString();
+	return snakeToCamel<AdminGameList>(
+		await apiFetch<unknown>(`${BASE}/games${qs ? `?${qs}` : ""}`),
+	);
+}
+
+export async function demoteGame(publicId: string): Promise<AdminGameDetail> {
+	return snakeToCamel<AdminGameDetail>(
+		await apiFetch<unknown>(`${BASE}/games/${publicId}/demote`, { method: "POST" }),
+	);
+}
+
+export async function promoteGame(publicId: string): Promise<AdminGameDetail> {
+	return snakeToCamel<AdminGameDetail>(
+		await apiFetch<unknown>(`${BASE}/games/${publicId}/promote`, { method: "POST" }),
+	);
+}
+
+export async function editGame(publicId: string, edit: GameEdit): Promise<AdminGameDetail> {
+	return snakeToCamel<AdminGameDetail>(
+		await apiFetch<unknown>(`${BASE}/games/${publicId}`, {
+			method: "PATCH",
+			body: JSON.stringify(edit),
+		}),
 	);
 }
 

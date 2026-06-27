@@ -4,6 +4,7 @@ import { BackofficeShell } from "../../components/backoffice/BackofficeShell";
 import { AuditPage } from "./AuditPage";
 import { ConfigPage } from "./ConfigPage";
 import { DashboardPage } from "./DashboardPage";
+import { GamesPage } from "./GamesPage";
 import { UsersPage } from "./UsersPage";
 
 /**
@@ -18,6 +19,7 @@ export function BackofficeRoot() {
 				<Routes>
 					<Route index element={<DashboardPage />} />
 					<Route path="users" element={<UsersPage />} />
+					<Route path="games" element={<GamesPage />} />
 					<Route path="config" element={<ConfigPage />} />
 					<Route path="audit" element={<AuditPage />} />
 					<Route path="*" element={<Navigate to="/backoffice" replace />} />

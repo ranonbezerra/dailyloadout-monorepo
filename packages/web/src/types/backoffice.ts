@@ -92,3 +92,51 @@ export interface UserListParams {
 	limit?: number;
 	offset?: number;
 }
+
+// ── Games / catalogue ──────────────────────────────────────────────────
+
+export type GameSource = "igdb" | "manual";
+
+export interface AdminGameSummary {
+	publicId: string;
+	slug: string;
+	title: string;
+	igdbId: number | null;
+	source: GameSource;
+	isShared: boolean;
+	coverUrl: string | null;
+	ownerCount: number;
+	createdAt: string;
+}
+
+export interface AdminGameList {
+	items: AdminGameSummary[];
+	total: number;
+	limit: number;
+	offset: number;
+	catalogueTotal: number;
+	catalogueIgdb: number;
+	catalogueManual: number;
+}
+
+export interface AdminGameDetail extends AdminGameSummary {
+	summary: string | null;
+	genres: string[] | null;
+	firstReleaseDate: string | null;
+	metadataSource: string;
+	createdByEmail: string | null;
+	updatedAt: string;
+}
+
+export interface GameListParams {
+	q?: string;
+	shared?: boolean;
+	source?: GameSource;
+	limit?: number;
+	offset?: number;
+}
+
+export interface GameEdit {
+	title?: string;
+	summary?: string;
+}

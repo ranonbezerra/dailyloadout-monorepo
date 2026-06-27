@@ -17,8 +17,11 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query, status
 
 from dailyloadout.core.admin.config_service import UnknownConfigKeyError
+from dailyloadout.core.admin.games_service import GameNotFoundError
 from dailyloadout.core.admin.schemas import (
     AdminAuditListResponse,
+    AdminGameDetail,
+    AdminGameList,
     AdminMeResponse,
     AdminUserDetail,
     AdminUserListResponse,
@@ -26,11 +29,13 @@ from dailyloadout.core.admin.schemas import (
     ConfigListResponse,
     ConfigSetRequest,
     DashboardSummary,
+    GameEditRequest,
 )
 from dailyloadout.core.admin.service import AdminUserNotFoundError, CannotModerateAdminError
 from dailyloadout.deps.auth import (
     AdminConfigServiceDep,
     AdminDashboardServiceDep,
+    AdminGameServiceDep,
     AdminUserDep,
     AdminUserServiceDep,
 )
@@ -193,8 +198,84 @@ async def clear_config(
         raise _unknown_key(key) from None
 
 
+# ── Catalogue (games) ───────────────────────────────────────────────────
+
+
+@router.get("/games", response_model=AdminGameList)
+async def list_games(
+    _admin: AdminUserDep,
+    service: AdminGameServiceDep,
+    q: str | None = Query(default=None, description="Match title or slug"),
+    shared: bool | None = Query(default=None),
+    source: str | None = Query(default=None, pattern="^(igdb|manual)$"),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> AdminGameList:
+    """List/search the catalogue with owner counts + provenance filters."""
+    return await service.list_games(
+        query=q, is_shared=shared, source=source, limit=limit, offset=offset
+    )
+
+
+@router.get("/games/{public_id}", response_model=AdminGameDetail)
+async def get_game(
+    public_id: UUID,
+    _admin: AdminUserDep,
+    service: AdminGameServiceDep,
+) -> AdminGameDetail:
+    """Return the full backoffice view of a single game."""
+    try:
+        return await service.get_game(public_id)
+    except GameNotFoundError:
+        raise _game_not_found() from None
+
+
+@router.post("/games/{public_id}/demote", response_model=AdminGameDetail)
+async def demote_game(
+    public_id: UUID,
+    admin: AdminUserDep,
+    service: AdminGameServiceDep,
+) -> AdminGameDetail:
+    """Demote a shared row back to private (removes it from the catalogue)."""
+    try:
+        return await service.demote_game(admin, public_id)
+    except GameNotFoundError:
+        raise _game_not_found() from None
+
+
+@router.post("/games/{public_id}/promote", response_model=AdminGameDetail)
+async def promote_game(
+    public_id: UUID,
+    admin: AdminUserDep,
+    service: AdminGameServiceDep,
+) -> AdminGameDetail:
+    """Promote a private manual row into the shared catalogue."""
+    try:
+        return await service.promote_game(admin, public_id)
+    except GameNotFoundError:
+        raise _game_not_found() from None
+
+
+@router.patch("/games/{public_id}", response_model=AdminGameDetail)
+async def edit_game(
+    public_id: UUID,
+    body: GameEditRequest,
+    admin: AdminUserDep,
+    service: AdminGameServiceDep,
+) -> AdminGameDetail:
+    """Edit a game's title/summary (only provided fields change)."""
+    try:
+        return await service.edit_game(admin, public_id, body)
+    except GameNotFoundError:
+        raise _game_not_found() from None
+
+
 def _not_found() -> HTTPException:
     return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+
+def _game_not_found() -> HTTPException:
+    return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game not found")
 
 
 def _unknown_key(key: str) -> HTTPException:

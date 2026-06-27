@@ -1060,8 +1060,8 @@ Two kinds of config, two mechanisms (do **not** put everything in one place):
 
 **Backoffice web UI + domain expansion (in progress):**
 
-- [ ] **Phase 4 — Backoffice web foundation + ready domains** (this PR): a distinct admin shell (separate `/backoffice` area reusing the existing auth/session, visually marked as a backoffice) + admin guard; **Dashboard** (new `GET /internal/v1/dashboard` aggregate endpoint: user/ban/verify/admin counts, active missions, catalogue size, config overrides, recent admin actions); **Users**, **Config**, and **Audit** management screens over the existing APIs.
-- [ ] **Phase 5 — Games / catalogue admin**: backoffice API for games (list/search, demote/promote, edit/merge catalogue — surfacing the `demote_game.py` primitive as a panel action) + a Games management screen + catalogue charts on the dashboard.
+- [x] **Phase 4 — Backoffice web foundation + ready domains** (#47): a distinct admin shell (separate `/backoffice` area reusing the existing auth/session, visually marked as a backoffice) + admin guard; **Dashboard** (`GET /internal/v1/dashboard` aggregate endpoint: user/ban/verify/admin counts, active missions, catalogue size, config overrides, recent admin actions); **Users**, **Config**, and **Audit** management screens over the existing APIs.
+- [x] **Phase 5 — Games / catalogue admin** (this PR): `/internal/v1/games` (list/search with owner counts + provenance filters, detail, demote/promote — surfacing `demote_game.py` as a panel action — and metadata edit, all audited) + a **Catalogue** screen in the backoffice (table, source filters, demote/promote/edit, catalogue tallies). Catalogue *merge* (library-entry reassignment) deferred to a follow-up.
 - [ ] **Phase 6 — Other domains (moderation & data browse)**: missions (browse/force-clamp), captures (browse/reprocess/purge), loadouts, and basic read-only data browse across domains — each behind the same audited admin boundary.
 
 ### Definition of Done

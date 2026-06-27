@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt
@@ -119,6 +119,50 @@ class ConfigListResponse(BaseModel):
     """Every curated knob with its current effective/override/baseline values."""
 
     items: list[ConfigEntry]
+
+
+class AdminGameSummary(BaseModel):
+    """A game as shown in the backoffice catalogue table."""
+
+    public_id: UUID
+    slug: str
+    title: str
+    igdb_id: int | None
+    source: str
+    is_shared: bool
+    cover_url: str | None
+    owner_count: int
+    created_at: datetime
+
+
+class AdminGameList(BaseModel):
+    """A page of games plus the total matching count and catalogue tallies."""
+
+    items: list[AdminGameSummary]
+    total: int
+    limit: int
+    offset: int
+    catalogue_total: int
+    catalogue_igdb: int
+    catalogue_manual: int
+
+
+class AdminGameDetail(AdminGameSummary):
+    """The full backoffice view of a single game."""
+
+    summary: str | None
+    genres: list[str] | None
+    first_release_date: date | None
+    metadata_source: str
+    created_by_email: str | None
+    updated_at: datetime
+
+
+class GameEditRequest(BaseModel):
+    """Editable catalogue metadata (only provided fields change)."""
+
+    title: str | None = Field(default=None, min_length=1, max_length=300)
+    summary: str | None = Field(default=None, max_length=5000)
 
 
 class DashboardSummary(BaseModel):

@@ -10,6 +10,7 @@ from jwt import PyJWTError
 from dailyloadout.config import settings
 from dailyloadout.core.admin.config_service import AdminConfigService
 from dailyloadout.core.admin.dashboard_service import AdminDashboardService
+from dailyloadout.core.admin.games_service import AdminGameService
 from dailyloadout.core.admin.service import AdminUserService
 from dailyloadout.core.auth.security import decode_access_token
 from dailyloadout.core.auth.service import AuthService
@@ -252,3 +253,11 @@ def get_admin_dashboard_service(db: DbSession) -> AdminDashboardService:
 AdminDashboardServiceDep = Annotated[
     AdminDashboardService, Depends(get_admin_dashboard_service)
 ]
+
+
+def get_admin_game_service(db: DbSession) -> AdminGameService:
+    """Provide an ``AdminGameService`` wired to the catalogue repositories."""
+    return AdminGameService(GameRepository(db), UserRepository(db), AdminAuditRepository(db))
+
+
+AdminGameServiceDep = Annotated[AdminGameService, Depends(get_admin_game_service)]

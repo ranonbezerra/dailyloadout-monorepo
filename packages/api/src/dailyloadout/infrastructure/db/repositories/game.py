@@ -8,7 +8,7 @@ from uuid import UUID
 from sqlalchemy import ColumnElement, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from dailyloadout.infrastructure.db.models import Game
+from dailyloadout.infrastructure.db.models import Game, LibraryEntry
 
 
 def _visible_to(user_id: int) -> ColumnElement[bool]:
@@ -38,6 +38,67 @@ class GameRepository:
             or_(Game.igdb_id.is_not(None), Game.is_shared.is_(True))
         )
         return (await self._session.scalar(stmt)) or 0
+
+    async def catalogue_counts(self) -> tuple[int, int, int]:
+        """Return ``(total, igdb, manual)`` game counts for the admin overview."""
+        total = (await self._session.scalar(select(func.count(Game.id)))) or 0
+        igdb = (
+            await self._session.scalar(
+                select(func.count(Game.id)).where(Game.igdb_id.is_not(None))
+            )
+        ) or 0
+        return total, igdb, total - igdb
+
+    async def search_admin(
+        self,
+        *,
+        query: str | None = None,
+        is_shared: bool | None = None,
+        source: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list[tuple[Game, int]], int]:
+        """Return a page of games (each with its owner count) plus the total.
+
+        ``source`` filters by provenance: ``"igdb"`` (canonical, ``igdb_id`` set)
+        or ``"manual"`` (no ``igdb_id``). ``is_shared`` filters the visibility
+        flag. The owner count is how many library entries reference the game —
+        the signal an admin weighs before demoting a shared row.
+        """
+        conditions: list[ColumnElement[bool]] = []
+        if query:
+            escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            pattern = f"%{escaped}%"
+            conditions.append(or_(Game.title.ilike(pattern), Game.slug.ilike(pattern)))
+        if is_shared is not None:
+            conditions.append(Game.is_shared.is_(is_shared))
+        if source == "igdb":
+            conditions.append(Game.igdb_id.is_not(None))
+        elif source == "manual":
+            conditions.append(Game.igdb_id.is_(None))
+
+        total = (
+            await self._session.scalar(select(func.count(Game.id)).where(*conditions))
+        ) or 0
+        owner_count = func.count(LibraryEntry.id)
+        result = await self._session.execute(
+            select(Game, owner_count)
+            .outerjoin(LibraryEntry, LibraryEntry.game_id == Game.id)
+            .where(*conditions)
+            .group_by(Game.id)
+            .order_by(Game.title, Game.id)
+            .limit(limit)
+            .offset(offset)
+        )
+        rows = [(game, count) for game, count in result.all()]
+        return rows, total
+
+    async def owner_count(self, game_id: int) -> int:
+        """Return how many library entries reference *game_id*."""
+        total = await self._session.scalar(
+            select(func.count(LibraryEntry.id)).where(LibraryEntry.game_id == game_id)
+        )
+        return total or 0
 
     async def get_by_id(self, game_id: int) -> Game | None:
         """Return the game with the given internal *game_id*, or ``None``."""
@@ -153,3 +214,8 @@ class GameRepository:
             setattr(game, key, value)
         await self._session.flush()
         return game
+
+    async def refresh(self, game: Game) -> None:
+        """Reload *game* from the DB (e.g. to read the server-recomputed
+        ``updated_at`` after an update, which SQLAlchemy expires on flush)."""
+        await self._session.refresh(game)

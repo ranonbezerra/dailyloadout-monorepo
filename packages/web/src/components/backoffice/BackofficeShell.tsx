@@ -1,18 +1,7 @@
-import {
-	AppShell,
-	Badge,
-	Box,
-	Burger,
-	Button,
-	Code,
-	Group,
-	NavLink,
-	Stack,
-	Text,
-} from "@mantine/core";
+import { AppShell, Badge, Burger, Button, Code, Group, NavLink, Stack, Text } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
-	IconChartBar,
+	IconDeviceGamepad2,
 	IconExternalLink,
 	IconHistory,
 	IconLayoutDashboard,
@@ -27,6 +16,7 @@ import { useAdminMe } from "../../hooks/useBackoffice";
 const NAV = [
 	{ path: "/backoffice", label: "Dashboard", icon: IconLayoutDashboard, exact: true },
 	{ path: "/backoffice/users", label: "Users", icon: IconUsers },
+	{ path: "/backoffice/games", label: "Catalogue", icon: IconDeviceGamepad2 },
 	{ path: "/backoffice/config", label: "Config", icon: IconSettings },
 	{ path: "/backoffice/audit", label: "Audit log", icon: IconHistory },
 ];
@@ -102,28 +92,15 @@ export function BackofficeShell({ children }: { children: ReactNode }) {
 							/>
 						))}
 					</Stack>
-					<Stack gap="xs">
-						<Box>
-							<Text size="xs" c="dimmed" mb={4}>
-								Coming soon
-							</Text>
-							<NavLink
-								label="Games"
-								color="violet"
-								leftSection={<IconChartBar size={18} />}
-								disabled
-							/>
-						</Box>
-						<Button
-							variant="subtle"
-							color="gray"
-							leftSection={<IconExternalLink size={16} />}
-							justify="flex-start"
-							onClick={() => navigate("/play")}
-						>
-							Exit to app
-						</Button>
-					</Stack>
+					<Button
+						variant="subtle"
+						color="gray"
+						leftSection={<IconExternalLink size={16} />}
+						justify="flex-start"
+						onClick={() => navigate("/play")}
+					>
+						Exit to app
+					</Button>
 				</Stack>
 			</AppShell.Navbar>
 

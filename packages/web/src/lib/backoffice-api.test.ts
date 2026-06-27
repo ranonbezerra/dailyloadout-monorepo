@@ -8,12 +8,16 @@ import { apiFetch } from "./api";
 import {
 	banUser,
 	clearConfig,
+	demoteGame,
+	editGame,
 	fetchAdminMe,
 	fetchAudit,
 	fetchConfig,
 	fetchDashboard,
+	fetchGames,
 	fetchUser,
 	fetchUsers,
+	promoteGame,
 	setConfig,
 	unbanUser,
 	verifyUser,
@@ -126,5 +130,36 @@ describe("backoffice-api", () => {
 		mockApiFetch.mockResolvedValue({ items: [], total: 0, limit: 25, offset: 0 });
 		await fetchAudit({ limit: 25, offset: 50 });
 		expect(mockApiFetch).toHaveBeenCalledWith("/internal/v1/audit?limit=25&offset=50");
+	});
+
+	it("fetchGames builds the query string and converts tallies", async () => {
+		mockApiFetch.mockResolvedValue({
+			items: [{ public_id: "g1", owner_count: 3, is_shared: true }],
+			total: 1,
+			catalogue_total: 5,
+			catalogue_igdb: 4,
+			catalogue_manual: 1,
+		});
+		const r = await fetchGames({ q: "halo", shared: true, source: "igdb", limit: 20, offset: 0 });
+		expect(mockApiFetch).toHaveBeenCalledWith(
+			"/internal/v1/games?q=halo&shared=true&source=igdb&limit=20&offset=0",
+		);
+		expect(r.catalogueTotal).toBe(5);
+		expect(r.items[0]).toMatchObject({ publicId: "g1", ownerCount: 3, isShared: true });
+	});
+
+	it("demoteGame and promoteGame POST to their paths", async () => {
+		await demoteGame("g1");
+		expect(mockApiFetch).toHaveBeenCalledWith("/internal/v1/games/g1/demote", { method: "POST" });
+		await promoteGame("g1");
+		expect(mockApiFetch).toHaveBeenCalledWith("/internal/v1/games/g1/promote", { method: "POST" });
+	});
+
+	it("editGame PATCHes the changed fields", async () => {
+		await editGame("g1", { title: "New Title" });
+		expect(mockApiFetch).toHaveBeenCalledWith("/internal/v1/games/g1", {
+			method: "PATCH",
+			body: JSON.stringify({ title: "New Title" }),
+		});
 	});
 });

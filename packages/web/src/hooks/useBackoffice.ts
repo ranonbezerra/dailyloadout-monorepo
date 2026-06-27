@@ -7,17 +7,21 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	banUser,
 	clearConfig,
+	demoteGame,
+	editGame,
 	fetchAdminMe,
 	fetchAudit,
 	fetchConfig,
 	fetchDashboard,
+	fetchGames,
 	fetchUser,
 	fetchUsers,
+	promoteGame,
 	setConfig,
 	unbanUser,
 	verifyUser,
 } from "../lib/backoffice-api";
-import type { ConfigValue, UserListParams } from "../types/backoffice";
+import type { ConfigValue, GameEdit, GameListParams, UserListParams } from "../types/backoffice";
 
 const BO = ["backoffice"] as const;
 
@@ -85,6 +89,38 @@ export function useUserActions() {
 	});
 
 	return { ban, unban, verify };
+}
+
+export function useGames(params: GameListParams) {
+	return useQuery({
+		queryKey: [...BO, "games", params],
+		queryFn: () => fetchGames(params),
+	});
+}
+
+/** Demote / promote / edit a game, invalidating the catalogue + dashboard + audit. */
+export function useGameActions() {
+	const qc = useQueryClient();
+	const invalidate = () => {
+		qc.invalidateQueries({ queryKey: [...BO, "games"] });
+		qc.invalidateQueries({ queryKey: [...BO, "dashboard"] });
+		qc.invalidateQueries({ queryKey: [...BO, "audit"] });
+	};
+
+	const demote = useMutation({
+		mutationFn: (publicId: string) => demoteGame(publicId),
+		onSuccess: invalidate,
+	});
+	const promote = useMutation({
+		mutationFn: (publicId: string) => promoteGame(publicId),
+		onSuccess: invalidate,
+	});
+	const edit = useMutation({
+		mutationFn: (vars: { publicId: string; edit: GameEdit }) => editGame(vars.publicId, vars.edit),
+		onSuccess: invalidate,
+	});
+
+	return { demote, promote, edit };
 }
 
 /** Set / clear a config override, invalidating the config list + audit. */
