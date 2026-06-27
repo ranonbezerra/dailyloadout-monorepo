@@ -10,6 +10,7 @@ verbatim into a prompt — so they are stripped/rejected at the edge.
 from __future__ import annotations
 
 import re
+import unicodedata
 from urllib.parse import urlparse
 
 # Sentinel that delimits untrusted user/shared/library content inside an LLM
@@ -33,9 +34,62 @@ _CONTROL_CHARS = frozenset(
 )
 
 
+# Invisible/format characters outside the C0/C1 range that are never legitimate
+# in a single-line display name: zero-width joiners/spaces, the BOM, and the
+# Unicode bidi-override controls (LRO/RLO/PDF/LRI/RLI/FSI/PDI/LRM/RLM/ALM).
+# These are the classic homoglyph / Trustwave-style "RLO spoofing" vectors —
+# they let a name render as something other than its code points.
+_INVISIBLE_FORMAT_CHARS = frozenset(
+    {
+        0x200B,  # zero-width space
+        0x200C,  # zero-width non-joiner
+        0x200D,  # zero-width joiner
+        0x200E,  # left-to-right mark
+        0x200F,  # right-to-left mark
+        0x202A,  # left-to-right embedding
+        0x202B,  # right-to-left embedding
+        0x202C,  # pop directional formatting
+        0x202D,  # left-to-right override
+        0x202E,  # right-to-left override
+        0x2060,  # word joiner
+        0x2066,  # left-to-right isolate
+        0x2067,  # right-to-left isolate
+        0x2068,  # first strong isolate
+        0x2069,  # pop directional isolate
+        0x061C,  # arabic letter mark
+        0xFEFF,  # zero-width no-break space / BOM
+    }
+)
+
+
 def has_control_chars(value: str) -> bool:
     """Return True if *value* contains any control character (incl. newlines)."""
     return any(ord(ch) in _CONTROL_CHARS for ch in value)
+
+
+def has_unsafe_format_chars(value: str) -> bool:
+    """Return True if *value* contains control chars OR invisible/bidi formatters."""
+    return any(ord(ch) in _CONTROL_CHARS or ord(ch) in _INVISIBLE_FORMAT_CHARS for ch in value)
+
+
+def sanitize_display_name(value: str, *, field: str = "display_name") -> str:
+    """Normalise + validate a user-set display name.
+
+    1. NFKC-normalise so homoglyph/compatibility variants collapse to their
+       canonical form (matching how catalog identifiers are handled), then trim
+       surrounding whitespace.
+    2. Reject any control character, newline, or invisible/bidi format character
+       (zero-width, RLO/LRO, BOM, …) — the homoglyph-spoofing vector.
+    3. Reject a name that is empty after normalisation/trim.
+
+    Returns the cleaned value; raises ``ValueError`` on rejection.
+    """
+    normalized = unicodedata.normalize("NFKC", value).strip()
+    if has_unsafe_format_chars(normalized):
+        raise ValueError(f"{field} must not contain control, bidi, or zero-width characters.")
+    if not normalized:
+        raise ValueError(f"{field} must not be empty.")
+    return normalized
 
 
 def reject_control_chars(value: str, *, field: str) -> str:

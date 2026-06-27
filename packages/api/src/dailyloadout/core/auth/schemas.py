@@ -8,6 +8,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
+from dailyloadout.core.sanitization import sanitize_display_name
+
 
 # ---------------------------------------------------------------------------
 # Request schemas
@@ -16,6 +18,12 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
     display_name: str = Field(min_length=1, max_length=100)
+
+    @field_validator("display_name")
+    @classmethod
+    def _clean_display_name(cls, v: str) -> str:
+        """NFKC-normalise and reject control/bidi/zero-width chars (homoglyphs)."""
+        return sanitize_display_name(v)
 
     @field_validator("password")
     @classmethod

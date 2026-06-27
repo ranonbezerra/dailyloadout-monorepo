@@ -110,9 +110,7 @@ class Settings(BaseSettings):
     # Anti-abuse (Block C): distinct owners that promote a private manual row to
     # globally shared/discoverable (spam stays hidden until enough users own it).
     catalog_share_threshold: int = 5
-    # Bulk-import path replaces the single-shelf cap of 12. Lowered from 200 as
-    # a DoS mitigation: each candidate fans out to an IGDB lookup. The full
-    # async/Taskiq move is a separate follow-up.
+    # Bulk-import cap (each candidate fans out to an IGDB lookup → DoS guard).
     library_import_max_candidates: int = 40
     # Free-tier abuse/cost guards (per user, per UTC day).
     library_import_images_per_day: int = 10
@@ -143,17 +141,21 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     smtp_from: str = "DailyLoadout <noreply@dailyloadout.local>"
 
+    # ── Registration identity hygiene (anti-abuse) ───────────────────────
+    # Disposable-provider blocklist + MX/A DNS probe (FAILS OPEN, prod-only so
+    # CI/dev do no network; short per-lookup budget).
+    block_disposable_emails: bool = True
+    check_email_mx: bool = True
+    email_mx_timeout_seconds: float = 3.0
+
     # ── Email verification (account integrity) ───────────────────────────
-    # Verification tokens are signed, purpose-scoped JWTs (no new table). They
-    # expire after this many hours; an expired/invalid token is rejected (400).
+    # Signed, purpose-scoped JWTs (no new table); expired/invalid → 400.
     email_verification_ttl_hours: int = 24
-    # Public base URL the verification link points at (the web/app deep link
-    # appends ``?token=...``). Used only when composing the email body.
+    # Public base URL the verification link points at (deep link appends token).
     email_verification_base_url: str = "http://localhost:5173/verify-email"
 
     # ── CAPTCHA (Cloudflare Turnstile) ───────────────────────────────────
-    # When empty (dev / not configured) the Turnstile dependency is a no-op.
-    # When set, register requires a valid ``cf-turnstile-response`` token.
+    # Empty => Turnstile dependency is a no-op; set => register needs a token.
     turnstile_secret: str = ""
     turnstile_verify_url: str = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
 
@@ -231,16 +233,14 @@ class Settings(BaseSettings):
     llm_max_output_tokens: int = 1024
 
     # ── Request hardening (DoS / security headers) ───────────────────────
-    # Coarse backstop: reject any request whose Content-Length exceeds this cap
-    # with HTTP 413 before the body is read. ~25 MB covers the largest legit
-    # upload (multi-image library import) with headroom.
+    # Coarse backstop: reject requests over this Content-Length with HTTP 413
+    # before the body is read (~25 MB covers the largest legit upload).
     max_request_body_bytes: int = 25 * 1024 * 1024
     # HSTS max-age in seconds advertised to browsers (~2 years).
     hsts_max_age_seconds: int = 63072000
     # Disable Scalar /docs + /openapi.json outside dev/test (production lockdown).
     docs_enabled: bool = True
-    # Allowlist of hosts an IGDB cover_url may point at (https only). Anything
-    # else is rejected/nulled to keep poisoned URLs out of LLM prompts + the UI.
+    # Allowlist of hosts an IGDB cover_url may point at (https only); else nulled.
     igdb_cdn_allowed_hosts: list[str] = ["images.igdb.com"]
 
     # ── DB connection pool (sized for a small multi-worker deploy) ───────

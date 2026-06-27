@@ -20,6 +20,7 @@ from dailyloadout.core.auth.schemas import (
     UserResponse,
     VerifyEmailRequest,
 )
+from dailyloadout.core.auth.service import EmailRejectedError
 from dailyloadout.deps import AuthServiceDep, CurrentUserDep
 from dailyloadout.deps.captcha import verify_turnstile
 
@@ -72,6 +73,13 @@ async def register(
             password=body.password,
             display_name=body.display_name,
         )
+    except EmailRejectedError as exc:
+        # Disposable / undeliverable email: a domain-based 422 (invalid input),
+        # not a 409 — and not an account-existence oracle.
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(exc),
+        ) from exc
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

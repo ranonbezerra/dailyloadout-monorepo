@@ -23,8 +23,14 @@ from dailyloadout.infrastructure.db.models import User
 from dailyloadout.infrastructure.db.repositories.refresh_token import RefreshTokenRepository
 from dailyloadout.infrastructure.db.repositories.user import UserRepository
 from dailyloadout.infrastructure.email import Mailer, get_mailer, send_verification_email
+from dailyloadout.infrastructure.email.validation import (
+    EmailRejectedError,
+    assert_email_acceptable,
+)
 
 logger = structlog.get_logger()
+
+__all__ = ["AuthService", "EmailRejectedError"]
 
 
 class AuthService:
@@ -55,8 +61,13 @@ class AuthService:
             ``(user, access_token, raw_refresh_token)``
 
         Raises:
+            EmailRejectedError: If the email is disposable or undeliverable.
             ValueError: If *email* is already registered.
         """
+        # Identity-hygiene gates run FIRST and are purely domain/content-based,
+        # so they reveal nothing about whether the account already exists.
+        await assert_email_acceptable(email)
+
         if await self._user_repo.email_exists(email):
             raise ValueError("Email already registered")
 
