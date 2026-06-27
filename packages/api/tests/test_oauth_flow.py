@@ -107,6 +107,22 @@ class TestResolveUser:
             with pytest.raises(OAuthError):
                 await _resolve(session, "twitch", _info(email=None))
 
+    async def test_create_sanitizes_display_name_and_avatar(self) -> None:
+        # A provider-controlled name with a bidi-override + a javascript avatar
+        # must be neutralised (name → safe fallback, avatar → dropped).
+        async with _TestSessionFactory() as session:
+            info = OAuthUserInfo(
+                provider_uid="evil-1",
+                email="evil@example.com",
+                email_verified=True,
+                display_name="Doom‮ SYSTEM",
+                avatar_url="javascript:alert(1)",
+            )
+            user, _, _ = await _resolve(session, "google", info)
+            assert "‮" not in user.display_name
+            assert user.display_name == "Player"
+            assert user.avatar_url is None
+
 
 # ── routes: /start and /callback ────────────────────────────────────────
 

@@ -14,6 +14,7 @@ from dailyloadout.core.auth.security import (
     generate_refresh_token,
     hash_refresh_token,
 )
+from dailyloadout.core.sanitization import sanitize_display_name, validate_https_url
 from dailyloadout.infrastructure.db.models import User
 from dailyloadout.infrastructure.db.repositories.oauth import OAuthIdentityRepository
 from dailyloadout.infrastructure.db.repositories.refresh_token import RefreshTokenRepository
@@ -73,12 +74,25 @@ async def resolve_oauth_login(
 
     user = await user_repo.create_oauth_user(
         info.email,
-        info.display_name,
+        _safe_display_name(info.display_name),
         email_verified=info.email_verified,
-        avatar_url=info.avatar_url,
+        avatar_url=validate_https_url(info.avatar_url),
     )
     await oauth_repo.create(user.id, provider, info.provider_uid, info.email)
     return await _issue_session(rt_repo, user)
+
+
+def _safe_display_name(value: str) -> str:
+    """Sanitize a provider-supplied display name; fall back to ``"Player"``.
+
+    OAuth display names are untrusted (the user controls their Google/Twitch
+    profile). Run them through the same guard the password path uses, but never
+    fail the whole login over a bad name — degrade to a safe default instead.
+    """
+    try:
+        return sanitize_display_name(value)
+    except ValueError:
+        return "Player"
 
 
 async def _issue_session(rt_repo: RefreshTokenRepository, user: User) -> tuple[User, str, str]:

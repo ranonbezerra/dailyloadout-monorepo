@@ -8,11 +8,13 @@ from uuid import UUID
 from dailyloadout.core.cache.invalidation import invalidate_user_stats
 from dailyloadout.core.library.backfill import enrich_in_place, reconcile_manual_title
 from dailyloadout.core.library.igdb_budget import igdb_budget_allows
+from dailyloadout.core.library.promotion import maybe_promote_to_shared
 from dailyloadout.core.library.schemas import (
     GameResponse,
     LibraryGameGroup,
     LibraryPlatformState,
 )
+from dailyloadout.core.sanitization import sanitize_catalog_text
 from dailyloadout.infrastructure.cache.base import AbstractCache, NullCache
 from dailyloadout.infrastructure.cache.keys import NS_REF, reference_key
 from dailyloadout.infrastructure.cache.layer import cached_call
@@ -109,15 +111,19 @@ class LibraryService:
         if reconciled is not None:
             return reconciled
 
+        # Sanitize the globally-visible identifiers of a manual row: if it is
+        # later promoted to the shared catalogue (≥ share_threshold owners), its
+        # title/genres are shown to OTHER users, so strip any homoglyph/bidi/
+        # control-char payload now (the schema only rejects control chars).
         return await self._game_repo.create(
             slug=slug,
-            title=title,
+            title=sanitize_catalog_text(title) or title,
             metadata_source="manual",
             igdb_id=None,
             summary=summary,
             cover_url=cover_url,
             first_release_date=first_release_date,
-            genres=genres,
+            genres=[sanitize_catalog_text(g) for g in genres] if genres else None,
             created_by_user_id=user_id,
         )
 
@@ -190,26 +196,19 @@ class LibraryService:
                 acquired_at=acquired_at,
             )
 
-        await self._maybe_promote_to_shared(game)
+        await maybe_promote_to_shared(
+            game,
+            user_id,
+            game_repo=self._game_repo,
+            library_repo=self._library_repo,
+            igdb_client=self._igdb_client,
+            min_score=self._match_min_score,
+            threshold=self._share_threshold,
+        )
         await invalidate_user_stats(user_id)
 
         entries = await self._library_repo.list_for_user_game(user_id, game.id)
         return self._group_entries(entries)[0]
-
-    async def _maybe_promote_to_shared(self, game: Game) -> None:
-        """Promote a private manual *game* to globally shared by distinct owners.
-
-        Discoverability path (anti-abuse Block C): a manual row stays private to
-        its creator until enough INDEPENDENT users own it, at which point it's
-        clearly a genuinely-untracked game rather than spam, so it joins the shared
-        catalogue. Attribution (``created_by_user_id``) is preserved. Only applies
-        to still-private manual rows; canonical/IGDB rows are already shared.
-        """
-        if game.igdb_id is not None or game.is_shared or game.created_by_user_id is None:
-            return
-        owners = await self._library_repo.count_distinct_owners(game.id)
-        if owners >= self._share_threshold:
-            await self._game_repo.update(game, is_shared=True)
 
     async def list_library(
         self,

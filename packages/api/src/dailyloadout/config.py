@@ -23,14 +23,11 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6380/0"
     # Best-effort caching (IGDB lookups, etc.); off => NullCache (Epic 17).
     cache_enabled: bool = True
-    # Per-user stats are recomputed on every dashboard load; cache them briefly
-    # and bust on mission start/end/debrief (ROADMAP Epic 18). 5 minutes.
+    # Per-user stats cached briefly, bust on mission start/end/debrief (Epic 18).
     stats_cache_ttl_seconds: int = 300
-    # Deep briefings (~4 LLM calls + web research) are content-addressed on the
-    # session context, so a new debrief yields a fresh key. Long TTL. 7 days.
+    # Deep briefings are content-addressed on the session context (Epic 18). 7d.
     briefing_cache_ttl_seconds: int = 7 * 24 * 3600
-    # Web-research queries repeat across briefings; cache the network hop. 6h.
-    research_cache_ttl_seconds: int = 6 * 3600
+    research_cache_ttl_seconds: int = 6 * 3600  # web-research network-hop cache
     # Idempotent LLM completions, de-duped by content. 1 day.
     llm_cache_ttl_seconds: int = 24 * 3600
     # Reference data (genre list, etc.) — tiny, hot, rarely changes. 1 hour.
@@ -51,8 +48,7 @@ class Settings(BaseSettings):
     # request isn't a slow cold-load (the concierge agent especially). Empty =
     # disabled. Local example: '["qwen2.5:7b-instruct"]'. Only on LLM_PROVIDER=ollama.
     ollama_warmup_models: list[str] = []
-    # How long warmed models stay resident after idle. Default frees the RAM after
-    # 30 min; set '-1' to pin them loaded indefinitely (always fast, holds memory).
+    # How long warmed models stay resident after idle ('-1' pins them forever).
     ollama_warmup_keep_alive: str = "30m"
     # Per-process ceiling on concurrent host-Ollama model calls; bounds queue
     # depth so a burst serves a few requests fast instead of thrashing the GPU.
@@ -80,10 +76,8 @@ class Settings(BaseSettings):
     # ReAct step. Disable for fast tool-calling; enable only if quality demands it.
     concierge_agent_reasoning: bool = False
     concierge_max_tool_loops: int = 6
-    # Where conversation threads are checkpointed (ROADMAP Epic 16). 'postgres'
-    # persists them to the existing DB so chats survive restarts; 'memory' keeps
-    # them in-process (lost on restart). Falls back to memory if Postgres init
-    # fails. Only used by the langgraph provider.
+    # Thread checkpoint store (Epic 16): 'postgres' survives restarts, 'memory'
+    # is in-process. Falls back to memory if Postgres init fails. Langgraph only.
     concierge_checkpointer: str = "postgres"
     # Give the Concierge write tools (start_mission, generate_briefing,
     # submit_retroactive_debrief, set_status) so it can drive the mission
@@ -186,9 +180,8 @@ class Settings(BaseSettings):
     loadout_cooldown_hours: int = 12
 
     # ── Rate limiting (Redis fixed-window, per-user / per-IP) ────────────
-    # Master switch. False => the rate_limit() dependency is a no-op (used in
-    # tests and any deploy that wants it off). The limiter ALSO fails open if
-    # Redis is unreachable, so the API never hard-fails on a limiter error.
+    # Master switch (False => rate_limit() is a no-op, used in tests). The
+    # limiter also fails open if Redis is unreachable.
     rate_limit_enabled: bool = True
     # Auth limiters (per client IP) — Redis-backed, shared across workers.
     rate_limit_login_per_minute: int = 10
@@ -207,9 +200,8 @@ class Settings(BaseSettings):
     rate_limit_read_per_minute: int = 120
 
     # ── Cost kill-switch (aggregate $ guard, provider-agnostic) ──────────
-    # Spend proxy: 503s over global minute/day/month + per-user/day (False =>
-    # no-op). On Redis error, degrade to per-process counters (global caps ÷
-    # workers) so Redis isn't a SPOF, or set fallback False to fail closed.
+    # Spend proxy: 503s over global+per-user budgets (False => no-op). On Redis
+    # error, degrade to per-process counters (÷ workers) or fail closed.
     cost_guard_enabled: bool = True
     cost_global_per_minute: int = 120
     cost_global_per_day: int = 5000
@@ -256,8 +248,10 @@ class Settings(BaseSettings):
 
     @property
     def is_production(self) -> bool:
-        """True when running outside development/testing (i.e. production)."""
-        return self.app_env not in _DEV_ENVS
+        """True outside dev/testing. Fail-safe: ``app_env`` is normalised (trim +
+        lowercase) and ONLY exact dev/test values relax security — any unknown,
+        empty, or typo'd value is treated as production."""
+        return self.app_env.strip().lower() not in _DEV_ENVS
 
 
 _DEV_ENVS = ("development", "testing")
@@ -270,7 +264,7 @@ def _validate_production_settings(s: Settings) -> None:
     http://localhost keeps working; any other environment is treated as
     production and must be hardened.
     """
-    if s.app_env in _DEV_ENVS:
+    if not s.is_production:
         return
 
     if s.secret_key == "change-me-in-prod":
@@ -292,6 +286,12 @@ def _validate_production_settings(s: Settings) -> None:
         raise RuntimeError(
             "FATAL: single_user_mode must be False in production. "
             "It bypasses JWT auth and returns a fixed account for every request."
+        )
+
+    if not s.turnstile_secret:
+        raise RuntimeError(
+            "FATAL: turnstile_secret must be set in production. The registration "
+            "CAPTCHA is the primary defence against mass account creation."
         )
 
 

@@ -131,6 +131,40 @@ def validate_cdn_url(value: str | None, allowed_hosts: list[str]) -> str | None:
     return value
 
 
+def sanitize_catalog_text(value: str) -> str:
+    """NFKC-normalise and DROP control/bidi/zero-width chars from catalog text.
+
+    Non-raising cleaner for globally-visible manual catalogue fields (title,
+    genres): once a manual game is promoted to the shared catalogue its text is
+    shown to OTHER users, so a poisoned row must not carry homoglyph/RLO-bidi or
+    control-char payloads. Unlike :func:`sanitize_display_name` this strips
+    rather than rejects, so a borderline title still resolves to *something*.
+    """
+    normalized = unicodedata.normalize("NFKC", value)
+    cleaned = "".join(
+        ch
+        for ch in normalized
+        if ord(ch) not in _CONTROL_CHARS and ord(ch) not in _INVISIBLE_FORMAT_CHARS
+    )
+    return cleaned.strip()
+
+
+def validate_https_url(value: str | None) -> str | None:
+    """Return *value* only if it is a well-formed ``https://`` URL, else ``None``.
+
+    For stored-but-not-fetched URLs (OAuth avatars): https-only nulls
+    ``javascript:`` / ``data:`` / ``http:`` and malformed values before they are
+    persisted or later rendered as an ``<img src>``.
+    """
+    if value is None:
+        return None
+    try:
+        parsed = urlparse(value)
+    except ValueError:
+        return None
+    return value if parsed.scheme == "https" and parsed.hostname else None
+
+
 def neutralize_close_sentinel(value: str) -> str:
     """Defang any forged ``</user_data>`` so the user can't escape the data block.
 

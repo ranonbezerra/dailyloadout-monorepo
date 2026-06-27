@@ -359,6 +359,7 @@ class TestSingleUserProductionGuard:
             secret_key="real-secret",  # pragma: allowlist secret
             auth_cookie_secure=True,
             single_user_mode=False,
+            turnstile_secret="ts-secret",  # pragma: allowlist secret
         )
         _validate_production_settings(s)  # should not raise
 

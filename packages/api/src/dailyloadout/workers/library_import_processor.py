@@ -14,6 +14,7 @@ from datetime import date
 import structlog
 
 from dailyloadout.config import Settings
+from dailyloadout.core.library.igdb_budget import igdb_budget_allows
 from dailyloadout.infrastructure.catalog.base import AbstractCatalogMatcher, CatalogMatch
 from dailyloadout.infrastructure.db.models import Capture
 from dailyloadout.infrastructure.db.repositories.capture import (
@@ -70,6 +71,32 @@ def _dedupe(lines: list[OcrLine], limit: int) -> list[str]:
         if len(titles) >= limit:
             break
     return titles
+
+
+async def _match_within_igdb_budget(
+    matcher: AbstractCatalogMatcher, titles: list[str], user_id: int
+) -> list[CatalogMatch]:
+    """Match *titles*, debiting each live IGDB search against the user's budget.
+
+    Each matched title fans out to one outbound IGDB search; without this, a
+    bulk import (up to ``library_import_max_candidates`` novel titles per call)
+    bypassed the per-user/day IGDB budget the single-capture and create-game
+    paths already enforce, letting one account drain the app-wide IGDB quota.
+    Once the budget is spent, remaining titles resolve LOCAL-ONLY (``matched=
+    False``) instead of firing more outbound calls — the same degraded behaviour
+    the single-capture path uses.
+    """
+    matches: list[CatalogMatch] = []
+    budget_spent = False
+    for title in titles:
+        if budget_spent or not await igdb_budget_allows(user_id):
+            budget_spent = True
+            matches.append(
+                CatalogMatch(line_text=title, matched=False, confidence=0.0, title=title)
+            )
+            continue
+        matches.append(await matcher.match(title))
+    return matches
 
 
 def _candidate_dict(match: CatalogMatch) -> dict[str, object]:
@@ -135,7 +162,7 @@ async def process_library_import(
             )
             return capture
 
-        matches = await catalog_matcher.match_many(titles)
+        matches = await _match_within_igdb_budget(catalog_matcher, titles, user_id)
         await candidate_repo.create_bulk(capture.id, [_candidate_dict(m) for m in matches])
         await capture_repo.update_status(capture.id, "review")
         logger.info("library_import_processed", capture_id=capture.id, candidates=len(matches))

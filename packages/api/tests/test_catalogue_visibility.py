@@ -143,21 +143,14 @@ class TestCountDistinctOwners:
 
 class TestPromotionThreshold:
     async def test_service_promotes_at_threshold(self) -> None:
-        """``_maybe_promote_to_shared`` flips is_shared once owners hit threshold."""
-        from dailyloadout.core.library.service import LibraryService
-        from dailyloadout.infrastructure.db.repositories.platform import PlatformRepository
+        """``maybe_promote_to_shared`` flips is_shared once owners hit threshold."""
+        from dailyloadout.core.library.promotion import maybe_promote_to_shared
 
         async with _TestSessionFactory() as session:
             creator = await _make_user(session, "a@example.com")
             owner2 = await _make_user(session, "b@example.com")
             game_repo = GameRepository(session)
             lib_repo = LibraryRepository(session)
-            service = LibraryService(
-                game_repo,
-                lib_repo,
-                PlatformRepository(session),
-                share_threshold=2,
-            )
             game = await game_repo.create(
                 slug="threshold-game",
                 title="Threshold Game",
@@ -168,26 +161,29 @@ class TestPromotionThreshold:
             session.add(pc)
             await session.flush()
 
+            kwargs = {
+                "game_repo": game_repo,
+                "library_repo": lib_repo,
+                "igdb_client": None,
+                "min_score": 0.6,
+                "threshold": 2,
+            }
             await lib_repo.create(user_id=creator, game_id=game.id, platform_id=pc.id)
-            await service._maybe_promote_to_shared(game)
+            await maybe_promote_to_shared(game, creator, **kwargs)
             assert game.is_shared is False  # only one owner
 
             await lib_repo.create(user_id=owner2, game_id=game.id, platform_id=pc.id)
-            await service._maybe_promote_to_shared(game)
+            await maybe_promote_to_shared(game, owner2, **kwargs)
             assert game.is_shared is True  # threshold reached
             await session.commit()
 
     async def test_igdb_row_not_repromoted(self) -> None:
         """Canonical/IGDB rows are already shared; promotion is a no-op."""
-        from dailyloadout.core.library.service import LibraryService
-        from dailyloadout.infrastructure.db.repositories.platform import PlatformRepository
+        from dailyloadout.core.library.promotion import maybe_promote_to_shared
 
         async with _TestSessionFactory() as session:
             game_repo = GameRepository(session)
             lib_repo = LibraryRepository(session)
-            service = LibraryService(
-                game_repo, lib_repo, PlatformRepository(session), share_threshold=1
-            )
             game = await game_repo.create(
                 slug="igdb-game",
                 title="IGDB Game",
@@ -196,7 +192,15 @@ class TestPromotionThreshold:
                 is_shared=True,
             )
             # No owners at all — must not error, must remain shared.
-            await service._maybe_promote_to_shared(game)
+            await maybe_promote_to_shared(
+                game,
+                1,
+                game_repo=game_repo,
+                library_repo=lib_repo,
+                igdb_client=None,
+                min_score=0.6,
+                threshold=1,
+            )
             assert game.is_shared is True
             await session.commit()
 

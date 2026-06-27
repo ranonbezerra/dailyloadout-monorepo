@@ -42,6 +42,12 @@ router = APIRouter(prefix="/v1/auth/oauth", tags=["auth"])
 _check_oauth_start_rate = rate_limit(
     "auth_oauth_start", settings.rate_limit_login_per_minute, 60, by="ip"
 )
+# Per-IP cap on callbacks: each does a Redis GETDEL on an attacker-supplied state
+# and, on a valid one, an outbound provider token exchange — bound the
+# amplification. Fail-open (a real provider redirect must not be lost).
+_check_oauth_callback_rate = rate_limit(
+    "auth_oauth_callback", settings.rate_limit_login_per_minute, 60, by="ip"
+)
 
 
 def _callback_uri(provider: str) -> str:
@@ -75,7 +81,7 @@ async def oauth_start(provider: str) -> RedirectResponse:
     return RedirectResponse(url, status_code=status.HTTP_302_FOUND)
 
 
-@router.get("/{provider}/callback")
+@router.get("/{provider}/callback", dependencies=[Depends(_check_oauth_callback_rate)])
 async def oauth_callback(
     provider: str,
     state: str,

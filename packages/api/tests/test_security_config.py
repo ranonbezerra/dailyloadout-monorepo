@@ -39,5 +39,32 @@ def test_production_accepts_hardened_settings() -> None:
         secret_key="real-secret",  # pragma: allowlist secret
         auth_cookie_secure=True,
         auth_cookie_samesite="none",
+        turnstile_secret="ts-secret",  # pragma: allowlist secret
     )
     _validate_production_settings(s)  # should not raise
+
+
+def test_production_requires_turnstile_secret() -> None:
+    s = Settings(
+        app_env="production",
+        secret_key="real-secret",  # pragma: allowlist secret
+        auth_cookie_secure=True,
+        turnstile_secret="",
+    )
+    with pytest.raises(RuntimeError, match="turnstile_secret"):
+        _validate_production_settings(s)
+
+
+def test_production_unknown_app_env_is_treated_as_production() -> None:
+    # Fail-safe: an unknown / typo'd / empty app_env must NOT relax hardening.
+    for env in ("prod", "", "Production", "staging"):
+        s = Settings(app_env=env, secret_key="change-me-in-prod")
+        assert s.is_production is True
+        with pytest.raises(RuntimeError):
+            _validate_production_settings(s)
+
+
+def test_dev_env_normalized_case_and_whitespace() -> None:
+    # "Development "/" TESTING" still count as dev (normalised), staying relaxed.
+    assert Settings(app_env="Development ").is_production is False
+    assert Settings(app_env=" testing").is_production is False
