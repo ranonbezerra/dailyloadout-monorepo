@@ -20,7 +20,11 @@ from tests.conftest import _TestSessionFactory
 
 
 async def _register(client: AsyncClient, email: str) -> dict[str, Any]:
-    payload = {"email": email, "password": "SecurePass1", "display_name": "BO User"}
+    payload = {
+        "email": email,
+        "password": "SecurePass1",  # pragma: allowlist secret
+        "display_name": "BO User",
+    }
     resp = await client.post("/v1/auth/register", json=payload)
     assert resp.status_code == 201, resp.text
     return resp.json()
