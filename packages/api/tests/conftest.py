@@ -132,6 +132,26 @@ _schema_created = False
 
 
 @pytest.fixture(autouse=True)
+def _no_background_dispatch(monkeypatch: pytest.MonkeyPatch) -> None:
+    """No-op the debrief-extraction Taskiq dispatch in tests.
+
+    The task is exercised directly via its ``.original_func``; an API debrief
+    submission only needs ``.kiq()`` to be a no-op. A real fire-and-forget
+    ``InMemoryBroker`` task outlives the test's event loop and its aiosqlite
+    connection then calls back into a closed loop — a teardown
+    ResourceWarning/thread-exception that ``filterwarnings=["error"]`` escalates
+    to a failure (flaky under xdist). Every test that submits a debrief already
+    asserts the state is NOT yet extracted, so a no-op matches that behaviour.
+    """
+    from dailyloadout.infrastructure.tasks import debrief_extraction
+
+    async def _noop_kiq(*_args: object, **_kwargs: object) -> None:
+        return None
+
+    monkeypatch.setattr(debrief_extraction.extract_debrief_state_task, "kiq", _noop_kiq)
+
+
+@pytest.fixture(autouse=True)
 async def _setup_database() -> AsyncIterator[None]:
     """Ensure schema exists and clean all data before each test.
 
