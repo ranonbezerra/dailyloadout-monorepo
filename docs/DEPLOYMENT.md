@@ -371,7 +371,7 @@ revision.
    deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart dailyloadout-api, /usr/bin/systemctl restart dailyloadout-worker
    ```
 
-3. Add the repo/Environment secrets: `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`
+3. Add the repo/Environment: `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`
    (the private key), and ideally `VPS_SSH_KNOWN_HOSTS` (the VPS host key, to pin
    it instead of trust-on-first-use).
 4. **Require the CI checks on `main`** (branch protection) so only green code
