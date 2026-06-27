@@ -1,0 +1,30 @@
+# Keep secrets, VCS, and dev cruft OUT of the Docker build context / image layers.
+# The build context is ./packages/api (see docker-compose build.context).
+
+# Secrets — never bake into an image layer (could be pushed to a registry)
+.env
+.env.*
+!.env.example
+
+# VCS
+.git
+.gitignore
+
+# Python caches / virtualenvs
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# Tests aren't needed in the runtime image
+tests/
+
+# Local tooling / OS
+*.log
+.DS_Store

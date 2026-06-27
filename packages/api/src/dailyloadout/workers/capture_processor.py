@@ -19,6 +19,7 @@ from pathlib import Path
 import structlog
 from PIL import Image
 
+from dailyloadout.core.capture import _pil_safety  # noqa: F401 - sets PIL bomb guard
 from dailyloadout.infrastructure.db.models import Capture
 from dailyloadout.infrastructure.db.repositories.capture import (
     CaptureCandidateRepository,

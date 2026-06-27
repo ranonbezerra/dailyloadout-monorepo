@@ -48,7 +48,18 @@ services:
     container_name: dl-redis
     # No `ports:` here — internal-only. Reachable as `redis:6379`.
     # Auth REQUIRED: refuse to start without REDIS_PASSWORD.
-    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?set REDIS_PASSWORD}"]
+    # maxmemory bounds RAM so Redis evicts instead of being OOM-killed by the
+    # container mem_limit. volatile-lru evicts only keys WITH a TTL (cache,
+    # rate-limit/cost counters, OAuth state) — the no-TTL Taskiq broker LISTs are
+    # never evicted, so queued jobs survive memory pressure.
+    command:
+      - "redis-server"
+      - "--requirepass"
+      - "${REDIS_PASSWORD:?set REDIS_PASSWORD}"
+      - "--maxmemory"
+      - "400mb"
+      - "--maxmemory-policy"
+      - "volatile-lru"
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD}
     volumes:
@@ -67,8 +78,13 @@ services:
     # is enabled (infra/searxng/settings.yml) as defense-in-depth.
     environment:
       SEARXNG_BASE_URL: http://searxng:8080/
+      # Override the committed (public) default secret_key. REQUIRED everywhere
+      # (no default) — refuse to boot rather than run the public default key.
+      SEARXNG_SECRET: ${SEARXNG_SECRET:?set SEARXNG_SECRET}
     volumes:
-      - ./infra/searxng:/etc/searxng:rw
+      # Read-only: the container has no reason to write its own config; a
+      # compromised SearXNG can't rewrite settings on the host.
+      - ./infra/searxng:/etc/searxng:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8080/ || exit 1"]

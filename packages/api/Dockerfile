@@ -31,10 +31,13 @@ EXPOSE 8100
 
 # --proxy-headers + --forwarded-allow-ips lets uvicorn trust X-Forwarded-For /
 # X-Forwarded-Proto from the Caddy reverse proxy, so the real client IP reaches
-# the app (auth rate limiter keys on client IP — without this every request
-# collapses to the proxy's address). FORWARDED_ALLOW_IPS must list ONLY the
-# trusted proxy: default is the docker bridge gateway (172.17.0.1) where Caddy
-# typically lives; override to Caddy's container/host IP for your topology.
-# Never set it to "*" in production — that lets any client spoof its IP.
+# the app (auth rate limiter keys on client IP).
+# ⚠ FORWARDED_ALLOW_IPS must be EXACTLY the trusted proxy's source IP for YOUR
+# topology — host+systemd Caddy → 127.0.0.1; all-in-compose → the compose
+# network gateway (172.18+, NOT the 172.17.0.1 legacy default). A WRONG value
+# silently makes every request share ONE rate-limit bucket (per-IP isolation
+# collapses). VERIFY it after deploy. NEVER "*" — that lets clients spoof their IP.
+# --timeout-keep-alive bounds idle keep-alive sockets (slow-loris mitigation;
+# the reverse proxy should also enforce request read/write timeouts).
 ENV FORWARDED_ALLOW_IPS=172.17.0.1
-CMD ["sh", "-c", "uvicorn src.dailyloadout.main:app --host 0.0.0.0 --port 8100 --proxy-headers --forwarded-allow-ips \"$FORWARDED_ALLOW_IPS\""]
+CMD ["sh", "-c", "uvicorn src.dailyloadout.main:app --host 0.0.0.0 --port 8100 --proxy-headers --forwarded-allow-ips \"$FORWARDED_ALLOW_IPS\" --timeout-keep-alive 5"]

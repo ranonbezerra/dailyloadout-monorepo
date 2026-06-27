@@ -15,6 +15,8 @@ import pytesseract
 import structlog
 from PIL import Image, ImageOps
 
+from dailyloadout.core.capture import _pil_safety  # noqa: F401 - sets PIL bomb guard
+
 from .base import AbstractOCRClient, OcrLine, OcrResult, OCRUnavailableError
 
 logger = structlog.get_logger()

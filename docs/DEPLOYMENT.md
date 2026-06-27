@@ -38,9 +38,14 @@ APP_ENV=production
 SECRET_KEY=<generate-a-64-char-random-string>
 
 # Strong, unique secrets — REQUIRED. Compose refuses to start without these.
-# Never reuse the dev default "dailyloadout".
+# Never reuse the dev default "dailyloadout". SECRET_KEY must be >= 32 chars
+# (the API also refuses to boot in production with a short/default secret).
 POSTGRES_PASSWORD=<generate-a-32-char-random-string>
 REDIS_PASSWORD=<generate-a-32-char-random-string>
+# Overrides SearXNG's public default secret_key. Compose requires it everywhere.
+SEARXNG_SECRET=<generate-a-32-char-random-string>
+# Registration CAPTCHA — REQUIRED in production (the API fails fast without it).
+TURNSTILE_SECRET=<your-cloudflare-turnstile-secret>
 
 DATABASE_URL=postgresql+asyncpg://dailyloadout:<POSTGRES_PASSWORD>@postgres:5432/dailyloadout
 # Redis requires auth now; include the password in the URL.
@@ -258,6 +263,58 @@ bind (no network reachability), and the **Postgres password**.
 > Docker's iptables rules bypass UFW, so that exposes the database to the whole
 > internet. SSH tunneling to a loopback-bound port is the only sanctioned GUI
 > path.
+
+### 1.9 Automated backups & restore (REQUIRED before launch)
+
+A single VPS has **one disk**. A disk failure, an accidental `docker volume rm`,
+or a bad `alembic downgrade` loses the **entire** database with no recovery. An
+automated, **off-host** backup is the single most important operational control.
+
+Ready-to-use tooling lives in [`infra/backup/`](../infra/backup/):
+`backup-db.sh` (pg_dump → gzip → off-host via rclone + local retention),
+`restore-db.sh` (tested restore), and the systemd `*.service` / `*.timer`.
+
+**Setup (on the VPS):**
+
+```bash
+# 1. Configure an OFF-HOST target (do this first — a local-only backup dies with
+#    the disk it's protecting). rclone supports S3 / Cloudflare R2 / Backblaze B2:
+rclone config            # create a remote, e.g. "r2"
+
+# 2. Backup env (chmod 600 — it names the DB, not secrets, but keep it tight):
+sudo mkdir -p /etc/dailyloadout
+sudo cp infra/backup/backup.env.example /etc/dailyloadout/backup.env
+sudo nano /etc/dailyloadout/backup.env     # set POSTGRES_*, RCLONE_REMOTE=r2:dl-backups
+
+# 3. Install the timer (adjust ExecStart path in the .service to your checkout):
+sudo cp infra/backup/dailyloadout-backup.{service,timer} /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now dailyloadout-backup.timer
+
+# 4. Run once now and verify it lands off-host:
+sudo systemctl start dailyloadout-backup.service
+journalctl -u dailyloadout-backup.service --no-pager | tail
+rclone ls r2:dl-backups
+```
+
+The timer runs daily at 03:30 UTC (`Persistent=true` catches a missed run after
+downtime). Local dumps older than `RETENTION_DAYS` (14) are pruned; set the
+off-host retention via the bucket's lifecycle policy.
+
+**Test the restore — a backup you've never restored is not a backup.** Against a
+scratch database (never the live one for a drill):
+
+```bash
+POSTGRES_USER=dailyloadout POSTGRES_DB=dailyloadout_restoretest \
+  infra/backup/restore-db.sh /var/backups/dailyloadout/dl-dailyloadout-<ts>.sql.gz
+```
+
+The dumps are taken with `--clean --if-exists`, so a real restore drops and
+recreates objects over the existing DB. Run a restore drill periodically.
+
+> The **uploads** dir needs no backup — capture temp files are deleted right
+> after processing (steady-state ~0 bytes on disk). Only Postgres holds durable
+> state.
 
 ---
 
