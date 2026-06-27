@@ -2,6 +2,8 @@
 
 This document covers deploying DailyLoadout beyond local development. All examples assume you have a working local setup first (`make up && make api`).
 
+> **Going to production?** Follow the ordered [Pre-Launch Runbook](./PRELAUNCH.md) — the step-by-step checklist (register apps → `.env` → migrations → edge → backups → verify) that links back into the detailed sections here.
+
 ---
 
 ## Prerequisites
