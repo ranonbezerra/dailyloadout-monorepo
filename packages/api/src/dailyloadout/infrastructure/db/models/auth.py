@@ -72,6 +72,35 @@ class User(SoftDeleteMixin, TimestampMixin, Base):
     )
 
 
+class AdminUser(Base):
+    """Admin grant: a row here means the referenced user is a backoffice admin.
+
+    Privilege is kept OFF the ``users`` table on purpose — a public user
+    serializer physically cannot leak an admin flag that does not exist on the
+    user row, and admin-ness is never carried in the JWT (it is checked
+    per-request against this table, so revoking a grant is instant). Presence of
+    a row = admin; there is no self-service path to create one (see
+    ``scripts/grant_admin.py``). A future ``scopes`` column could add tiers
+    without touching the user model.
+    """
+
+    __tablename__ = "admin_users"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    # Who granted this (audit trail); NULL for a CLI/bootstrap grant.
+    granted_by: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (UniqueConstraint("user_id", name="uq_admin_users_user_id"),)
+
+
 class OAuthIdentity(Base):
     __tablename__ = "oauth_identities"
 

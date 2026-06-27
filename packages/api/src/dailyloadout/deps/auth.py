@@ -11,6 +11,7 @@ from dailyloadout.config import settings
 from dailyloadout.core.auth.security import decode_access_token
 from dailyloadout.core.auth.service import AuthService
 from dailyloadout.infrastructure.db.models import User
+from dailyloadout.infrastructure.db.repositories.admin import AdminRepository
 from dailyloadout.infrastructure.db.repositories.oauth import OAuthIdentityRepository
 from dailyloadout.infrastructure.db.repositories.refresh_token import RefreshTokenRepository
 from dailyloadout.infrastructure.db.repositories.user import UserRepository
@@ -158,3 +159,32 @@ async def get_verified_user(current_user: CurrentUserDep) -> User:
 
 
 RequireVerifiedUserDep = Annotated[User, Depends(get_verified_user)]
+
+
+# ── Admin (backoffice) ─────────────────────────────────────────────────
+
+
+async def get_admin_user(current_user: CurrentUserDep, db: DbSession) -> User:
+    """Require the authenticated user to hold a backoffice admin grant.
+
+    Admin rights live in the ``admin_users`` table (never on the user row and
+    never in the JWT), so this is checked against the DB on every request — a
+    revoked grant takes effect immediately. Raises **403** for non-admins.
+
+    Single-user mode is rejected outright: the backoffice is a multi-user,
+    audited surface and must not be reachable through the JWT-bypass account.
+    """
+    if settings.single_user_mode:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access not available",
+        )
+    if not await AdminRepository(db).is_admin(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required",
+        )
+    return current_user
+
+
+AdminUserDep = Annotated[User, Depends(get_admin_user)]

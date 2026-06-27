@@ -16,6 +16,7 @@ from dailyloadout.api.middleware import (
     MaxBodySizeMiddleware,
     SecurityHeadersMiddleware,
 )
+from dailyloadout.api.v1.admin import router as admin_router
 from dailyloadout.api.v1.auth import router as auth_router
 from dailyloadout.api.v1.auth_oauth import router as auth_oauth_router
 from dailyloadout.api.v1.cache import router as cache_router
@@ -204,6 +205,7 @@ def create_app() -> FastAPI:
     )
 
     # Routers
+    application.include_router(admin_router)
     application.include_router(auth_router)
     application.include_router(auth_oauth_router)
     application.include_router(cache_router)
