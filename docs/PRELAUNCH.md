@@ -31,6 +31,11 @@ You can't fill the `.env` files without these. Do them up front.
       Backblaze B2 / AWS S3) + credentials for `rclone`.
 - [ ] **DNS** — point `api.example.com` (and `app.example.com`) A/AAAA records at
       the VPS IP. (Set TTL low now to ease changes.)
+- [ ] **CD deploy key** — generate a dedicated SSH key for the GitHub Actions
+      deploy; add the public key (forced-command) to the VPS, the private key as
+      the `VPS_SSH_KEY` repo secret. See DEPLOYMENT §1.10. *(deploys are
+      per-surface: API/infra is migration-gated via `deploy-api.yml`; web/app/
+      backoffice ship on their own.)*
 
 ---
 
