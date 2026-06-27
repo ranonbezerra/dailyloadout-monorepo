@@ -118,8 +118,11 @@ jobs:
       - name: Migrations apply cleanly (fresh Postgres)
         env:
           DATABASE_URL: postgresql+asyncpg://dailyloadout:dailyloadout@localhost:5433/dailyloadout_test
-          APP_ENV: test
-          SECRET_KEY: test-secret
+          # MUST be "testing" (not "test") — only development/testing skip the
+          # production guards; "test" is treated as prod and the secret-key guard
+          # would fail config import. (pytest gets this from pyproject env.)
+          APP_ENV: testing
+          SECRET_KEY: test-secret-not-used-because-testing-skips-prod-guard
         run: |
           poetry run alembic upgrade head
           # Reversibility smoke (non-blocking): a full down+up roundtrip.
