@@ -71,12 +71,12 @@ api: ## Run API dev server (uvicorn with reload)
 	cd $(API_DIR) && HF_HOME=$(HOME)/.cache/huggingface poetry run uvicorn src.dailyloadout.main:app --reload --host 0.0.0.0 --port $${API_PORT:-8100}
 
 .PHONY: api-test
-api-test: ## Run API tests
-	cd $(API_DIR) && poetry run pytest
+api-test: ## Run API tests (parallel; ARGS="-n0" to force serial for debugging)
+	cd $(API_DIR) && poetry run pytest -n auto $(ARGS)
 
 .PHONY: api-test-cov
-api-test-cov: ## Run API tests with coverage (fail under 80%)
-	cd $(API_DIR) && poetry run pytest --cov=src/dailyloadout --cov-report=term-missing --cov-fail-under=90
+api-test-cov: ## Run API tests with coverage (parallel; fail under 90%)
+	cd $(API_DIR) && poetry run pytest -n auto --cov=src/dailyloadout --cov-report=term-missing --cov-fail-under=90
 
 .PHONY: igdb-check
 igdb-check: ## Smoke-test the live IGDB client (make igdb-check q="Hollow Knight")
@@ -219,7 +219,7 @@ quality-api: ## Full API quality gate
 	$(call check,Bandit security,            cd $(API_DIR) && poetry run bandit -r src/ -ll -ii -c pyproject.toml -q)
 	$(call check,Typos spell-check,          cd $(API_DIR) && poetry run typos src/ tests/)
 	$(call check,File sizes (≤300 lines),    $(MAKE) api-file-sizes > /dev/null 2>&1)
-	$(call check,Pytest + coverage ≥90%,     cd $(API_DIR) && poetry run pytest -q --tb=short --cov=src/dailyloadout --cov-report=term-missing --cov-fail-under=90)
+	$(call check,Pytest + coverage ≥90%,     cd $(API_DIR) && poetry run pytest -n auto -q --tb=short --cov=src/dailyloadout --cov-report=term-missing --cov-fail-under=90)
 	@echo "\033[1;32m══════ API: All checks passed ══════\033[0m\n"
 
 .PHONY: quality-web
