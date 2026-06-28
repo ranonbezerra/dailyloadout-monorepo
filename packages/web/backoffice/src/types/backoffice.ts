@@ -230,3 +230,45 @@ export interface MissionListParams {
 	limit?: number;
 	offset?: number;
 }
+
+// ── Loadouts (read-only) ───────────────────────────────────────────────
+
+export type LoadoutAction = "pending" | "accepted" | "rejected" | "ignored";
+
+export interface AdminLoadoutSummary {
+	publicId: string;
+	userEmail: string | null;
+	gameTitle: string | null;
+	action: LoadoutAction;
+	mood: string;
+	availableMinutes: number;
+	mentalEnergy: string;
+	createdAt: string;
+}
+
+export interface LoadoutActionCount {
+	action: string;
+	count: number;
+}
+
+export interface AdminLoadoutList {
+	items: AdminLoadoutSummary[];
+	total: number;
+	limit: number;
+	offset: number;
+	actionCounts: LoadoutActionCount[];
+}
+
+export interface AdminLoadoutDetail extends AdminLoadoutSummary {
+	platformLabel: string | null;
+	context: string | null;
+	reasoning: string | null;
+	ledToMission: boolean;
+}
+
+export interface LoadoutListParams {
+	q?: string;
+	action?: LoadoutAction;
+	limit?: number;
+	offset?: number;
+}

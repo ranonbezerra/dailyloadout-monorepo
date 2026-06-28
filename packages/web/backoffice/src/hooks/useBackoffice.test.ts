@@ -14,6 +14,8 @@ vi.mock("../lib/backoffice-api", () => ({
 	fetchCapture: vi.fn(),
 	fetchMissions: vi.fn(),
 	fetchMission: vi.fn(),
+	fetchLoadouts: vi.fn(),
+	fetchLoadout: vi.fn(),
 	banUser: vi.fn(),
 	unbanUser: vi.fn(),
 	verifyUser: vi.fn(),
@@ -38,6 +40,8 @@ import {
 	useDashboard,
 	useGameActions,
 	useGames,
+	useLoadout,
+	useLoadouts,
 	useMission,
 	useMissionActions,
 	useMissions,
@@ -107,6 +111,18 @@ describe("useBackoffice queries", () => {
 		await waitFor(() => expect(api.fetchMissions).toHaveBeenCalledWith({ status: "active" }));
 		expect(api.fetchMission).not.toHaveBeenCalled();
 		expect(m.result.current.fetchStatus).toBe("idle");
+	});
+
+	it("useLoadouts passes params; useLoadout is disabled when id is null", async () => {
+		(api.fetchLoadouts as Mock).mockResolvedValue({ items: [], action_counts: [] });
+		const wrapper = createWrapper();
+
+		renderHook(() => useLoadouts({ action: "ignored" }), { wrapper });
+		const l = renderHook(() => useLoadout(null), { wrapper });
+
+		await waitFor(() => expect(api.fetchLoadouts).toHaveBeenCalledWith({ action: "ignored" }));
+		expect(api.fetchLoadout).not.toHaveBeenCalled();
+		expect(l.result.current.fetchStatus).toBe("idle");
 	});
 });
 

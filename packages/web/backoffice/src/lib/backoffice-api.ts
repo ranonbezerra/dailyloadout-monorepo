@@ -12,6 +12,8 @@ import type {
 	AdminCaptureList,
 	AdminGameDetail,
 	AdminGameList,
+	AdminLoadoutDetail,
+	AdminLoadoutList,
 	AdminMe,
 	AdminMissionDetail,
 	AdminMissionList,
@@ -24,6 +26,7 @@ import type {
 	DashboardSummary,
 	GameEdit,
 	GameListParams,
+	LoadoutListParams,
 	MissionListParams,
 	UserListParams,
 } from "../types/backoffice";
@@ -176,6 +179,22 @@ export async function clampMission(publicId: string): Promise<AdminMissionDetail
 	return snakeToCamel<AdminMissionDetail>(
 		await apiFetch<unknown>(`${BASE}/missions/${publicId}/clamp`, { method: "POST" }),
 	);
+}
+
+export async function fetchLoadouts(params: LoadoutListParams = {}): Promise<AdminLoadoutList> {
+	const sp = new URLSearchParams();
+	if (params.q) sp.set("q", params.q);
+	if (params.action) sp.set("action", params.action);
+	if (params.limit !== undefined) sp.set("limit", String(params.limit));
+	if (params.offset !== undefined) sp.set("offset", String(params.offset));
+	const qs = sp.toString();
+	return snakeToCamel<AdminLoadoutList>(
+		await apiFetch<unknown>(`${BASE}/loadouts${qs ? `?${qs}` : ""}`),
+	);
+}
+
+export async function fetchLoadout(publicId: string): Promise<AdminLoadoutDetail> {
+	return snakeToCamel<AdminLoadoutDetail>(await apiFetch<unknown>(`${BASE}/loadouts/${publicId}`));
 }
 
 export async function fetchAudit(
