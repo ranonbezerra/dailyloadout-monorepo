@@ -3,7 +3,12 @@
   "reporters": ["console"],
   "minLines": 10,
   "minTokens": 50,
-  "path": ["packages/api/src", "packages/web/src"],
+  "path": [
+    "packages/api/src",
+    "packages/web/shared/src",
+    "packages/web/app/src",
+    "packages/web/backoffice/src"
+  ],
   "ignore": [
     "**/node_modules/**",
     "**/dist/**",

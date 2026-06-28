@@ -11,11 +11,15 @@ DailyLoadout is a gaming companion that helps players choose what to play. It co
 | Package | Path | Stack |
 | --------- | ------ | ------- |
 | API | `packages/api/` | Python 3.14, FastAPI, SQLAlchemy 2.x async, Alembic, Pydantic v2, Taskiq + Redis, Ollama LLM, faster-whisper STT |
-| Web | `packages/web/` | Bun, React 19, TypeScript, Mantine v7, TanStack Query v5, Biome |
-| Backoffice | `packages/backoffice/` | Internal admin app (separate from Web). Bun, React 19, Mantine, TanStack Query, Biome. Talks to the same API's `/internal/v1`. |
-| App | `packages/app/` | Flutter 3.27+, Dart 3.6+, BLoC, go_router, dio |
+| Mobile | `packages/mobile/` | Flutter 3.27+, Dart 3.6+, BLoC, go_router, dio |
+| Web (workspace) | `packages/web/` | Bun workspace. Members below share `@dl/shared` (api client, case-convert). |
+| ↳ Shared | `packages/web/shared/` | `@dl/shared` — the cookie-auth API client + snake/camel converters used by both web apps |
+| ↳ App (player) | `packages/web/app/` | The player web app. Bun, React 19, TypeScript, Mantine v7, TanStack Query v5, Biome |
+| ↳ Backoffice | `packages/web/backoffice/` | Internal admin app (separate from the player app). Same stack; talks to the API's `/internal/v1` |
 
 **Infrastructure:** PostgreSQL 18, Redis 7, Ollama (host), Taskiq worker (Docker)
+
+**Web workspace:** one `bun install` at `packages/web/` resolves all members. The player app and backoffice import the API client from `@dl/shared/api` and `@dl/shared/case-convert` (never duplicate them).
 
 ## Commands
 
@@ -30,15 +34,22 @@ make worker           # taskiq worker (async debrief extraction)
 make api-migrate      # alembic upgrade head
 make api-migration msg="description"  # new alembic migration
 
-make web              # vite dev server
-make web-test         # vitest
-make web-lint         # biome check
-make web-typecheck    # tsc --noEmit
-make web-build        # production build
+make web              # player web app dev server (packages/web/app)
+make backoffice       # backoffice dev server (packages/web/backoffice)
+make web-install      # install the whole web workspace (shared + app + backoffice)
+make web-test         # vitest (player app)
+make web-build        # production build (player app)
 
-make quality-api      # full API quality gate (lint + format + mypy + bandit + typos + pytest >= 90%)
-make quality-web      # full Web quality gate (biome + tsc + vitest + vite build)
-make quality          # ALL quality gates (pre-commit + api + web)
+make mobile           # Flutter app (packages/mobile)
+make mobile-test      # flutter test
+
+make quality-api            # full API quality gate (lint + format + mypy + bandit + typos + pytest >= 90%)
+make quality-web            # ALL web gates (shared + app + backoffice)
+make quality-web-shared     # shared lib only
+make quality-web-app        # player app only
+make quality-web-backoffice # backoffice only
+make quality-mobile         # Flutter gate
+make quality                # ALL quality gates (pre-commit + api + web + mobile)
 ```
 
 ## Architecture — Layer Discipline (strict)

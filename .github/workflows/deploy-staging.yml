@@ -1,27 +1,107 @@
-name: Deploy API to staging
+name: Deploy to staging
 
-# Continuous deploy of the API to the STAGING VPS on every merge to main that
-# touches the backend. Staging = "what's on main right now"; production is the
-# last released tag (see release-please.yml). Validate on staging, then merge the
-# release PR to cut the production release.
+# Continuous deploy to STAGING on every merge to main, PER PART changed:
+# - API           → the staging VPS (reuses deploy-api.yml)
+# - web/app        → builds the player-app bundle
+# - web/backoffice → builds the backoffice bundle
+# (web/shared has no deploy of its own — its consumers, app + backoffice, rebuild.)
+#
+# Staging = "what's on main right now"; production is the last released tag (see
+# release-please.yml). Everything stays INERT until you opt in by setting the
+# repo variable DEPLOY_ENABLED=true. The web host target (rsync path / bucket)
+# is not wired yet — the bundles are built + uploaded as artifacts, and the
+# host-push step is marked TODO until a staging web host exists.
 
 on:
   push:
     branches: [main]
     paths:
       - "packages/api/**"
+      - "packages/web/**"
       - "infra/**"
       - ".github/workflows/deploy-staging.yml"
       - ".github/workflows/deploy-api.yml"
   workflow_dispatch:
 
 jobs:
-  staging:
-    # Inert until you opt in — set the repository variable DEPLOY_ENABLED=true
-    # once the staging VPS + its environment secrets exist. Until then: SKIPPED.
-    if: vars.DEPLOY_ENABLED == 'true'
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+      app: ${{ steps.filter.outputs.app }}
+      backoffice: ${{ steps.filter.outputs.backoffice }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            api:
+              - "packages/api/**"
+              - "infra/**"
+            app:
+              - "packages/web/app/**"
+              - "packages/web/shared/**"
+              - "packages/web/package.json"
+            backoffice:
+              - "packages/web/backoffice/**"
+              - "packages/web/shared/**"
+              - "packages/web/package.json"
+
+  # ── API → staging VPS ──
+  staging-api:
+    needs: changes
+    if: vars.DEPLOY_ENABLED == 'true' && needs.changes.outputs.api == 'true'
     uses: ./.github/workflows/deploy-api.yml
     with:
       environment: staging
       ref: ${{ github.sha }}
     secrets: inherit # pragma: allowlist secret
+
+  # ── web/app → staging ──
+  staging-web-app:
+    needs: changes
+    if: vars.DEPLOY_ENABLED == 'true' && needs.changes.outputs.app == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Build player app
+        run: cd app && bun run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-app-staging
+          path: packages/web/app/dist
+      # TODO: push packages/web/app/dist to the staging web host (rsync/bucket)
+      # once a target is configured.
+
+  # ── web/backoffice → staging ──
+  staging-web-backoffice:
+    needs: changes
+    if: vars.DEPLOY_ENABLED == 'true' && needs.changes.outputs.backoffice == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Build backoffice
+        run: cd backoffice && bun run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-backoffice-staging
+          path: packages/web/backoffice/dist
+      # TODO: push packages/web/backoffice/dist to the staging web host once a
+      # target is configured.

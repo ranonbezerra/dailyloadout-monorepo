@@ -2,9 +2,10 @@ name: release-please
 
 # Per-surface versioning + changelogs in the monorepo (config: release-please-
 # config.json). On push to main it maintains one "release PR" per component
-# (api, web), each with a PATH-SCOPED changelog from the conventional commits —
-# so the API release notes never mix in web/app commits. Merging a release PR
-# cuts the prefixed tag (api/vX.Y.Z) + GitHub release, which then deploys to prod.
+# (api, web-shared, web-app, web-backoffice), each with a PATH-SCOPED changelog
+# from the conventional commits — so the API release notes never mix in web/app
+# commits. Merging a release PR cuts the prefixed tag (e.g. web-app/vX.Y.Z) +
+# GitHub release, which then deploys to prod.
 
 on:
   push:

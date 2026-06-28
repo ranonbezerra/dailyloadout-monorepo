@@ -1,0 +1,70 @@
+name: CI — Web · Backoffice
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      # The backoffice depends on @dl/shared, so changes there trigger it too.
+      - "packages/web/backoffice/**"
+      - "packages/web/shared/**"
+      - "packages/web/package.json"
+      - "packages/web/bun.lock"
+      - ".github/workflows/ci-web-backoffice.yml"
+
+defaults:
+  run:
+    working-directory: packages/web
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      backoffice: ${{ steps.filter.outputs.backoffice }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backoffice:
+              - "packages/web/backoffice/**"
+              - "packages/web/shared/**"
+              - "packages/web/package.json"
+              - "packages/web/bun.lock"
+              - ".github/workflows/ci-web-backoffice.yml"
+
+  backoffice:
+    needs: changes
+    if: needs.changes.outputs.backoffice == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install workspace
+        run: bun install --frozen-lockfile
+      - name: Lint + typecheck + build + test
+        run: cd backoffice && bun run lint && bun run tsc -b --noEmit && bun run build && bun run test --coverage
+
+  backoffice-status:
+    if: always()
+    needs: [changes, backoffice]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check status
+        working-directory: .
+        run: |
+          if [ "${{ needs.changes.outputs.backoffice }}" != "true" ]; then
+            echo "No backoffice changes — skipping."
+            exit 0
+          fi
+          if [ "${{ needs.backoffice.result }}" != "success" ]; then
+            echo "Backoffice checks failed."
+            exit 1
+          fi
+          echo "All backoffice checks passed."

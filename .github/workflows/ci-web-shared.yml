@@ -1,0 +1,67 @@
+name: CI — Web · Shared
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      - "packages/web/shared/**"
+      - "packages/web/package.json"
+      - "packages/web/bun.lock"
+      - ".github/workflows/ci-web-shared.yml"
+
+defaults:
+  run:
+    working-directory: packages/web
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      shared: ${{ steps.filter.outputs.shared }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            shared:
+              - "packages/web/shared/**"
+              - "packages/web/package.json"
+              - "packages/web/bun.lock"
+              - ".github/workflows/ci-web-shared.yml"
+
+  shared:
+    needs: changes
+    if: needs.changes.outputs.shared == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install workspace
+        run: bun install --frozen-lockfile
+      - name: Lint + test
+        run: cd shared && bun run lint && bun run test --coverage
+
+  shared-status:
+    if: always()
+    needs: [changes, shared]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check status
+        working-directory: .
+        run: |
+          if [ "${{ needs.changes.outputs.shared }}" != "true" ]; then
+            echo "No shared changes — skipping."
+            exit 0
+          fi
+          if [ "${{ needs.shared.result }}" != "success" ]; then
+            echo "Shared checks failed."
+            exit 1
+          fi
+          echo "All shared checks passed."

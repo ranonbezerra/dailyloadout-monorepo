@@ -1,0 +1,70 @@
+name: CI — Web · App
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      # The player app depends on @dl/shared, so changes there trigger it too.
+      - "packages/web/app/**"
+      - "packages/web/shared/**"
+      - "packages/web/package.json"
+      - "packages/web/bun.lock"
+      - ".github/workflows/ci-web-app.yml"
+
+defaults:
+  run:
+    working-directory: packages/web
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      app: ${{ steps.filter.outputs.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            app:
+              - "packages/web/app/**"
+              - "packages/web/shared/**"
+              - "packages/web/package.json"
+              - "packages/web/bun.lock"
+              - ".github/workflows/ci-web-app.yml"
+
+  app:
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install workspace
+        run: bun install --frozen-lockfile
+      - name: Lint + typecheck + build + test
+        run: cd app && bun run lint && bun run tsc -b --noEmit && bun run build && bun run test --coverage
+
+  app-status:
+    if: always()
+    needs: [changes, app]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check status
+        working-directory: .
+        run: |
+          if [ "${{ needs.changes.outputs.app }}" != "true" ]; then
+            echo "No app changes — skipping."
+            exit 0
+          fi
+          if [ "${{ needs.app.result }}" != "success" ]; then
+            echo "App checks failed."
+            exit 1
+          fi
+          echo "All app checks passed."

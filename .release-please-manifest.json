@@ -1,4 +1,6 @@
 {
   "packages/api": "0.1.0",
-  "packages/web": "0.0.0"
+  "packages/web/shared": "0.0.0",
+  "packages/web/app": "0.0.0",
+  "packages/web/backoffice": "0.0.0"
 }

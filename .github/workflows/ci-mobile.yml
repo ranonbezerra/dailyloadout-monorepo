@@ -1,0 +1,97 @@
+name: CI — Mobile
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      - "packages/mobile/**"
+      - ".github/workflows/ci-mobile.yml"
+
+defaults:
+  run:
+    working-directory: packages/mobile
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      mobile: ${{ steps.filter.outputs.mobile }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            mobile:
+              - "packages/mobile/**"
+              - ".github/workflows/ci-mobile.yml"
+
+  mobile-quality:
+    needs: changes
+    if: needs.changes.outputs.mobile == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.35.3"
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Dart format check
+        run: dart format --set-exit-if-changed .
+
+      - name: Flutter analyze
+        run: flutter analyze
+
+  mobile-test:
+    needs: [changes, mobile-quality]
+    if: needs.changes.outputs.mobile == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.35.3"
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Flutter test
+        run: flutter test --coverage
+
+  mobile-status:
+    if: always()
+    needs: [changes, mobile-quality, mobile-test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check status
+        working-directory: .
+        run: |
+          if [ "${{ needs.changes.outputs.mobile }}" != "true" ]; then
+            echo "No Mobile changes detected — skipping."
+            exit 0
+          fi
+          if [ "${{ needs.mobile-quality.result }}" != "success" ]; then
+            echo "Mobile quality checks failed."
+            exit 1
+          fi
+          if [ "${{ needs.mobile-test.result }}" != "success" ]; then
+            echo "Mobile tests failed."
+            exit 1
+          fi
+          echo "All Mobile checks passed."

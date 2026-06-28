@@ -4,13 +4,15 @@
 # ─────────────────────────────────────────────
 
 COMPOSE := docker compose -f docker-compose.yml -f docker-compose.dev.yml
-API_DIR := packages/api
-APP_DIR := packages/app
-WEB_DIR := packages/web
-BO_DIR  := packages/backoffice
+API_DIR    := packages/api
+MOBILE_DIR := packages/mobile
+WEB_ROOT   := packages/web
+WEB_DIR    := packages/web/app
+BO_DIR     := packages/web/backoffice
+SHARED_DIR := packages/web/shared
 FLUTTER := fvm flutter
 DART    := fvm dart
-APP_API_URL := $(shell sed -n 's/^API_URL=//p' $(APP_DIR)/.env 2>/dev/null)
+APP_API_URL := $(shell sed -n 's/^API_URL=//p' $(MOBILE_DIR)/.env 2>/dev/null)
 APP_DART_DEFINES := $(if $(APP_API_URL),--dart-define=API_URL=$(APP_API_URL),)
 
 # Load root .env for infrastructure vars (ports, PG credentials)
@@ -144,11 +146,23 @@ api-install: ## Install API dependencies
 	cd $(API_DIR) && poetry install
 
 # ─────────────────────────────────────────────
-# Web (packages/web)
+# Web shared lib (packages/web/shared) — @dl/shared
+# ─────────────────────────────────────────────
+
+.PHONY: shared-test
+shared-test: ## Run shared-lib tests
+	cd $(SHARED_DIR) && bun run test
+
+.PHONY: shared-lint
+shared-lint: ## Lint shared lib (biome check)
+	cd $(SHARED_DIR) && bun run lint
+
+# ─────────────────────────────────────────────
+# Web — player app (packages/web/app)
 # ─────────────────────────────────────────────
 
 .PHONY: web
-web: ## Run web dev server (vite)
+web: ## Run web player-app dev server (vite)
 	cd $(WEB_DIR) && bun run dev --port $${WEB_PORT:-3200}
 
 .PHONY: web-test
@@ -173,14 +187,14 @@ web-fmt: ## Format web code
 
 .PHONY: web-install
 web-install: ## Install web dependencies
-	cd $(WEB_DIR) && bun install
+	cd $(WEB_ROOT) && bun install
 
 .PHONY: web-e2e
 web-e2e: ## Run Playwright e2e tests (API mocked, headless Chromium)
 	cd $(WEB_DIR) && bun run e2e
 
 # ─────────────────────────────────────────────
-# Backoffice (packages/backoffice) — internal admin app
+# Backoffice (packages/web/backoffice) — internal admin app
 # ─────────────────────────────────────────────
 
 .PHONY: backoffice
@@ -209,35 +223,35 @@ backoffice-fmt: ## Format backoffice code
 
 .PHONY: backoffice-install
 backoffice-install: ## Install backoffice dependencies
-	cd $(BO_DIR) && bun install
+	cd $(WEB_ROOT) && bun install
 
 # ─────────────────────────────────────────────
-# App (packages/app) — Flutter
+# Mobile (packages/mobile) — Flutter
 # ─────────────────────────────────────────────
 
-.PHONY: app
-app: ## Run Flutter app (uses preferred device, or: make app d=chrome)
-	cd $(APP_DIR) && $(FLUTTER) run $(if $(d),-d $(d)) $(APP_DART_DEFINES)
+.PHONY: mobile
+mobile: ## Run Flutter mobile app (uses preferred device, or: make mobile d=chrome)
+	cd $(MOBILE_DIR) && $(FLUTTER) run $(if $(d),-d $(d)) $(APP_DART_DEFINES)
 
-.PHONY: app-devices
-app-devices: ## List available Flutter devices
-	cd $(APP_DIR) && $(FLUTTER) devices
+.PHONY: mobile-devices
+mobile-devices: ## List available Flutter devices
+	cd $(MOBILE_DIR) && $(FLUTTER) devices
 
-.PHONY: app-test
-app-test: ## Run Flutter tests
-	cd $(APP_DIR) && $(FLUTTER) test
+.PHONY: mobile-test
+mobile-test: ## Run Flutter tests
+	cd $(MOBILE_DIR) && $(FLUTTER) test
 
-.PHONY: app-e2e
-app-e2e: ## Run Flutter integration tests headless (flutter-tester)
-	cd $(APP_DIR) && $(FLUTTER) test integration_test/ -d flutter-tester
+.PHONY: mobile-e2e
+mobile-e2e: ## Run Flutter integration tests headless (flutter-tester)
+	cd $(MOBILE_DIR) && $(FLUTTER) test integration_test/ -d flutter-tester
 
-.PHONY: app-lint
-app-lint: ## Analyze Flutter code
-	cd $(APP_DIR) && $(FLUTTER) analyze
+.PHONY: mobile-lint
+mobile-lint: ## Analyze Flutter code
+	cd $(MOBILE_DIR) && $(FLUTTER) analyze
 
-.PHONY: app-install
-app-install: ## Get Flutter dependencies
-	cd $(APP_DIR) && $(FLUTTER) pub get
+.PHONY: mobile-install
+mobile-install: ## Get Flutter dependencies
+	cd $(MOBILE_DIR) && $(FLUTTER) pub get
 
 # ─────────────────────────────────────────────
 # Quality gates (per-package)
@@ -256,30 +270,43 @@ quality-api: ## Full API quality gate
 	@echo "\033[1;32m══════ API: All checks passed ══════\033[0m\n"
 
 .PHONY: quality-web
-quality-web: ## Full Web quality gate
-	@echo "\n\033[1;36m══════ Web Quality Gate ══════\033[0m"
+quality-web: ## Full Web quality gate (shared + player app + backoffice)
+	@$(MAKE) quality-web-shared
+	@$(MAKE) quality-web-app
+	@$(MAKE) quality-web-backoffice
+
+.PHONY: quality-web-shared
+quality-web-shared: ## Web shared-lib quality gate
+	@echo "\n\033[1;36m══════ Web · Shared Quality Gate ══════\033[0m"
+	$(call check,Biome lint + format,    cd $(SHARED_DIR) && bun run lint)
+	$(call check,Vitest + coverage ≥90%, cd $(SHARED_DIR) && bun run test --coverage)
+	@echo "\033[1;32m══════ Web · Shared: All checks passed ══════\033[0m\n"
+
+.PHONY: quality-web-app
+quality-web-app: ## Web player-app quality gate
+	@echo "\n\033[1;36m══════ Web · App Quality Gate ══════\033[0m"
 	$(call check,Biome lint + format,    cd $(WEB_DIR) && bun run lint)
 	$(call check,TypeScript check,       cd $(WEB_DIR) && bun run tsc -b --noEmit)
 	$(call check,Vitest + coverage ≥90%, cd $(WEB_DIR) && bun run test --coverage)
 	$(call check,Vite build,             cd $(WEB_DIR) && bun run build > /dev/null 2>&1)
-	@echo "\033[1;32m══════ Web: All checks passed ══════\033[0m\n"
+	@echo "\033[1;32m══════ Web · App: All checks passed ══════\033[0m\n"
 
-.PHONY: quality-backoffice
-quality-backoffice: ## Full Backoffice quality gate
-	@echo "\n\033[1;36m══════ Backoffice Quality Gate ══════\033[0m"
+.PHONY: quality-web-backoffice
+quality-web-backoffice: ## Web backoffice quality gate
+	@echo "\n\033[1;36m══════ Web · Backoffice Quality Gate ══════\033[0m"
 	$(call check,Biome lint + format,    cd $(BO_DIR) && bun run lint)
 	$(call check,TypeScript check,       cd $(BO_DIR) && bun run tsc -b --noEmit)
 	$(call check,Vitest + coverage ≥90%, cd $(BO_DIR) && bun run test --coverage)
 	$(call check,Vite build,             cd $(BO_DIR) && bun run build > /dev/null 2>&1)
-	@echo "\033[1;32m══════ Backoffice: All checks passed ══════\033[0m\n"
+	@echo "\033[1;32m══════ Web · Backoffice: All checks passed ══════\033[0m\n"
 
-.PHONY: quality-app
-quality-app: ## Full App quality gate
-	@echo "\n\033[1;36m══════ App Quality Gate ══════\033[0m"
-	$(call check,Dart format,             cd $(APP_DIR) && $(DART) format --set-exit-if-changed .)
-	$(call check,Flutter analyze,         cd $(APP_DIR) && $(FLUTTER) analyze)
-	$(call check,Flutter test + cov ≥90%, cd $(APP_DIR) && $(FLUTTER) test --coverage && ./tool/check_coverage.sh 90)
-	@echo "\033[1;32m══════ App: All checks passed ══════\033[0m\n"
+.PHONY: quality-mobile
+quality-mobile: ## Full Mobile (Flutter) quality gate
+	@echo "\n\033[1;36m══════ Mobile Quality Gate ══════\033[0m"
+	$(call check,Dart format,             cd $(MOBILE_DIR) && $(DART) format --set-exit-if-changed .)
+	$(call check,Flutter analyze,         cd $(MOBILE_DIR) && $(FLUTTER) analyze)
+	$(call check,Flutter test + cov ≥90%, cd $(MOBILE_DIR) && $(FLUTTER) test --coverage && ./tool/check_coverage.sh 90)
+	@echo "\033[1;32m══════ Mobile: All checks passed ══════\033[0m\n"
 
 .PHONY: pre-commit
 pre-commit: ## Run pre-commit hooks on all files
@@ -290,15 +317,14 @@ pre-commit: ## Run pre-commit hooks on all files
 # ─────────────────────────────────────────────
 
 .PHONY: quality
-quality: ## Run ALL quality gates (pre-commit + api + web + backoffice + app)
+quality: ## Run ALL quality gates (pre-commit + api + web + mobile)
 	@echo "\n\033[1;35m╔══════════════════════════════════════╗\033[0m"
 	@echo "\033[1;35m║     DailyLoadout — Quality Gate      ║\033[0m"
 	@echo "\033[1;35m╚══════════════════════════════════════╝\033[0m"
 	$(call check,Pre-commit hooks,  pre-commit run --all-files)
 	@$(MAKE) quality-api
 	@$(MAKE) quality-web
-	@$(MAKE) quality-backoffice
-	@$(MAKE) quality-app
+	@$(MAKE) quality-mobile
 	$(call warn,Code duplication (jscpd ≤5%),  npx jscpd --silent)
 	@echo "\033[1;32m╔══════════════════════════════════════╗\033[0m"
 	@echo "\033[1;32m║     All quality gates passed ✓       ║\033[0m"
@@ -309,16 +335,16 @@ quality: ## Run ALL quality gates (pre-commit + api + web + backoffice + app)
 # ─────────────────────────────────────────────
 
 .PHONY: install
-install: api-install web-install app-install ## Install all dependencies
+install: api-install web-install mobile-install ## Install all dependencies (web-install installs the whole web workspace)
 
 .PHONY: lint
-lint: api-lint web-lint app-lint ## Lint all packages
+lint: api-lint shared-lint web-lint backoffice-lint mobile-lint ## Lint all packages
 
 .PHONY: test
-test: api-test web-test app-test ## Test all packages
+test: api-test shared-test web-test backoffice-test mobile-test ## Test all packages
 
 .PHONY: fmt
-fmt: api-fmt web-fmt ## Format all packages
+fmt: api-fmt web-fmt backoffice-fmt ## Format all packages
 
 .PHONY: check
 check: lint test ## Quick check (lint + test, no security/coverage)
