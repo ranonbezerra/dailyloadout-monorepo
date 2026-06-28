@@ -6,6 +6,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	banUser,
+	clampMission,
 	clearConfig,
 	demoteGame,
 	editGame,
@@ -16,6 +17,8 @@ import {
 	fetchConfig,
 	fetchDashboard,
 	fetchGames,
+	fetchMission,
+	fetchMissions,
 	fetchUser,
 	fetchUsers,
 	promoteGame,
@@ -30,6 +33,7 @@ import type {
 	ConfigValue,
 	GameEdit,
 	GameListParams,
+	MissionListParams,
 	UserListParams,
 } from "../types/backoffice";
 
@@ -168,6 +172,39 @@ export function useCaptureActions() {
 	});
 
 	return { reprocess, purge };
+}
+
+export function useMissions(params: MissionListParams) {
+	return useQuery({
+		queryKey: [...BO, "missions", params],
+		queryFn: () => fetchMissions(params),
+	});
+}
+
+export function useMission(publicId: string | null) {
+	return useQuery({
+		queryKey: [...BO, "mission", publicId],
+		queryFn: () => fetchMission(publicId as string),
+		enabled: !!publicId,
+	});
+}
+
+/** Force-clamp a mission, invalidating the missions list + detail + dashboard + audit. */
+export function useMissionActions() {
+	const qc = useQueryClient();
+	const invalidate = () => {
+		qc.invalidateQueries({ queryKey: [...BO, "missions"] });
+		qc.invalidateQueries({ queryKey: [...BO, "mission"] });
+		qc.invalidateQueries({ queryKey: [...BO, "dashboard"] });
+		qc.invalidateQueries({ queryKey: [...BO, "audit"] });
+	};
+
+	const clamp = useMutation({
+		mutationFn: (publicId: string) => clampMission(publicId),
+		onSuccess: invalidate,
+	});
+
+	return { clamp };
 }
 
 /** Set / clear a config override, invalidating the config list + audit. */

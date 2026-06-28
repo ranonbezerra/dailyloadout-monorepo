@@ -222,6 +222,53 @@ class AdminCaptureDetail(AdminCaptureSummary):
     candidates: list[AdminCaptureCandidate]
 
 
+# ── Missions (moderation) ───────────────────────────────────────────────
+
+
+class AdminMissionSummary(BaseModel):
+    """A mission as shown in the backoffice moderation table."""
+
+    public_id: UUID
+    user_email: str | None
+    game_title: str | None
+    status: str
+    mission_type: str
+    ended_via: str | None
+    started_at: datetime
+    ended_at: datetime | None
+
+
+class MissionStatusCount(BaseModel):
+    """A single ``(status, count)`` tally for the missions overview."""
+
+    status: str
+    count: int
+
+
+class AdminMissionList(BaseModel):
+    """A page of missions plus the total count and per-status tallies."""
+
+    items: list[AdminMissionSummary]
+    total: int
+    limit: int
+    offset: int
+    status_counts: list[MissionStatusCount]
+
+
+class AdminMissionDetail(AdminMissionSummary):
+    """The full backoffice view of one mission.
+
+    ``has_extracted_state`` reports whether the debrief LLM extraction ran
+    (the raw JSON is omitted — it is untrusted model output, not moderation
+    signal).
+    """
+
+    platform_label: str | None
+    briefing_text: str | None
+    debrief_text: str | None
+    has_extracted_state: bool
+
+
 class DashboardSummary(BaseModel):
     """At-a-glance backoffice metrics for the dashboard landing screen."""
 

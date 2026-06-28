@@ -13,6 +13,8 @@ import type {
 	AdminGameDetail,
 	AdminGameList,
 	AdminMe,
+	AdminMissionDetail,
+	AdminMissionList,
 	AdminUserDetail,
 	AdminUserList,
 	AuditList,
@@ -22,6 +24,7 @@ import type {
 	DashboardSummary,
 	GameEdit,
 	GameListParams,
+	MissionListParams,
 	UserListParams,
 } from "../types/backoffice";
 
@@ -151,6 +154,28 @@ export async function reprocessCapture(publicId: string): Promise<AdminCaptureDe
 
 export async function purgeCapture(publicId: string): Promise<void> {
 	await apiFetch<void>(`${BASE}/captures/${publicId}`, { method: "DELETE" });
+}
+
+export async function fetchMissions(params: MissionListParams = {}): Promise<AdminMissionList> {
+	const sp = new URLSearchParams();
+	if (params.q) sp.set("q", params.q);
+	if (params.status) sp.set("status", params.status);
+	if (params.limit !== undefined) sp.set("limit", String(params.limit));
+	if (params.offset !== undefined) sp.set("offset", String(params.offset));
+	const qs = sp.toString();
+	return snakeToCamel<AdminMissionList>(
+		await apiFetch<unknown>(`${BASE}/missions${qs ? `?${qs}` : ""}`),
+	);
+}
+
+export async function fetchMission(publicId: string): Promise<AdminMissionDetail> {
+	return snakeToCamel<AdminMissionDetail>(await apiFetch<unknown>(`${BASE}/missions/${publicId}`));
+}
+
+export async function clampMission(publicId: string): Promise<AdminMissionDetail> {
+	return snakeToCamel<AdminMissionDetail>(
+		await apiFetch<unknown>(`${BASE}/missions/${publicId}/clamp`, { method: "POST" }),
+	);
 }
 
 export async function fetchAudit(

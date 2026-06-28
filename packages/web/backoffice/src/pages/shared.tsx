@@ -24,6 +24,7 @@ const ACTION_META: Record<string, { color: string; label: string }> = {
 	"config.clear": { color: "gray", label: "Config clear" },
 	"capture.reprocess": { color: "cyan", label: "Reprocess" },
 	"capture.purge": { color: "red", label: "Purge" },
+	"mission.clamp": { color: "orange", label: "Clamp" },
 };
 
 /** Render a backoffice audit action as a colored badge. */

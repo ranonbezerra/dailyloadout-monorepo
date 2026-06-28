@@ -8,6 +8,7 @@ import { ConfigPage } from "./pages/ConfigPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { GamesPage } from "./pages/GamesPage";
 import { LoginPage } from "./pages/LoginPage";
+import { MissionsPage } from "./pages/MissionsPage";
 import { UsersPage } from "./pages/UsersPage";
 
 /** Authenticated + admin-gated area, wrapped in the distinct backoffice shell. */
@@ -20,6 +21,7 @@ function BackofficeApp() {
 					<Route path="users" element={<UsersPage />} />
 					<Route path="games" element={<GamesPage />} />
 					<Route path="captures" element={<CapturesPage />} />
+					<Route path="missions" element={<MissionsPage />} />
 					<Route path="config" element={<ConfigPage />} />
 					<Route path="audit" element={<AuditPage />} />
 					<Route path="*" element={<Navigate to="/" replace />} />

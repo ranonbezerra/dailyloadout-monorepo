@@ -7,6 +7,7 @@ vi.mock("@dl/shared/api", () => ({
 import { apiFetch } from "@dl/shared/api";
 import {
 	banUser,
+	clampMission,
 	clearConfig,
 	demoteGame,
 	editGame,
@@ -17,6 +18,8 @@ import {
 	fetchConfig,
 	fetchDashboard,
 	fetchGames,
+	fetchMission,
+	fetchMissions,
 	fetchUser,
 	fetchUsers,
 	promoteGame,
@@ -204,5 +207,39 @@ describe("backoffice-api", () => {
 	it("purgeCapture DELETEs the capture", async () => {
 		await purgeCapture("c1");
 		expect(mockApiFetch).toHaveBeenCalledWith("/internal/v1/captures/c1", { method: "DELETE" });
+	});
+
+	it("fetchMissions builds the query string and converts tallies", async () => {
+		mockApiFetch.mockResolvedValue({
+			items: [{ public_id: "m1", user_email: "a@b.com", game_title: "Hades" }],
+			total: 1,
+			status_counts: [{ status: "active", count: 1 }],
+		});
+		const r = await fetchMissions({ q: "a@b.com", status: "active", limit: 20, offset: 0 });
+		expect(mockApiFetch).toHaveBeenCalledWith(
+			"/internal/v1/missions?q=a%40b.com&status=active&limit=20&offset=0",
+		);
+		expect(r.statusCounts[0]).toMatchObject({ status: "active", count: 1 });
+		expect(r.items[0]).toMatchObject({ publicId: "m1", userEmail: "a@b.com", gameTitle: "Hades" });
+	});
+
+	it("fetchMissions omits the query string when no params", async () => {
+		mockApiFetch.mockResolvedValue({ items: [], total: 0, status_counts: [] });
+		await fetchMissions();
+		expect(mockApiFetch).toHaveBeenCalledWith("/internal/v1/missions");
+	});
+
+	it("fetchMission hits the detail path", async () => {
+		mockApiFetch.mockResolvedValue({ public_id: "m1" });
+		await fetchMission("m1");
+		expect(mockApiFetch).toHaveBeenCalledWith("/internal/v1/missions/m1");
+	});
+
+	it("clampMission POSTs to the clamp path", async () => {
+		mockApiFetch.mockResolvedValue({ public_id: "m1" });
+		await clampMission("m1");
+		expect(mockApiFetch).toHaveBeenCalledWith("/internal/v1/missions/m1/clamp", {
+			method: "POST",
+		});
 	});
 });

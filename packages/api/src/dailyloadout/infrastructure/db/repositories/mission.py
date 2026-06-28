@@ -7,11 +7,11 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from dailyloadout.infrastructure.db.models import LibraryEntry, Mission
+from dailyloadout.infrastructure.db.models import Game, LibraryEntry, Mission, User
 
 
 class MissionRepository:
@@ -140,18 +140,64 @@ class MissionRepository:
 
     async def count_for_user(self, user_id: int) -> int:
         """Return the total number of missions for *user_id*."""
-        from sqlalchemy import func
-
         stmt = select(func.count(Mission.id)).where(Mission.user_id == user_id)
         result = await self._session.execute(stmt)
         return result.scalar_one()
 
     async def count_active(self) -> int:
         """Return how many missions are active (not ended) across all users."""
-        from sqlalchemy import func
-
         stmt = select(func.count(Mission.id)).where(Mission.ended_at.is_(None))
         return (await self._session.scalar(stmt)) or 0
+
+    # ── Backoffice (admin) ──
+    async def search_admin(
+        self,
+        *,
+        query: str | None = None,
+        status: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list[tuple[Mission, str, str | None]], int]:
+        """Return a page of missions (each with owner email + game title) + total.
+
+        Spans every user's missions. ``query`` matches the owner's email;
+        ``status`` is the derived lifecycle state (``active`` = un-ended,
+        ``ended`` = closed).
+        """
+        conditions: list[ColumnElement[bool]] = []
+        if status == "active":
+            conditions.append(Mission.ended_at.is_(None))
+        elif status == "ended":
+            conditions.append(Mission.ended_at.is_not(None))
+        if query:
+            escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            conditions.append(User.email.ilike(f"%{escaped}%"))
+
+        total = (
+            await self._session.scalar(
+                select(func.count(Mission.id))
+                .join(User, Mission.user_id == User.id)
+                .where(*conditions)
+            )
+        ) or 0
+        result = await self._session.execute(
+            select(Mission, User.email, Game.title)
+            .join(User, Mission.user_id == User.id)
+            .join(LibraryEntry, Mission.library_entry_id == LibraryEntry.id)
+            .outerjoin(Game, LibraryEntry.game_id == Game.id)
+            .where(*conditions)
+            .order_by(Mission.started_at.desc(), Mission.id.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        rows = [(mission, email, title) for mission, email, title in result.all()]
+        return rows, total
+
+    async def status_counts(self) -> dict[str, int]:
+        """Return ``{"active": n, "ended": m}`` across all missions."""
+        active = await self.count_active()
+        total = (await self._session.scalar(select(func.count(Mission.id)))) or 0
+        return {"active": active, "ended": total - active}
 
     async def set_debrief(
         self,

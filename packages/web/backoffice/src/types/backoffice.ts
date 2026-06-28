@@ -188,3 +188,45 @@ export interface CaptureListParams {
 	limit?: number;
 	offset?: number;
 }
+
+// ── Missions (moderation) ──────────────────────────────────────────────
+
+export type MissionStatus = "active" | "ended";
+
+export interface AdminMissionSummary {
+	publicId: string;
+	userEmail: string | null;
+	gameTitle: string | null;
+	status: MissionStatus;
+	missionType: string;
+	endedVia: string | null;
+	startedAt: string;
+	endedAt: string | null;
+}
+
+export interface MissionStatusCount {
+	status: string;
+	count: number;
+}
+
+export interface AdminMissionList {
+	items: AdminMissionSummary[];
+	total: number;
+	limit: number;
+	offset: number;
+	statusCounts: MissionStatusCount[];
+}
+
+export interface AdminMissionDetail extends AdminMissionSummary {
+	platformLabel: string | null;
+	briefingText: string | null;
+	debriefText: string | null;
+	hasExtractedState: boolean;
+}
+
+export interface MissionListParams {
+	q?: string;
+	status?: MissionStatus;
+	limit?: number;
+	offset?: number;
+}

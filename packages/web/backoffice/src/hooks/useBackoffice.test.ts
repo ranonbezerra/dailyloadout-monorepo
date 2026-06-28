@@ -12,6 +12,8 @@ vi.mock("../lib/backoffice-api", () => ({
 	fetchGames: vi.fn(),
 	fetchCaptures: vi.fn(),
 	fetchCapture: vi.fn(),
+	fetchMissions: vi.fn(),
+	fetchMission: vi.fn(),
 	banUser: vi.fn(),
 	unbanUser: vi.fn(),
 	verifyUser: vi.fn(),
@@ -22,6 +24,7 @@ vi.mock("../lib/backoffice-api", () => ({
 	editGame: vi.fn(),
 	reprocessCapture: vi.fn(),
 	purgeCapture: vi.fn(),
+	clampMission: vi.fn(),
 }));
 
 import * as api from "../lib/backoffice-api";
@@ -35,6 +38,9 @@ import {
 	useDashboard,
 	useGameActions,
 	useGames,
+	useMission,
+	useMissionActions,
+	useMissions,
 	useUser,
 	useUserActions,
 	useUsers,
@@ -90,6 +96,18 @@ describe("useBackoffice queries", () => {
 		expect(api.fetchCapture).not.toHaveBeenCalled();
 		expect(c.result.current.fetchStatus).toBe("idle");
 	});
+
+	it("useMissions passes params; useMission is disabled when id is null", async () => {
+		(api.fetchMissions as Mock).mockResolvedValue({ items: [], status_counts: [] });
+		const wrapper = createWrapper();
+
+		renderHook(() => useMissions({ status: "active" }), { wrapper });
+		const m = renderHook(() => useMission(null), { wrapper });
+
+		await waitFor(() => expect(api.fetchMissions).toHaveBeenCalledWith({ status: "active" }));
+		expect(api.fetchMission).not.toHaveBeenCalled();
+		expect(m.result.current.fetchStatus).toBe("idle");
+	});
 });
 
 describe("useBackoffice mutations", () => {
@@ -128,5 +146,13 @@ describe("useBackoffice mutations", () => {
 		await result.current.purge.mutateAsync("c1");
 		expect(api.reprocessCapture).toHaveBeenCalledWith("c1");
 		expect(api.purgeCapture).toHaveBeenCalledWith("c1");
+	});
+
+	it("mission clamp resolves and calls the API", async () => {
+		(api.clampMission as Mock).mockResolvedValue({});
+		const { result } = renderHook(() => useMissionActions(), { wrapper: createWrapper() });
+
+		await result.current.clamp.mutateAsync("m1");
+		expect(api.clampMission).toHaveBeenCalledWith("m1");
 	});
 });

@@ -12,6 +12,7 @@ from dailyloadout.core.admin.captures_service import AdminCaptureService
 from dailyloadout.core.admin.config_service import AdminConfigService
 from dailyloadout.core.admin.dashboard_service import AdminDashboardService
 from dailyloadout.core.admin.games_service import AdminGameService
+from dailyloadout.core.admin.missions_service import AdminMissionService
 from dailyloadout.core.admin.service import AdminUserService
 from dailyloadout.core.auth.security import decode_access_token
 from dailyloadout.core.auth.service import AuthService
@@ -235,11 +236,7 @@ AdminUserServiceDep = Annotated[AdminUserService, Depends(get_admin_user_service
 
 def get_admin_config_service(db: DbSession) -> AdminConfigService:
     """Provide an ``AdminConfigService`` over the process-wide config overlay."""
-    return AdminConfigService(
-        AppConfigRepository(db),
-        AdminAuditRepository(db),
-        dynamic_config,
-    )
+    return AdminConfigService(AppConfigRepository(db), AdminAuditRepository(db), dynamic_config)
 
 
 AdminConfigServiceDep = Annotated[AdminConfigService, Depends(get_admin_config_service)]
@@ -290,3 +287,11 @@ def get_admin_capture_service(
 
 
 AdminCaptureServiceDep = Annotated[AdminCaptureService, Depends(get_admin_capture_service)]
+
+
+def get_admin_mission_service(db: DbSession) -> AdminMissionService:
+    """Provide an ``AdminMissionService`` wired to the mission + user repos."""
+    return AdminMissionService(MissionRepository(db), UserRepository(db), AdminAuditRepository(db))
+
+
+AdminMissionServiceDep = Annotated[AdminMissionService, Depends(get_admin_mission_service)]
