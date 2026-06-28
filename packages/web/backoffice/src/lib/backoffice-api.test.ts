@@ -18,6 +18,8 @@ import {
 	fetchConfig,
 	fetchDashboard,
 	fetchGames,
+	fetchLoadout,
+	fetchLoadouts,
 	fetchMission,
 	fetchMissions,
 	fetchUser,
@@ -241,5 +243,35 @@ describe("backoffice-api", () => {
 		expect(mockApiFetch).toHaveBeenCalledWith("/internal/v1/missions/m1/clamp", {
 			method: "POST",
 		});
+	});
+
+	it("fetchLoadouts builds the query string and converts tallies", async () => {
+		mockApiFetch.mockResolvedValue({
+			items: [{ public_id: "l1", user_email: "a@b.com", available_minutes: 60 }],
+			total: 1,
+			action_counts: [{ action: "pending", count: 1 }],
+		});
+		const r = await fetchLoadouts({ q: "a@b.com", action: "pending", limit: 20, offset: 0 });
+		expect(mockApiFetch).toHaveBeenCalledWith(
+			"/internal/v1/loadouts?q=a%40b.com&action=pending&limit=20&offset=0",
+		);
+		expect(r.actionCounts[0]).toMatchObject({ action: "pending", count: 1 });
+		expect(r.items[0]).toMatchObject({
+			publicId: "l1",
+			userEmail: "a@b.com",
+			availableMinutes: 60,
+		});
+	});
+
+	it("fetchLoadouts omits the query string when no params", async () => {
+		mockApiFetch.mockResolvedValue({ items: [], total: 0, action_counts: [] });
+		await fetchLoadouts();
+		expect(mockApiFetch).toHaveBeenCalledWith("/internal/v1/loadouts");
+	});
+
+	it("fetchLoadout hits the detail path", async () => {
+		mockApiFetch.mockResolvedValue({ public_id: "l1" });
+		await fetchLoadout("l1");
+		expect(mockApiFetch).toHaveBeenCalledWith("/internal/v1/loadouts/l1");
 	});
 });

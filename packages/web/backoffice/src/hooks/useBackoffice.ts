@@ -17,6 +17,8 @@ import {
 	fetchConfig,
 	fetchDashboard,
 	fetchGames,
+	fetchLoadout,
+	fetchLoadouts,
 	fetchMission,
 	fetchMissions,
 	fetchUser,
@@ -33,6 +35,7 @@ import type {
 	ConfigValue,
 	GameEdit,
 	GameListParams,
+	LoadoutListParams,
 	MissionListParams,
 	UserListParams,
 } from "../types/backoffice";
@@ -205,6 +208,21 @@ export function useMissionActions() {
 	});
 
 	return { clamp };
+}
+
+export function useLoadouts(params: LoadoutListParams) {
+	return useQuery({
+		queryKey: [...BO, "loadouts", params],
+		queryFn: () => fetchLoadouts(params),
+	});
+}
+
+export function useLoadout(publicId: string | null) {
+	return useQuery({
+		queryKey: [...BO, "loadout", publicId],
+		queryFn: () => fetchLoadout(publicId as string),
+		enabled: !!publicId,
+	});
 }
 
 /** Set / clear a config override, invalidating the config list + audit. */

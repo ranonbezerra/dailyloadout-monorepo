@@ -5,11 +5,11 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from dailyloadout.infrastructure.db.models import LibraryEntry, Loadout
+from dailyloadout.infrastructure.db.models import Game, LibraryEntry, Loadout, User
 
 
 class LoadoutRepository:
@@ -116,6 +116,57 @@ class LoadoutRepository:
         stmt = select(func.count(Loadout.id)).where(Loadout.user_id == user_id)
         result = await self._session.execute(stmt)
         return result.scalar_one()
+
+    # ── Backoffice (admin) ──
+    async def search_admin(
+        self,
+        *,
+        query: str | None = None,
+        action: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list[tuple[Loadout, str, str | None]], int]:
+        """Return a page of loadouts (each with owner email + game title) + total.
+
+        Spans every user's suggestions. ``query`` matches the owner's email;
+        ``action`` filters the lifecycle state — ``"pending"`` maps to the
+        un-actioned (``action IS NULL``) rows the auto-ignore worker decays.
+        """
+        conditions: list[ColumnElement[bool]] = []
+        if action == "pending":
+            conditions.append(Loadout.action.is_(None))
+        elif action:
+            conditions.append(Loadout.action == action)
+        if query:
+            escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            conditions.append(User.email.ilike(f"%{escaped}%"))
+
+        total = (
+            await self._session.scalar(
+                select(func.count(Loadout.id))
+                .join(User, Loadout.user_id == User.id)
+                .where(*conditions)
+            )
+        ) or 0
+        result = await self._session.execute(
+            select(Loadout, User.email, Game.title)
+            .join(User, Loadout.user_id == User.id)
+            .outerjoin(LibraryEntry, Loadout.library_entry_id == LibraryEntry.id)
+            .outerjoin(Game, LibraryEntry.game_id == Game.id)
+            .where(*conditions)
+            .order_by(Loadout.created_at.desc(), Loadout.id.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        rows = [(loadout, email, title) for loadout, email, title in result.all()]
+        return rows, total
+
+    async def action_counts(self) -> dict[str, int]:
+        """Return ``{action: count}`` across all loadouts (NULL → ``"pending"``)."""
+        result = await self._session.execute(
+            select(Loadout.action, func.count(Loadout.id)).group_by(Loadout.action)
+        )
+        return {(action or "pending"): count for action, count in result.all()}
 
     async def get_stale_loadouts(self, max_hours: int = 24) -> list[Loadout]:
         """Return pending loadouts older than *max_hours*."""
