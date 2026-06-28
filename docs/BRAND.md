@@ -2,6 +2,8 @@
 
 **Version:** 1.0 | **Direction:** Night Den x Coral | **Last updated:** 2026-06
 
+> This is the **public, versioned extract**. The full brand guide is maintained locally in `branding/BRAND.md` (the canonical source); keep this file in sync with it.
+
 ---
 
 ## 1. Identity
@@ -14,21 +16,26 @@ DailyLoadout is the companion that knows your backlog and hands you the right ga
 **We are:** calm, decisive, warm, sharp, honest.
 **We are not:** gamified, guilt-inducing, military/tactical, loud, corporate.
 
+### A deliberate non-military stance
+
+The product borrows one word from gaming's tactical vocabulary — **loadout** — because it's now universal across gaming. The dictionary roots are military, but the *brand* is not. DailyLoadout is **not a war room**: no camouflage, crosshairs/reticles, "operator / deploy / soldier" theatrics, or dog tags. That register excludes the exact person this is for — someone settling in at night to continue a story-driven game. What we keep from "loadout" is *a deliberate pick for the moment*; what we drop is everything that reads as combat or hierarchy. The feeling is a **good game-night host**, not a commander. The warm lexicon (§5) is the default; the tactical flavor survives only as an opt-in easter egg (see the TODO in §5).
+
 ---
 
 ## 2. Logo
 
 ### The mark — "The Pick"
 
-A single lit slot with a play triangle: the one game, chosen and ready. Coral means lit / chosen for now.
+A single lit slot with a **game controller**: the one game, chosen and ready to play. Coral means lit / chosen for now. The controller is a generic, trademark-free modern gamepad (flat-top body, flared grips, D-pad + two sticks + a four-button diamond) — never a specific console's pad.
 
 | Asset | File | Use |
 | --- | --- | --- |
 | Mark (color) | `docs/brand/dailyloadout-mark.svg` | Primary mark |
 | Mark (mono) | `docs/brand/dailyloadout-mark-mono.svg` | Single-color contexts |
 | Wordmark | `docs/brand/dailyloadout-wordmark.svg` | Text-only branding |
-| Lockup | `docs/brand/dailyloadout-lockup-horizontal.svg` | Header, README, nav |
-| Lockup raster | `docs/brand/lockup-2x.png` | Slides, social |
+| Lockup (horizontal) | `docs/brand/dailyloadout-lockup-horizontal.svg` | Header, README, nav |
+| Lockup (stacked) | `docs/brand/dailyloadout-lockup-stacked.svg` | Square spaces, splash |
+| Lockup raster | `docs/brand/lockup-2x.png`, `lockup-stacked-2x.png` | Slides, social |
 | Mark raster | `docs/brand/mark-128.png`, `mark-256.png`, `mark-512.png` | Avatars, previews |
 
 ### Wordmark rules
@@ -40,7 +47,7 @@ A single lit slot with a play triangle: the one game, chosen and ready. Coral me
 - Clear space: margin equal to the height of the play triangle on all sides
 - Min size: mark 16 px; horizontal lockup 120 px wide
 - On dark backgrounds (default). On light, use the mono mark
-- Never recolor the play triangle, add bevels/shadows, stretch, or rotate
+- Never recolor the controller details, add bevels/shadows, stretch, or rotate
 - Never add tactical brackets, crosshairs, or targeting reticles
 
 ---
@@ -96,6 +103,10 @@ Dark-first. The base carries a faint indigo warmth (night den). Coral is the spo
 - For text on coral fill, use `--bg` (ink-on-coral > white-on-coral)
 - Never encode status by color alone — always pair with label or icon
 
+### Light mode (deferred)
+
+A light palette is sketched in the canonical guide (`--bg #F5F4F8`, `--surface #FFFFFF`, `--text #1A1822`; hero coral darkens to `--coral-deep`, violet to `--violet-deep`), but **light mode is not implemented** — the app ships dark-first only. Status: **deferred** (recorded here so the gap reads as a deliberate decision, not an unfinished promise).
+
 ---
 
 ## 4. Typography
@@ -136,11 +147,17 @@ Talk like the friend who knows your backlog. Concise. A little dry. Never hype, 
 - Respect autonomy — suggest, don't command
 - Admit uncertainty — weak context = say so
 
+The data model and code keep the tactical metaphor (`mission`, `briefing`, `debrief`) — that's precise and already built. **User-facing copy leans warm by default** (the table above); the tactical flavor is reserved for an opt-in "Operator mode" easter egg.
+
+> **TODO (owner decision — pending):** "Operator mode" is the only place the brand deliberately embraces the tactical register. Decide whether to **keep** it (opt-in easter egg), **rename** it (a warmer label for the same toggle), or **remove** it. Not resolved here — needs the owner's sign-off.
+>
+> **TODO (owner decision — pending):** A possible **product rename** is under evaluation. Until it's decided, nothing is renamed — the wordmark and `dailyloadout` identifiers stay as-is.
+
 ---
 
 ## 6. Asset locations
 
-### Web (`packages/web/public/`)
+### Web (`packages/web/app/public/`)
 
 | File | Source | Purpose |
 | --- | --- | --- |
@@ -151,7 +168,7 @@ Talk like the friend who knows your backlog. Concise. A little dry. Never hype, 
 
 The `index.html` `<head>` includes all necessary meta tags for OG, Twitter card, and apple-touch-icon.
 
-### Flutter app (`packages/app/`)
+### Flutter app (`packages/mobile/`)
 
 | File | Purpose |
 | --- | --- |
@@ -161,10 +178,42 @@ The `index.html` `<head>` includes all necessary meta tags for OG, Twitter card,
 To regenerate icons after changing the source:
 
 ```bash
-cd packages/app && dart run flutter_launcher_icons
+cd packages/mobile && dart run flutter_launcher_icons
 ```
 
 Configuration is in `pubspec.yaml` under `flutter_launcher_icons:`.
+
+#### Splash (not wired yet)
+
+A splash asset using the **lineup** device (one lit coral slot on Midnight) is exported to `docs/brand/splash.png` (source: `branding/social/dailyloadout-splash.svg`). To wire it with [`flutter_native_splash`](https://pub.dev/packages/flutter_native_splash) later — **not installed or generated yet; pending owner OK** — copy the PNG into the mobile package assets and add to `pubspec.yaml`:
+
+```yaml
+flutter_native_splash:
+  color: "#121119"          # Midnight base
+  image: assets/splash/splash.png  # the lineup device, centered
+  android_12:
+    color: "#121119"
+    image: assets/splash/splash.png
+```
+
+Then run `dart run flutter_native_splash:create`. Until then, the app has no branded splash.
+
+### Store assets
+
+Exported from `branding/` to `docs/brand/`:
+
+| Asset | File | Spec / use |
+| --- | --- | --- |
+| Android adaptive icon (foreground) | `docs/brand/adaptive-foreground.png` | The mark inside the 66% safe zone. Pair with `adaptive_icon_background: "#121119"` (Midnight) in `flutter_launcher_icons`; copy the PNG into the mobile assets and run `flutter_launcher_icons`. |
+| Google Play feature graphic | `docs/brand/feature-graphic.png` | 1024×500 store banner (lockup + tagline + lineup). |
+
+```yaml
+flutter_launcher_icons:
+  adaptive_icon_background: "#121119"
+  adaptive_icon_foreground: assets/icon/adaptive-foreground.png
+```
+
+**Follow-up (not generated yet):** App Store screenshot frame templates — per-device frames (6.7", 6.1", 12.9" iPad) with a Midnight backdrop and a coral caption band, into which marketing screenshots are dropped. Track as a separate design task.
 
 ### Shared (`docs/brand/`)
 
@@ -182,9 +231,9 @@ Tracked, canonical copies of brand assets for README, docs, and social:
 | `lockup-2x.png` | Raster lockup for slides |
 | `mark-128.png`, `mark-256.png`, `mark-512.png` | Raster marks |
 
-### Untracked source (`brand/`)
+### Untracked source (`branding/`)
 
-The `/brand/` directory is gitignored. It contains SVG sources, export scripts, and the full brand guide. Assets are exported from there and copied into the tracked locations above.
+The `branding/` directory is gitignored (the owner's brand studio). It holds the SVG sources, the export script (`branding/export.py`), and the canonical full guide (`branding/BRAND.md`). Running the script rasterizes to `branding/_export/` and then copies the versioned artifacts into the tracked locations above (`docs/brand/` and `packages/web/app/public/`).
 
 ---
 
@@ -223,7 +272,14 @@ Use in the root `README.md`:
   --violet-deep:  #6E5FD6;
   --violet-wash:  rgba(154, 140, 245, 0.12);
   --green:        #46C28A;
-  --red:          #E5484D;
+  --red:          #E5484D; /* destructive, outline-only, rare */
+
+  /* Status (no-guilt mapping) */
+  --status-backlog:   #8A8699;
+  --status-playing:   var(--coral);
+  --status-paused:    var(--violet);
+  --status-completed: var(--green);
+  --status-setaside:  var(--text-dim);
 
   --font-display: 'Outfit', system-ui, sans-serif;
   --font-body:    'Inter', system-ui, sans-serif;
@@ -239,7 +295,7 @@ Use in the root `README.md`:
 ## 9. Brand devices
 
 1. **The slot** — rounded-square cell. Lit (coral) = selected; outlined = waiting
-2. **The play triangle** — universal "play". Lives in mark, primary buttons, the pick
+2. **The controller** — universal "play". The gamepad silhouette lives in the mark and the pick (the `▸` glyph remains only as the recap-label typographic device)
 3. **The lineup** — row of slots, one lit. For empty states, loading, splash
 4. **The spotlight** — soft coral glow behind tonight's pick. One per screen
 5. **The recap label** — `PREVIOUSLY ON` in Outfit, uppercase, letter-spaced
