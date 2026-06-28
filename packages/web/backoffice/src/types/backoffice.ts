@@ -140,3 +140,51 @@ export interface GameEdit {
 	title?: string;
 	summary?: string;
 }
+
+// ── Captures (moderation) ──────────────────────────────────────────────
+
+export interface AdminCaptureSummary {
+	publicId: string;
+	userEmail: string | null;
+	inputType: string;
+	status: string;
+	candidateCount: number;
+	errorMessage: string | null;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface CaptureStatusCount {
+	status: string;
+	count: number;
+}
+
+export interface AdminCaptureList {
+	items: AdminCaptureSummary[];
+	total: number;
+	limit: number;
+	offset: number;
+	statusCounts: CaptureStatusCount[];
+}
+
+export interface AdminCaptureCandidate {
+	publicId: string;
+	title: string;
+	status: string;
+	confidence: number | null;
+	igdbId: number | null;
+	matchedGameTitle: string | null;
+}
+
+export interface AdminCaptureDetail extends AdminCaptureSummary {
+	rawText: string | null;
+	reprocessable: boolean;
+	candidates: AdminCaptureCandidate[];
+}
+
+export interface CaptureListParams {
+	q?: string;
+	status?: string;
+	limit?: number;
+	offset?: number;
+}

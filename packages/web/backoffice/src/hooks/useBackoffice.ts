@@ -11,17 +11,27 @@ import {
 	editGame,
 	fetchAdminMe,
 	fetchAudit,
+	fetchCapture,
+	fetchCaptures,
 	fetchConfig,
 	fetchDashboard,
 	fetchGames,
 	fetchUser,
 	fetchUsers,
 	promoteGame,
+	purgeCapture,
+	reprocessCapture,
 	setConfig,
 	unbanUser,
 	verifyUser,
 } from "../lib/backoffice-api";
-import type { ConfigValue, GameEdit, GameListParams, UserListParams } from "../types/backoffice";
+import type {
+	CaptureListParams,
+	ConfigValue,
+	GameEdit,
+	GameListParams,
+	UserListParams,
+} from "../types/backoffice";
 
 const BO = ["backoffice"] as const;
 
@@ -121,6 +131,43 @@ export function useGameActions() {
 	});
 
 	return { demote, promote, edit };
+}
+
+export function useCaptures(params: CaptureListParams) {
+	return useQuery({
+		queryKey: [...BO, "captures", params],
+		queryFn: () => fetchCaptures(params),
+	});
+}
+
+export function useCapture(publicId: string | null) {
+	return useQuery({
+		queryKey: [...BO, "capture", publicId],
+		queryFn: () => fetchCapture(publicId as string),
+		enabled: !!publicId,
+	});
+}
+
+/** Reprocess / purge a capture, invalidating the captures list + detail + dashboard + audit. */
+export function useCaptureActions() {
+	const qc = useQueryClient();
+	const invalidate = () => {
+		qc.invalidateQueries({ queryKey: [...BO, "captures"] });
+		qc.invalidateQueries({ queryKey: [...BO, "capture"] });
+		qc.invalidateQueries({ queryKey: [...BO, "dashboard"] });
+		qc.invalidateQueries({ queryKey: [...BO, "audit"] });
+	};
+
+	const reprocess = useMutation({
+		mutationFn: (publicId: string) => reprocessCapture(publicId),
+		onSuccess: invalidate,
+	});
+	const purge = useMutation({
+		mutationFn: (publicId: string) => purgeCapture(publicId),
+		onSuccess: invalidate,
+	});
+
+	return { reprocess, purge };
 }
 
 /** Set / clear a config override, invalidating the config list + audit. */

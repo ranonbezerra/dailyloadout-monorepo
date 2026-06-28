@@ -10,6 +10,8 @@ vi.mock("../lib/backoffice-api", () => ({
 	fetchConfig: vi.fn(),
 	fetchAudit: vi.fn(),
 	fetchGames: vi.fn(),
+	fetchCaptures: vi.fn(),
+	fetchCapture: vi.fn(),
 	banUser: vi.fn(),
 	unbanUser: vi.fn(),
 	verifyUser: vi.fn(),
@@ -18,12 +20,17 @@ vi.mock("../lib/backoffice-api", () => ({
 	demoteGame: vi.fn(),
 	promoteGame: vi.fn(),
 	editGame: vi.fn(),
+	reprocessCapture: vi.fn(),
+	purgeCapture: vi.fn(),
 }));
 
 import * as api from "../lib/backoffice-api";
 import {
 	useAdminMe,
 	useAudit,
+	useCapture,
+	useCaptureActions,
+	useCaptures,
 	useConfigActions,
 	useDashboard,
 	useGameActions,
@@ -71,6 +78,18 @@ describe("useBackoffice queries", () => {
 		expect(api.fetchUser).not.toHaveBeenCalled();
 		expect(u.result.current.fetchStatus).toBe("idle");
 	});
+
+	it("useCaptures passes params; useCapture is disabled when id is null", async () => {
+		(api.fetchCaptures as Mock).mockResolvedValue({ items: [], status_counts: [] });
+		const wrapper = createWrapper();
+
+		renderHook(() => useCaptures({ status: "failed" }), { wrapper });
+		const c = renderHook(() => useCapture(null), { wrapper });
+
+		await waitFor(() => expect(api.fetchCaptures).toHaveBeenCalledWith({ status: "failed" }));
+		expect(api.fetchCapture).not.toHaveBeenCalled();
+		expect(c.result.current.fetchStatus).toBe("idle");
+	});
 });
 
 describe("useBackoffice mutations", () => {
@@ -98,5 +117,16 @@ describe("useBackoffice mutations", () => {
 		expect(api.setConfig).toHaveBeenCalledWith("rate_limit_enabled", true);
 		expect(api.demoteGame).toHaveBeenCalledWith("g1");
 		expect(api.editGame).toHaveBeenCalledWith("g1", { title: "T" });
+	});
+
+	it("capture actions resolve and call the API", async () => {
+		(api.reprocessCapture as Mock).mockResolvedValue({});
+		(api.purgeCapture as Mock).mockResolvedValue(undefined);
+		const { result } = renderHook(() => useCaptureActions(), { wrapper: createWrapper() });
+
+		await result.current.reprocess.mutateAsync("c1");
+		await result.current.purge.mutateAsync("c1");
+		expect(api.reprocessCapture).toHaveBeenCalledWith("c1");
+		expect(api.purgeCapture).toHaveBeenCalledWith("c1");
 	});
 });

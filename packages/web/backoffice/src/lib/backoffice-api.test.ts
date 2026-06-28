@@ -12,12 +12,16 @@ import {
 	editGame,
 	fetchAdminMe,
 	fetchAudit,
+	fetchCapture,
+	fetchCaptures,
 	fetchConfig,
 	fetchDashboard,
 	fetchGames,
 	fetchUser,
 	fetchUsers,
 	promoteGame,
+	purgeCapture,
+	reprocessCapture,
 	setConfig,
 	unbanUser,
 	verifyUser,
@@ -161,5 +165,44 @@ describe("backoffice-api", () => {
 			method: "PATCH",
 			body: JSON.stringify({ title: "New Title" }),
 		});
+	});
+
+	it("fetchCaptures builds the query string and converts tallies", async () => {
+		mockApiFetch.mockResolvedValue({
+			items: [{ public_id: "c1", user_email: "a@b.com", candidate_count: 2 }],
+			total: 1,
+			status_counts: [{ status: "failed", count: 1 }],
+		});
+		const r = await fetchCaptures({ q: "a@b.com", status: "failed", limit: 20, offset: 0 });
+		expect(mockApiFetch).toHaveBeenCalledWith(
+			"/internal/v1/captures?q=a%40b.com&status=failed&limit=20&offset=0",
+		);
+		expect(r.statusCounts[0]).toMatchObject({ status: "failed", count: 1 });
+		expect(r.items[0]).toMatchObject({ publicId: "c1", userEmail: "a@b.com", candidateCount: 2 });
+	});
+
+	it("fetchCaptures omits the query string when no params", async () => {
+		mockApiFetch.mockResolvedValue({ items: [], total: 0, status_counts: [] });
+		await fetchCaptures();
+		expect(mockApiFetch).toHaveBeenCalledWith("/internal/v1/captures");
+	});
+
+	it("fetchCapture hits the detail path", async () => {
+		mockApiFetch.mockResolvedValue({ public_id: "c1", candidates: [] });
+		await fetchCapture("c1");
+		expect(mockApiFetch).toHaveBeenCalledWith("/internal/v1/captures/c1");
+	});
+
+	it("reprocessCapture POSTs to the reprocess path", async () => {
+		mockApiFetch.mockResolvedValue({ public_id: "c1", candidates: [] });
+		await reprocessCapture("c1");
+		expect(mockApiFetch).toHaveBeenCalledWith("/internal/v1/captures/c1/reprocess", {
+			method: "POST",
+		});
+	});
+
+	it("purgeCapture DELETEs the capture", async () => {
+		await purgeCapture("c1");
+		expect(mockApiFetch).toHaveBeenCalledWith("/internal/v1/captures/c1", { method: "DELETE" });
 	});
 });

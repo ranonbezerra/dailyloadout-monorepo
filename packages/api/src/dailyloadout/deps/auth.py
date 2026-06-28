@@ -8,6 +8,7 @@ from fastapi.security import OAuth2PasswordBearer
 from jwt import PyJWTError
 
 from dailyloadout.config import settings
+from dailyloadout.core.admin.captures_service import AdminCaptureService
 from dailyloadout.core.admin.config_service import AdminConfigService
 from dailyloadout.core.admin.dashboard_service import AdminDashboardService
 from dailyloadout.core.admin.games_service import AdminGameService
@@ -21,6 +22,10 @@ from dailyloadout.infrastructure.db.repositories.admin import (
     AdminRepository,
 )
 from dailyloadout.infrastructure.db.repositories.app_config import AppConfigRepository
+from dailyloadout.infrastructure.db.repositories.capture import (
+    CaptureCandidateRepository,
+    CaptureRepository,
+)
 from dailyloadout.infrastructure.db.repositories.game import GameRepository
 from dailyloadout.infrastructure.db.repositories.mission import MissionRepository
 from dailyloadout.infrastructure.db.repositories.oauth import OAuthIdentityRepository
@@ -28,7 +33,9 @@ from dailyloadout.infrastructure.db.repositories.refresh_token import (
     RefreshTokenRepository,
 )
 from dailyloadout.infrastructure.db.repositories.user import UserRepository
+from dailyloadout.workers.capture_processor import process_capture
 
+from .capture import IGDBClientDep, LLMClientDep
 from .db import DbSession
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/v1/auth/login", auto_error=False)
@@ -259,3 +266,27 @@ def get_admin_game_service(db: DbSession) -> AdminGameService:
 
 
 AdminGameServiceDep = Annotated[AdminGameService, Depends(get_admin_game_service)]
+
+
+def get_admin_capture_service(
+    db: DbSession,
+    llm_client: LLMClientDep,
+    igdb_client: IGDBClientDep,
+) -> AdminCaptureService:
+    """Provide an ``AdminCaptureService`` wired to the captures repos + pipeline.
+
+    Reuses the capture module's LLM/IGDB deps so the backoffice reprocess path
+    runs the exact same inline pipeline as a fresh user submission.
+    """
+    return AdminCaptureService(
+        CaptureRepository(db),
+        CaptureCandidateRepository(db),
+        AdminAuditRepository(db),
+        UserRepository(db),
+        llm_client=llm_client,
+        igdb_client=igdb_client,
+        process_capture=process_capture,
+    )
+
+
+AdminCaptureServiceDep = Annotated[AdminCaptureService, Depends(get_admin_capture_service)]

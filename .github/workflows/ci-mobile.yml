@@ -74,6 +74,9 @@ jobs:
       - name: Flutter test
         run: flutter test --coverage
 
+      - name: Enforce coverage ≥90%
+        run: bash tool/check_coverage.sh 90
+
   mobile-status:
     if: always()
     needs: [changes, mobile-quality, mobile-test]

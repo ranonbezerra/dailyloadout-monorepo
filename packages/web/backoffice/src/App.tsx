@@ -3,6 +3,7 @@ import { BackofficeGuard } from "./components/BackofficeGuard";
 import { BackofficeShell } from "./components/BackofficeShell";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AuditPage } from "./pages/AuditPage";
+import { CapturesPage } from "./pages/CapturesPage";
 import { ConfigPage } from "./pages/ConfigPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { GamesPage } from "./pages/GamesPage";
@@ -18,6 +19,7 @@ function BackofficeApp() {
 					<Route index element={<DashboardPage />} />
 					<Route path="users" element={<UsersPage />} />
 					<Route path="games" element={<GamesPage />} />
+					<Route path="captures" element={<CapturesPage />} />
 					<Route path="config" element={<ConfigPage />} />
 					<Route path="audit" element={<AuditPage />} />
 					<Route path="*" element={<Navigate to="/" replace />} />

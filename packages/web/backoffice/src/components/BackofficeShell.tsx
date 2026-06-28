@@ -1,6 +1,7 @@
 import { AppShell, Badge, Burger, Button, Code, Group, NavLink, Stack, Text } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
+	IconCamera,
 	IconDeviceGamepad2,
 	IconHistory,
 	IconLayoutDashboard,
@@ -18,6 +19,7 @@ const NAV = [
 	{ path: "/", label: "Dashboard", icon: IconLayoutDashboard, exact: true },
 	{ path: "/users", label: "Users", icon: IconUsers },
 	{ path: "/games", label: "Catalogue", icon: IconDeviceGamepad2 },
+	{ path: "/captures", label: "Captures", icon: IconCamera },
 	{ path: "/config", label: "Config", icon: IconSettings },
 	{ path: "/audit", label: "Audit log", icon: IconHistory },
 ];

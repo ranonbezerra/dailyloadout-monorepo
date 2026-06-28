@@ -8,12 +8,15 @@
 import { apiFetch } from "@dl/shared/api";
 import { snakeToCamel } from "@dl/shared/case-convert";
 import type {
+	AdminCaptureDetail,
+	AdminCaptureList,
 	AdminGameDetail,
 	AdminGameList,
 	AdminMe,
 	AdminUserDetail,
 	AdminUserList,
 	AuditList,
+	CaptureListParams,
 	ConfigList,
 	ConfigValue,
 	DashboardSummary,
@@ -122,6 +125,32 @@ export async function editGame(publicId: string, edit: GameEdit): Promise<AdminG
 			body: JSON.stringify(edit),
 		}),
 	);
+}
+
+export async function fetchCaptures(params: CaptureListParams = {}): Promise<AdminCaptureList> {
+	const sp = new URLSearchParams();
+	if (params.q) sp.set("q", params.q);
+	if (params.status) sp.set("status", params.status);
+	if (params.limit !== undefined) sp.set("limit", String(params.limit));
+	if (params.offset !== undefined) sp.set("offset", String(params.offset));
+	const qs = sp.toString();
+	return snakeToCamel<AdminCaptureList>(
+		await apiFetch<unknown>(`${BASE}/captures${qs ? `?${qs}` : ""}`),
+	);
+}
+
+export async function fetchCapture(publicId: string): Promise<AdminCaptureDetail> {
+	return snakeToCamel<AdminCaptureDetail>(await apiFetch<unknown>(`${BASE}/captures/${publicId}`));
+}
+
+export async function reprocessCapture(publicId: string): Promise<AdminCaptureDetail> {
+	return snakeToCamel<AdminCaptureDetail>(
+		await apiFetch<unknown>(`${BASE}/captures/${publicId}/reprocess`, { method: "POST" }),
+	);
+}
+
+export async function purgeCapture(publicId: string): Promise<void> {
+	await apiFetch<void>(`${BASE}/captures/${publicId}`, { method: "DELETE" });
 }
 
 export async function fetchAudit(

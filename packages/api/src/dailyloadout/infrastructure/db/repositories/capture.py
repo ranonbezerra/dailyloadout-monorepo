@@ -5,11 +5,11 @@ from __future__ import annotations
 from datetime import date
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import ColumnElement, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from dailyloadout.infrastructure.db.models import Capture, CaptureCandidate
+from dailyloadout.infrastructure.db.models import Capture, CaptureCandidate, User
 
 
 class CaptureRepository:
@@ -110,6 +110,73 @@ class CaptureRepository:
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
 
+    # ── Backoffice (admin) ──
+    async def search_admin(
+        self,
+        *,
+        query: str | None = None,
+        status: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list[tuple[Capture, str, int]], int]:
+        """Return a page of captures (each with owner email + candidate count).
+
+        Unlike the user-facing list, this spans every user's captures. ``query``
+        matches the owner's email; ``status`` filters the lifecycle state. The
+        candidate count is the review-queue size an admin weighs before purging
+        or reprocessing a stuck capture.
+        """
+        conditions: list[ColumnElement[bool]] = []
+        if status:
+            conditions.append(Capture.status == status)
+        if query:
+            escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            conditions.append(User.email.ilike(f"%{escaped}%"))
+
+        total = (
+            await self._session.scalar(
+                select(func.count(Capture.id))
+                .join(User, Capture.user_id == User.id)
+                .where(*conditions)
+            )
+        ) or 0
+        candidate_count = func.count(CaptureCandidate.id)
+        result = await self._session.execute(
+            select(Capture, User.email, candidate_count)
+            .join(User, Capture.user_id == User.id)
+            .outerjoin(CaptureCandidate, CaptureCandidate.capture_id == Capture.id)
+            .where(*conditions)
+            .group_by(Capture.id, User.email)
+            .order_by(Capture.created_at.desc(), Capture.id.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        rows = [(capture, email, count) for capture, email, count in result.all()]
+        return rows, total
+
+    async def get_admin(self, public_id: UUID) -> Capture | None:
+        """Return a capture by *public_id* WITHOUT eager-loading candidates.
+
+        The backoffice loads candidates separately (``get_all_for_capture``), so
+        keeping this collection unloaded avoids a stale in-memory collection (and
+        its delete-orphan cascade) interfering with the reprocess clear+re-insert.
+        """
+        stmt = select(Capture).where(Capture.public_id == public_id)
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def status_counts(self) -> dict[str, int]:
+        """Return ``{status: count}`` across all captures for the admin overview."""
+        result = await self._session.execute(
+            select(Capture.status, func.count(Capture.id)).group_by(Capture.status)
+        )
+        return {status: count for status, count in result.all()}
+
+    async def delete(self, capture: Capture) -> None:
+        """Hard-delete a capture (its candidates cascade away)."""
+        await self._session.delete(capture)
+        await self._session.flush()
+
 
 class CaptureCandidateRepository:
     """Thin data-access layer around the ``capture_candidates`` table."""
@@ -201,6 +268,13 @@ class CaptureCandidateRepository:
             candidate.igdb_genres = None
             candidate.igdb_first_release_date = None
             await self._session.flush()
+
+    async def delete_for_capture(self, capture_id: int) -> None:
+        """Delete every candidate of *capture_id* (clears stale rows before reprocess)."""
+        await self._session.execute(
+            delete(CaptureCandidate).where(CaptureCandidate.capture_id == capture_id)
+        )
+        await self._session.flush()
 
     async def get_all_for_capture(self, capture_id: int) -> list[CaptureCandidate]:
         """Return all candidates belonging to *capture_id*."""

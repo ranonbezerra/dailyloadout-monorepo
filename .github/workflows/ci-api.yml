@@ -150,7 +150,7 @@ jobs:
           REDIS_URL: redis://localhost:6380/0
           APP_ENV: test
           SECRET_KEY: test-secret
-        run: poetry run pytest -n auto --cov=src/dailyloadout --cov-report=term-missing --cov-fail-under=80
+        run: poetry run pytest -n auto --cov=src/dailyloadout --cov-report=term-missing --cov-fail-under=90
 
   api-status:
     if: always()

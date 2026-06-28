@@ -165,6 +165,63 @@ class GameEditRequest(BaseModel):
     summary: str | None = Field(default=None, max_length=5000)
 
 
+# ── Captures (moderation) ───────────────────────────────────────────────
+
+
+class AdminCaptureSummary(BaseModel):
+    """A capture as shown in the backoffice moderation table."""
+
+    public_id: UUID
+    user_email: str | None
+    input_type: str
+    status: str
+    candidate_count: int
+    error_message: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class CaptureStatusCount(BaseModel):
+    """A single ``(status, count)`` tally for the captures overview."""
+
+    status: str
+    count: int
+
+
+class AdminCaptureList(BaseModel):
+    """A page of captures plus the total count and per-status tallies."""
+
+    items: list[AdminCaptureSummary]
+    total: int
+    limit: int
+    offset: int
+    status_counts: list[CaptureStatusCount]
+
+
+class AdminCaptureCandidate(BaseModel):
+    """An extracted candidate inside a capture's review queue."""
+
+    public_id: UUID
+    title: str
+    status: str
+    confidence: float | None
+    igdb_id: int | None
+    matched_game_title: str | None
+
+
+class AdminCaptureDetail(AdminCaptureSummary):
+    """The full backoffice view of one capture, with its candidates.
+
+    ``reprocessable`` is True only when the source text survives (text/voice
+    captures); photo/import captures store their upload in a temp file that is
+    deleted after the first pass, so they cannot be re-run.
+    """
+
+    raw_text: str | None
+    reprocessable: bool
+    candidates: list[AdminCaptureCandidate]
+
+
 class DashboardSummary(BaseModel):
     """At-a-glance backoffice metrics for the dashboard landing screen."""
 
