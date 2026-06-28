@@ -1,14 +1,14 @@
 import { MantineProvider } from "@mantine/core";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, type Mock, vi } from "vitest";
-import type { DashboardSummary } from "../../types/backoffice";
+import type { DashboardSummary } from "../types/backoffice";
 import { DashboardPage } from "./DashboardPage";
 
-vi.mock("../../hooks/useBackoffice", () => ({
+vi.mock("../hooks/useBackoffice", () => ({
 	useDashboard: vi.fn(),
 }));
 
-import { useDashboard } from "../../hooks/useBackoffice";
+import { useDashboard } from "../hooks/useBackoffice";
 
 const mockUseDashboard = useDashboard as Mock;
 

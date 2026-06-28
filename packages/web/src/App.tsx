@@ -52,9 +52,6 @@ const MissionsPage = lazy(() =>
 	import("./pages/MissionsPage").then((m) => ({ default: m.MissionsPage })),
 );
 const PlayPage = lazy(() => import("./pages/PlayPage").then((m) => ({ default: m.PlayPage })));
-const BackofficeRoot = lazy(() =>
-	import("./pages/backoffice/BackofficeRoot").then((m) => ({ default: m.BackofficeRoot })),
-);
 
 function RouteFallback() {
 	return (
@@ -189,19 +186,6 @@ function App() {
 			{/* Public: the API redirects the browser here after a social login;
 			    the page completes the cookie→session bootstrap. */}
 			<Route path="/oauth/callback" element={<OAuthCallbackPage />} />
-			{/* Backoffice: a separate admin area with its own shell, gated by an
-			    admin check on top of the auth guard. Lazy so its bundle never ships
-			    to non-admins until they navigate here. */}
-			<Route
-				path="/backoffice/*"
-				element={
-					<ProtectedRoute>
-						<Suspense fallback={<RouteFallback />}>
-							<BackofficeRoot />
-						</Suspense>
-					</ProtectedRoute>
-				}
-			/>
 			<Route
 				path="/*"
 				element={

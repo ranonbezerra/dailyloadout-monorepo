@@ -32,8 +32,8 @@ import {
 	IconWorld,
 } from "@tabler/icons-react";
 import { useState } from "react";
-import { useGameActions, useGames } from "../../hooks/useBackoffice";
-import type { AdminGameSummary } from "../../types/backoffice";
+import { useGameActions, useGames } from "../hooks/useBackoffice";
+import type { AdminGameSummary } from "../types/backoffice";
 import { relativeTime } from "./shared";
 
 const PAGE_SIZE = 20;

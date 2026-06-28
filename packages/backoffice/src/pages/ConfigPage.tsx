@@ -17,8 +17,8 @@ import {
 import { notifications } from "@mantine/notifications";
 import { IconAlertTriangle, IconBolt, IconRestore } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
-import { useConfig, useConfigActions } from "../../hooks/useBackoffice";
-import type { ConfigEntry } from "../../types/backoffice";
+import { useConfig, useConfigActions } from "../hooks/useBackoffice";
+import type { ConfigEntry } from "../types/backoffice";
 
 const CATEGORY_LABELS: Record<string, string> = {
 	kill_switch: "Kill-switches",

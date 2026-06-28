@@ -2,23 +2,24 @@ import { AppShell, Badge, Burger, Button, Code, Group, NavLink, Stack, Text } fr
 import { useDisclosure } from "@mantine/hooks";
 import {
 	IconDeviceGamepad2,
-	IconExternalLink,
 	IconHistory,
 	IconLayoutDashboard,
+	IconLogout,
 	IconSettings,
 	IconShieldLock,
 	IconUsers,
 } from "@tabler/icons-react";
 import type { ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useAdminMe } from "../../hooks/useBackoffice";
+import { useAuthContext } from "../contexts/AuthContext";
+import { useAdminMe } from "../hooks/useBackoffice";
 
 const NAV = [
-	{ path: "/backoffice", label: "Dashboard", icon: IconLayoutDashboard, exact: true },
-	{ path: "/backoffice/users", label: "Users", icon: IconUsers },
-	{ path: "/backoffice/games", label: "Catalogue", icon: IconDeviceGamepad2 },
-	{ path: "/backoffice/config", label: "Config", icon: IconSettings },
-	{ path: "/backoffice/audit", label: "Audit log", icon: IconHistory },
+	{ path: "/", label: "Dashboard", icon: IconLayoutDashboard, exact: true },
+	{ path: "/users", label: "Users", icon: IconUsers },
+	{ path: "/games", label: "Catalogue", icon: IconDeviceGamepad2 },
+	{ path: "/config", label: "Config", icon: IconSettings },
+	{ path: "/audit", label: "Audit log", icon: IconHistory },
 ];
 
 /**
@@ -29,6 +30,7 @@ const NAV = [
 export function BackofficeShell({ children }: { children: ReactNode }) {
 	const location = useLocation();
 	const navigate = useNavigate();
+	const { logout } = useAuthContext();
 	const [opened, { toggle, close }] = useDisclosure();
 	const { data: me } = useAdminMe();
 
@@ -95,11 +97,11 @@ export function BackofficeShell({ children }: { children: ReactNode }) {
 					<Button
 						variant="subtle"
 						color="gray"
-						leftSection={<IconExternalLink size={16} />}
+						leftSection={<IconLogout size={16} />}
 						justify="flex-start"
-						onClick={() => navigate("/play")}
+						onClick={() => logout()}
 					>
-						Exit to app
+						Sign out
 					</Button>
 				</Stack>
 			</AppShell.Navbar>

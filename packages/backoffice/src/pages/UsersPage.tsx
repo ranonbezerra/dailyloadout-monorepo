@@ -27,8 +27,8 @@ import {
 	IconUserSearch,
 } from "@tabler/icons-react";
 import { useState } from "react";
-import { useUser, useUserActions, useUsers } from "../../hooks/useBackoffice";
-import type { AdminUserSummary } from "../../types/backoffice";
+import { useUser, useUserActions, useUsers } from "../hooks/useBackoffice";
+import type { AdminUserSummary } from "../types/backoffice";
 import { relativeTime } from "./shared";
 
 const PAGE_SIZE = 20;

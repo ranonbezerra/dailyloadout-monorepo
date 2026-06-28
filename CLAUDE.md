@@ -12,6 +12,7 @@ DailyLoadout is a gaming companion that helps players choose what to play. It co
 | --------- | ------ | ------- |
 | API | `packages/api/` | Python 3.14, FastAPI, SQLAlchemy 2.x async, Alembic, Pydantic v2, Taskiq + Redis, Ollama LLM, faster-whisper STT |
 | Web | `packages/web/` | Bun, React 19, TypeScript, Mantine v7, TanStack Query v5, Biome |
+| Backoffice | `packages/backoffice/` | Internal admin app (separate from Web). Bun, React 19, Mantine, TanStack Query, Biome. Talks to the same API's `/internal/v1`. |
 | App | `packages/app/` | Flutter 3.27+, Dart 3.6+, BLoC, go_router, dio |
 
 **Infrastructure:** PostgreSQL 18, Redis 7, Ollama (host), Taskiq worker (Docker)

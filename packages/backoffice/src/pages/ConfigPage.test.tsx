@@ -1,16 +1,16 @@
 import { MantineProvider } from "@mantine/core";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, type Mock, vi } from "vitest";
-import type { ConfigEntry } from "../../types/backoffice";
+import type { ConfigEntry } from "../types/backoffice";
 import { ConfigPage } from "./ConfigPage";
 
-vi.mock("../../hooks/useBackoffice", () => ({
+vi.mock("../hooks/useBackoffice", () => ({
 	useConfig: vi.fn(),
 	useConfigActions: vi.fn(),
 }));
 vi.mock("@mantine/notifications", () => ({ notifications: { show: vi.fn() } }));
 
-import { useConfig, useConfigActions } from "../../hooks/useBackoffice";
+import { useConfig, useConfigActions } from "../hooks/useBackoffice";
 
 const mockUseConfig = useConfig as Mock;
 const mockUseConfigActions = useConfigActions as Mock;
@@ -102,5 +102,50 @@ describe("ConfigPage", () => {
 		renderPage();
 		expect(screen.getByText("Kill-switches")).toBeInTheDocument();
 		expect(screen.getByText("Abuse caps")).toBeInTheDocument();
+	});
+
+	it("saves an edited integer knob", () => {
+		const set = { mutate: vi.fn(), isPending: false };
+		mockUseConfigActions.mockReturnValue({ set, clear: { mutate: vi.fn(), isPending: false } });
+		mockUseConfig.mockReturnValue({
+			data: {
+				items: [
+					entry({
+						key: "cost_user_per_day",
+						kind: "int",
+						category: "cap",
+						effectiveValue: 200,
+						baselineValue: 200,
+						minValue: 0,
+						maxValue: 1000,
+					}),
+				],
+			},
+			isLoading: false,
+			isError: false,
+		});
+		renderPage();
+		fireEvent.change(screen.getByDisplayValue("200"), { target: { value: "300" } });
+		fireEvent.click(screen.getByRole("button", { name: "Save" }));
+		expect(set.mutate).toHaveBeenCalledWith(
+			{ key: "cost_user_per_day", value: 300 },
+			expect.anything(),
+		);
+	});
+
+	it("renders loading and error states", () => {
+		mockUseConfigActions.mockReturnValue({
+			set: { mutate: vi.fn(), isPending: false },
+			clear: { mutate: vi.fn(), isPending: false },
+		});
+		mockUseConfig.mockReturnValue({ data: undefined, isLoading: true, isError: false });
+		const { rerender } = renderPage();
+		mockUseConfig.mockReturnValue({ data: undefined, isLoading: false, isError: true });
+		rerender(
+			<MantineProvider>
+				<ConfigPage />
+			</MantineProvider>,
+		);
+		expect(screen.getByText("Couldn't load config")).toBeInTheDocument();
 	});
 });

@@ -2,11 +2,14 @@ import { MantineProvider } from "@mantine/core";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, type Mock, vi } from "vitest";
-import { useAdminMe } from "../../hooks/useBackoffice";
+import { useAdminMe } from "../hooks/useBackoffice";
 import { BackofficeGuard } from "./BackofficeGuard";
 
-vi.mock("../../hooks/useBackoffice", () => ({
+vi.mock("../hooks/useBackoffice", () => ({
 	useAdminMe: vi.fn(),
+}));
+vi.mock("../contexts/AuthContext", () => ({
+	useAuthContext: () => ({ logout: vi.fn() }),
 }));
 
 const mockUseAdminMe = useAdminMe as Mock;

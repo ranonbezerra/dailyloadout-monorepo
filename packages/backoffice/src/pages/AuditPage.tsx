@@ -11,7 +11,7 @@ import {
 	Title,
 } from "@mantine/core";
 import { useState } from "react";
-import { useAudit } from "../../hooks/useBackoffice";
+import { useAudit } from "../hooks/useBackoffice";
 import { ActionLabel, relativeTime } from "./shared";
 
 const PAGE_SIZE = 25;

@@ -1,8 +1,8 @@
-import { Anchor, Button, Center, Loader, Stack, Text, Title } from "@mantine/core";
+import { Button, Center, Loader, Stack, Text, Title } from "@mantine/core";
 import { IconLock } from "@tabler/icons-react";
 import type { ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAdminMe } from "../../hooks/useBackoffice";
+import { useAuthContext } from "../contexts/AuthContext";
+import { useAdminMe } from "../hooks/useBackoffice";
 
 interface BackofficeGuardProps {
 	children: ReactNode;
@@ -15,7 +15,7 @@ interface BackofficeGuardProps {
  * "no access" screen rather than a broken panel.
  */
 export function BackofficeGuard({ children }: BackofficeGuardProps) {
-	const navigate = useNavigate();
+	const { logout } = useAuthContext();
 	const { isLoading, isError } = useAdminMe();
 
 	if (isLoading) {
@@ -33,15 +33,12 @@ export function BackofficeGuard({ children }: BackofficeGuardProps) {
 					<IconLock size={48} color="var(--mantine-color-violet-5)" />
 					<Title order={3}>Backoffice access required</Title>
 					<Text c="dimmed" ta="center">
-						Your account doesn't have admin rights for this area. If you believe this is a mistake,
-						contact another administrator.
+						This account doesn't have admin rights. If you believe this is a mistake, contact
+						another administrator — or sign in with an admin account.
 					</Text>
-					<Button variant="light" color="violet" onClick={() => navigate("/play")}>
-						Back to DailyLoadout
+					<Button variant="light" color="violet" onClick={() => logout()}>
+						Sign out
 					</Button>
-					<Anchor size="xs" c="dimmed" onClick={() => navigate("/play")}>
-						Return to the app
-					</Anchor>
 				</Stack>
 			</Center>
 		);

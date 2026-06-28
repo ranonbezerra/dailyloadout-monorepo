@@ -22,7 +22,7 @@ import {
 	IconShieldCheck,
 	IconUsers,
 } from "@tabler/icons-react";
-import { useDashboard } from "../../hooks/useBackoffice";
+import { useDashboard } from "../hooks/useBackoffice";
 import { ActionLabel, relativeTime } from "./shared";
 
 interface StatProps {

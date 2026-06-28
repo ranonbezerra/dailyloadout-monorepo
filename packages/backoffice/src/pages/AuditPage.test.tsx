@@ -1,14 +1,14 @@
 import { MantineProvider } from "@mantine/core";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, type Mock, vi } from "vitest";
-import type { AuditEntry } from "../../types/backoffice";
+import type { AuditEntry } from "../types/backoffice";
 import { AuditPage } from "./AuditPage";
 
-vi.mock("../../hooks/useBackoffice", () => ({
+vi.mock("../hooks/useBackoffice", () => ({
 	useAudit: vi.fn(),
 }));
 
-import { useAudit } from "../../hooks/useBackoffice";
+import { useAudit } from "../hooks/useBackoffice";
 
 const mockUseAudit = useAudit as Mock;
 

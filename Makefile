@@ -7,6 +7,7 @@ COMPOSE := docker compose -f docker-compose.yml -f docker-compose.dev.yml
 API_DIR := packages/api
 APP_DIR := packages/app
 WEB_DIR := packages/web
+BO_DIR  := packages/backoffice
 FLUTTER := fvm flutter
 DART    := fvm dart
 APP_API_URL := $(shell sed -n 's/^API_URL=//p' $(APP_DIR)/.env 2>/dev/null)
@@ -179,6 +180,38 @@ web-e2e: ## Run Playwright e2e tests (API mocked, headless Chromium)
 	cd $(WEB_DIR) && bun run e2e
 
 # ─────────────────────────────────────────────
+# Backoffice (packages/backoffice) — internal admin app
+# ─────────────────────────────────────────────
+
+.PHONY: backoffice
+backoffice: ## Run backoffice dev server (vite, port 5174)
+	cd $(BO_DIR) && bun run dev
+
+.PHONY: backoffice-test
+backoffice-test: ## Run backoffice tests
+	cd $(BO_DIR) && bun run test
+
+.PHONY: backoffice-lint
+backoffice-lint: ## Lint backoffice (biome check)
+	cd $(BO_DIR) && bun run lint
+
+.PHONY: backoffice-typecheck
+backoffice-typecheck: ## Type-check backoffice (tsc)
+	cd $(BO_DIR) && bun run tsc -b --noEmit
+
+.PHONY: backoffice-build
+backoffice-build: ## Build backoffice for production
+	cd $(BO_DIR) && bun run build
+
+.PHONY: backoffice-fmt
+backoffice-fmt: ## Format backoffice code
+	cd $(BO_DIR) && bun run format
+
+.PHONY: backoffice-install
+backoffice-install: ## Install backoffice dependencies
+	cd $(BO_DIR) && bun install
+
+# ─────────────────────────────────────────────
 # App (packages/app) — Flutter
 # ─────────────────────────────────────────────
 
@@ -231,6 +264,15 @@ quality-web: ## Full Web quality gate
 	$(call check,Vite build,             cd $(WEB_DIR) && bun run build > /dev/null 2>&1)
 	@echo "\033[1;32m══════ Web: All checks passed ══════\033[0m\n"
 
+.PHONY: quality-backoffice
+quality-backoffice: ## Full Backoffice quality gate
+	@echo "\n\033[1;36m══════ Backoffice Quality Gate ══════\033[0m"
+	$(call check,Biome lint + format,    cd $(BO_DIR) && bun run lint)
+	$(call check,TypeScript check,       cd $(BO_DIR) && bun run tsc -b --noEmit)
+	$(call check,Vitest + coverage ≥90%, cd $(BO_DIR) && bun run test --coverage)
+	$(call check,Vite build,             cd $(BO_DIR) && bun run build > /dev/null 2>&1)
+	@echo "\033[1;32m══════ Backoffice: All checks passed ══════\033[0m\n"
+
 .PHONY: quality-app
 quality-app: ## Full App quality gate
 	@echo "\n\033[1;36m══════ App Quality Gate ══════\033[0m"
@@ -248,13 +290,14 @@ pre-commit: ## Run pre-commit hooks on all files
 # ─────────────────────────────────────────────
 
 .PHONY: quality
-quality: ## Run ALL quality gates (pre-commit + api + web + app)
+quality: ## Run ALL quality gates (pre-commit + api + web + backoffice + app)
 	@echo "\n\033[1;35m╔══════════════════════════════════════╗\033[0m"
 	@echo "\033[1;35m║     DailyLoadout — Quality Gate      ║\033[0m"
 	@echo "\033[1;35m╚══════════════════════════════════════╝\033[0m"
 	$(call check,Pre-commit hooks,  pre-commit run --all-files)
 	@$(MAKE) quality-api
 	@$(MAKE) quality-web
+	@$(MAKE) quality-backoffice
 	@$(MAKE) quality-app
 	$(call warn,Code duplication (jscpd ≤5%),  npx jscpd --silent)
 	@echo "\033[1;32m╔══════════════════════════════════════╗\033[0m"
