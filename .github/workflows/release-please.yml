@@ -39,7 +39,9 @@ jobs:
   # created by the GITHUB_TOKEN does not itself trigger other workflows.
   deploy-api-production:
     needs: release-please
-    if: needs.release-please.outputs.api_released == 'true'
+    # Belt-and-suspenders: the master DEPLOY_ENABLED flag must be on AND a
+    # release was actually cut. (deploy-api.yml re-checks the flag too.)
+    if: vars.DEPLOY_ENABLED == 'true' && needs.release-please.outputs.api_released == 'true'
     uses: ./.github/workflows/deploy-api.yml
     with:
       environment: production
