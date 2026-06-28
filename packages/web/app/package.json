@@ -32,7 +32,7 @@
 		"recharts": "^3.8.1"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.5.0",
+		"@biomejs/biome": "2.5.1",
 		"@eslint/js": "^10.0.1",
 		"@playwright/test": "^1.61.1",
 		"@testing-library/jest-dom": "^6.9.1",
