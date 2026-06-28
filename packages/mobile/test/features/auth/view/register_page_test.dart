@@ -149,7 +149,7 @@ void main() {
         () => authBloc.add(
           const RegisterRequested(
             email: 'john@example.com',
-            password: 'password123',
+            password: 'password123', // pragma: allowlist secret
             displayName: 'John Doe',
           ),
         ),

@@ -118,7 +118,7 @@ void main() {
           () => authBloc.add(
             const LoginRequested(
               email: 'test@example.com',
-              password: 'password123',
+              password: 'password123', // pragma: allowlist secret
             ),
           ),
         ).called(1);

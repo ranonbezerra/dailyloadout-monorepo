@@ -154,7 +154,10 @@ void main() {
         },
         build: buildBloc,
         act: (bloc) => bloc.add(
-          const LoginRequested(email: 'user@example.com', password: 'secret'),
+          const LoginRequested(
+            email: 'user@example.com',
+            password: 'secret', // pragma: allowlist secret
+          ),
         ),
         expect: () => [const AuthLoading(), Authenticated(user: testUser)],
         verify: (_) {
