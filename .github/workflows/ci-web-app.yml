@@ -51,7 +51,7 @@ jobs:
       - name: Lint + typecheck + build + test
         run: cd app && bun run lint && bun run tsc -b --noEmit && bun run build && bun run test --coverage
 
-  app-status:
+  webapp-status:
     if: always()
     needs: [changes, app]
     runs-on: ubuntu-latest
