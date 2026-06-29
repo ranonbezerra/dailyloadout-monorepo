@@ -25,3 +25,11 @@ services:
       - "1"
       - "--loglevel"
       - "warning"
+
+  # Publish SearXNG on the host loopback so the host-run API (`make api`) can
+  # reach it for deep-research recaps — it matches the default
+  # SEARXNG_BASE_URL=http://localhost:8888. Without this the host API can't
+  # resolve the internal-only `searxng:8080`, so deep recap degrades to quick.
+  searxng:
+    ports:
+      - "127.0.0.1:${SEARXNG_PORT:-8888}:8080"
