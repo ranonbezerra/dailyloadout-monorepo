@@ -14,6 +14,9 @@ class DeepRecapRequest:
 
     context: PlaySessionContext
     thread_id: str
+    # Bypass the recap cache and recompute — deep is the on-demand "research my
+    # current spot now" action, so user-initiated previews ask for a fresh run.
+    force_refresh: bool = False
 
 
 @dataclass

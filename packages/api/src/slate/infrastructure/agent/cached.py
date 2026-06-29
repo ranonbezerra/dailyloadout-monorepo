@@ -40,6 +40,7 @@ class CachedRecapAgent(AbstractRecapAgent):
             loads=lambda d: RecapResult(**d),
             dumps=_to_dict,
             cache_if=lambda r: r.source == "deep_research" and bool(r.text),
+            skip_cache=req.force_refresh,
         )
 
 

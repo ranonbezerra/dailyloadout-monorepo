@@ -53,6 +53,18 @@ async def test_recap_miss_then_hit_round_trips() -> None:
     assert second.suspicious is False
 
 
+async def test_recap_force_refresh_bypasses_cache() -> None:
+    """force_refresh recomputes every time and never serves a stale cache hit."""
+    inner = _FakeAgent(RecapResult(text="Go north.", source="deep_research", suspicious=False))
+    agent = CachedRecapAgent(inner, FakeCache(), ttl_seconds=100)
+    fresh_req = DeepRecapRequest(context=_CTX, thread_id="t1", force_refresh=True)
+
+    await agent.deep_recap(fresh_req)
+    await agent.deep_recap(fresh_req)
+
+    assert inner.calls == 2  # both recomputed; the cache is bypassed
+
+
 async def test_recap_quick_fallback_not_cached() -> None:
     inner = _FakeAgent(RecapResult(text="meh", source="quick_fallback", suspicious=False))
     agent = CachedRecapAgent(inner, FakeCache(), ttl_seconds=100)

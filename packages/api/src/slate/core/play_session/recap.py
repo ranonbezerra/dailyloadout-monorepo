@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from typing import Literal
+from uuid import uuid4
 
 import structlog
 
@@ -192,8 +193,13 @@ async def generate_recap_for_mode(
 
     context = await build_play_session_context(play_session_repo, library_repo, llm_client, entry)
     try:
+        # A unique thread_id per run (the recap graph is one-shot, not resumable —
+        # a stable id would resume/accumulate prior state) + force_refresh so an
+        # on-demand deep recap is always freshly researched, never a stale cache hit.
         result = await asyncio.wait_for(
-            agent.deep_recap(DeepRecapRequest(context=context, thread_id=str(entry.public_id))),
+            agent.deep_recap(
+                DeepRecapRequest(context=context, thread_id=uuid4().hex, force_refresh=True)
+            ),
             timeout=settings.deep_recap_deadline_seconds + 5,
         )
     except (TimeoutError, ResearchUnavailableError):
