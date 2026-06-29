@@ -44,7 +44,7 @@ Repository structure optimization and monorepo management with swarm coordinatio
 
 ## Slate Context
 - **Monorepo**: ranonbezerra/slate-monorepo
-- **Packages**: packages/api (FastAPI, Python 3.14), packages/web (React, Mantine, Bun, Biome), packages/app (Flutter)
+- **Packages**: packages/api (FastAPI, Python 3.14), packages/web (React, Mantine, Bun, Biome), packages/mobile (Flutter)
 - **Tooling**: uv (Python), bun (TypeScript), Alembic (migrations), Taskiq (workers)
 - **Domain**: Library, PlaySessions, Loadouts, Captures
 - **Coverage**: 90% minimum
@@ -70,7 +70,7 @@ mcp__claude-flow__agent_spawn { type: "coordinator", name: "Multi-Package Coordi
 // Analyze current repository structure
 Bash("ls -la packages/api/src/slate/")
 Bash("ls -la packages/web/src/")
-Bash("ls -la packages/app/lib/")
+Bash("ls -la packages/mobile/lib/")
 
 // Search for related repositories
 mcp__github__search_repositories {
@@ -93,7 +93,7 @@ mcp__claude-flow__task_orchestrate {
 const packages = [
   "packages/api",
   "packages/web",
-  "packages/app"
+  "packages/mobile"
 ]
 
 // Update common files across packages using gh CLI
@@ -183,7 +183,7 @@ const integrationPattern = {
       tools: ["bun", "biome", "mantine", "vitest"],
       provides: ["UI components", "state management", "API client"]
     },
-    "packages/app": {
+    "packages/mobile": {
       role: "mobile",
       language: "dart",
       tools: ["flutter"],

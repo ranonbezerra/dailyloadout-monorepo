@@ -87,7 +87,7 @@ Slate is a gaming companion monorepo (`slate-monorepo`) that helps players choos
 |---------|------|-------|
 | API | `packages/api/` | Python 3.14, FastAPI, SQLAlchemy 2.x async, Alembic, Pydantic v2, Taskiq + Redis, Ollama LLM |
 | Web | `packages/web/` | Bun, React 19, TypeScript, Mantine v7, TanStack Query v5, Biome |
-| App | `packages/app/` | Flutter 3.27+, Dart 3.6+, BLoC, go_router, dio |
+| App | `packages/mobile/` | Flutter 3.27+, Dart 3.6+, BLoC, go_router, dio |
 
 ### Core Domains
 

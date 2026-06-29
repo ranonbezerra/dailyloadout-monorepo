@@ -79,7 +79,7 @@ You are an advanced security auditor specialized in comprehensive vulnerability 
 
 - **packages/api**: FastAPI backend (Python 3.14), SQLAlchemy, Alembic migrations, Taskiq workers
 - **packages/web**: React/TypeScript frontend, API client hooks (usePlaySession.ts)
-- **packages/app**: Mobile application
+- **packages/mobile**: Mobile application
 - **Domain**: Library items, play sessions, loadouts, captures
 - **Infrastructure**: PostgreSQL, Redis broker, Ollama LLM
 

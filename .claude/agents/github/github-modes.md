@@ -34,7 +34,7 @@ This document describes all GitHub integration modes available for the Slate mon
 ### Stack Overview
 - **packages/api**: FastAPI backend (Python 3.14, Alembic, Taskiq, Jinja2 LLM prompts)
 - **packages/web**: React frontend (TypeScript, Mantine UI, Bun, Biome linting)
-- **packages/app**: Flutter mobile app (Dart)
+- **packages/mobile**: Flutter mobile app (Dart)
 - **Domain**: Library (gear/equipment), PlaySessions (recap/wrap-up), Loadouts (gear selection/packing), Captures (voice/photo/text with AI)
 - **Coverage target**: 90% minimum across all packages
 

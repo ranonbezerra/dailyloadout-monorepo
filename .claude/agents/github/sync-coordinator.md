@@ -36,11 +36,11 @@ hooks:
 # GitHub Sync Coordinator
 
 ## Purpose
-Multi-package synchronization and version alignment with swarm coordination for seamless integration between packages/api, packages/web, and packages/app through intelligent multi-agent orchestration in the Slate monorepo.
+Multi-package synchronization and version alignment with swarm coordination for seamless integration between packages/api, packages/web, and packages/mobile through intelligent multi-agent orchestration in the Slate monorepo.
 
 ## Slate Context
 - **Monorepo**: ranonbezerra/slate-monorepo
-- **Packages**: packages/api (FastAPI, Python 3.14, uv), packages/web (React, Mantine, Bun, Biome), packages/app (Flutter)
+- **Packages**: packages/api (FastAPI, Python 3.14, uv), packages/web (React, Mantine, Bun, Biome), packages/mobile (Flutter)
 - **Tooling**: Alembic (migrations), Taskiq (workers), Biome (lint)
 - **Coverage target**: 90% minimum
 - **Domain**: Library, PlaySessions, Loadouts, Captures
@@ -75,12 +75,12 @@ mcp__claude-flow__agent_spawn { type: "tester", name: "Validation Engineer" }
 // Analyze current package states
 Read("packages/api/pyproject.toml")
 Read("packages/web/package.json")
-Read("packages/app/pubspec.yaml")
+Read("packages/mobile/pubspec.yaml")
 
 // Synchronize versions and dependencies
 Bash("cd packages/api && uv lock --upgrade")
 Bash("cd packages/web && bun update")
-Bash("cd packages/app && flutter pub upgrade")
+Bash("cd packages/mobile && flutter pub upgrade")
 
 // Orchestrate validation
 mcp__claude-flow__task_orchestrate {
@@ -131,7 +131,7 @@ Bash(`gh pr create \
 ### Packages Updated
 - packages/api: PlaySession endpoints, Alembic migration, Taskiq worker
 - packages/web: Mantine recap modal, React hooks, API client
-- packages/app: Flutter play session screen (placeholder)
+- packages/mobile: Flutter play session screen (placeholder)
 
 ### Testing
 - [x] API: pytest coverage >= 90%
@@ -159,7 +159,7 @@ Generated with Claude Code"`)
   // Read current state of all packages
   Read("packages/api/pyproject.toml")
   Read("packages/web/package.json")
-  Read("packages/app/pubspec.yaml")
+  Read("packages/mobile/pubspec.yaml")
   Read("CLAUDE.md")
 
   // Run validation tests
@@ -183,7 +183,7 @@ Generated with Claude Code"`)
     key: "sync/complete/status",
     value: {
       timestamp: Date.now(),
-      packages_synced: ["packages/api", "packages/web", "packages/app"],
+      packages_synced: ["packages/api", "packages/web", "packages/mobile"],
       version_alignment: "completed",
       documentation_sync: "completed",
       test_validation: "passed",
@@ -216,7 +216,7 @@ const apiSyncPattern = {
   sourceOfTruth: "packages/api (FastAPI endpoints)",
   consumers: [
     "packages/web/src/lib/*-api.ts",
-    "packages/app/lib/api/"
+    "packages/mobile/lib/api/"
   ],
   validation: "cross-package integration tests"
 }
@@ -226,7 +226,7 @@ const apiSyncPattern = {
 ```javascript
 // Comprehensive testing across synchronized packages
 const testMatrix = {
-  packages: ["packages/api", "packages/web", "packages/app"],
+  packages: ["packages/api", "packages/web", "packages/mobile"],
   tests: [
     "api_unit_tests",        // uv run pytest --cov-fail-under=90
     "web_unit_tests",        // bun test --coverage

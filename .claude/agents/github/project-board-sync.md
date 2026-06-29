@@ -41,7 +41,7 @@ hooks:
 Synchronize AI swarms with GitHub Projects for visual task management, progress tracking, and team coordination for the Slate monorepo.
 
 ## Slate Context
-- **Monorepo**: packages/api, packages/web, packages/app
+- **Monorepo**: packages/api, packages/web, packages/mobile
 - **EPIC tracking**: EPICs organized by feature area (Library, PlaySessions, Loadouts, Captures)
 - **Stack**: FastAPI (Python 3.14, uv), React+Mantine (Bun, Biome), Flutter
 - **Coverage target**: 90% minimum
@@ -65,7 +65,7 @@ npx claude-flow@v3alpha github board-init \
 gh project field-create $PROJECT_ID --owner @me \
   --name "Package" \
   --data-type "SINGLE_SELECT" \
-  --single-select-options "packages/api,packages/web,packages/app"
+  --single-select-options "packages/api,packages/web,packages/mobile"
 ```
 
 ### 2. Task Synchronization
@@ -121,7 +121,7 @@ mapping:
   fields:
     - name: "Package"
       type: select
-      options: ["packages/api", "packages/web", "packages/app"]
+      options: ["packages/api", "packages/web", "packages/mobile"]
     - name: "EPIC"
       type: select
       source: task.epic
@@ -256,7 +256,7 @@ npx claude-flow@v3alpha github sprint-manage \
 # Track EPIC progress across packages
 npx claude-flow@v3alpha github epic-track \
   --epic "PlaySession Recap" \
-  --packages "packages/api,packages/web,packages/app" \
+  --packages "packages/api,packages/web,packages/mobile" \
   --update-board \
   --show-dependencies \
   --predict-completion
@@ -277,7 +277,7 @@ npx claude-flow@v3alpha github epic-track \
 - Regular backups
 
 ### 3. Slate-Specific Labels
-- `packages/api`, `packages/web`, `packages/app` for package tracking
+- `packages/api`, `packages/web`, `packages/mobile` for package tracking
 - `epic/N` for EPIC association
 - `play session`, `loadout`, `capture`, `library` for domain areas
 - `coverage-pass`, `coverage-fail` for test compliance

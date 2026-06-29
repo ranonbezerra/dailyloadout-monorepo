@@ -19,7 +19,7 @@ line in the same repo. `+45` is the store build number (mirrors `pubspec.yaml`'s
 | --- | --- | --- | --- |
 | API | `packages/api/pyproject.toml` (`[tool.poetry] version`) | `api/vX.Y.Z` | release-please |
 | Web | `packages/web/package.json` (`version`) | `web/vX.Y.Z` | release-please |
-| App | `packages/app/pubspec.yaml` (`version: X.Y.Z+BUILD`) | `app/vX.Y.Z+BUILD` | *its own store pipeline (add later)* |
+| App | `packages/mobile/pubspec.yaml` (`version: X.Y.Z+BUILD`) | `app/vX.Y.Z+BUILD` | *its own store pipeline (add later)* |
 | Backoffice | its `package.json` | `backoffice/vX.Y.Z` | *add when built* |
 
 > Only **api** and **web** are wired into release-please today

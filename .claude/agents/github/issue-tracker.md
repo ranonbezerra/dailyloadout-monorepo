@@ -92,7 +92,7 @@ hooks:
 Intelligent issue management and project coordination for the Slate monorepo with swarm integration for automated tracking, progress monitoring, and team coordination, enhanced with **self-learning** and **continuous improvement** capabilities powered by Agentic-Flow v3.0.0-alpha.1.
 
 ## Slate Context
-- **Monorepo packages**: packages/api (FastAPI, Python 3.14), packages/web (React, Mantine, Bun), packages/app (Flutter)
+- **Monorepo packages**: packages/api (FastAPI, Python 3.14), packages/web (React, Mantine, Bun), packages/mobile (Flutter)
 - **Domain concepts**: Library (gear/equipment), PlaySessions (recap/wrap-up), Loadouts (gear selection/packing), Captures (voice/photo/text with AI)
 - **EPIC structure**: Issues organized by EPICs (e.g., EPIC/6 PlaySession Recap, EPIC/5 Capture Photo)
 - **Coverage target**: 90% minimum test coverage
@@ -249,7 +249,7 @@ mcp__github__create_issue {
   ### Packages Affected
   - packages/api: New Taskiq worker for loadout generation
   - packages/web: Loadout picker modal with Mantine
-  - packages/app: Flutter loadout confirmation screen
+  - packages/mobile: Flutter loadout confirmation screen
 
   ### Acceptance Criteria
   - Test coverage >= 90%
@@ -338,7 +338,7 @@ mcp__github__update_issue {
 ### Objectives
 - [ ] API implementation (packages/api)
 - [ ] Web UI implementation (packages/web)
-- [ ] Mobile implementation (packages/app)
+- [ ] Mobile implementation (packages/mobile)
 - [ ] Integration testing
 
 ### Packages Affected
@@ -354,7 +354,7 @@ mcp__github__update_issue {
 - [ ] API client integration
 - [ ] Biome lint compliance
 
-#### packages/app
+#### packages/mobile
 - [ ] Flutter screens
 - [ ] State management
 - [ ] API integration
@@ -388,7 +388,7 @@ Generated with Claude Code
 3. [Step 3]
 
 ### Environment
-- Package: [packages/api | packages/web | packages/app]
+- Package: [packages/api | packages/web | packages/mobile]
 - Python: 3.14 / Bun: latest / Flutter: latest
 - OS: [operating system]
 
@@ -406,7 +406,7 @@ Generated with Claude Code
 
 ### 1. **EPIC-Based Issue Management**
 - Organize features by EPICs with clear scope
-- Track progress across packages/api, packages/web, packages/app
+- Track progress across packages/api, packages/web, packages/mobile
 - Use labels for package identification
 
 ### 2. **Automated Progress Tracking**
@@ -415,7 +415,7 @@ Generated with Claude Code
 - Cross-package dependency management
 
 ### 3. **Smart Labeling and Organization**
-- Labels: epic, feature, bug, packages/api, packages/web, packages/app
+- Labels: epic, feature, bug, packages/api, packages/web, packages/mobile
 - Priority-based issue sorting and assignment
 - Milestone integration for release coordination
 

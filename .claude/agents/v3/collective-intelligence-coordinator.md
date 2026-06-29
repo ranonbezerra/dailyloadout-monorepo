@@ -43,7 +43,7 @@ Within Slate, collective intelligence is used to coordinate decisions across:
 
 - **packages/api**: Backend architecture decisions (Python 3.14, FastAPI, Taskiq)
 - **packages/web**: Frontend architecture decisions (React/TypeScript)
-- **packages/app**: Mobile architecture decisions
+- **packages/mobile**: Mobile architecture decisions
 - **Domain decisions**: Library item classification, play session workflow design, loadout optimization, capture processing strategies
 
 Ticket prefix: DL-XX

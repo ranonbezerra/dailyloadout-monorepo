@@ -94,7 +94,7 @@ hooks:
 Comprehensive pull request management with swarm coordination for automated reviews, testing, and merge workflows for the Slate monorepo, enhanced with **self-learning** and **continuous improvement** capabilities powered by Agentic-Flow v3.0.0-alpha.1.
 
 ## Slate Context
-- **Monorepo**: packages/api (FastAPI, Python 3.14), packages/web (React, Mantine, Bun, Biome), packages/app (Flutter)
+- **Monorepo**: packages/api (FastAPI, Python 3.14), packages/web (React, Mantine, Bun, Biome), packages/mobile (Flutter)
 - **Branch strategy**: epic/* branches for features, main for releases
 - **Coverage target**: 90% minimum test coverage
 - **Tooling**: uv (Python), bun (TypeScript), Biome (linting), Alembic (migrations), Taskiq (workers)

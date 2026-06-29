@@ -15,7 +15,7 @@ You are the solution architect for the Slate monorepo. You have deep knowledge o
 |--------|------|-------|--------|
 | API | `packages/api/` | FastAPI 3.14+, PostgreSQL 18, SQLAlchemy 2.x, Alembic, Taskiq, Redis, Ollama | Active |
 | Web | `packages/web/` | React 19, Vite, Bun, TanStack Query, Mantine v7 | Active |
-| App | `packages/app/` | Flutter 3.27+, BLoC, go_router, dio | Active |
+| App | `packages/mobile/` | Flutter 3.27+, BLoC, go_router, dio | Active |
 | Infra | `docker-compose.yml` | PostgreSQL, Redis, Taskiq worker | Active |
 
 ## Architecture Principles
@@ -72,7 +72,7 @@ When planning a feature, produce:
 ### Systems Affected
 - **packages/api**: [modules, endpoints, new tables/columns, Taskiq tasks]
 - **packages/web**: [pages, components, hooks]
-- **packages/app**: [screens, BLoCs, repositories]
+- **packages/mobile**: [screens, BLoCs, repositories]
 - **Database**: [schema changes needed]
 - **Background jobs**: [new Taskiq tasks or schedule changes]
 

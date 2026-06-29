@@ -42,7 +42,7 @@ Total: **10 weekends ≈ 2.5 months** for v1.0 (assuming 8–12 productive hours
 - [ ] `.env.example` complete (every env var from ARCHITECTURE.md §7)
 - [ ] `packages/api/pyproject.toml` with Poetry, Python 3.14, base deps (FastAPI, Pydantic v2, SQLAlchemy, asyncpg, alembic, arq, structlog, ruff, mypy, pytest, pytest-asyncio)
 - [ ] `packages/api/src/slate/main.py` with minimal app factory + `/health`
-- [ ] `packages/app/` initialized via `flutter create`, configured for iOS/Android. Renders "Slate WIP"
+- [ ] `packages/mobile/` initialized via `flutter create`, configured for iOS/Android. Renders "Slate WIP"
 - [ ] `packages/web/` initialized with Vite (Bun), React 19, TypeScript, Mantine v8. Renders empty layout on `localhost:3200`
 - [ ] GitHub Actions: three separate workflows (`ci-api.yml`, `ci-app.yml`, `ci-web.yml`) running lint + test on every PR
 - [ ] Issue templates (bug, feature, question)
@@ -52,7 +52,7 @@ Total: **10 weekends ≈ 2.5 months** for v1.0 (assuming 8–12 productive hours
 ### Definition of Done
 
 - `docker compose up` brings everything online (API responds 200 at `/health`)
-- `cd packages/app && flutter run -d <device>` opens the app
+- `cd packages/mobile && flutter run -d <device>` opens the app
 - `cd packages/web && bun run dev` opens the web
 - CI is green on all three workflows
 - README explains how to run each package

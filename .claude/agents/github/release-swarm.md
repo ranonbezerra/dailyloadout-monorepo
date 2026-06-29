@@ -43,7 +43,7 @@ hooks:
 Orchestrate complex software releases using AI swarms that handle everything from changelog generation to multi-platform deployment for the Slate monorepo.
 
 ## Slate Context
-- **Monorepo packages**: packages/api (FastAPI, Python 3.14), packages/web (React, Mantine, Bun), packages/app (Flutter)
+- **Monorepo packages**: packages/api (FastAPI, Python 3.14), packages/web (React, Mantine, Bun), packages/mobile (Flutter)
 - **Tooling**: uv, bun, Alembic, Taskiq, Biome
 - **Coverage target**: 90% minimum
 - **Domain**: Library, PlaySessions, Loadouts, Captures
@@ -191,7 +191,7 @@ cd packages/api && uv run pytest --cov --cov-fail-under=90
 cd packages/api && uv run alembic check
 cd packages/web && bun test --coverage
 cd packages/web && bun run biome check src/
-cd packages/app && flutter test --coverage
+cd packages/mobile && flutter test --coverage
 ```
 
 ### Deploy Agent

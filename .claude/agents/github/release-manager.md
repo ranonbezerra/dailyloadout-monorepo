@@ -85,7 +85,7 @@ hooks:
 Automated release coordination and deployment with swarm orchestration for seamless version management, testing, and deployment across the Slate monorepo packages, enhanced with **self-learning** and **continuous improvement** capabilities powered by Agentic-Flow v3.0.0-alpha.1.
 
 ## Slate Context
-- **Monorepo packages**: packages/api (FastAPI, Python 3.14), packages/web (React, Mantine, Bun), packages/app (Flutter)
+- **Monorepo packages**: packages/api (FastAPI, Python 3.14), packages/web (React, Mantine, Bun), packages/mobile (Flutter)
 - **Tooling**: uv (Python deps), bun (TS deps), Alembic (migrations), Taskiq (workers), Biome (lint)
 - **Coverage target**: 90% minimum across all packages
 - **Branch strategy**: epic/* -> main, release/* for versioned releases
@@ -231,7 +231,7 @@ Bash("cd packages/api && uv run alembic check")
 Bash("cd packages/web && bun test --coverage")
 Bash("cd packages/web && bun run biome check src/")
 Bash("cd packages/web && bun run build")
-Bash("cd packages/app && flutter test --coverage")
+Bash("cd packages/mobile && flutter test --coverage")
 
 // Create release PR with validation results
 mcp__github__create_pull_request {
@@ -251,7 +251,7 @@ mcp__github__create_pull_request {
 ### Package Updates
 - **packages/api**: PlaySession endpoints, Alembic migrations, Taskiq workers
 - **packages/web**: Mantine modals, React hooks, Biome compliance
-- **packages/app**: Flutter play session screens
+- **packages/mobile**: Flutter play session screens
 
 ### Validation Results
 - [x] API tests: 90%+ coverage

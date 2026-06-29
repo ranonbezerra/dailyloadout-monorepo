@@ -92,7 +92,7 @@ Deploy specialized AI agents to perform comprehensive, intelligent code reviews 
 ### Domain-Specific Review Focus
 - **packages/api** (FastAPI, Python 3.14): Review Alembic migrations, Pydantic schemas, Taskiq workers, LLM prompt templates (.j2), security (JWT, CORS, SSTI)
 - **packages/web** (React, TypeScript, Mantine): Review Mantine component usage, Biome lint compliance, React hooks, API client code
-- **packages/app** (Flutter): Review Dart code quality, platform-specific implementations, state management
+- **packages/mobile** (Flutter): Review Dart code quality, platform-specific implementations, state management
 - **Domain concepts**: Library (gear/equipment), PlaySessions (recap/wrap-up), Loadouts (gear selection/packing), Captures (voice/photo/text with AI)
 - **Coverage target**: 90% minimum test coverage across all packages
 
@@ -402,7 +402,7 @@ if (securityIssues.length > 0) {
 - [ ] API client handles loading/error states
 - [ ] Bun lockfile updated if dependencies changed
 
-## App Review (packages/app)
+## App Review (packages/mobile)
 - [ ] Flutter widgets follow composition patterns
 - [ ] Platform-specific code properly guarded
 - [ ] State management follows established patterns

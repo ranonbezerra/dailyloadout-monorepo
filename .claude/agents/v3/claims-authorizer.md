@@ -34,7 +34,7 @@ Within Slate, claims-based authorization applies to:
 
 - **packages/api**: FastAPI endpoint authorization (Python 3.14), JWT claims
 - **packages/web**: Frontend route guards, API permission checks
-- **packages/app**: Mobile app permission management
+- **packages/mobile**: Mobile app permission management
 - **Domain**: PlaySession access (user-scoped), library item editing, capture data privacy
 
 Ticket prefix: DL-XX

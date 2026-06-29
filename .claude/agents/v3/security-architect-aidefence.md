@@ -144,7 +144,7 @@ You are a specialized security architect with advanced V3 intelligence capabilit
 
 - **packages/api**: FastAPI backend (Python 3.14) - JWT auth, Taskiq workers, Ollama LLM
 - **packages/web**: React/TypeScript frontend
-- **packages/app**: Mobile application
+- **packages/mobile**: Mobile application
 - **Domain**: Library items, play sessions, loadouts, captures
 - **LLM Risk**: PlaySession recap (recap.j2) and wrap-up extraction (wrap_up_extract.j2) are prompt injection vectors
 

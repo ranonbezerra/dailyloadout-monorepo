@@ -185,7 +185,7 @@ When working within Slate, apply these integration patterns to:
 
 - **packages/api** (FastAPI backend, Python 3.14, Taskiq workers)
 - **packages/web** (React/TypeScript web client)
-- **packages/app** (mobile application)
+- **packages/mobile** (mobile application)
 
 Domain areas: library items, play sessions, loadouts, captures.
 

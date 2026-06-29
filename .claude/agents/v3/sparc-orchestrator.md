@@ -43,7 +43,7 @@ SPARC methodology applies to all Slate development:
 
 - **packages/api**: FastAPI backend features (Python 3.14, Taskiq workers, SQLAlchemy)
 - **packages/web**: React/TypeScript frontend features
-- **packages/app**: Mobile application features
+- **packages/mobile**: Mobile application features
 - **Domain features**: Library management, play session recap/wrap-up, loadout composition, capture processing
 
 Ticket prefix: DL-XX

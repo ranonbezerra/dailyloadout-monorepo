@@ -87,7 +87,7 @@ Run `make help` to see all available commands.
 | Package | Stack |
 | --- | --- |
 | `packages/api/` | Python 3.14 · FastAPI · Pydantic v2 · SQLAlchemy 2 async · PostgreSQL 18 · Redis · Taskiq · Poetry |
-| `packages/app/` | Flutter 3.27+ · BLoC · go_router · dio · faster-whisper (server-side) |
+| `packages/mobile/` | Flutter 3.27+ · BLoC · go_router · dio · faster-whisper (server-side) |
 | `packages/web/` | Bun · Vite · React 19 · TypeScript · Mantine v8 · TanStack Query |
 | AI | `AbstractLLMClient` port · **Ollama** backend · deterministic dummy backend for tests · **faster-whisper** local |
 | Infra | Docker Compose · GitHub Actions · AGPL-3.0 |

@@ -97,7 +97,7 @@ Integrate AI swarms with GitHub Actions to create intelligent, self-organizing C
 
 ## Slate Context
 - **Monorepo**: ranonbezerra/slate-monorepo
-- **Packages**: packages/api (FastAPI, Python 3.14), packages/web (React, Mantine, Bun, Biome), packages/app (Flutter)
+- **Packages**: packages/api (FastAPI, Python 3.14), packages/web (React, Mantine, Bun, Biome), packages/mobile (Flutter)
 - **Tooling**: uv (Python), bun (TypeScript), Alembic (migrations), Taskiq (workers), Biome (lint)
 - **Coverage target**: 90% minimum across all packages
 - **Domain**: Library, PlaySessions, Loadouts, Captures
@@ -179,7 +179,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
       - name: Run Tests
-        run: cd packages/app && flutter test --coverage
+        run: cd packages/mobile && flutter test --coverage
 ```
 
 ### 2. Dynamic Workflow Generation
@@ -243,7 +243,7 @@ jobs:
             web:
               - 'packages/web/**'
             app:
-              - 'packages/app/**'
+              - 'packages/mobile/**'
 
   api-pipeline:
     needs: detect-changes
@@ -277,7 +277,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
-      - run: cd packages/app && flutter test --coverage
+      - run: cd packages/mobile && flutter test --coverage
 ```
 
 ### Adaptive Security Scanning

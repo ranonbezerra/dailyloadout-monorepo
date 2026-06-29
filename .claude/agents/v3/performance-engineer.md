@@ -106,7 +106,7 @@ The Slate monorepo consists of:
 
 - **packages/api**: FastAPI backend (Python 3.14), Taskiq workers, Redis broker
 - **packages/web**: React/TypeScript web client
-- **packages/app**: Mobile application
+- **packages/mobile**: Mobile application
 
 Key performance areas: LLM inference (play session recap/wrap-up via Ollama), image processing (captures), database queries (library/play-sessions), background task scheduling (Taskiq auto-clamp workers).
 

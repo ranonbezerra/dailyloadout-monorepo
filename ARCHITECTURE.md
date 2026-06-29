@@ -59,7 +59,7 @@ slate-monorepo/
 
 **Why FastAPI for both API and AI orchestration:** the AI workload is "thin" — call Ollama, validate output, persist. No fine-tuning, no model serving, no GPU pipeline. Splitting into a separate NestJS API and Python AI engine adds inter-service communication overhead with no real boundary benefit at this scale. A clean `infrastructure/llm/` module inside FastAPI carries the AI concern; if a future product needs the same recap engine, then it gets extracted. YAGNI until then.
 
-### 2.2 `packages/app/` — Flutter mobile client
+### 2.2 `packages/mobile/` — Flutter mobile client
 
 - **Flutter 3.27+ / Dart 3.6+**
 - **BLoC** (`bloc` ^9 + `flutter_bloc` ^9 + `bloc_concurrency` ^0.3 + `bloc_test` for tests) — chosen for consistency with author's other Flutter codebases

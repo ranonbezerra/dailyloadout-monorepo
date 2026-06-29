@@ -47,7 +47,7 @@ How Claude Code uses the artifacts in this `.claude/` directory to assist with S
 ### flutter-engineer (for Mobile app)
 **Trigger**: implementing screens, BLoC state management, go_router navigation, dio API calls, captures, tests
 **Model**: sonnet (default)
-**Scope**: `packages/app/` only
+**Scope**: `packages/mobile/` only
 
 ### devops-engineer (for Infrastructure)
 **Trigger**: Docker, docker-compose, CI/CD, deployment, health checks, monitoring, Taskiq worker config

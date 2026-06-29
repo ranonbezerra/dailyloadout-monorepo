@@ -37,7 +37,7 @@ hooks:
 Coordinate AI swarms across multiple repositories, enabling organization-wide automation and intelligent cross-project collaboration.
 
 ## Slate Context
-- **Primary monorepo**: ranonbezerra/slate-monorepo (packages/api, packages/web, packages/app)
+- **Primary monorepo**: ranonbezerra/slate-monorepo (packages/api, packages/web, packages/mobile)
 - **Stack**: FastAPI (Python 3.14), React+Mantine (Bun, Biome), Flutter
 - **Domain**: Library, PlaySessions, Loadouts, Captures
 - **Tools**: uv (Python), bun (TypeScript), Taskiq (workers), Alembic (migrations)
@@ -97,7 +97,7 @@ npx claude-flow@v3alpha github discover-repos \
 ```bash
 # Execute synchronized changes across repos with gh CLI
 # For monorepo packages, coordinate changes
-PACKAGES=("packages/api" "packages/web" "packages/app")
+PACKAGES=("packages/api" "packages/web" "packages/mobile")
 
 for pkg in "${PACKAGES[@]}"; do
   echo "Processing $pkg..."
@@ -110,8 +110,8 @@ for pkg in "${PACKAGES[@]}"; do
     "packages/web")
       cd packages/web && bun test --coverage
       ;;
-    "packages/app")
-      cd packages/app && flutter test --coverage
+    "packages/mobile")
+      cd packages/mobile && flutter test --coverage
       ;;
   esac
 
@@ -156,7 +156,7 @@ packages:
     tools: [bun, biome, mantine]
 
   - name: app
-    path: packages/app
+    path: packages/mobile
     role: mobile
     language: dart
     agents: [coder, tester]
@@ -219,7 +219,7 @@ cd packages/web && bun update
 bun test --coverage
 
 # Update Flutter dependencies
-cd packages/app && flutter pub upgrade
+cd packages/mobile && flutter pub upgrade
 flutter test --coverage
 
 # Create PR
@@ -239,7 +239,7 @@ gh pr create \
 
 ### 1. Package Organization
 - Clear package boundaries and responsibilities
-- Consistent naming conventions across packages/api, packages/web, packages/app
+- Consistent naming conventions across packages/api, packages/web, packages/mobile
 - Documented cross-package dependencies
 - Shared configuration standards
 
@@ -265,7 +265,7 @@ cd packages/api && uv run alembic revision --autogenerate -m "add play sessions 
 # Web: Create Mantine components + React hooks
 cd packages/web && bun run build
 # App: Create Flutter screens
-cd packages/app && flutter build
+cd packages/mobile && flutter build
 ```
 
 ### 2. Cross-Package Testing
@@ -273,7 +273,7 @@ cd packages/app && flutter build
 # Run integration tests across packages
 cd packages/api && uv run pytest tests/ --cov --cov-fail-under=90
 cd packages/web && bun test --coverage
-cd packages/app && flutter test --coverage
+cd packages/mobile && flutter test --coverage
 ```
 
 See also: [project-board-sync.md](./project-board-sync.md)

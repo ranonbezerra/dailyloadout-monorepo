@@ -39,7 +39,7 @@ ADRs within Slate cover decisions for:
 
 - **packages/api**: Backend architecture (FastAPI, Python 3.14, SQLAlchemy, Alembic, Taskiq)
 - **packages/web**: Frontend architecture (React, TypeScript)
-- **packages/app**: Mobile architecture
+- **packages/mobile**: Mobile architecture
 - **Infrastructure**: PostgreSQL, Redis, Ollama LLM
 - **Domain**: Library management, play session workflow, loadout system, capture pipeline
 

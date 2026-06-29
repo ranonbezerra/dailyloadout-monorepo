@@ -71,7 +71,7 @@ Based on everything read:
 ### Systems affected
 - **packages/api**: [modules, endpoints, migrations, tasks]
 - **packages/web**: [pages, components, hooks]
-- **packages/app**: [screens, BLoCs, repositories]
+- **packages/mobile**: [screens, BLoCs, repositories]
 - **Database**: [schema changes]
 
 ### Implementation steps
