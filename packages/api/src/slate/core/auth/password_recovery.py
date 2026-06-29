@@ -56,18 +56,23 @@ class PasswordRecoveryService:
         user = await self._user_repo.get_by_email(email)
         if user is None:
             return
-        token = create_password_reset_token(str(user.public_id))
+        token = create_password_reset_token(str(user.public_id), user.token_version)
         send_password_reset_email(self._mailer, to=user.email, token=token)
 
     async def reset_password(self, token: str, new_password: str) -> None:
         """Validate a reset *token*, set the new password, and kill all sessions.
 
+        The token's ``tv`` claim must match the user's current ``token_version``;
+        since applying a reset bumps it, a consumed (or otherwise superseded)
+        link is rejected — enforcing single use without a server-side store.
+
         Raises:
-            ValueError: if the token is invalid/expired or the user is unknown.
+            ValueError: if the token is invalid/expired, the user is unknown, or
+                the token has already been used / superseded.
         """
-        public_id = self._decode_reset_subject(token)
+        public_id, token_version = self._decode_reset_token(token)
         user = await self._user_repo.get_by_public_id(public_id)
-        if user is None:
+        if user is None or user.token_version != token_version:
             raise ValueError("Invalid or expired reset token")
         await self._apply_new_password(user, new_password)
 
@@ -99,11 +104,11 @@ class PasswordRecoveryService:
     # Internals
     # ------------------------------------------------------------------
     @staticmethod
-    def _decode_reset_subject(token: str) -> UUID:
-        """Decode a reset token to its subject UUID (raises on bad token)."""
-        public_id_str = decode_password_reset_token(token)
+    def _decode_reset_token(token: str) -> tuple[UUID, int]:
+        """Decode a reset token to ``(subject UUID, token_version)`` (raises on bad token)."""
+        public_id_str, token_version = decode_password_reset_token(token)
         try:
-            return UUID(public_id_str)
+            return UUID(public_id_str), token_version
         except ValueError as exc:
             raise ValueError("Invalid or expired reset token") from exc
 
