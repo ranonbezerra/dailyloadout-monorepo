@@ -91,7 +91,7 @@ void main() {
 
   group('transcribeAudio', () {
     test('uploads form data and parses TranscribeResult', () async {
-      final tmp = File('${Directory.systemTemp.path}/dl_test_audio.wav')
+      final tmp = File('${Directory.systemTemp.path}/slate_test_audio.wav')
         ..writeAsBytesSync(<int>[0, 1, 2, 3]);
       addTearDown(() {
         if (tmp.existsSync()) tmp.deleteSync();
@@ -124,7 +124,7 @@ void main() {
 
   group('submitPhoto', () {
     test('uploads form data and parses Capture', () async {
-      final tmp = File('${Directory.systemTemp.path}/dl_test_photo.jpg')
+      final tmp = File('${Directory.systemTemp.path}/slate_test_photo.jpg')
         ..writeAsBytesSync(<int>[255, 216, 255]);
       addTearDown(() {
         if (tmp.existsSync()) tmp.deleteSync();
@@ -279,9 +279,9 @@ void main() {
 
   group('submitLibraryImport', () {
     test('posts repeated files form data and parses candidates', () async {
-      final tmp1 = File('${Directory.systemTemp.path}/dl_lib_1.jpg')
+      final tmp1 = File('${Directory.systemTemp.path}/slate_lib_1.jpg')
         ..writeAsBytesSync(<int>[255, 216, 255]);
-      final tmp2 = File('${Directory.systemTemp.path}/dl_lib_2.jpg')
+      final tmp2 = File('${Directory.systemTemp.path}/slate_lib_2.jpg')
         ..writeAsBytesSync(<int>[255, 216, 255]);
       addTearDown(() {
         if (tmp1.existsSync()) tmp1.deleteSync();
@@ -341,7 +341,7 @@ void main() {
         ),
       );
 
-      final tmp = File('${Directory.systemTemp.path}/dl_lib_err.jpg')
+      final tmp = File('${Directory.systemTemp.path}/slate_lib_err.jpg')
         ..writeAsBytesSync(<int>[255, 216, 255]);
       addTearDown(() {
         if (tmp.existsSync()) tmp.deleteSync();

@@ -153,7 +153,7 @@ class Settings(BaseSettings):
     # ── Auth refresh cookie (web cookie-mode, X-Auth-Mode: cookie) ───────
     # App uses BODY mode (no cookie); web only. PROD: auth_cookie_secure=True,
     # and samesite="none" (requires Secure) if web/api are on different domains.
-    auth_cookie_name: str = "dl_refresh_token"
+    auth_cookie_name: str = "slate_refresh_token"
     # Secure by default; dev/test may override to False so http://localhost works.
     # Production startup refuses to boot with this False (see guard below).
     auth_cookie_secure: bool = True

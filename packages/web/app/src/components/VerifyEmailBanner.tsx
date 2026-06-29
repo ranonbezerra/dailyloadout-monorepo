@@ -6,7 +6,7 @@ import { useAuthContext } from "../contexts/AuthContext";
 
 // Session-scoped dismissal: re-shows on a fresh tab/reload but stays hidden for
 // the rest of this session once dismissed.
-const DISMISS_KEY = "dl.verifyEmailBanner.dismissed";
+const DISMISS_KEY = "slate.verifyEmailBanner.dismissed";
 
 function wasDismissed(): boolean {
 	try {

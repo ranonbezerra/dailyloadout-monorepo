@@ -286,7 +286,7 @@ rclone config            # create a remote, e.g. "r2"
 # 2. Backup env (chmod 600 — it names the DB, not secrets, but keep it tight):
 sudo mkdir -p /etc/slate
 sudo cp infra/backup/backup.env.example /etc/slate/backup.env
-sudo nano /etc/slate/backup.env     # set POSTGRES_*, RCLONE_REMOTE=r2:dl-backups
+sudo nano /etc/slate/backup.env     # set POSTGRES_*, RCLONE_REMOTE=r2:slate-backups
 
 # 3. Install the timer (adjust ExecStart path in the .service to your checkout):
 sudo cp infra/backup/slate-backup.{service,timer} /etc/systemd/system/
@@ -296,7 +296,7 @@ sudo systemctl enable --now slate-backup.timer
 # 4. Run once now and verify it lands off-host:
 sudo systemctl start slate-backup.service
 journalctl -u slate-backup.service --no-pager | tail
-rclone ls r2:dl-backups
+rclone ls r2:slate-backups
 ```
 
 The timer runs daily at 03:30 UTC (`Persistent=true` catches a missed run after
@@ -308,7 +308,7 @@ scratch database (never the live one for a drill):
 
 ```bash
 POSTGRES_USER=slate POSTGRES_DB=slate_restoretest \
-  infra/backup/restore-db.sh /var/backups/slate/dl-slate-<ts>.sql.gz
+  infra/backup/restore-db.sh /var/backups/slate/slate-slate-<ts>.sql.gz
 ```
 
 The dumps are taken with `--clean --if-exists`, so a real restore drops and

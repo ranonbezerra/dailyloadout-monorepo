@@ -125,7 +125,7 @@ class TestLogoutAll:
         }
         resp = await async_client.post("/v1/auth/logout-all", headers=headers)
         assert resp.status_code == 200
-        assert "dl_refresh_token" in resp.headers.get("set-cookie", "")
+        assert "slate_refresh_token" in resp.headers.get("set-cookie", "")
 
     async def test_login_after_logout_all_still_works(self, async_client: AsyncClient) -> None:
         await _register(async_client, "relogin@example.com")

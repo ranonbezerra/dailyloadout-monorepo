@@ -283,7 +283,7 @@ class TestMe:
 
 
 _COOKIE_HEADER = {"X-Auth-Mode": "cookie"}
-_COOKIE_NAME = "dl_refresh_token"
+_COOKIE_NAME = "slate_refresh_token"
 
 
 class TestCookieMode:

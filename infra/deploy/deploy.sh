@@ -16,16 +16,16 @@
 #   6. health-check; UNHEALTHY? downgrade schema + restore old code + restart
 #
 # Setup on the VPS (see docs/DEPLOYMENT.md §1.10):
-#   - repo at $DL_REPO_DIR (default /opt/slate)
+#   - repo at $SLATE_REPO_DIR (default /opt/slate)
 #   - the deploy user has passwordless sudo for: systemctl restart
 #     slate-api slate-worker
 #   - rclone + /etc/slate/backup.env configured (Phase 5 of PRELAUNCH)
 #
 set -euo pipefail
 
-REPO_DIR="${DL_REPO_DIR:-/opt/slate}"
+REPO_DIR="${SLATE_REPO_DIR:-/opt/slate}"
 API_DIR="$REPO_DIR/packages/api"
-HEALTH_URL="${DL_HEALTH_URL:-http://127.0.0.1:8100/health}"
+HEALTH_URL="${SLATE_HEALTH_URL:-http://127.0.0.1:8100/health}"
 SERVICES="slate-api slate-worker"
 
 # What to deploy: a git ref — the tag `api/vX.Y.Z` in production, or

@@ -96,11 +96,11 @@ describe("VerifyEmailBanner", () => {
 		fireEvent.click(screen.getByRole("button", { name: /dismiss/i }));
 
 		expect(screen.queryByText("Verify your email")).not.toBeInTheDocument();
-		expect(sessionStorage.getItem("dl.verifyEmailBanner.dismissed")).toBe("1");
+		expect(sessionStorage.getItem("slate.verifyEmailBanner.dismissed")).toBe("1");
 	});
 
 	it("stays hidden after a session-scoped dismissal across remounts", () => {
-		sessionStorage.setItem("dl.verifyEmailBanner.dismissed", "1");
+		sessionStorage.setItem("slate.verifyEmailBanner.dismissed", "1");
 		mockUseAuthContext.mockReturnValue(
 			makeAuthContext({ isAuthenticated: true, emailVerified: false }),
 		);

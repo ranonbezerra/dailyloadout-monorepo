@@ -146,7 +146,7 @@ api-install: ## Install API dependencies
 	cd $(API_DIR) && poetry install
 
 # ─────────────────────────────────────────────
-# Web shared lib (packages/web/shared) — @dl/shared
+# Web shared lib (packages/web/shared) — @slate/shared
 # ─────────────────────────────────────────────
 
 .PHONY: shared-test

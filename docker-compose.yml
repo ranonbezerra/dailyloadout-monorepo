@@ -35,7 +35,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD (do not use the old dev default)}
       POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB}
     volumes:
-      - dl_postgres_data:/var/lib/postgresql
+      - slate_postgres_data:/var/lib/postgresql
       - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:?set POSTGRES_USER}"]
@@ -63,7 +63,7 @@ services:
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD}
     volumes:
-      - dl_redis_data:/data
+      - slate_redis_data:/data
     healthcheck:
       # Authenticated PING so the check works with auth enabled.
       test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
@@ -118,5 +118,5 @@ services:
     restart: unless-stopped
 
 volumes:
-  dl_postgres_data:
-  dl_redis_data:
+  slate_postgres_data:
+  slate_redis_data:
