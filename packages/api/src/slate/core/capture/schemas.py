@@ -44,6 +44,17 @@ class CandidateConfirmRequest(BaseModel):
     status: LibraryStatus = "backlog"
 
 
+class CandidateRematchRequest(BaseModel):
+    """Body for re-searching IGDB on a corrected candidate title.
+
+    Used by the import-review screen: the user fixes a wrong title and asks for a
+    fresh catalog match before committing, so the saved game's metadata
+    (cover/summary/genres) lines up with the corrected title.
+    """
+
+    title: str = Field(min_length=1, max_length=_MAX_OVERRIDE_TITLE_LEN)
+
+
 class BulkConfirmRequest(BaseModel):
     """Body for ``POST /v1/captures/{id}/candidates/bulk-confirm``.
 
@@ -53,12 +64,19 @@ class BulkConfirmRequest(BaseModel):
     *title_overrides* maps a candidate's ``public_id`` to a corrected title — for
     fixing OCR mistakes before committing. An overridden candidate is committed
     as a user-authored title (its prior catalog match is dropped).
+
+    *status_overrides* maps a candidate's ``public_id`` to a per-game library
+    status, so each imported game can land as backlog/playing/etc. independently;
+    candidates without an override fall back to the batch-level ``status``.
     """
 
     confirm_public_ids: list[UUID] = Field(default_factory=list, max_length=_MAX_CONFIRM_IDS)
     platform_id: int
     status: LibraryStatus = "backlog"
     title_overrides: dict[UUID, str] = Field(default_factory=dict, max_length=_MAX_TITLE_OVERRIDES)
+    status_overrides: dict[UUID, LibraryStatus] = Field(
+        default_factory=dict, max_length=_MAX_CONFIRM_IDS
+    )
 
     @model_validator(mode="after")
     def _sanitize_overrides(self) -> BulkConfirmRequest:
@@ -82,6 +100,11 @@ class BulkConfirmRequest(BaseModel):
                 )
             cleaned[key] = stripped
         self.title_overrides = cleaned
+
+        # A status override only makes sense for a candidate being confirmed.
+        for key in self.status_overrides:
+            if key not in confirm_set:
+                raise ValueError("status_overrides keys must be in confirm_public_ids.")
         return self
 
 

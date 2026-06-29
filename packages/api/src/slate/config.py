@@ -185,6 +185,7 @@ class Settings(BaseSettings):
     rate_limit_pick_create_per_minute: int = 10
     rate_limit_capture_submit_per_minute: int = 15
     rate_limit_library_import_per_minute: int = 5
+    rate_limit_candidate_rematch_per_minute: int = 20
     # POST /v1/games (LLM/IGDB resolve) + generous backstops on writes/reads.
     rate_limit_game_create_per_minute: int = 20
     rate_limit_library_write_per_minute: int = 60

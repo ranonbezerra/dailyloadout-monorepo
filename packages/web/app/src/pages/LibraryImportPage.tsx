@@ -13,17 +13,24 @@ import {
 	Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconAlertTriangle, IconArrowLeft, IconPhotoUp, IconX } from "@tabler/icons-react";
+import {
+	IconAlertTriangle,
+	IconArrowLeft,
+	IconPhotoUp,
+	IconSearch,
+	IconX,
+} from "@tabler/icons-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
 	useBulkConfirmCandidates,
 	useCandidateDuplicates,
+	useRematchCandidate,
 	useSubmitLibraryImport,
 } from "../hooks/useCapture";
 import { usePlatforms } from "../hooks/useLibrary";
 import { safeImageUrl } from "../lib/safe-image";
-import type { Capture } from "../types/capture";
+import type { Capture, CaptureCandidate } from "../types/capture";
 import type { LibraryStatus, Platform } from "../types/library";
 
 // ---------------------------------------------------------------------------
@@ -107,6 +114,7 @@ export function LibraryImportPage() {
 	const { data: platforms = [] } = usePlatforms();
 	const importMutation = useSubmitLibraryImport();
 	const bulkConfirmMutation = useBulkConfirmCandidates();
+	const rematchMutation = useRematchCandidate();
 
 	const [step, setStep] = useState<Step>("platform");
 	const [picker, setPicker] = useState<PlatformPicker | null>(null);
@@ -115,7 +123,11 @@ export function LibraryImportPage() {
 	const [capture, setCapture] = useState<Capture | null>(null);
 	const [checkedIds, setCheckedIds] = useState<string[]>([]);
 	const [titles, setTitles] = useState<Record<string, string>>({});
+	// Status is per-game: each candidate carries its own backlog/playing/etc.
+	const [candidateStatuses, setCandidateStatuses] = useState<Record<string, LibraryStatus>>({});
+	const [rematchingId, setRematchingId] = useState<string | null>(null);
 	const [platformId, setPlatformId] = useState<string | null>(null);
+	// The batch-level pick is just a "set all to" default applied to every game.
 	const [status, setStatus] = useState<string>("backlog");
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -137,13 +149,15 @@ export function LibraryImportPage() {
 	const isDuplicate = (cand: { publicId: string; title: string }) =>
 		duplicateIds.includes(cand.publicId) && !isEdited(cand);
 
-	// Default-uncheck duplicates when the platform (and thus the warning) changes.
+	// Drop games already in the library from the selection when duplicates are
+	// (re)computed — only ever REMOVING flagged duplicates, never re-adding. This
+	// preserves the user's own check/uncheck choices and, crucially, does not
+	// depend on `capture`, so re-matching a single candidate (which replaces the
+	// capture object) no longer re-selects games the user had unchecked.
 	useEffect(() => {
-		if (step !== "confirm" || !capture) return;
-		setCheckedIds(
-			capture.candidates.filter((c) => !duplicateIds.includes(c.publicId)).map((c) => c.publicId),
-		);
-	}, [step, capture, duplicateIds]);
+		if (step !== "confirm") return;
+		setCheckedIds((prev) => prev.filter((id) => !duplicateIds.includes(id)));
+	}, [step, duplicateIds]);
 
 	const handlePickPlatform = (p: PlatformPicker) => {
 		setPicker(p);
@@ -194,6 +208,9 @@ export function LibraryImportPage() {
 			setCapture(result);
 			setCheckedIds(result.candidates.map((c) => c.publicId));
 			setTitles(Object.fromEntries(result.candidates.map((c) => [c.publicId, c.title])));
+			setCandidateStatuses(
+				Object.fromEntries(result.candidates.map((c) => [c.publicId, status as LibraryStatus])),
+			);
 			setStep("confirm");
 		} catch (err) {
 			notifications.show({
@@ -208,16 +225,63 @@ export function LibraryImportPage() {
 		setCheckedIds((prev) => (checked ? [...prev, id] : prev.filter((x) => x !== id)));
 	};
 
+	/** Re-search IGDB for one candidate with the (possibly edited) title, then
+	 * refresh its card with the fresh match (cover/metadata). */
+	const handleRematch = async (cand: CaptureCandidate) => {
+		if (!capture) return;
+		const title = (titles[cand.publicId] ?? cand.title).trim();
+		if (!title) return;
+		setRematchingId(cand.publicId);
+		try {
+			const updated = await rematchMutation.mutateAsync({
+				captureId: capture.publicId,
+				candidateId: cand.publicId,
+				title,
+			});
+			setCapture((prev) =>
+				prev
+					? {
+							...prev,
+							candidates: prev.candidates.map((c) =>
+								c.publicId === updated.publicId ? updated : c,
+							),
+						}
+					: prev,
+			);
+			// Reset the local edit to the persisted title so the new cover shows.
+			setTitles((prev) => ({ ...prev, [updated.publicId]: updated.title }));
+			notifications.show({
+				title: "IGDB search",
+				message: updated.igdbTitle
+					? `Matched "${updated.igdbTitle}"`
+					: "No IGDB match — will save as typed",
+				color: updated.igdbTitle ? "green" : "yellow",
+			});
+		} catch (err) {
+			notifications.show({
+				title: "Search failed",
+				message: err instanceof Error ? err.message : "Couldn't reach IGDB",
+				color: "red",
+			});
+		} finally {
+			setRematchingId(null);
+		}
+	};
+
 	const handleConfirm = async () => {
 		if (!capture || checkedIds.length === 0 || !platformId) return;
 		// Send only the titles the user actually changed.
 		const checkedSet = new Set(checkedIds);
 		const titleOverrides: Record<string, string> = {};
+		const statusOverrides: Record<string, LibraryStatus> = {};
 		for (const cand of capture.candidates) {
+			if (!checkedSet.has(cand.publicId)) continue;
 			const edited = (titles[cand.publicId] ?? cand.title).trim();
-			if (checkedSet.has(cand.publicId) && edited && edited !== cand.title) {
+			if (edited && edited !== cand.title) {
 				titleOverrides[cand.publicId] = edited;
 			}
+			statusOverrides[cand.publicId] =
+				candidateStatuses[cand.publicId] ?? (status as LibraryStatus);
 		}
 		try {
 			await bulkConfirmMutation.mutateAsync({
@@ -226,6 +290,7 @@ export function LibraryImportPage() {
 				platformId: Number(platformId),
 				status: status as LibraryStatus,
 				titleOverrides,
+				statusOverrides,
 			});
 			notifications.show({
 				title: "Library import",
@@ -402,11 +467,21 @@ export function LibraryImportPage() {
 							w={220}
 						/>
 						<Select
-							label="Status"
+							label="Set all to"
+							description="Applies to every game; tweak any individually below"
 							data={STATUS_OPTIONS}
 							value={status}
-							onChange={(v) => setStatus(v ?? "backlog")}
-							w={220}
+							onChange={(v) => {
+								const s = (v ?? "backlog") as LibraryStatus;
+								setStatus(s);
+								setCandidateStatuses((prev) => {
+									const next = { ...prev };
+									for (const id of Object.keys(next)) next[id] = s;
+									return next;
+								});
+							}}
+							allowDeselect={false}
+							w={260}
 						/>
 					</Group>
 
@@ -439,7 +514,30 @@ export function LibraryImportPage() {
 											aria-label={`Title for ${cand.title}`}
 											style={{ flex: 1 }}
 										/>
-										{cand.matchedGame && !isEdited(cand) && (
+										<Button
+											size="xs"
+											variant="light"
+											leftSection={<IconSearch size={14} />}
+											onClick={() => handleRematch(cand)}
+											loading={rematchingId === cand.publicId}
+											disabled={!(titles[cand.publicId] ?? cand.title).trim()}
+										>
+											Search
+										</Button>
+										<Select
+											data={STATUS_OPTIONS}
+											value={candidateStatuses[cand.publicId] ?? "backlog"}
+											onChange={(v) =>
+												setCandidateStatuses((prev) => ({
+													...prev,
+													[cand.publicId]: (v ?? "backlog") as LibraryStatus,
+												}))
+											}
+											allowDeselect={false}
+											w={130}
+											aria-label={`Status for ${cand.title}`}
+										/>
+										{(cand.matchedGame || cand.igdbTitle) && !isEdited(cand) && (
 											<Badge color="green" variant="light">
 												IGDB
 											</Badge>

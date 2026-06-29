@@ -19,6 +19,8 @@ from slate.core.capture.ingestion import read_upload_capped
 from slate.core.capture.schemas import (
     BulkConfirmRequest,
     BulkConfirmResponse,
+    CandidateRematchRequest,
+    CaptureCandidateResponse,
     CaptureResponse,
     DuplicatesResponse,
 )
@@ -148,5 +150,43 @@ async def bulk_confirm_candidates(
         platform_id=body.platform_id,
         library_status=body.status,
         title_overrides=body.title_overrides,
+        status_overrides=body.status_overrides,
     )
     return BulkConfirmResponse(confirmed=confirmed, rejected=rejected)
+
+
+@router.post(
+    "/{public_id}/candidates/{candidate_id}/rematch",
+    response_model=CaptureCandidateResponse,
+    dependencies=[
+        Depends(
+            rate_limit(
+                "candidate_rematch",
+                settings.rate_limit_candidate_rematch_per_minute,
+                60,
+                by="user",
+            )
+        ),
+    ],
+)
+async def rematch_candidate(
+    public_id: UUID,
+    candidate_id: UUID,
+    body: CandidateRematchRequest,
+    current_user: CurrentUserDep,
+    capture_service: CaptureServiceDep,
+) -> CaptureCandidateResponse:
+    """Re-run the IGDB catalog match for one candidate with a corrected title.
+
+    Powers the import-review screen's "Search IGDB" action: after the user fixes
+    a wrong title, this pulls fresh IGDB metadata (cover/summary/genres) so the
+    saved game lines up with the corrected title instead of keeping the stale
+    match. 404 if the capture/candidate isn't the user's.
+    """
+    candidate = await capture_service.rematch_candidate(
+        user_id=current_user.id,
+        capture_public_id=public_id,
+        candidate_public_id=candidate_id,
+        title=body.title,
+    )
+    return CaptureCandidateResponse.model_validate(candidate)

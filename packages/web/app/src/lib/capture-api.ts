@@ -1,6 +1,6 @@
 import { apiFetch, fetchWithAuthRetry } from "@slate/shared/api";
 import { snakeToCamel } from "@slate/shared/case-convert";
-import type { Capture, CaptureListResponse } from "../types/capture";
+import type { Capture, CaptureCandidate, CaptureListResponse } from "../types/capture";
 import type { LibraryEntry, LibraryStatus } from "../types/library";
 
 // ---------------------------------------------------------------------------
@@ -95,6 +95,7 @@ export async function bulkConfirmCandidates(
 	platformId: number,
 	status: LibraryStatus = "backlog",
 	titleOverrides: Record<string, string> = {},
+	statusOverrides: Record<string, LibraryStatus> = {},
 ): Promise<{ confirmed: number; rejected: number }> {
 	const raw = await apiFetch<unknown>(`/v1/captures/${captureId}/candidates/bulk-confirm`, {
 		method: "POST",
@@ -103,9 +104,23 @@ export async function bulkConfirmCandidates(
 			platform_id: platformId,
 			status,
 			title_overrides: titleOverrides,
+			status_overrides: statusOverrides,
 		}),
 	});
 	return snakeToCamel<{ confirmed: number; rejected: number }>(raw);
+}
+
+/** Re-search IGDB for one candidate using a corrected title; returns the updated candidate. */
+export async function rematchCandidate(
+	captureId: string,
+	candidateId: string,
+	title: string,
+): Promise<CaptureCandidate> {
+	const raw = await apiFetch<unknown>(
+		`/v1/captures/${captureId}/candidates/${candidateId}/rematch`,
+		{ method: "POST", body: JSON.stringify({ title }) },
+	);
+	return snakeToCamel<CaptureCandidate>(raw);
 }
 
 /** Candidate public_ids already in the library for the given platform. */

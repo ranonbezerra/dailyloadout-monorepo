@@ -394,6 +394,130 @@ class TestLibraryImportEndpoint:
         titles = {item["game"]["title"] for item in library["items"]}
         assert "Celeste Classic" in titles
 
+    async def test_bulk_confirm_applies_per_game_status(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+        seed_platforms: list[dict[str, Any]],
+    ) -> None:
+        """status_overrides set a per-game status; others fall back to ``status``."""
+        imported = (
+            await async_client.post(
+                "/v1/captures/library-import",
+                files=_image_files("Hollow Knight\nCeleste\nHades"),
+                headers=auth_headers,
+            )
+        ).json()
+        by_title = {c["title"]: c["public_id"] for c in imported["candidates"]}
+
+        resp = await async_client.post(
+            f"/v1/captures/{imported['public_id']}/candidates/bulk-confirm",
+            json={
+                "confirm_public_ids": list(by_title.values()),
+                "platform_id": seed_platforms[0]["id"],
+                "status": "backlog",
+                "status_overrides": {
+                    by_title["Hollow Knight"]: "playing",
+                    by_title["Hades"]: "completed",
+                },
+            },
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200, resp.text
+
+        # /v1/library is grouped by game; status lives on each platform state.
+        library = (await async_client.get("/v1/library", headers=auth_headers)).json()
+        status_by_title = {
+            item["game"]["title"]: item["platforms"][0]["status"] for item in library["items"]
+        }
+        assert status_by_title["Hollow Knight"] == "playing"
+        assert status_by_title["Hades"] == "completed"
+        assert status_by_title["Celeste"] == "backlog"  # fell back to the batch default
+
+    async def test_bulk_confirm_rejects_status_override_for_unconfirmed(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+        seed_platforms: list[dict[str, Any]],
+    ) -> None:
+        imported = (
+            await async_client.post(
+                "/v1/captures/library-import",
+                files=_image_files("Hollow Knight\nCeleste"),
+                headers=auth_headers,
+            )
+        ).json()
+        cands = imported["candidates"]
+        resp = await async_client.post(
+            f"/v1/captures/{imported['public_id']}/candidates/bulk-confirm",
+            json={
+                "confirm_public_ids": [cands[0]["public_id"]],
+                "platform_id": seed_platforms[0]["id"],
+                # Override targets a candidate that isn't being confirmed.
+                "status_overrides": {cands[1]["public_id"]: "playing"},
+            },
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+
+    async def test_rematch_candidate_pulls_fresh_igdb(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Re-searching a corrected title enriches the candidate with IGDB data."""
+        imported = (
+            await async_client.post(
+                "/v1/captures/library-import",
+                files=_image_files("Mystery Foo"),  # no catalog match
+                headers=auth_headers,
+            )
+        ).json()
+        candidate = imported["candidates"][0]
+        assert candidate["igdb_title"] is None
+
+        resp = await async_client.post(
+            f"/v1/captures/{imported['public_id']}/candidates/{candidate['public_id']}/rematch",
+            json={"title": "Hollow Knight"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["title"] == "Hollow Knight"
+        assert body["igdb_title"] == "Hollow Knight"
+        assert body["igdb_cover_url"]
+
+    async def test_rematch_candidate_unknown_capture_returns_404(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        resp = await async_client.post(
+            f"/v1/captures/{uuid4()}/candidates/{uuid4()}/rematch",
+            json={"title": "Hollow Knight"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 404
+
+    async def test_rematch_candidate_wrong_candidate_returns_404(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        imported = (
+            await async_client.post(
+                "/v1/captures/library-import",
+                files=_image_files("Celeste"),
+                headers=auth_headers,
+            )
+        ).json()
+        resp = await async_client.post(
+            f"/v1/captures/{imported['public_id']}/candidates/{uuid4()}/rematch",
+            json={"title": "Hollow Knight"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 404
+
     async def test_duplicates_flags_already_owned_games(
         self,
         async_client: AsyncClient,

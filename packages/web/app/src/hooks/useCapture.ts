@@ -6,6 +6,7 @@ import {
 	getCapture,
 	listCaptures,
 	rejectCandidate,
+	rematchCandidate,
 	submitLibraryImport,
 	submitPhotoCapture,
 	submitTextCapture,
@@ -97,6 +98,7 @@ export function useBulkConfirmCandidates() {
 			platformId: number;
 			status?: LibraryStatus;
 			titleOverrides?: Record<string, string>;
+			statusOverrides?: Record<string, LibraryStatus>;
 		}) =>
 			bulkConfirmCandidates(
 				vars.captureId,
@@ -104,12 +106,21 @@ export function useBulkConfirmCandidates() {
 				vars.platformId,
 				vars.status,
 				vars.titleOverrides,
+				vars.statusOverrides,
 			),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: CAPTURES_KEY });
 			queryClient.invalidateQueries({ queryKey: LIBRARY_KEY });
 			queryClient.invalidateQueries({ queryKey: STATS_KEY });
 		},
+	});
+}
+
+/** Re-search IGDB for a single import candidate with a corrected title. */
+export function useRematchCandidate() {
+	return useMutation({
+		mutationFn: (vars: { captureId: string; candidateId: string; title: string }) =>
+			rematchCandidate(vars.captureId, vars.candidateId, vars.title),
 	});
 }
 

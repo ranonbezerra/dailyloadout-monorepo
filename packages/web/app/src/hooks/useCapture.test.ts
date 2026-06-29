@@ -229,6 +229,7 @@ describe("useBulkConfirmCandidates", () => {
 			3,
 			"backlog",
 			undefined,
+			undefined,
 		);
 	});
 
@@ -243,7 +244,14 @@ describe("useBulkConfirmCandidates", () => {
 			platformId: 4,
 		});
 
-		expect(bulkConfirmCandidates).toHaveBeenCalledWith("cap-1", ["c1"], 4, undefined, undefined);
+		expect(bulkConfirmCandidates).toHaveBeenCalledWith(
+			"cap-1",
+			["c1"],
+			4,
+			undefined,
+			undefined,
+			undefined,
+		);
 	});
 });
 

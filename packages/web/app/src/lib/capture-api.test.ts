@@ -430,6 +430,7 @@ describe("bulkConfirmCandidates", () => {
 				platform_id: 3,
 				status: "backlog",
 				title_overrides: {},
+				status_overrides: {},
 			}),
 		});
 		expect(result).toEqual({ confirmed: 2, rejected: 1 });
@@ -447,6 +448,7 @@ describe("bulkConfirmCandidates", () => {
 				platform_id: 5,
 				status: "playing",
 				title_overrides: {},
+				status_overrides: {},
 			}),
 		});
 	});

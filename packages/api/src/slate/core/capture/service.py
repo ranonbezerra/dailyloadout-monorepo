@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -21,8 +22,8 @@ from slate.core.capture.ports import (
     LibraryImportProcessor,
 )
 from slate.core.library.igdb_budget import igdb_budget_allows
-from slate.infrastructure.catalog.base import AbstractCatalogMatcher
-from slate.infrastructure.db.models import Capture, LibraryEntry
+from slate.infrastructure.catalog.base import AbstractCatalogMatcher, CatalogMatch
+from slate.infrastructure.db.models import Capture, CaptureCandidate, LibraryEntry
 from slate.infrastructure.db.repositories.capture import (
     CaptureCandidateRepository,
     CaptureRepository,
@@ -213,6 +214,41 @@ class CaptureService:
             )
         return capture
 
+    async def rematch_candidate(
+        self,
+        user_id: int,
+        capture_public_id: UUID,
+        candidate_public_id: UUID,
+        title: str,
+    ) -> CaptureCandidate:
+        """Re-search IGDB for one candidate using a user-corrected *title*.
+
+        Lets the import-review UI fix a wrong title and pull fresh IGDB metadata
+        (cover/summary/genres) before committing, instead of saving the stale
+        match. Respects the per-user IGDB budget the import path enforces: once
+        spent, the candidate resolves local-only (kept as the typed title, no
+        enrichment) rather than firing another outbound search.
+        """
+        assert self._catalog_matcher is not None
+        capture = await self.get_capture(user_id, capture_public_id)
+        candidate = await self._candidate_repo.get_by_public_id(candidate_public_id)
+        if candidate is None or candidate.capture_id != capture.id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Candidate not found",
+            )
+
+        cleaned = title.strip()
+        if await igdb_budget_allows(user_id):
+            match = await self._catalog_matcher.match(cleaned)
+        else:
+            match = CatalogMatch(line_text=cleaned, matched=False, confidence=0.0, title=cleaned)
+
+        await self._candidate_repo.apply_match(candidate.id, match)
+        refreshed = await self._candidate_repo.get_by_public_id(candidate_public_id)
+        assert refreshed is not None
+        return refreshed
+
     async def list_captures(
         self,
         user_id: int,
@@ -265,6 +301,7 @@ class CaptureService:
         platform_id: int,
         library_status: str = "backlog",
         title_overrides: dict[UUID, str] | None = None,
+        status_overrides: Mapping[UUID, str] | None = None,
     ) -> tuple[int, int]:
         """Confirm the listed candidates and reject the rest, in one call."""
         capture = await self.get_capture(user_id, capture_public_id)
@@ -275,6 +312,7 @@ class CaptureService:
             platform_id=platform_id,
             library_status=library_status,
             title_overrides=title_overrides,
+            status_overrides=status_overrides,
             candidate_repo=self._candidate_repo,
             capture_repo=self._capture_repo,
             game_repo=self._game_repo,

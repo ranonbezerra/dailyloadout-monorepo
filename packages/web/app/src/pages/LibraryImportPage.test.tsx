@@ -24,12 +24,14 @@ vi.mock("@tabler/icons-react", () => ({
 	IconPhotoUp: () => <span data-testid="icon-photo-up" />,
 	IconX: () => <span data-testid="icon-x" />,
 	IconAlertTriangle: () => <span data-testid="icon-alert" />,
+	IconSearch: () => <span data-testid="icon-search" />,
 }));
 
 vi.mock("../hooks/useCapture", () => ({
 	useSubmitLibraryImport: vi.fn(),
 	useBulkConfirmCandidates: vi.fn(),
 	useCandidateDuplicates: vi.fn(),
+	useRematchCandidate: vi.fn(),
 }));
 
 vi.mock("../hooks/useLibrary", () => ({
@@ -81,6 +83,7 @@ import { notifications } from "@mantine/notifications";
 import {
 	useBulkConfirmCandidates,
 	useCandidateDuplicates,
+	useRematchCandidate,
 	useSubmitLibraryImport,
 } from "../hooks/useCapture";
 import { usePlatforms } from "../hooks/useLibrary";
@@ -91,6 +94,7 @@ import { LibraryImportPage, matchDefaultPlatform } from "./LibraryImportPage";
 const mockUseSubmitLibraryImport = useSubmitLibraryImport as Mock;
 const mockUseBulkConfirmCandidates = useBulkConfirmCandidates as Mock;
 const mockUseCandidateDuplicates = useCandidateDuplicates as Mock;
+const mockUseRematchCandidate = useRematchCandidate as Mock;
 const mockUsePlatforms = usePlatforms as Mock;
 
 const PLATFORMS: Platform[] = [
@@ -168,6 +172,10 @@ beforeEach(() => {
 	});
 	mockUseBulkConfirmCandidates.mockReturnValue({
 		mutateAsync: confirmMutate,
+		isPending: false,
+	});
+	mockUseRematchCandidate.mockReturnValue({
+		mutateAsync: vi.fn(),
 		isPending: false,
 	});
 });
@@ -329,6 +337,7 @@ describe("LibraryImportPage", () => {
 				platformId: 2, // Steam matched default
 				status: "backlog",
 				titleOverrides: {},
+				statusOverrides: { "cand-1": "backlog" },
 			}),
 		);
 
@@ -336,6 +345,37 @@ describe("LibraryImportPage", () => {
 			expect.objectContaining({ message: "Imported 1 games", color: "green" }),
 		);
 		expect(mockNavigate).toHaveBeenCalledWith("/library");
+	});
+
+	it("re-searching one candidate keeps the user's unchecked selections", async () => {
+		// Regression: updating the capture on re-match used to re-run the
+		// duplicate-default effect and re-check games the user had unchecked.
+		const rematchFn = vi.fn(() =>
+			Promise.resolve({
+				...CAPTURE.candidates[0],
+				title: "Hades II",
+				igdbTitle: "Hades II",
+			}),
+		);
+		mockUseRematchCandidate.mockReturnValue({ mutateAsync: rematchFn, isPending: false });
+
+		renderPage();
+		fireEvent.click(screen.getByTestId("platform-card-steam"));
+		fireEvent.change(screen.getByTestId("import-file-input"), {
+			target: { files: [new File(["a"], "shot.png", { type: "image/png" })] },
+		});
+		fireEvent.click(screen.getByText("Import 1 screenshot"));
+		await waitFor(() => expect(screen.getByDisplayValue("Hades")).toBeInTheDocument());
+
+		const celeste = screen.getByLabelText("Select Celeste") as HTMLInputElement;
+		fireEvent.click(celeste);
+		expect(celeste.checked).toBe(false);
+
+		// Re-search the first candidate (Hades); Celeste must stay unchecked.
+		fireEvent.click(screen.getAllByText("Search")[0]);
+		await waitFor(() => expect(rematchFn).toHaveBeenCalled());
+
+		expect((screen.getByLabelText("Select Celeste") as HTMLInputElement).checked).toBe(false);
 	});
 
 	it("uses the chosen status and platform when bulk-confirming", async () => {
@@ -347,7 +387,7 @@ describe("LibraryImportPage", () => {
 		fireEvent.click(screen.getByText("Import 1 screenshot"));
 		await waitFor(() => expect(screen.getByDisplayValue("Hades")).toBeInTheDocument());
 
-		fireEvent.change(screen.getByLabelText("Status"), { target: { value: "playing" } });
+		fireEvent.change(screen.getByLabelText("Set all to"), { target: { value: "playing" } });
 		fireEvent.change(screen.getByLabelText("Platform"), { target: { value: "3" } });
 
 		fireEvent.click(screen.getByText("Add 2 games"));
@@ -359,6 +399,7 @@ describe("LibraryImportPage", () => {
 				platformId: 3,
 				status: "playing",
 				titleOverrides: {},
+				statusOverrides: { "cand-1": "playing", "cand-2": "playing" },
 			}),
 		);
 	});

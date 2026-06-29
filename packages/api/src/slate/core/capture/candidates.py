@@ -7,6 +7,7 @@ service delegates confirm/reject/bulk-confirm here.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -80,6 +81,7 @@ async def bulk_confirm_candidates(
     platform_id: int,
     library_status: str,
     title_overrides: dict[UUID, str] | None,
+    status_overrides: Mapping[UUID, str] | None = None,
     candidate_repo: CaptureCandidateRepository,
     capture_repo: CaptureRepository,
     game_repo: GameRepository,
@@ -98,6 +100,7 @@ async def bulk_confirm_candidates(
 
     confirm_set = set(confirm_public_ids)
     overrides = title_overrides or {}
+    status_by_id = status_overrides or {}
     candidates = await candidate_repo.get_all_for_capture(capture.id)
     confirmed = 0
     rejected = 0
@@ -121,7 +124,7 @@ async def bulk_confirm_candidates(
                 user_id=user_id,
                 game_id=game.id,
                 platform_id=platform_id,
-                status=library_status,
+                status=status_by_id.get(candidate.public_id, library_status),
             )
         await candidate_repo.update_status(candidate.id, "confirmed", matched_game_id=game.id)
         confirmed += 1

@@ -9,6 +9,7 @@ from sqlalchemy import ColumnElement, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
+from slate.infrastructure.catalog.base import CatalogMatch
 from slate.infrastructure.db.models import Capture, CaptureCandidate, User
 
 
@@ -267,6 +268,25 @@ class CaptureCandidateRepository:
             candidate.igdb_summary = None
             candidate.igdb_genres = None
             candidate.igdb_first_release_date = None
+            await self._session.flush()
+
+    async def apply_match(self, candidate_id: int, match: CatalogMatch) -> None:
+        """Re-apply a fresh catalog match to a candidate after a title edit.
+
+        Overwrites the title and igdb_* enrichment with *match* (mirrors the
+        field mapping the import worker uses). ``status``/``matched_game_id`` are
+        left untouched so the candidate stays confirmable.
+        """
+        candidate = await self._session.get(CaptureCandidate, candidate_id)
+        if candidate is not None:
+            candidate.title = match.title
+            candidate.confidence = match.confidence
+            candidate.igdb_id = match.igdb_id
+            candidate.igdb_title = match.title if match.matched else None
+            candidate.igdb_cover_url = match.cover_url
+            candidate.igdb_summary = match.summary
+            candidate.igdb_genres = match.genres
+            candidate.igdb_first_release_date = match.first_release_date
             await self._session.flush()
 
     async def delete_for_capture(self, capture_id: int) -> None:
