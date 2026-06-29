@@ -12,9 +12,9 @@ import asyncio
 import httpx
 import pytest
 
-from dailyloadout.config import Settings
-from dailyloadout.infrastructure.llm import ollama as ollama_mod
-from dailyloadout.infrastructure.llm.ollama import OllamaClient
+from slate.config import Settings
+from slate.infrastructure.llm import ollama as ollama_mod
+from slate.infrastructure.llm.ollama import OllamaClient
 
 
 @pytest.fixture(autouse=True)

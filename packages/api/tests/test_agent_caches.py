@@ -9,13 +9,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from dailyloadout.infrastructure.agent.base import DeepRecapRequest, RecapResult
-from dailyloadout.infrastructure.agent.cached import CachedRecapAgent
-from dailyloadout.infrastructure.agent.graph.state import PlaySessionContext
-from dailyloadout.infrastructure.cache.keys import llm_key, recap_key, research_key
-from dailyloadout.infrastructure.llm.cached import CachedLLMClient
-from dailyloadout.infrastructure.research.base import SearchResult
-from dailyloadout.infrastructure.research.cached import CachedResearchClient
+from slate.infrastructure.agent.base import DeepRecapRequest, RecapResult
+from slate.infrastructure.agent.cached import CachedRecapAgent
+from slate.infrastructure.agent.graph.state import PlaySessionContext
+from slate.infrastructure.cache.keys import llm_key, recap_key, research_key
+from slate.infrastructure.llm.cached import CachedLLMClient
+from slate.infrastructure.research.base import SearchResult
+from slate.infrastructure.research.cached import CachedResearchClient
 from tests.test_cache_layer import FakeCache
 
 # ── Deep-recap cache ──────────────────────────────────────────────────

@@ -13,16 +13,16 @@ from uuid import uuid4
 
 from httpx import AsyncClient
 
-from dailyloadout.config import settings
-from dailyloadout.infrastructure.catalog.dummy import DummyCatalogMatcher
-from dailyloadout.infrastructure.db.repositories.capture import (
+from slate.config import settings
+from slate.infrastructure.catalog.dummy import DummyCatalogMatcher
+from slate.infrastructure.db.repositories.capture import (
     CaptureCandidateRepository,
     CaptureRepository,
 )
-from dailyloadout.infrastructure.db.repositories.usage import UsageCounterRepository
-from dailyloadout.infrastructure.ocr.base import AbstractOCRClient, OcrLine, OcrResult
-from dailyloadout.infrastructure.ocr.dummy import DummyOCRClient
-from dailyloadout.workers.library_import_processor import (
+from slate.infrastructure.db.repositories.usage import UsageCounterRepository
+from slate.infrastructure.ocr.base import AbstractOCRClient, OcrLine, OcrResult
+from slate.infrastructure.ocr.dummy import DummyOCRClient
+from slate.workers.library_import_processor import (
     VISION_FALLBACK_KEY,
     process_library_import,
 )
@@ -41,7 +41,7 @@ class _StubFallbackOCR(AbstractOCRClient):
 
 
 async def _seed_user_and_capture(session: Any) -> tuple[int, Any]:
-    from dailyloadout.infrastructure.db.models import User
+    from slate.infrastructure.db.models import User
 
     user = User(email=f"{uuid4().hex}@test.com", password_hash="h", display_name="T")
     session.add(user)
@@ -131,7 +131,7 @@ async def test_processor_respects_vision_fallback_cap() -> None:
 
 
 async def test_clean_title_strips_icon_noise() -> None:
-    from dailyloadout.workers.library_import_processor import _clean_title
+    from slate.workers.library_import_processor import _clean_title
 
     assert _clean_title("▶ Hollow Knight") == "Hollow Knight"
     assert _clean_title("• Celeste") == "Celeste"

@@ -6,8 +6,8 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
-from dailyloadout.core.stats.service import StatsService
-from dailyloadout.infrastructure.agent.concierge.tools import (
+from slate.core.stats.service import StatsService
+from slate.infrastructure.agent.concierge.tools import (
     build_concierge_tools,
     estimate_session_fit,
     get_play_session_history,
@@ -15,9 +15,9 @@ from dailyloadout.infrastructure.agent.concierge.tools import (
     search_library,
     validate_recommendation,
 )
-from dailyloadout.infrastructure.db.repositories.library import LibraryRepository
-from dailyloadout.infrastructure.db.repositories.play_session import PlaySessionRepository
-from dailyloadout.infrastructure.db.repositories.stats import StatsRepository
+from slate.infrastructure.db.repositories.library import LibraryRepository
+from slate.infrastructure.db.repositories.play_session import PlaySessionRepository
+from slate.infrastructure.db.repositories.stats import StatsRepository
 from tests.conftest import _TestSessionFactory
 
 
@@ -25,7 +25,7 @@ async def _seed(
     session: Any, *, status: str = "playing", next_action: str | None = None
 ) -> tuple[int, str, int]:
     """Create user + game + platform + entry. Returns (user_id, entry_public_id, entry_id)."""
-    from dailyloadout.infrastructure.db.models import Game, LibraryEntry, Platform, User
+    from slate.infrastructure.db.models import Game, LibraryEntry, Platform, User
 
     user = User(email=f"{uuid4().hex}@test.com", password_hash="h", display_name="T")
     session.add(user)
@@ -97,7 +97,7 @@ async def test_get_play_session_history_no_sessions() -> None:
 
 
 async def test_get_play_session_history_with_session() -> None:
-    from dailyloadout.infrastructure.db.models import PlaySession
+    from slate.infrastructure.db.models import PlaySession
 
     async with _TestSessionFactory() as session:
         user_id, public_id, entry_id = await _seed(session)

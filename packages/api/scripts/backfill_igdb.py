@@ -18,12 +18,12 @@ from __future__ import annotations
 import argparse
 import asyncio
 
-from dailyloadout.config import settings
-from dailyloadout.core.library.backfill import BackfillReport, backfill_games
-from dailyloadout.infrastructure.db.repositories.game import GameRepository
-from dailyloadout.infrastructure.db.session import async_session_factory
-from dailyloadout.infrastructure.igdb.client import IGDBClient
-from dailyloadout.infrastructure.igdb.exceptions import IGDBNotConfiguredError
+from slate.config import settings
+from slate.core.library.backfill import BackfillReport, backfill_games
+from slate.infrastructure.db.repositories.game import GameRepository
+from slate.infrastructure.db.session import async_session_factory
+from slate.infrastructure.igdb.client import IGDBClient
+from slate.infrastructure.igdb.exceptions import IGDBNotConfiguredError
 
 
 def _print_report(report: BackfillReport, *, dry_run: bool) -> None:

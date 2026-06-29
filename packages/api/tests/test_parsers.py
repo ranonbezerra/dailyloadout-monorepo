@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from dailyloadout.infrastructure.llm.parsers import _extract_json, _parse_game_list
+from slate.infrastructure.llm.parsers import _extract_json, _parse_game_list
 
 
 class TestExtractJson:

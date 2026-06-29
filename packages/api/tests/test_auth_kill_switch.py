@@ -12,8 +12,8 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy import select, update
 
-from dailyloadout.core.auth.security import create_access_token
-from dailyloadout.infrastructure.db.models import RefreshToken, User
+from slate.core.auth.security import create_access_token
+from slate.infrastructure.db.models import RefreshToken, User
 from tests.conftest import _TestSessionFactory
 
 
@@ -159,11 +159,11 @@ class TestBan:
 
         # Ban via the service-level mechanism (as the CLI / internal call would).
         async with _TestSessionFactory() as session:
-            from dailyloadout.core.auth.service import AuthService
-            from dailyloadout.infrastructure.db.repositories.refresh_token import (
+            from slate.core.auth.service import AuthService
+            from slate.infrastructure.db.repositories.refresh_token import (
                 RefreshTokenRepository,
             )
-            from dailyloadout.infrastructure.db.repositories.user import UserRepository
+            from slate.infrastructure.db.repositories.user import UserRepository
 
             user_repo = UserRepository(session)
             user = await user_repo.get_by_email("ban-me@example.com")
@@ -279,6 +279,6 @@ class TestRegression:
 @pytest.fixture(autouse=True)
 def _disable_single_user_mode() -> None:
     """Ensure JWT validation is exercised (not the single-user bypass)."""
-    from dailyloadout.config import settings
+    from slate.config import settings
 
     settings.single_user_mode = False

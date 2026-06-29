@@ -15,10 +15,10 @@ from __future__ import annotations
 import asyncio
 import sys
 
-from dailyloadout.core.auth.service import AuthService
-from dailyloadout.infrastructure.db.repositories.refresh_token import RefreshTokenRepository
-from dailyloadout.infrastructure.db.repositories.user import UserRepository
-from dailyloadout.infrastructure.db.session import async_session_factory
+from slate.core.auth.service import AuthService
+from slate.infrastructure.db.repositories.refresh_token import RefreshTokenRepository
+from slate.infrastructure.db.repositories.user import UserRepository
+from slate.infrastructure.db.session import async_session_factory
 
 
 async def _run(action: str, email: str) -> int:

@@ -4,11 +4,11 @@ from logging.config import fileConfig
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from alembic import context
-from dailyloadout.config import settings
-from dailyloadout.infrastructure.db.base import Base
+from slate.config import settings
+from slate.infrastructure.db.base import Base
 
 # Import all models so Alembic can detect them for autogenerate.
-from dailyloadout.infrastructure.db.models import (  # noqa: F401
+from slate.infrastructure.db.models import (  # noqa: F401
     Capture,
     CaptureCandidate,
     Game,

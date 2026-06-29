@@ -6,9 +6,9 @@ from typing import Any
 
 from httpx import AsyncClient
 
-from dailyloadout.core.library.service import LibraryService
-from dailyloadout.infrastructure.cache.keys import reference_key
-from dailyloadout.infrastructure.cache.layer import cached_call, reset_cache_stats
+from slate.core.library.service import LibraryService
+from slate.infrastructure.cache.keys import reference_key
+from slate.infrastructure.cache.layer import cached_call, reset_cache_stats
 from tests.test_cache_layer import FakeCache
 
 # ── /v1/cache/stats endpoint ─────────────────────────────────────────────

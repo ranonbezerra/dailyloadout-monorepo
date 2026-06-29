@@ -13,7 +13,7 @@ from uuid import uuid4
 
 import pytest
 
-from dailyloadout.infrastructure.cache.keys import stats_namespace
+from slate.infrastructure.cache.keys import stats_namespace
 
 
 class SpyCache:
@@ -40,7 +40,7 @@ def spy_cache(monkeypatch: pytest.MonkeyPatch) -> SpyCache:
     """Replace the ambient cache resolver so invalidation hits the spy."""
     spy = SpyCache()
     monkeypatch.setattr(
-        "dailyloadout.core.cache.invalidation.get_cache",
+        "slate.core.cache.invalidation.get_cache",
         lambda _settings: spy,
     )
     return spy
@@ -69,7 +69,7 @@ class _ClampRepo:
 
 
 async def test_auto_clamp_busts_each_affected_user_once(spy_cache: SpyCache) -> None:
-    from dailyloadout.workers.play_session_auto_clamp import auto_clamp_stale_play_sessions
+    from slate.workers.play_session_auto_clamp import auto_clamp_stale_play_sessions
 
     repo = _ClampRepo([_StalePlaySession(1, 7), _StalePlaySession(2, 7), _StalePlaySession(3, 9)])
 
@@ -81,7 +81,7 @@ async def test_auto_clamp_busts_each_affected_user_once(spy_cache: SpyCache) -> 
 
 
 async def test_auto_clamp_no_stale_does_not_bust(spy_cache: SpyCache) -> None:
-    from dailyloadout.workers.play_session_auto_clamp import auto_clamp_stale_play_sessions
+    from slate.workers.play_session_auto_clamp import auto_clamp_stale_play_sessions
 
     assert await auto_clamp_stale_play_sessions(_ClampRepo([])) == 0  # type: ignore[arg-type]
     assert spy_cache.busted == []
@@ -169,7 +169,7 @@ class _PlatformRepo:
 
 
 def _library_service() -> Any:
-    from dailyloadout.core.library.service import LibraryService
+    from slate.core.library.service import LibraryService
 
     return LibraryService(_GameRepo(), _LibRepo(), _PlatformRepo())  # type: ignore[arg-type]
 
@@ -204,7 +204,7 @@ class _ConciergeLibRepo:
 
 
 async def test_concierge_set_status_busts_stats(spy_cache: SpyCache) -> None:
-    from dailyloadout.infrastructure.agent.concierge import tools_write
+    from slate.infrastructure.agent.concierge import tools_write
 
     msg = await tools_write.set_status(
         _ConciergeLibRepo(),  # type: ignore[arg-type]
@@ -264,7 +264,7 @@ class _CaptureGameRepo:
 
 
 async def test_capture_confirm_busts_stats(spy_cache: SpyCache) -> None:
-    from dailyloadout.core.capture.service import CaptureService
+    from slate.core.capture.service import CaptureService
 
     service = CaptureService(
         _CaptureRepo(),  # type: ignore[arg-type]

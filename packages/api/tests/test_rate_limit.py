@@ -22,9 +22,9 @@ from pyrate_limiter import (
     Rate,
 )
 
-from dailyloadout.api.v1 import _rate_limit
-from dailyloadout.api.v1._rate_limit import rate_limit
-from dailyloadout.config import settings
+from slate.api.v1 import _rate_limit
+from slate.api.v1._rate_limit import rate_limit
+from slate.config import settings
 
 
 @pytest.fixture(autouse=True)
@@ -204,7 +204,7 @@ async def test_get_limiter_is_memoized(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_get_redis_client_is_memoized(monkeypatch: pytest.MonkeyPatch) -> None:
-    import dailyloadout.infrastructure.cache.redis_client as rc
+    import slate.infrastructure.cache.redis_client as rc
 
     monkeypatch.setattr(rc, "_redis_client", None)
     first = rc.get_redis_client()
@@ -220,15 +220,15 @@ def test_get_redis_client_is_memoized(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture
 async def limited_auth_client(in_memory_limiter: dict[str, Limiter]) -> Any:
     """Real app client with the auth limiter ACTIVE (no no-op overrides)."""
-    from dailyloadout.deps import get_db
-    from dailyloadout.deps.capture import (
+    from slate.deps import get_db
+    from slate.deps.capture import (
         get_igdb_client_dep,
         get_llm_client_dep,
         get_stt_client_dep,
     )
-    from dailyloadout.infrastructure.llm.dummy import DummyLLMClient
-    from dailyloadout.infrastructure.stt.dummy import DummySTTClient
-    from dailyloadout.main import app
+    from slate.infrastructure.llm.dummy import DummyLLMClient
+    from slate.infrastructure.stt.dummy import DummySTTClient
+    from slate.main import app
     from tests.conftest import _override_get_db
 
     app.dependency_overrides[get_db] = _override_get_db

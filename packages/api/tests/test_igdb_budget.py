@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import pytest
 
-from dailyloadout.config import settings
-from dailyloadout.core.library import igdb_budget
-from dailyloadout.infrastructure.cache import usage_counter
+from slate.config import settings
+from slate.core.library import igdb_budget
+from slate.infrastructure.cache import usage_counter
 
 
 class _FakeRedis:

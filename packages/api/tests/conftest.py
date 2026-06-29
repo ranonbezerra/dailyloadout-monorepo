@@ -22,8 +22,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.types import TypeDecorator
 
-from dailyloadout.infrastructure.db.base import Base
-from dailyloadout.infrastructure.db.models import (  # noqa: F401  — ensure models registered
+from slate.infrastructure.db.base import Base
+from slate.infrastructure.db.models import (  # noqa: F401  — ensure models registered
     AppConfig,
     Capture,
     CaptureCandidate,
@@ -110,8 +110,8 @@ def _reset_dynamic_config() -> Iterator[None]:
     """
     import time
 
-    from dailyloadout.infrastructure.config.dynamic import _MISSING, dynamic_config
-    from dailyloadout.infrastructure.config.registry import CONFIG_REGISTRY
+    from slate.infrastructure.config.dynamic import _MISSING, dynamic_config
+    from slate.infrastructure.config.registry import CONFIG_REGISTRY
 
     dynamic_config._session_factory = _TestSessionFactory
     dynamic_config.clear()
@@ -172,7 +172,7 @@ def _no_background_dispatch(monkeypatch: pytest.MonkeyPatch) -> None:
     to a failure (flaky under xdist). Every test that submits a wrap_up already
     asserts the state is NOT yet extracted, so a no-op matches that behaviour.
     """
-    from dailyloadout.infrastructure.tasks import wrap_up_extraction
+    from slate.infrastructure.tasks import wrap_up_extraction
 
     async def _noop_kiq(*_args: object, **_kwargs: object) -> None:
         return None
@@ -221,17 +221,17 @@ async def async_client() -> AsyncIterator[AsyncClient]:
     """Provide an ``httpx.AsyncClient`` wired to the FastAPI app with the
     database dependency overridden to use the in-memory SQLite engine.
     """
-    from dailyloadout.api.v1.auth import _check_login_rate, _check_register_rate
-    from dailyloadout.config import settings
-    from dailyloadout.deps import get_db
-    from dailyloadout.deps.capture import (
+    from slate.api.v1.auth import _check_login_rate, _check_register_rate
+    from slate.config import settings
+    from slate.deps import get_db
+    from slate.deps.capture import (
         get_igdb_client_dep,
         get_llm_client_dep,
         get_stt_client_dep,
     )
-    from dailyloadout.infrastructure.llm.dummy import DummyLLMClient
-    from dailyloadout.infrastructure.stt.dummy import DummySTTClient
-    from dailyloadout.main import app
+    from slate.infrastructure.llm.dummy import DummyLLMClient
+    from slate.infrastructure.stt.dummy import DummySTTClient
+    from slate.main import app
 
     # Tests run over plain http://; a Secure cookie would never be sent back by
     # httpx, so relax it for the cookie-mode auth tests (prod stays Secure).
@@ -343,7 +343,7 @@ def pytest_sessionfinish(session: Any, exitstatus: int) -> None:
 
     async def _dispose() -> None:
         await _test_engine.dispose()
-        from dailyloadout.infrastructure.db.session import engine as real_engine
+        from slate.infrastructure.db.session import engine as real_engine
 
         await real_engine.dispose()
 

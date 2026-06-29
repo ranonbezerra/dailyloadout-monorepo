@@ -10,23 +10,23 @@ from __future__ import annotations
 from typing import Any
 from uuid import uuid4
 
-from dailyloadout.config import settings
-from dailyloadout.infrastructure.agent.concierge.tools_write import (
+from slate.config import settings
+from slate.infrastructure.agent.concierge.tools_write import (
     build_concierge_write_tools,
     generate_recap,
     set_status,
     start_play_session,
     submit_retroactive_wrap_up,
 )
-from dailyloadout.infrastructure.db.repositories.library import LibraryRepository
-from dailyloadout.infrastructure.db.repositories.play_session import PlaySessionRepository
-from dailyloadout.infrastructure.llm.dummy import DummyLLMClient
+from slate.infrastructure.db.repositories.library import LibraryRepository
+from slate.infrastructure.db.repositories.play_session import PlaySessionRepository
+from slate.infrastructure.llm.dummy import DummyLLMClient
 from tests.conftest import _TestSessionFactory
 
 
 async def _seed(session: Any, *, status: str = "playing") -> tuple[int, str, int]:
     """Create user + game + platform + entry. Returns (user_id, entry_public_id, entry_id)."""
-    from dailyloadout.infrastructure.db.models import Game, LibraryEntry, Platform, User
+    from slate.infrastructure.db.models import Game, LibraryEntry, Platform, User
 
     user = User(email=f"{uuid4().hex}@test.com", password_hash="h", display_name="T")
     session.add(user)

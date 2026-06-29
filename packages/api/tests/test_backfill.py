@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from datetime import date
 
-from dailyloadout.core.library.backfill import backfill_games, enrich_game
-from dailyloadout.infrastructure.db.repositories.game import GameRepository
-from dailyloadout.infrastructure.igdb.schemas import IGDBGame
+from slate.core.library.backfill import backfill_games, enrich_game
+from slate.infrastructure.db.repositories.game import GameRepository
+from slate.infrastructure.igdb.schemas import IGDBGame
 from tests.conftest import _TestSessionFactory
 
 

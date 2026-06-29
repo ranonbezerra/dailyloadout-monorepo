@@ -6,9 +6,9 @@ from typing import Any, ClassVar
 
 import pytest
 
-from dailyloadout.config import Settings
-from dailyloadout.infrastructure.igdb.client import IGDBClient
-from dailyloadout.infrastructure.igdb.exceptions import IGDBNotConfiguredError
+from slate.config import Settings
+from slate.infrastructure.igdb.client import IGDBClient
+from slate.infrastructure.igdb.exceptions import IGDBNotConfiguredError
 
 
 def _client() -> IGDBClient:
@@ -58,7 +58,7 @@ class _SpyAsyncClient:
 async def test_token_sends_secret_in_body_not_query(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import dailyloadout.infrastructure.igdb.client as mod
+    import slate.infrastructure.igdb.client as mod
 
     monkeypatch.setattr(mod.httpx, "AsyncClient", _SpyAsyncClient)
     client = _client()
@@ -75,8 +75,8 @@ async def test_token_http_error_is_sanitized(monkeypatch: pytest.MonkeyPatch) ->
     """A failing token request never surfaces the secret; raises a clean error."""
     import httpx
 
-    import dailyloadout.infrastructure.igdb.client as mod
-    from dailyloadout.infrastructure.igdb.exceptions import IGDBNotConfiguredError
+    import slate.infrastructure.igdb.client as mod
+    from slate.infrastructure.igdb.exceptions import IGDBNotConfiguredError
 
     class _FailingTokenClient(_SpyAsyncClient):
         async def post(self, url: str, **kwargs: Any) -> _SpyResponse:
@@ -101,7 +101,7 @@ async def test_token_http_error_is_sanitized(monkeypatch: pytest.MonkeyPatch) ->
 
 
 async def test_search_sanitizes_quotes(monkeypatch: pytest.MonkeyPatch) -> None:
-    import dailyloadout.infrastructure.igdb.client as mod
+    import slate.infrastructure.igdb.client as mod
 
     monkeypatch.setattr(mod.httpx, "AsyncClient", _SpyAsyncClient)
     client = _client()
@@ -118,7 +118,7 @@ async def test_search_sanitizes_quotes(monkeypatch: pytest.MonkeyPatch) -> None:
 async def test_search_strips_backslashes_and_caps_length(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import dailyloadout.infrastructure.igdb.client as mod
+    import slate.infrastructure.igdb.client as mod
 
     monkeypatch.setattr(mod.httpx, "AsyncClient", _SpyAsyncClient)
     client = _client()

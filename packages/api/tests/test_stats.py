@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 
 from httpx import AsyncClient
 
-from dailyloadout.infrastructure.db.models import Game, LibraryEntry, PlaySession
+from slate.infrastructure.db.models import Game, LibraryEntry, PlaySession
 from tests.conftest import _TestSessionFactory
 
 

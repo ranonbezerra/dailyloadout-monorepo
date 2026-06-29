@@ -7,9 +7,9 @@ from uuid import uuid4
 import pytest
 from pydantic import ValidationError
 
-from dailyloadout.core.capture.schemas import BulkConfirmRequest
-from dailyloadout.core.library.schemas import GameCreate, LibraryEntryCreate
-from dailyloadout.core.sanitization import (
+from slate.core.capture.schemas import BulkConfirmRequest
+from slate.core.library.schemas import GameCreate, LibraryEntryCreate
+from slate.core.sanitization import (
     has_control_chars,
     reject_control_chars,
     strip_control_chars,

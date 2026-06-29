@@ -5,16 +5,16 @@ from __future__ import annotations
 from types import SimpleNamespace
 from uuid import uuid4
 
-from dailyloadout.config import Settings
-from dailyloadout.core.play_session.recap import generate_recap_for_mode
-from dailyloadout.infrastructure.agent.base import (
+from slate.config import Settings
+from slate.core.play_session.recap import generate_recap_for_mode
+from slate.infrastructure.agent.base import (
     AbstractRecapAgent,
     DeepRecapRequest,
     RecapResult,
 )
-from dailyloadout.infrastructure.agent.dummy import DummyRecapAgent
-from dailyloadout.infrastructure.llm.dummy import DummyLLMClient
-from dailyloadout.infrastructure.research.base import ResearchUnavailableError
+from slate.infrastructure.agent.dummy import DummyRecapAgent
+from slate.infrastructure.llm.dummy import DummyLLMClient
+from slate.infrastructure.research.base import ResearchUnavailableError
 
 
 class _FakePlaySessionRepo:

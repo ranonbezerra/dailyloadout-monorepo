@@ -54,7 +54,7 @@ class TestAutoIgnore:
         await _create_library_entry(async_client, auth_headers, seed_platforms)
         await _create_loadout(async_client, auth_headers)
 
-        from dailyloadout.infrastructure.db.models import Loadout
+        from slate.infrastructure.db.models import Loadout
         from tests.conftest import _TestSessionFactory
 
         async with _TestSessionFactory() as session:
@@ -63,8 +63,8 @@ class TestAutoIgnore:
             lo.created_at = datetime.now(UTC) - timedelta(hours=25)
             await session.commit()
 
-        from dailyloadout.infrastructure.db.repositories.loadout import LoadoutRepository
-        from dailyloadout.workers.loadout_auto_ignore import auto_ignore_stale_loadouts
+        from slate.infrastructure.db.repositories.loadout import LoadoutRepository
+        from slate.workers.loadout_auto_ignore import auto_ignore_stale_loadouts
 
         async with _TestSessionFactory() as session:
             repo = LoadoutRepository(session)
@@ -87,8 +87,8 @@ class TestAutoIgnore:
         await _create_library_entry(async_client, auth_headers, seed_platforms)
         await _create_loadout(async_client, auth_headers)
 
-        from dailyloadout.infrastructure.db.repositories.loadout import LoadoutRepository
-        from dailyloadout.workers.loadout_auto_ignore import auto_ignore_stale_loadouts
+        from slate.infrastructure.db.repositories.loadout import LoadoutRepository
+        from slate.workers.loadout_auto_ignore import auto_ignore_stale_loadouts
         from tests.conftest import _TestSessionFactory
 
         async with _TestSessionFactory() as session:
@@ -99,8 +99,8 @@ class TestAutoIgnore:
         assert ignored == 0
 
     async def test_no_stale_returns_zero(self) -> None:
-        from dailyloadout.infrastructure.db.repositories.loadout import LoadoutRepository
-        from dailyloadout.workers.loadout_auto_ignore import auto_ignore_stale_loadouts
+        from slate.infrastructure.db.repositories.loadout import LoadoutRepository
+        from slate.workers.loadout_auto_ignore import auto_ignore_stale_loadouts
         from tests.conftest import _TestSessionFactory
 
         async with _TestSessionFactory() as session:

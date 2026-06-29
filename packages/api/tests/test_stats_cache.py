@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from dailyloadout.core.cache.invalidation import invalidate_user_stats
-from dailyloadout.core.stats.service import StatsService
+from slate.core.cache.invalidation import invalidate_user_stats
+from slate.core.stats.service import StatsService
 from tests.test_cache_layer import FakeCache
 
 
@@ -79,7 +79,7 @@ async def test_overview_recomputes_after_invalidation() -> None:
 
 
 async def test_null_cache_recomputes_every_time() -> None:
-    from dailyloadout.infrastructure.cache.base import NullCache
+    from slate.infrastructure.cache.base import NullCache
 
     repo = FakeStatsRepo()
     service = StatsService(repo, cache=NullCache(), ttl_seconds=300)  # type: ignore[arg-type]

@@ -8,14 +8,14 @@ from unittest.mock import AsyncMock
 import pytest
 from fastapi import HTTPException
 
-from dailyloadout.core.loadout.service import LoadoutService
-from dailyloadout.infrastructure.llm.base import LoadoutPick
+from slate.core.loadout.service import LoadoutService
+from slate.infrastructure.llm.base import LoadoutPick
 from tests.conftest import _TestSessionFactory
 
 
 async def _setup_user_and_entry(session: Any) -> tuple[int, int]:
     """Create a user, game, platform, and library entry. Return (user_id, entry_id)."""
-    from dailyloadout.infrastructure.db.models import Game, LibraryEntry, Platform, User
+    from slate.infrastructure.db.models import Game, LibraryEntry, Platform, User
 
     user = User(email="u@test.com", password_hash="h", display_name="T")
     session.add(user)
@@ -49,9 +49,9 @@ class TestPickOneFailurePaths:
             await session.commit()
 
         async with _TestSessionFactory() as session:
-            from dailyloadout.infrastructure.db.repositories.library import LibraryRepository
-            from dailyloadout.infrastructure.db.repositories.loadout import LoadoutRepository
-            from dailyloadout.infrastructure.db.repositories.play_session import (
+            from slate.infrastructure.db.repositories.library import LibraryRepository
+            from slate.infrastructure.db.repositories.loadout import LoadoutRepository
+            from slate.infrastructure.db.repositories.play_session import (
                 PlaySessionRepository,
             )
 
@@ -81,9 +81,9 @@ class TestPickOneFailurePaths:
             await session.commit()
 
         async with _TestSessionFactory() as session:
-            from dailyloadout.infrastructure.db.repositories.library import LibraryRepository
-            from dailyloadout.infrastructure.db.repositories.loadout import LoadoutRepository
-            from dailyloadout.infrastructure.db.repositories.play_session import (
+            from slate.infrastructure.db.repositories.library import LibraryRepository
+            from slate.infrastructure.db.repositories.loadout import LoadoutRepository
+            from slate.infrastructure.db.repositories.play_session import (
                 PlaySessionRepository,
             )
 
@@ -117,7 +117,7 @@ class TestPickOneFailurePaths:
         async with _TestSessionFactory() as session:
             user_id, entry_id = await _setup_user_and_entry(session)
 
-            from dailyloadout.infrastructure.db.models import Loadout, PlaySession
+            from slate.infrastructure.db.models import Loadout, PlaySession
 
             play_session = PlaySession(user_id=user_id, library_entry_id=entry_id)
             session.add(play_session)
@@ -137,9 +137,9 @@ class TestPickOneFailurePaths:
             await session.commit()
 
         async with _TestSessionFactory() as session:
-            from dailyloadout.infrastructure.db.repositories.library import LibraryRepository
-            from dailyloadout.infrastructure.db.repositories.loadout import LoadoutRepository
-            from dailyloadout.infrastructure.db.repositories.play_session import (
+            from slate.infrastructure.db.repositories.library import LibraryRepository
+            from slate.infrastructure.db.repositories.loadout import LoadoutRepository
+            from slate.infrastructure.db.repositories.play_session import (
                 PlaySessionRepository,
             )
 

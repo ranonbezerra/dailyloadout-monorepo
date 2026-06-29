@@ -6,9 +6,9 @@ connectionless (``redis.from_url`` is lazy), so no live Redis is needed.
 
 from __future__ import annotations
 
-from dailyloadout.config import Settings
-from dailyloadout.infrastructure.cache import factory
-from dailyloadout.infrastructure.cache.base import NullCache
+from slate.config import Settings
+from slate.infrastructure.cache import factory
+from slate.infrastructure.cache.base import NullCache
 
 
 def test_testing_env_returns_null_cache() -> None:
@@ -22,7 +22,7 @@ def test_disabled_returns_null_cache() -> None:
 
 
 def test_enabled_returns_memoized_redis_cache() -> None:
-    from dailyloadout.infrastructure.cache.redis_cache import RedisCache
+    from slate.infrastructure.cache.redis_cache import RedisCache
 
     factory._redis_cache = None  # reset the process singleton for the test
     try:

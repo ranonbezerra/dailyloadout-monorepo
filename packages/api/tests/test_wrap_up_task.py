@@ -46,10 +46,10 @@ class TestWrapUpExtractionTask:
         # Patch the session factory at the module where it's imported from,
         # so the lazy import inside the task function picks up the test DB.
         with patch(
-            "dailyloadout.infrastructure.db.session.async_session_factory",
+            "slate.infrastructure.db.session.async_session_factory",
             _TestSessionFactory,
         ):
-            from dailyloadout.infrastructure.tasks.wrap_up_extraction import (
+            from slate.infrastructure.tasks.wrap_up_extraction import (
                 extract_wrap_up_state_task,
             )
 
@@ -61,7 +61,7 @@ class TestWrapUpExtractionTask:
             )
 
         # Verify the extracted state is persisted.
-        from dailyloadout.infrastructure.db.models import PlaySession
+        from slate.infrastructure.db.models import PlaySession
 
         async with _TestSessionFactory() as session:
             row = await session.get(PlaySession, 1)
@@ -82,10 +82,10 @@ class TestWrapUpExtractionTask:
         from tests.conftest import _TestSessionFactory
 
         with patch(
-            "dailyloadout.infrastructure.db.session.async_session_factory",
+            "slate.infrastructure.db.session.async_session_factory",
             _TestSessionFactory,
         ):
-            from dailyloadout.infrastructure.tasks.wrap_up_extraction import (
+            from slate.infrastructure.tasks.wrap_up_extraction import (
                 extract_wrap_up_state_task,
             )
 

@@ -9,14 +9,14 @@ import pytest
 from httpx import AsyncClient
 from PIL import Image
 
-from dailyloadout.api._access_log import (
+from slate.api._access_log import (
     RedactQueryStringFilter,
     install_access_log_redaction,
 )
-from dailyloadout.config import Settings, _validate_production_settings
-from dailyloadout.core.capture.exceptions import InvalidUploadError
-from dailyloadout.core.capture.ingestion import _verify_image_bytes
-from dailyloadout.infrastructure import observability
+from slate.config import Settings, _validate_production_settings
+from slate.core.capture.exceptions import InvalidUploadError
+from slate.core.capture.ingestion import _verify_image_bytes
+from slate.infrastructure import observability
 
 
 def _prod(**overrides: object) -> Settings:

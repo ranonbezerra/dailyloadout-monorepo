@@ -7,10 +7,10 @@ from typing import Any
 import httpx
 import pytest
 
-from dailyloadout.config import settings
-from dailyloadout.infrastructure.oauth import OAuthError, build_provider, flow
-from dailyloadout.infrastructure.oauth import state_store as state_mod
-from dailyloadout.infrastructure.oauth.state_store import OAuthState, consume_state, store_state
+from slate.config import settings
+from slate.infrastructure.oauth import OAuthError, build_provider, flow
+from slate.infrastructure.oauth import state_store as state_mod
+from slate.infrastructure.oauth.state_store import OAuthState, consume_state, store_state
 
 
 class _FakeResponse:

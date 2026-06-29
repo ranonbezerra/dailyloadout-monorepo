@@ -12,14 +12,14 @@ from typing import Any
 from httpx import AsyncClient
 from sqlalchemy import func, select
 
-from dailyloadout.infrastructure.db.models import (
+from slate.infrastructure.db.models import (
     AdminAuditLog,
     Game,
     LibraryEntry,
     Platform,
     User,
 )
-from dailyloadout.infrastructure.db.repositories.admin import AdminRepository
+from slate.infrastructure.db.repositories.admin import AdminRepository
 from tests.conftest import _TestSessionFactory
 
 

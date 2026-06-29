@@ -11,15 +11,15 @@ from __future__ import annotations
 from typing import Any
 from uuid import uuid4
 
-from dailyloadout.core.play_session.start import create_play_session_for_entry
-from dailyloadout.infrastructure.db.repositories.library import LibraryRepository
-from dailyloadout.infrastructure.db.repositories.play_session import PlaySessionRepository
+from slate.core.play_session.start import create_play_session_for_entry
+from slate.infrastructure.db.repositories.library import LibraryRepository
+from slate.infrastructure.db.repositories.play_session import PlaySessionRepository
 from tests.conftest import _TestSessionFactory
 
 
 async def _seed(session: Any) -> tuple[int, int]:
     """Create user + game + platform + entry. Returns (user_id, entry_id)."""
-    from dailyloadout.infrastructure.db.models import Game, LibraryEntry, Platform, User
+    from slate.infrastructure.db.models import Game, LibraryEntry, Platform, User
 
     user = User(email=f"{uuid4().hex}@test.com", password_hash="h", display_name="T")
     session.add(user)
@@ -42,7 +42,7 @@ async def _seed(session: Any) -> tuple[int, int]:
 
 
 async def _entry(session: Any, entry_id: int) -> Any:
-    from dailyloadout.infrastructure.db.models import LibraryEntry
+    from slate.infrastructure.db.models import LibraryEntry
 
     return await session.get(LibraryEntry, entry_id)
 

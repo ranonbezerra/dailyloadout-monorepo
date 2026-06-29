@@ -6,17 +6,17 @@ import time
 
 import pytest
 
-from dailyloadout.config import Settings
-from dailyloadout.infrastructure.agent.base import DeepRecapRequest, RecapResult
-from dailyloadout.infrastructure.agent.dummy import DummyRecapAgent
-from dailyloadout.infrastructure.agent.factory import get_recap_agent
-from dailyloadout.infrastructure.agent.graph import nodes
-from dailyloadout.infrastructure.agent.graph.builder import build_graph, route_after_grade
-from dailyloadout.infrastructure.agent.graph.state import PlaySessionContext
-from dailyloadout.infrastructure.agent.langgraph_agent import LangGraphRecapAgent
-from dailyloadout.infrastructure.llm.dummy import DummyLLMClient
-from dailyloadout.infrastructure.research.base import AbstractResearchClient
-from dailyloadout.infrastructure.research.dummy import DummyResearchClient, EmptyResearchClient
+from slate.config import Settings
+from slate.infrastructure.agent.base import DeepRecapRequest, RecapResult
+from slate.infrastructure.agent.dummy import DummyRecapAgent
+from slate.infrastructure.agent.factory import get_recap_agent
+from slate.infrastructure.agent.graph import nodes
+from slate.infrastructure.agent.graph.builder import build_graph, route_after_grade
+from slate.infrastructure.agent.graph.state import PlaySessionContext
+from slate.infrastructure.agent.langgraph_agent import LangGraphRecapAgent
+from slate.infrastructure.llm.dummy import DummyLLMClient
+from slate.infrastructure.research.base import AbstractResearchClient
+from slate.infrastructure.research.dummy import DummyResearchClient, EmptyResearchClient
 
 FUTURE = float("inf")
 
@@ -326,7 +326,7 @@ class TestAgents:
 
     def test_factory_langgraph(self) -> None:
         # The langgraph agent is wrapped in the Epic 18 recap cache.
-        from dailyloadout.infrastructure.agent.cached import CachedRecapAgent
+        from slate.infrastructure.agent.cached import CachedRecapAgent
 
         agent = get_recap_agent(
             Settings(agent_provider="langgraph", research_provider="dummy"), DummyLLMClient()

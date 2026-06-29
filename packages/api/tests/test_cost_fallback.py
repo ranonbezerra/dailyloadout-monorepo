@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from dailyloadout.infrastructure.cache import cost_fallback
+from slate.infrastructure.cache import cost_fallback
 
 
 @pytest.fixture(autouse=True)

@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import pytest
 
-from dailyloadout.config import Settings
-from dailyloadout.infrastructure.llm.dummy import DummyLLMClient
-from dailyloadout.infrastructure.llm.factory import get_llm_client
-from dailyloadout.infrastructure.llm.ollama import OllamaClient
-from dailyloadout.infrastructure.stt.dummy import DummySTTClient
-from dailyloadout.infrastructure.stt.factory import get_stt_client
+from slate.config import Settings
+from slate.infrastructure.llm.dummy import DummyLLMClient
+from slate.infrastructure.llm.factory import get_llm_client
+from slate.infrastructure.llm.ollama import OllamaClient
+from slate.infrastructure.stt.dummy import DummySTTClient
+from slate.infrastructure.stt.factory import get_stt_client
 
 
 def _make_settings(**overrides: object) -> Settings:
@@ -47,7 +47,7 @@ class TestSTTFactory:
 
     def test_whisper_provider(self) -> None:
         s = _make_settings(stt_provider="whisper")
-        from dailyloadout.infrastructure.stt.whisper import WhisperSTTClient
+        from slate.infrastructure.stt.whisper import WhisperSTTClient
 
         client = get_stt_client(s)
         assert isinstance(client, WhisperSTTClient)

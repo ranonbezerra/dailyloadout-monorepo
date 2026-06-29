@@ -11,9 +11,9 @@ from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from dailyloadout.infrastructure.db.models import Platform, User
-from dailyloadout.infrastructure.db.repositories.game import GameRepository
-from dailyloadout.infrastructure.db.repositories.library import LibraryRepository
+from slate.infrastructure.db.models import Platform, User
+from slate.infrastructure.db.repositories.game import GameRepository
+from slate.infrastructure.db.repositories.library import LibraryRepository
 from tests.conftest import _TestSessionFactory
 
 
@@ -144,7 +144,7 @@ class TestCountDistinctOwners:
 class TestPromotionThreshold:
     async def test_service_promotes_at_threshold(self) -> None:
         """``maybe_promote_to_shared`` flips is_shared once owners hit threshold."""
-        from dailyloadout.core.library.promotion import maybe_promote_to_shared
+        from slate.core.library.promotion import maybe_promote_to_shared
 
         async with _TestSessionFactory() as session:
             creator = await _make_user(session, "a@example.com")
@@ -179,7 +179,7 @@ class TestPromotionThreshold:
 
     async def test_igdb_row_not_repromoted(self) -> None:
         """Canonical/IGDB rows are already shared; promotion is a no-op."""
-        from dailyloadout.core.library.promotion import maybe_promote_to_shared
+        from slate.core.library.promotion import maybe_promote_to_shared
 
         async with _TestSessionFactory() as session:
             game_repo = GameRepository(session)

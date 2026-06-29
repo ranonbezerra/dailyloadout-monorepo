@@ -5,14 +5,14 @@ from __future__ import annotations
 import pytest
 from httpx import AsyncClient
 
-from dailyloadout.api.v1 import auth_oauth
-from dailyloadout.config import settings
-from dailyloadout.core.auth.security import hash_password
-from dailyloadout.core.auth.service import AuthService
-from dailyloadout.infrastructure.db.repositories.oauth import OAuthIdentityRepository
-from dailyloadout.infrastructure.db.repositories.refresh_token import RefreshTokenRepository
-from dailyloadout.infrastructure.db.repositories.user import UserRepository
-from dailyloadout.infrastructure.oauth import (
+from slate.api.v1 import auth_oauth
+from slate.config import settings
+from slate.core.auth.security import hash_password
+from slate.core.auth.service import AuthService
+from slate.infrastructure.db.repositories.oauth import OAuthIdentityRepository
+from slate.infrastructure.db.repositories.refresh_token import RefreshTokenRepository
+from slate.infrastructure.db.repositories.user import UserRepository
+from slate.infrastructure.oauth import (
     OAuthAccountConflictError,
     OAuthError,
     OAuthState,

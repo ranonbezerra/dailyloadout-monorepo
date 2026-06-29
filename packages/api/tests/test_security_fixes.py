@@ -6,10 +6,10 @@ from typing import Any
 
 import pytest
 
-from dailyloadout.core.library import promotion
-from dailyloadout.core.sanitization import sanitize_catalog_text, validate_https_url
-from dailyloadout.infrastructure.catalog.base import CatalogMatch
-from dailyloadout.workers import library_import_processor as proc
+from slate.core.library import promotion
+from slate.core.sanitization import sanitize_catalog_text, validate_https_url
+from slate.infrastructure.catalog.base import CatalogMatch
+from slate.workers import library_import_processor as proc
 
 # ── sanitize_catalog_text ───────────────────────────────────────────────
 

@@ -15,9 +15,9 @@ from __future__ import annotations
 import pytest
 from fastapi import HTTPException
 
-from dailyloadout.api.v1 import _cost_guard
-from dailyloadout.config import settings
-from dailyloadout.infrastructure.cache import cost_fallback, usage_counter
+from slate.api.v1 import _cost_guard
+from slate.config import settings
+from slate.infrastructure.cache import cost_fallback, usage_counter
 
 
 class _FakeRedis:

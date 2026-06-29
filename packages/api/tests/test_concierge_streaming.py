@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dailyloadout.infrastructure.agent.concierge.streaming import (
+from slate.infrastructure.agent.concierge.streaming import (
     RecommendationGate,
     split_recommendation,
 )

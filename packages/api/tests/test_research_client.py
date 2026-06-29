@@ -7,18 +7,18 @@ import asyncio
 import httpx
 import pytest
 
-from dailyloadout.config import Settings
-from dailyloadout.infrastructure.research._html import extract_text
-from dailyloadout.infrastructure.research.base import (
+from slate.config import Settings
+from slate.infrastructure.research._html import extract_text
+from slate.infrastructure.research.base import (
     ResearchUnavailableError,
     SearchResult,
 )
-from dailyloadout.infrastructure.research.dummy import (
+from slate.infrastructure.research.dummy import (
     DummyResearchClient,
     EmptyResearchClient,
 )
-from dailyloadout.infrastructure.research.factory import get_research_client
-from dailyloadout.infrastructure.research.searxng import SearxngResearchClient
+from slate.infrastructure.research.factory import get_research_client
+from slate.infrastructure.research.searxng import SearxngResearchClient
 
 
 class TestDummyResearchClient:
@@ -145,7 +145,7 @@ class TestSearxngResearchClient:
 class TestSearxngFetchSsrfGuard:
     async def test_blocks_private_ip_host(self, make_searxng_client, monkeypatch) -> None:
         """A host resolving to a private IP is rejected before any request."""
-        import dailyloadout.infrastructure.research.searxng as mod
+        import slate.infrastructure.research.searxng as mod
 
         def fake_getaddrinfo(host, *args, **kwargs):
             return [(2, 1, 6, "", ("10.0.0.5", 0))]
@@ -164,7 +164,7 @@ class TestSearxngFetchSsrfGuard:
         assert called["hit"] is False  # never reached the network
 
     async def test_blocks_loopback_host(self, make_searxng_client, monkeypatch) -> None:
-        import dailyloadout.infrastructure.research.searxng as mod
+        import slate.infrastructure.research.searxng as mod
 
         monkeypatch.setattr(
             mod.socket,
@@ -176,7 +176,7 @@ class TestSearxngFetchSsrfGuard:
 
     async def test_allows_public_host(self, make_searxng_client, monkeypatch) -> None:
         """A host resolving to a public IP is fetched and its text returned."""
-        import dailyloadout.infrastructure.research.searxng as mod
+        import slate.infrastructure.research.searxng as mod
 
         monkeypatch.setattr(
             mod.socket,
@@ -195,7 +195,7 @@ class TestSearxngFetchSsrfGuard:
     async def test_rejects_unresolvable_host(self, make_searxng_client, monkeypatch) -> None:
         import socket as _socket
 
-        import dailyloadout.infrastructure.research.searxng as mod
+        import slate.infrastructure.research.searxng as mod
 
         def boom(*a, **k):
             raise _socket.gaierror("no such host")

@@ -8,8 +8,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 from PIL import Image
 
-from dailyloadout.infrastructure.llm.dummy import DummyLLMClient
-from dailyloadout.workers.capture_processor import _load_image_as_jpeg, process_capture
+from slate.infrastructure.llm.dummy import DummyLLMClient
+from slate.workers.capture_processor import _load_image_as_jpeg, process_capture
 
 
 def _make_capture(**overrides: object) -> MagicMock:
@@ -84,8 +84,8 @@ class TestProcessCaptureEdgeCases:
         assert "secret internal detail" not in error_message
 
     async def test_igdb_enrichment_adds_metadata(self) -> None:
-        from dailyloadout.infrastructure.igdb.schemas import IGDBGame
-        from dailyloadout.infrastructure.llm.base import ExtractedGame
+        from slate.infrastructure.igdb.schemas import IGDBGame
+        from slate.infrastructure.llm.base import ExtractedGame
 
         capture = _make_capture(input_type="text", raw_text="Hollow Knight")
         capture_repo = AsyncMock()
@@ -108,8 +108,8 @@ class TestProcessCaptureEdgeCases:
         assert call_kwargs.get("igdb_id") == 99
 
     async def test_igdb_not_configured_graceful(self) -> None:
-        from dailyloadout.infrastructure.igdb.exceptions import IGDBNotConfiguredError
-        from dailyloadout.infrastructure.llm.base import ExtractedGame
+        from slate.infrastructure.igdb.exceptions import IGDBNotConfiguredError
+        from slate.infrastructure.llm.base import ExtractedGame
 
         capture = _make_capture(input_type="text", raw_text="Hollow Knight")
         capture_repo = AsyncMock()
@@ -129,7 +129,7 @@ class TestProcessCaptureEdgeCases:
         candidate_repo.create.assert_called_once()
 
     async def test_igdb_generic_error_graceful(self) -> None:
-        from dailyloadout.infrastructure.llm.base import ExtractedGame
+        from slate.infrastructure.llm.base import ExtractedGame
 
         capture = _make_capture(input_type="text", raw_text="Hollow Knight")
         capture_repo = AsyncMock()

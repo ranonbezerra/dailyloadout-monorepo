@@ -230,7 +230,7 @@ class TestCreateGameDedup:
     ) -> None:
         from sqlalchemy import select
 
-        from dailyloadout.infrastructure.db.models import Game
+        from slate.infrastructure.db.models import Game
         from tests.conftest import _TestSessionFactory
 
         payload = _game_payload(slug="dedup-me", title="Dedup Me")

@@ -5,12 +5,12 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from dailyloadout.core.library.schemas import (
+from slate.core.library.schemas import (
     GameResponse,
     LibraryEntryResponse,
     PlatformResponse,
 )
-from dailyloadout.core.play_session.schemas import (
+from slate.core.play_session.schemas import (
     ExtractedState,
     PlaySessionResponse,
     RecapPreviewResponse,

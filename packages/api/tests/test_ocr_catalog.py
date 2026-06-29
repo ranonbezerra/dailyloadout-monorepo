@@ -6,11 +6,11 @@ from datetime import date
 from typing import Any
 from uuid import uuid4
 
-from dailyloadout.infrastructure.catalog.dummy import DummyCatalogMatcher
-from dailyloadout.infrastructure.catalog.matcher import _normalize, best_match
-from dailyloadout.infrastructure.db.repositories.usage import UsageCounterRepository
-from dailyloadout.infrastructure.igdb.schemas import IGDBGame
-from dailyloadout.infrastructure.ocr.dummy import DummyOCRClient
+from slate.infrastructure.catalog.dummy import DummyCatalogMatcher
+from slate.infrastructure.catalog.matcher import _normalize, best_match
+from slate.infrastructure.db.repositories.usage import UsageCounterRepository
+from slate.infrastructure.igdb.schemas import IGDBGame
+from slate.infrastructure.ocr.dummy import DummyOCRClient
 from tests.conftest import _TestSessionFactory
 
 # -- DummyOCRClient -------------------------------------------------------------
@@ -114,7 +114,7 @@ class _StubIGDB:
 
 
 async def test_igdb_matcher_matches_and_enriches() -> None:
-    from dailyloadout.infrastructure.catalog.matcher import IGDBCatalogMatcher
+    from slate.infrastructure.catalog.matcher import IGDBCatalogMatcher
 
     igdb = _StubIGDB([IGDBGame(igdb_id=42, title="Hollow Knight", genres=["Metroidvania"])])
     match = await IGDBCatalogMatcher(igdb).match("Hollow Knght")  # type: ignore[arg-type]
@@ -124,7 +124,7 @@ async def test_igdb_matcher_matches_and_enriches() -> None:
 
 
 async def test_igdb_matcher_search_failure_echoes() -> None:
-    from dailyloadout.infrastructure.catalog.matcher import IGDBCatalogMatcher
+    from slate.infrastructure.catalog.matcher import IGDBCatalogMatcher
 
     match = await IGDBCatalogMatcher(_StubIGDB([], fail=True)).match("Anything")  # type: ignore[arg-type]
     assert not match.matched
@@ -135,7 +135,7 @@ async def test_igdb_matcher_search_failure_echoes() -> None:
 
 
 async def _seed_user(session: Any) -> int:
-    from dailyloadout.infrastructure.db.models import User
+    from slate.infrastructure.db.models import User
 
     user = User(email=f"{uuid4().hex}@test.com", password_hash="h", display_name="T")
     session.add(user)

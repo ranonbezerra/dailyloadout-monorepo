@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from dailyloadout.config import Settings, _validate_production_settings
+from slate.config import Settings, _validate_production_settings
 
 
 def test_cookie_secure_defaults_true() -> None:

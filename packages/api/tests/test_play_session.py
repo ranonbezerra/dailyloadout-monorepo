@@ -635,7 +635,7 @@ class TestGetPlaySession:
 
 class TestAntiHallucination:
     def test_valid_recap(self) -> None:
-        from dailyloadout.core.play_session.anti_hallucination import validate_recap
+        from slate.core.play_session.anti_hallucination import validate_recap
 
         result = validate_recap(
             recap_text="You were at Greenpath fighting the Mantis Lords.",
@@ -645,7 +645,7 @@ class TestAntiHallucination:
         assert result.overlap_ratio >= 0.40
 
     def test_suspicious_recap(self) -> None:
-        from dailyloadout.core.play_session.anti_hallucination import validate_recap
+        from slate.core.play_session.anti_hallucination import validate_recap
 
         result = validate_recap(
             recap_text="You were at Harkenburg Castle fighting King Aldric the Terrible.",
@@ -656,7 +656,7 @@ class TestAntiHallucination:
         assert len(result.missing_tokens) > 0
 
     def test_empty_recap(self) -> None:
-        from dailyloadout.core.play_session.anti_hallucination import validate_recap
+        from slate.core.play_session.anti_hallucination import validate_recap
 
         result = validate_recap(
             recap_text="just some lowercase text without proper nouns",
@@ -667,7 +667,7 @@ class TestAntiHallucination:
 
     def test_only_numbers_in_recap(self) -> None:
         """Numbers are interesting tokens; they must also appear in context."""
-        from dailyloadout.core.play_session.anti_hallucination import validate_recap
+        from slate.core.play_session.anti_hallucination import validate_recap
 
         # Both numbers present in context -- should be fully grounded.
         # Note: "Level" is also an interesting token ([A-Z][a-z]{2,}).
@@ -696,7 +696,7 @@ class TestAntiHallucination:
 
     def test_mixed_case_tokens(self) -> None:
         """Tokens in the recap should match context via case-insensitive comparison."""
-        from dailyloadout.core.play_session.anti_hallucination import validate_recap
+        from slate.core.play_session.anti_hallucination import validate_recap
 
         # Recap has "Greenpath" (capitalised), context has "GREENPATH"
         # (all-caps).  The validator lowercases both sides for comparison,
@@ -717,7 +717,7 @@ class TestAntiHallucination:
     def test_entirely_grounded_recap(self) -> None:
         """When every interesting token from the recap exists in context,
         overlap_ratio must be exactly 1.0."""
-        from dailyloadout.core.play_session.anti_hallucination import validate_recap
+        from slate.core.play_session.anti_hallucination import validate_recap
 
         result = validate_recap(
             recap_text="Explore Greenpath and defeat the Mantis Lords.",
@@ -729,7 +729,7 @@ class TestAntiHallucination:
 
     def test_single_token_recap(self) -> None:
         """Edge case: recap with exactly one interesting token."""
-        from dailyloadout.core.play_session.anti_hallucination import validate_recap
+        from slate.core.play_session.anti_hallucination import validate_recap
 
         # Single token present in context -- ratio = 1/1 = 1.0
         result_present = validate_recap(
@@ -752,7 +752,7 @@ class TestAntiHallucination:
     def test_context_contains_game_title_referenced_in_recap(self) -> None:
         """Recap referencing the game title should be grounded when
         the title appears in the context."""
-        from dailyloadout.core.play_session.anti_hallucination import validate_recap
+        from slate.core.play_session.anti_hallucination import validate_recap
 
         result = validate_recap(
             recap_text=(
@@ -906,7 +906,7 @@ class TestAutoClamp:
         play_session = await _start_play_session(async_client, auth_headers, entry["public_id"])
 
         # Backdate started_at so the play_session looks stale.
-        from dailyloadout.infrastructure.db.models import PlaySession
+        from slate.infrastructure.db.models import PlaySession
         from tests.conftest import _TestSessionFactory
 
         async with _TestSessionFactory() as session:
@@ -916,10 +916,10 @@ class TestAutoClamp:
             await session.commit()
 
         # Run the auto-clamp worker.
-        from dailyloadout.infrastructure.db.repositories.play_session import (
+        from slate.infrastructure.db.repositories.play_session import (
             PlaySessionRepository,
         )
-        from dailyloadout.workers.play_session_auto_clamp import (
+        from slate.workers.play_session_auto_clamp import (
             auto_clamp_stale_play_sessions,
         )
 
@@ -949,10 +949,10 @@ class TestAutoClamp:
         entry = await _create_library_entry(async_client, auth_headers, seed_platforms)
         await _start_play_session(async_client, auth_headers, entry["public_id"])
 
-        from dailyloadout.infrastructure.db.repositories.play_session import (
+        from slate.infrastructure.db.repositories.play_session import (
             PlaySessionRepository,
         )
-        from dailyloadout.workers.play_session_auto_clamp import (
+        from slate.workers.play_session_auto_clamp import (
             auto_clamp_stale_play_sessions,
         )
         from tests.conftest import _TestSessionFactory
@@ -980,7 +980,7 @@ class TestAutoClamp:
         entry = await _create_library_entry(async_client, auth_headers, seed_platforms)
         play_session = await _start_play_session(async_client, auth_headers, entry["public_id"])
 
-        from dailyloadout.infrastructure.db.models import PlaySession
+        from slate.infrastructure.db.models import PlaySession
         from tests.conftest import _TestSessionFactory
 
         stale_start = datetime.now(UTC) - timedelta(hours=30)
@@ -990,10 +990,10 @@ class TestAutoClamp:
             m.started_at = stale_start
             await session.commit()
 
-        from dailyloadout.infrastructure.db.repositories.play_session import (
+        from slate.infrastructure.db.repositories.play_session import (
             PlaySessionRepository,
         )
-        from dailyloadout.workers.play_session_auto_clamp import (
+        from slate.workers.play_session_auto_clamp import (
             auto_clamp_stale_play_sessions,
         )
 
@@ -1023,7 +1023,7 @@ class TestAutoClamp:
         entry = await _create_library_entry(async_client, auth_headers, seed_platforms)
         await _start_play_session(async_client, auth_headers, entry["public_id"])
 
-        from dailyloadout.infrastructure.db.models import PlaySession
+        from slate.infrastructure.db.models import PlaySession
         from tests.conftest import _TestSessionFactory
 
         async with _TestSessionFactory() as session:
@@ -1032,10 +1032,10 @@ class TestAutoClamp:
             m.started_at = datetime.now(UTC) - timedelta(hours=25)
             await session.commit()
 
-        from dailyloadout.infrastructure.db.repositories.play_session import (
+        from slate.infrastructure.db.repositories.play_session import (
             PlaySessionRepository,
         )
-        from dailyloadout.workers.play_session_auto_clamp import (
+        from slate.workers.play_session_auto_clamp import (
             auto_clamp_stale_play_sessions,
         )
 
@@ -1084,7 +1084,7 @@ class TestAutoClamp:
         m3 = await _start_play_session(async_client, headers2, entry2["public_id"])
 
         # Backdate only active play_sessions (m2 and m3).
-        from dailyloadout.infrastructure.db.models import PlaySession
+        from slate.infrastructure.db.models import PlaySession
         from tests.conftest import _TestSessionFactory
 
         async with _TestSessionFactory() as session:
@@ -1094,10 +1094,10 @@ class TestAutoClamp:
                 row.started_at = datetime.now(UTC) - timedelta(hours=25)
             await session.commit()
 
-        from dailyloadout.infrastructure.db.repositories.play_session import (
+        from slate.infrastructure.db.repositories.play_session import (
             PlaySessionRepository,
         )
-        from dailyloadout.workers.play_session_auto_clamp import (
+        from slate.workers.play_session_auto_clamp import (
             auto_clamp_stale_play_sessions,
         )
 
