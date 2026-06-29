@@ -4,7 +4,7 @@ This file is auto-loaded by Claude Code for every task. It defines the rules, pa
 
 ## Product Summary
 
-DailyLoadout is a gaming companion that helps players choose what to play. It combines a personal game library, AI-powered daily loadout suggestions, structured mission tracking, and analytics — all orchestrated by local LLMs via Ollama.
+DailyLoadout is a gaming companion that helps players choose what to play. It combines a personal game library, AI-powered daily loadout suggestions, structured play session tracking, and analytics — all orchestrated by local LLMs via Ollama.
 
 ## Stack
 
@@ -30,7 +30,7 @@ make api-test-cov     # pytest + coverage >= 90%
 make api-lint         # ruff check
 make api-typecheck    # mypy src/
 make api-fmt          # ruff format
-make worker           # taskiq worker (async debrief extraction)
+make worker           # taskiq worker (async wrap-up extraction)
 make api-migrate      # alembic upgrade head
 make api-migration msg="description"  # new alembic migration
 
@@ -69,10 +69,10 @@ API v1 Routers -> Core Services -> Infrastructure Repositories -> DB Models
 ## Domain Rules
 
 1. **LLM outputs are untrusted** — always validate via anti-hallucination checks (token overlap threshold)
-2. **One active mission per user** — enforce at service level before creating new missions
+2. **One active play session per user** — enforce at service level before creating new play sessions
 3. **Captures are immutable after processing** — status flows: `pending -> processing -> done | failed`
 4. **Loadout suggestions expire** — auto-ignored after `loadout_auto_ignore_hours` (24h default)
-5. **Missions auto-clamp** — ended after `mission_auto_clamp_hours` (24h default)
+5. **PlaySessions auto-clamp** — ended after `play_session_auto_clamp_hours` (24h default)
 6. **UUID v4 with public_id** — internal `id` is auto-increment, `public_id` is UUID exposed to API
 7. **All timestamps UTC** in DB; frontend displays in user timezone
 8. **English everywhere** — code, comments, UI, variable names all in English
@@ -102,7 +102,7 @@ Jinja2 template (prompts/*.j2)
 ```
 
 - **Fast model** (`gemma3:4b`): captures, quick extraction
-- **Smart model** (`gemma3:12b`): briefings, loadout picks
+- **Smart model** (`gemma3:12b`): recaps, loadout picks
 - **Vision model** (`qwen3-vl:4b`): photo captures
 - **Dummy provider**: testing (returns canned responses)
 
@@ -110,8 +110,8 @@ Jinja2 template (prompts/*.j2)
 
 | Task | Trigger | Purpose |
 | ------ | --------- | --------- |
-| `extract_debrief_state_task` | Mission debrief submitted | Extract emotional state from debrief text via LLM |
-| `mission_auto_clamp` | Periodic | End missions older than 24h |
+| `extract_wrap_up_state_task` | PlaySession wrap-up submitted | Extract emotional state from wrap-up text via LLM |
+| `play_session_auto_clamp` | Periodic | End play sessions older than 24h |
 | `loadout_auto_ignore` | Periodic | Ignore stale loadout suggestions |
 
 Retry policy: exponential backoff (2s -> 4s -> 8s), max 3 retries.

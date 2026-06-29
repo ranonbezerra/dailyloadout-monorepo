@@ -108,7 +108,7 @@ See DEPLOYMENT §1.3–1.4.
 - [ ] **API** via systemd (DEPLOYMENT §1.7), `--workers N` matching
       `COST_GUARD_FALLBACK_WORKERS`, `--forwarded-allow-ips <Caddy's source IP>`.
       ⚠ A wrong `--forwarded-allow-ips` silently collapses per-IP rate limits.
-- [ ] **Taskiq worker** via systemd (debrief extraction).
+- [ ] **Taskiq worker** via systemd (wrap-up extraction).
 - [ ] **Web**: `cd packages/web && bun install && bun run build`; serve `dist/`.
 - [ ] **Caddy** (DEPLOYMENT §1.6) — terminates TLS (auto Let's Encrypt), sets the
       web CSP + body cap, proxies `/api/*` → loopback `:8100`, serves the web build.
@@ -140,7 +140,7 @@ See DEPLOYMENT §1.9.
 - [ ] Register a test account on the web → **verification email arrives** → verify → log in.
 - [ ] **OAuth round-trip**: "Continue with Google" and "with Twitch" → land logged in.
 - [ ] Turnstile widget renders on register and blocks a scripted submit.
-- [ ] Add a game / generate a briefing → works; concierge responds.
+- [ ] Add a game / generate a recap → works; concierge responds.
 - [ ] Confirm **no DB/Redis port** is reachable from outside (`nmap` from off-box).
 - [ ] Rate limit: hammer `/v1/auth/login` from one IP → 429 (proves
       `--forwarded-allow-ips` is correct and per-IP isolation works).

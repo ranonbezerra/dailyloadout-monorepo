@@ -187,7 +187,7 @@ When working within DailyLoadout, apply these integration patterns to:
 - **packages/web** (React/TypeScript web client)
 - **packages/app** (mobile application)
 
-Domain areas: library items, missions, loadouts, captures.
+Domain areas: library items, play sessions, loadouts, captures.
 
 Ticket prefix: DL-XX
 

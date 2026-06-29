@@ -15,7 +15,7 @@ If no flag, ask the user which tracker to use.
 
 ### 1. Collect information
 Ask the user:
-- **Title**: brief description (max 80 chars)
+- **Title**: short description (max 80 chars)
 - **Type**: feature | bug | chore | refactor | docs | test
 - **System**: api | web | app | infra
 - **Description**: what needs to be done and why

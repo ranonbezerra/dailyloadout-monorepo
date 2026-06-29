@@ -38,8 +38,8 @@ Transform GitHub Issues into intelligent swarm tasks for the DailyLoadout monore
 ## DailyLoadout Context
 - **Monorepo**: ranonbezerra/dailyloadout-monorepo
 - **Packages**: packages/api (FastAPI, Python 3.14), packages/web (React, Mantine, Bun), packages/app (Flutter)
-- **EPIC structure**: Issues organized by EPICs (Mission Briefing, Capture Photo, etc.)
-- **Domain**: Library, Missions, Loadouts, Captures
+- **EPIC structure**: Issues organized by EPICs (PlaySession Recap, Capture Photo, etc.)
+- **Domain**: Library, PlaySessions, Loadouts, Captures
 - **Tooling**: uv, bun, Alembic, Taskiq, Biome
 - **Coverage target**: 90% minimum
 
@@ -94,7 +94,7 @@ body:
       label: Domain Area
       options:
         - library
-        - missions
+        - play sessions
         - loadouts
         - captures
   - type: checkboxes
@@ -129,8 +129,8 @@ body:
       "agents": ["debugger", "tester"]
     },
     {
-      "keywords": ["mission", "briefing", "debrief"],
-      "labels": ["mission", "swarm-feature"],
+      "keywords": ["play session", "recap", "wrap-up"],
+      "labels": ["play session", "swarm-feature"],
       "agents": ["architect", "coder", "tester"]
     },
     {
@@ -322,7 +322,7 @@ mcp__claude-flow__task_orchestrate {
 - Include complexity estimates
 
 ### 2. Label Strategy
-- Domain labels: mission, loadout, capture, library
+- Domain labels: play session, loadout, capture, library
 - Package labels: packages/api, packages/web, packages/app
 - Status labels: in-progress, review, blocked
 - Priority indicators for swarm

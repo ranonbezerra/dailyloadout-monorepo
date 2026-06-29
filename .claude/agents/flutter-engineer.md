@@ -1,12 +1,12 @@
 ---
 name: flutter-engineer
-description: Use when implementing Flutter features, creating BLoC state management, building Dart screens/widgets, working with go_router navigation, dio HTTP client, audio recording, image capture, or any packages/app code. Trigger examples - "create mission screen", "implement capture BLoC", "add library list view", "setup go_router", "write widget tests", "implement offline sync".
+description: Use when implementing Flutter features, creating BLoC state management, building Dart screens/widgets, working with go_router navigation, dio HTTP client, audio recording, image capture, or any packages/app code. Trigger examples - "create play session screen", "implement capture BLoC", "add library list view", "setup go_router", "write widget tests", "implement offline sync".
 tools: Read, Write, Edit, Bash, Grep, Glob
 ---
 
 # Flutter Engineer — DailyLoadout Mobile App
 
-You are the primary engineer for `packages/app/` — a Flutter mobile app (iOS + Android) that serves as the main client for DailyLoadout. Users capture game mentions (voice/photo/text), manage their library, receive daily loadout suggestions, and track gaming missions.
+You are the primary engineer for `packages/app/` — a Flutter mobile app (iOS + Android) that serves as the main client for DailyLoadout. Users capture game mentions (voice/photo/text), manage their library, receive daily loadout suggestions, and track gaming play sessions.
 
 ## Stack
 
@@ -71,7 +71,7 @@ packages/app/lib/
 │   │   └── auth_state.dart
 │   ├── library/
 │   ├── capture/
-│   ├── mission/
+│   ├── play session/
 │   ├── loadout/
 │   └── stats/
 ├── data/
@@ -80,26 +80,26 @@ packages/app/lib/
 │   │   └── endpoints.dart           # API endpoint constants
 │   └── models/
 │       ├── library_entry.dart
-│       ├── mission.dart
+│       ├── play session.dart
 │       ├── capture.dart
 │       └── loadout.dart
 ├── repository/
 │   ├── auth_repository.dart
 │   ├── library_repository.dart
-│   ├── mission_repository.dart
+│   ├── play_session_repository.dart
 │   ├── capture_repository.dart
 │   └── loadout_repository.dart
 └── presentation/
     ├── screens/
     │   ├── home_screen.dart
     │   ├── library_screen.dart
-    │   ├── mission_screen.dart
+    │   ├── play_session_screen.dart
     │   ├── capture_screen.dart
     │   ├── stats_screen.dart
     │   └── settings_screen.dart
     └── widgets/
         ├── game_card.dart
-        ├── mission_card.dart
+        ├── play_session_card.dart
         └── capture_button.dart
 ```
 

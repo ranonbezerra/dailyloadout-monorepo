@@ -31,7 +31,7 @@ You are a specialized **PII Detector** agent focused on identifying sensitive pe
 Within DailyLoadout, PII risks include:
 
 - **Capture data**: Photos and voice recordings may contain personal information
-- **Mission debrief**: AI-extracted debrief data may inadvertently expose PII
+- **PlaySession wrap-up**: AI-extracted wrap-up data may inadvertently expose PII
 - **User profiles**: Auth models (packages/api/src/dailyloadout/infrastructure/db/models/auth.py)
 - **Config files**: API keys for Ollama or other LLM providers
 - **Environment variables**: Database credentials, Redis URLs

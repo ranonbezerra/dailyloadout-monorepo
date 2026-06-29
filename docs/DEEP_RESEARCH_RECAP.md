@@ -1,10 +1,10 @@
-# DailyLoadout — Deep Research Briefing (LangGraph design)
+# DailyLoadout — Deep Research Recap (LangGraph design)
 
 Design doc for **ROADMAP Epic 10**. Companion to [ARCHITECTURE.md](../ARCHITECTURE.md)
-and [PRODUCT.md](../PRODUCT.md) §3.5 (briefing flow).
+and [PRODUCT.md](../PRODUCT.md) §3.5 (recap flow).
 
 This document specifies the LangGraph graph that produces a **web-grounded,
-spoiler-free** mission briefing. The existing single-shot `generate_briefing`
+spoiler-free** play session recap. The existing single-shot `generate_recap`
 (Epic 6) is the `quick` path and the fallback; this graph is the `deep` path.
 
 ---
@@ -12,14 +12,14 @@ spoiler-free** mission briefing. The existing single-shot `generate_briefing`
 ## 1. Why a graph (and not more single-shot code)
 
 Every other LLM call in DailyLoadout is single-shot for a reason: one input,
-one output, deterministic guard on top. The deep briefing is different — it is
+one output, deterministic guard on top. The deep recap is different — it is
 genuinely multi-step:
 
 - it **searches** the web (a tool step),
 - it must **judge** whether what came back is enough (a branch),
 - if not, it **refines** the query and searches again (a bounded loop),
 - it **synthesizes**, then **strips spoilers**, then **validates**,
-- and it must **degrade gracefully** to the quick briefing on timeout/failure.
+- and it must **degrade gracefully** to the quick recap on timeout/failure.
 
 That is branching + looping + long-running (30–60s) + cancellation + fallback —
 exactly LangGraph's territory (durable execution, conditional edges, optional
@@ -36,13 +36,13 @@ existing `AbstractLLMClient`. We pull in `langgraph` only.
    loop gated by `grade`, a `spoiler_filter` pass, and the Epic 6 token-overlap
    validator as the terminal gate.
 3. **Reuse, don't duplicate.** `anti_hallucination` imports the Epic 6 validator
-   from `core/mission`. It is not reimplemented.
+   from `core/play-session`. It is not reimplemented.
 4. **Hexagonal.** Web search and the agent are two new ports
    (`infrastructure/research/`, `infrastructure/agent/`), each with abstract
    base + real impl + dummy + factory — the same shape as `llm/`, `stt/`,
    `storage/`.
 5. **Additive and reversible.** The quick path is untouched. `deep` is opt-in
-   per mission start, and any failure falls back to `quick`.
+   per play session start, and any failure falls back to `quick`.
 
 ---
 
@@ -74,20 +74,20 @@ infrastructure/
 │   ├── searxng.py            # SearxngResearchClient (local)
 │   ├── dummy.py              # DummyResearchClient (canned results, tests)
 │   └── factory.py            # RESEARCH_PROVIDER env
-└── agent/                    # the LangGraph briefing agent
-    ├── base.py               # AbstractBriefingAgent.deep_brief()
-    ├── langgraph_agent.py    # LangGraphBriefingAgent (compiles + invokes)
-    ├── dummy.py              # DummyBriefingAgent (tests)
+└── agent/                    # the LangGraph recap agent
+    ├── base.py               # AbstractRecapAgent.deep_recap()
+    ├── langgraph_agent.py    # LangGraphRecapAgent (compiles + invokes)
+    ├── dummy.py              # DummyRecapAgent (tests)
     ├── factory.py            # AGENT_PROVIDER env
     └── graph/
-        ├── state.py          # ResearchBriefingState (TypedDict)
+        ├── state.py          # ResearchRecapState (TypedDict)
         ├── nodes.py          # the 8 node functions
         └── builder.py        # StateGraph wiring + router + checkpointer
 
 prompts/
 ├── research_grade.j2         # "are these results enough?" -> JSON {grade}
 ├── research_refine.j2        # reformulate the query
-├── briefing_research.j2      # synthesize briefing from context + results
+├── recap_research.j2      # synthesize recap from context + results
 └── spoiler_filter.j2         # rewrite to directions/areas only
 ```
 
@@ -109,22 +109,22 @@ class SearchResult(TypedDict):
     snippet: str
 
 
-class MissionContext(TypedDict):
+class PlaySessionContext(TypedDict):
     game_title: str
     location: str | None
     current_quest: str | None
     next_action: str | None
     level: str | None
-    previous_debriefs: list[dict[str, object]]  # same context generate_briefing uses
+    previous_wrap_ups: list[dict[str, object]]  # same context generate_recap uses
 
 
 Grade = Literal["sufficient", "insufficient", "empty"]
 Source = Literal["deep_research", "quick_fallback"]
 
 
-class ResearchBriefingState(TypedDict, total=False):
+class ResearchRecapState(TypedDict, total=False):
     # --- inputs (set once at invocation) ---
-    context: MissionContext
+    context: PlaySessionContext
     deadline_ts: float                       # time.monotonic() deadline; routers compare to it
 
     # --- research loop working state ---
@@ -134,13 +134,13 @@ class ResearchBriefingState(TypedDict, total=False):
     grade: Grade
 
     # --- synthesis + guards ---
-    draft: str                               # raw synthesized briefing (may contain spoilers)
+    draft: str                               # raw synthesized recap (may contain spoilers)
     filtered: str                            # after spoiler_filter
     overlap: float
     suspicious: bool
 
     # --- output ---
-    briefing: str                            # final text returned to the caller
+    recap: str                            # final text returned to the caller
     source: Source
 ```
 
@@ -160,8 +160,8 @@ discarding the first round.
 | `refine_query` | `fast` | LLM | `query`, `refine_count+1` |
 | `synthesize` | `smart` | LLM (creative) | `draft` |
 | `spoiler_filter` | `smart` | LLM-gated | `filtered` |
-| `anti_hallucination` | none | **yes** (Epic 6 reuse) | `overlap`, `suspicious`, `briefing`, `source` |
-| `fallback_quick` | `smart` | LLM (existing path) | `briefing`, `source` |
+| `anti_hallucination` | none | **yes** (Epic 6 reuse) | `overlap`, `suspicious`, `recap`, `source` |
+| `fallback_quick` | `smart` | LLM (existing path) | `recap`, `source` |
 
 No node needs **function-calling** — `search` is a fixed step in the graph, not
 a tool the LLM chooses. So `gemma3` is fine here; the tool-calling model
@@ -174,7 +174,7 @@ import time
 
 import structlog
 
-from dailyloadout.core.mission.validators import check_briefing_overlap  # Epic 6, reused
+from dailyloadout.core.play session.validators import check_recap_overlap  # Epic 6, reused
 from dailyloadout.infrastructure.llm.base import AbstractLLMClient
 from dailyloadout.infrastructure.research.base import AbstractResearchClient
 
@@ -214,7 +214,7 @@ async def refine_query(state, *, llm: AbstractLLMClient) -> dict:
 
 
 async def synthesize(state, *, llm: AbstractLLMClient) -> dict:
-    prompt = render("briefing_research.j2", context=state["context"], results=state["results"])
+    prompt = render("recap_research.j2", context=state["context"], results=state["results"])
     return {"draft": (await llm.complete(prompt, role="smart")).strip()}
 
 
@@ -226,22 +226,22 @@ async def spoiler_filter(state, *, llm: AbstractLLMClient) -> dict:
 async def anti_hallucination(state) -> dict:
     ctx = state["context"]
     grounding = _context_text(ctx) + " " + " ".join(r["snippet"] for r in state["results"])
-    overlap, suspicious = check_briefing_overlap(output=state["filtered"], context=grounding)
+    overlap, suspicious = check_recap_overlap(output=state["filtered"], context=grounding)
     text = state["filtered"]
     if suspicious:
         text += "\n\n_(Heads up: this recap drifted from your notes — take it loosely.)_"
     return {"overlap": overlap, "suspicious": suspicious,
-            "briefing": text, "source": "deep_research"}
+            "recap": text, "source": "deep_research"}
 
 
 async def fallback_quick(state, *, llm: AbstractLLMClient) -> dict:
     ctx = state["context"]
-    text = await llm.generate_briefing(
+    text = await llm.generate_recap(
         game_title=ctx["game_title"],
-        previous_debriefs=ctx["previous_debriefs"],
+        previous_wrap_ups=ctx["previous_wrap_ups"],
         current_next_action=ctx.get("next_action"),
     )
-    return {"briefing": text, "source": "quick_fallback"}
+    return {"recap": text, "source": "quick_fallback"}
 ```
 
 ---
@@ -257,7 +257,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 
 from . import nodes
-from .state import ResearchBriefingState
+from .state import ResearchRecapState
 
 
 def route_after_grade(state, *, max_refines: int) -> str:
@@ -272,11 +272,11 @@ def route_after_grade(state, *, max_refines: int) -> str:
 
 
 def build_graph(*, llm, research, settings):
-    g = StateGraph(ResearchBriefingState)
+    g = StateGraph(ResearchRecapState)
 
     g.add_node("build_query", partial(nodes.build_query, llm=llm))
     g.add_node("search", partial(nodes.search, research=research,
-                                 max_results=settings.deep_briefing_max_results))
+                                 max_results=settings.deep_recap_max_results))
     g.add_node("grade_results", partial(nodes.grade_results, llm=llm))
     g.add_node("refine_query", partial(nodes.refine_query, llm=llm))
     g.add_node("synthesize", partial(nodes.synthesize, llm=llm))
@@ -289,7 +289,7 @@ def build_graph(*, llm, research, settings):
     g.add_edge("search", "grade_results")
     g.add_conditional_edges(
         "grade_results",
-        partial(route_after_grade, max_refines=settings.deep_briefing_max_refines),
+        partial(route_after_grade, max_refines=settings.deep_recap_max_refines),
         {"synthesize": "synthesize", "refine_query": "refine_query", "fallback_quick": "fallback_quick"},
     )
     g.add_edge("refine_query", "search")        # the bounded loop
@@ -332,8 +332,8 @@ LLM filter + overlap gate are enough for v1.
 - **Checkpointer:** start with `MemorySaver` (zero infra). Upgrade to
   `AsyncPostgresSaver` against the existing PostgreSQL 18 when you want durable
   resume and run inspection — matches the repo's "YAGNI until then" stance.
-- **Thread id:** use `mission.public_id` as the `thread_id` so a given mission's
-  deep-briefing run is addressable (resume, cancel, inspect).
+- **Thread id:** use `play session.public_id` as the `thread_id` so a given play session's
+  deep-recap run is addressable (resume, cancel, inspect).
 - **Two-layer deadline:**
   1. *Inside the graph* — `route_after_grade` checks `time.monotonic()` against
      `deadline_ts` and routes to `fallback_quick` if exceeded.
@@ -350,77 +350,77 @@ LLM filter + overlap gate are enough for v1.
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-from .graph.state import MissionContext
+from .graph.state import PlaySessionContext
 
 
 @dataclass
-class DeepBriefRequest:
-    context: MissionContext
+class DeepRecapRequest:
+    context: PlaySessionContext
     thread_id: str
 
 
 @dataclass
-class BriefResult:
+class RecapResult:
     text: str
     source: str          # "deep_research" | "quick_fallback"
     suspicious: bool
 
 
-class AbstractBriefingAgent(ABC):
+class AbstractRecapAgent(ABC):
     @abstractmethod
-    async def deep_brief(self, req: DeepBriefRequest) -> BriefResult: ...
+    async def deep_recap(self, req: DeepRecapRequest) -> RecapResult: ...
 ```
 
 ```python
 # infrastructure/agent/langgraph_agent.py
 import time
 
-from .base import AbstractBriefingAgent, BriefResult, DeepBriefRequest
+from .base import AbstractRecapAgent, RecapResult, DeepRecapRequest
 from .graph.builder import build_graph
 
 
-class LangGraphBriefingAgent(AbstractBriefingAgent):
+class LangGraphRecapAgent(AbstractRecapAgent):
     def __init__(self, *, llm, research, settings) -> None:
         self._graph = build_graph(llm=llm, research=research, settings=settings)
-        self._deadline = settings.deep_briefing_deadline_seconds
+        self._deadline = settings.deep_recap_deadline_seconds
 
-    async def deep_brief(self, req: DeepBriefRequest) -> BriefResult:
+    async def deep_recap(self, req: DeepRecapRequest) -> RecapResult:
         init = {"context": req.context, "deadline_ts": time.monotonic() + self._deadline}
         cfg = {"configurable": {"thread_id": req.thread_id}}
         final = await self._graph.ainvoke(init, config=cfg)
-        return BriefResult(
-            text=final["briefing"],
+        return RecapResult(
+            text=final["recap"],
             source=final["source"],
             suspicious=final.get("suspicious", False),
         )
 ```
 
 ```python
-# core/mission/service.py  (excerpt — layer discipline preserved: service calls the port)
+# core/play-session/service.py  (excerpt — layer discipline preserved: service calls the port)
 import asyncio
 from typing import Literal
 
 
-async def start_mission(self, *, library_entry_id, mode: Literal["quick", "deep"] = "quick"):
-    mission = await self._missions.create(library_entry_id=library_entry_id, ...)
-    ctx = self._build_context(mission)   # location/quest/next_action + last 3 debriefs
+async def start_play_session(self, *, library_entry_id, mode: Literal["quick", "deep"] = "quick"):
+    play session = await self._play_sessions.create(library_entry_id=library_entry_id, ...)
+    ctx = self._build_context(play session)   # location/quest/next_action + last 3 wrap-ups
 
     if mode == "deep" and self._agent is not None:
         try:
             result = await asyncio.wait_for(
-                self._agent.deep_brief(
-                    DeepBriefRequest(context=ctx, thread_id=str(mission.public_id))
+                self._agent.deep_recap(
+                    DeepRecapRequest(context=ctx, thread_id=str(play session.public_id))
                 ),
-                timeout=self._settings.deep_briefing_deadline_seconds + 5,  # hard ceiling
+                timeout=self._settings.deep_recap_deadline_seconds + 5,  # hard ceiling
             )
-            briefing = result.text
+            recap = result.text
         except (asyncio.TimeoutError, ResearchUnavailable):
-            briefing = await self._quick_briefing(ctx)   # existing generate_briefing + Epic 6 guard
+            recap = await self._quick_recap(ctx)   # existing generate_recap + Epic 6 guard
     else:
-        briefing = await self._quick_briefing(ctx)
+        recap = await self._quick_recap(ctx)
 
-    await self._missions.set_briefing(mission.id, briefing)
-    return mission, briefing
+    await self._play_sessions.set_recap(play session.id, recap)
+    return play session, recap
 ```
 
 Note the small addition to the LLM port: a generic
@@ -439,9 +439,9 @@ canned strings per prompt marker for tests.
 AGENT_PROVIDER=dummy                  # langgraph | dummy
 RESEARCH_PROVIDER=dummy               # searxng | dummy
 SEARXNG_BASE_URL=http://localhost:8888
-DEEP_BRIEFING_DEADLINE_SECONDS=60
-DEEP_BRIEFING_MAX_REFINES=2
-DEEP_BRIEFING_MAX_RESULTS=6
+DEEP_RECAP_DEADLINE_SECONDS=60
+DEEP_RECAP_MAX_REFINES=2
+DEEP_RECAP_MAX_RESULTS=6
 ```
 
 Defaults are `dummy` so a fresh clone and CI never need SearXNG or a model.

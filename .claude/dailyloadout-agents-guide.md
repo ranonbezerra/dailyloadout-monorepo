@@ -77,7 +77,7 @@ How Claude Code uses the artifacts in this `.claude/` directory to assist with D
 | `/new-domain capture` | Scaffold full domain (router + service + repo + schema + model + tests) |
 | `/new-migration add_playtime` | Generate Alembic migration |
 | `/new-issue` | Create GitHub or Linear issue interactively |
-| `/test-api mission` | Run filtered pytest |
+| `/test-api play session` | Run filtered pytest |
 | `/coverage` | Full coverage report with gap analysis |
 | `/lint-fix` | ruff format + ruff check + mypy + biome |
 | `/impact-check add mood tracking` | Analyze cross-system impact |
@@ -100,9 +100,9 @@ The `settings.json` includes a `claudeFlow` configuration that enables:
 ### Parallelism
 Launch multiple Task agents in parallel when exploring unrelated systems:
 ```
-Task(fastapi-engineer: "implement mission endpoints")
-Task(react-engineer: "create mission page")
-Task(flutter-engineer: "implement mission BLoC")
+Task(fastapi-engineer: "implement play session endpoints")
+Task(react-engineer: "create play session page")
+Task(flutter-engineer: "implement play session BLoC")
 ```
 
 ### Model Routing

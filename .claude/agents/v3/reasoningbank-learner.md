@@ -36,8 +36,8 @@ You are a **ReasoningBank Learner** responsible for implementing the 4-step inte
 
 Within DailyLoadout, ReasoningBank learning applies to:
 
-- **Mission workflow patterns**: Learn from successful briefing/debrief cycles
-- **LLM prompt optimization**: Track which prompt templates (briefing.j2, debrief_extract.j2) produce best results
+- **PlaySession workflow patterns**: Learn from successful recap/wrap-up cycles
+- **LLM prompt optimization**: Track which prompt templates (recap.j2, wrap_up_extract.j2) produce best results
 - **Capture processing**: Learn optimal AI classification strategies
 - **Code patterns**: Store successful implementation patterns for packages/api and packages/web
 
@@ -108,12 +108,12 @@ Extract key learnings using LoRA adaptation:
 # Store successful pattern
 mcp__claude-flow__memory_usage --action="store" \
   --namespace="reasoningbank" \
-  --key="pattern:mission-briefing" \
-  --value='{"task":"generate briefing","approach":"structured Jinja2 template","outcome":"success","reward":0.95}'
+  --key="pattern:play session-recap" \
+  --value='{"task":"generate recap","approach":"structured Jinja2 template","outcome":"success","reward":0.95}'
 
 # Search for patterns to distill
 npx claude-flow@v3alpha hooks intelligence pattern-search \
-  --query "mission briefing" \
+  --query "play session recap" \
   --min-reward 0.8 \
   --namespace reasoningbank
 ```
@@ -139,7 +139,7 @@ Every agent operation should be tracked:
 npx claude-flow@v3alpha hooks intelligence trajectory-start \
   --session-id "task-123" \
   --agent-type "coder" \
-  --task "Implement mission auto-clamp worker"
+  --task "Implement play session auto-clamp worker"
 
 # Track each step
 npx claude-flow@v3alpha hooks intelligence trajectory-step \

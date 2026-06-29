@@ -39,7 +39,7 @@ Coordinate AI swarms across multiple repositories, enabling organization-wide au
 ## DailyLoadout Context
 - **Primary monorepo**: ranonbezerra/dailyloadout-monorepo (packages/api, packages/web, packages/app)
 - **Stack**: FastAPI (Python 3.14), React+Mantine (Bun, Biome), Flutter
-- **Domain**: Library, Missions, Loadouts, Captures
+- **Domain**: Library, PlaySessions, Loadouts, Captures
 - **Tools**: uv (Python), bun (TypeScript), Taskiq (workers), Alembic (migrations)
 
 ## Core Features
@@ -261,7 +261,7 @@ gh pr create \
 ```bash
 # Coordinate full-stack feature across packages
 # API: Create Alembic migration + FastAPI endpoints
-cd packages/api && uv run alembic revision --autogenerate -m "add missions table"
+cd packages/api && uv run alembic revision --autogenerate -m "add play sessions table"
 # Web: Create Mantine components + React hooks
 cd packages/web && bun run build
 # App: Create Flutter screens

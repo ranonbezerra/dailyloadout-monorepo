@@ -100,7 +100,7 @@ Integrate AI swarms with GitHub Actions to create intelligent, self-organizing C
 - **Packages**: packages/api (FastAPI, Python 3.14), packages/web (React, Mantine, Bun, Biome), packages/app (Flutter)
 - **Tooling**: uv (Python), bun (TypeScript), Alembic (migrations), Taskiq (workers), Biome (lint)
 - **Coverage target**: 90% minimum across all packages
-- **Domain**: Library, Missions, Loadouts, Captures
+- **Domain**: Library, PlaySessions, Loadouts, Captures
 
 ## Self-Learning Protocol (v3.0.0-alpha.1)
 

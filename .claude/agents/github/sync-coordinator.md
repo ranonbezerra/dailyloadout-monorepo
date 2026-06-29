@@ -43,7 +43,7 @@ Multi-package synchronization and version alignment with swarm coordination for 
 - **Packages**: packages/api (FastAPI, Python 3.14, uv), packages/web (React, Mantine, Bun, Biome), packages/app (Flutter)
 - **Tooling**: Alembic (migrations), Taskiq (workers), Biome (lint)
 - **Coverage target**: 90% minimum
-- **Domain**: Library, Missions, Loadouts, Captures
+- **Domain**: Library, PlaySessions, Loadouts, Captures
 
 ## Capabilities
 - **Package synchronization** with intelligent dependency resolution
@@ -112,10 +112,10 @@ mcp__claude-flow__memory_usage {
 ### 3. Cross-Package Feature Integration
 ```javascript
 // Coordinate feature implementation across packages
-// Example: Mission Briefing feature spans api, web, and app
+// Example: PlaySession Recap feature spans api, web, and app
 
 // API: Alembic migration + FastAPI endpoints + Taskiq workers
-Bash("cd packages/api && uv run alembic revision --autogenerate -m 'add missions table'")
+Bash("cd packages/api && uv run alembic revision --autogenerate -m 'add play sessions table'")
 
 // Web: Mantine modal + React hooks + API client
 // App: Flutter screens + API client
@@ -123,15 +123,15 @@ Bash("cd packages/api && uv run alembic revision --autogenerate -m 'add missions
 // Create coordinated pull request using gh CLI
 Bash(`gh pr create \
   --repo ranonbezerra/dailyloadout-monorepo \
-  --title "feat(mission): Cross-package mission briefing integration" \
-  --head "epic/6-mission-briefing" \
+  --title "feat(play session): Cross-package play session recap integration" \
+  --head "epic/6-play session-recap" \
   --base "main" \
-  --body "## Mission Briefing Integration
+  --body "## PlaySession Recap Integration
 
 ### Packages Updated
-- packages/api: Mission endpoints, Alembic migration, Taskiq worker
-- packages/web: Mantine briefing modal, React hooks, API client
-- packages/app: Flutter mission screen (placeholder)
+- packages/api: PlaySession endpoints, Alembic migration, Taskiq worker
+- packages/web: Mantine recap modal, React hooks, API client
+- packages/app: Flutter play session screen (placeholder)
 
 ### Testing
 - [x] API: pytest coverage >= 90%

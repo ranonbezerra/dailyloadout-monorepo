@@ -108,7 +108,7 @@ The DailyLoadout monorepo consists of:
 - **packages/web**: React/TypeScript web client
 - **packages/app**: Mobile application
 
-Key performance areas: LLM inference (mission briefing/debrief via Ollama), image processing (captures), database queries (library/missions), background task scheduling (Taskiq auto-clamp workers).
+Key performance areas: LLM inference (play session recap/wrap-up via Ollama), image processing (captures), database queries (library/play-sessions), background task scheduling (Taskiq auto-clamp workers).
 
 Ticket prefix: DL-XX
 
@@ -135,35 +135,35 @@ broker = ListQueueBroker(url="redis://localhost:6379")
 result_backend = RedisAsyncResultBackend(redis_url="redis://localhost:6379")
 
 @broker.task
-async def auto_clamp_mission(mission_id: str) -> None:
-    """Background task to auto-close expired missions."""
+async def auto_clamp_play_session(play_session_id: str) -> None:
+    """Background task to auto-close expired play sessions."""
     async with get_db_session() as session:
-        mission = await session.get(Mission, mission_id)
-        if mission and mission.should_clamp():
-            mission.clamp()
+        play session = await session.get(PlaySession, play_session_id)
+        if play session and play session.should_clamp():
+            play session.clamp()
             await session.commit()
 ```
 
 ### 2. Token Usage Optimization (50-75% Reduction)
 
 ```python
-# Optimize LLM token usage for mission briefings (packages/api)
+# Optimize LLM token usage for play session recaps (packages/api)
 class TokenOptimizer:
     """Optimize token usage for DailyLoadout LLM calls."""
 
-    async def optimize_briefing_prompt(
-        self, mission_data: dict, template: str
+    async def optimize_recap_prompt(
+        self, play_session_data: dict, template: str
     ) -> str:
-        """Optimize the briefing.j2 prompt template for fewer tokens."""
-        essential_data = self.extract_essential(mission_data)
-        cached_prefix = await self.get_cached_prefix("briefing")
+        """Optimize the recap.j2 prompt template for fewer tokens."""
+        essential_data = self.extract_essential(play_session_data)
+        cached_prefix = await self.get_cached_prefix("recap")
         return self.render_optimized(template, essential_data, cached_prefix)
 
-    async def optimize_debrief_prompt(
-        self, debrief_data: dict, template: str
+    async def optimize_wrap_up_prompt(
+        self, wrap_up_data: dict, template: str
     ) -> str:
-        """Optimize the debrief_extract.j2 prompt template."""
-        return self.render_optimized(template, debrief_data)
+        """Optimize the wrap_up_extract.j2 prompt template."""
+        return self.render_optimized(template, wrap_up_data)
 ```
 
 ### 3. FastAPI Performance Profiling
@@ -200,13 +200,13 @@ engine = create_async_engine(
     pool_recycle=3600,
 )
 
-# Optimized mission query with eager loading
-async def get_missions_with_loadouts(session, user_id: str):
+# Optimized play session query with eager loading
+async def get_play_sessions_with_loadouts(session, user_id: str):
     stmt = (
-        select(Mission)
-        .options(selectinload(Mission.loadout_items))
-        .where(Mission.user_id == user_id)
-        .order_by(Mission.created_at.desc())
+        select(PlaySession)
+        .options(selectinload(PlaySession.loadout_items))
+        .where(PlaySession.user_id == user_id)
+        .order_by(PlaySession.created_at.desc())
     )
     return (await session.execute(stmt)).scalars().all()
 ```
@@ -236,7 +236,7 @@ npx claude-flow@v3alpha performance optimize --focus memory
 
 1. **Database Queries (packages/api)**
    - Use async SQLAlchemy with connection pooling
-   - Index frequently queried columns (mission status, library categories)
+   - Index frequently queried columns (play session status, library categories)
    - Use selectinload/joinedload for relationship loading
 
 2. **Taskiq Workers**
@@ -246,12 +246,12 @@ npx claude-flow@v3alpha performance optimize --focus memory
 
 3. **LLM Inference**
    - Cache repeated prompt prefixes
-   - Optimize Jinja2 templates (briefing.j2, debrief_extract.j2)
+   - Optimize Jinja2 templates (recap.j2, wrap_up_extract.j2)
    - Use streaming responses where possible
 
 4. **Frontend (packages/web)**
    - React query caching with appropriate stale times
-   - Lazy load mission modals (MissionBriefingModal, MissionDebriefModal)
+   - Lazy load play session modals (PlaySessionRecapModal, PlaySessionWrapUpModal)
    - Optimize bundle size with code splitting
 
 5. **SONA Integration**

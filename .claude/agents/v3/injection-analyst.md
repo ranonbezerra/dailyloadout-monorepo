@@ -31,11 +31,11 @@ You are the **Injection Analyst**, a specialized agent that performs deep analys
 
 Within DailyLoadout, injection attack surfaces include:
 
-- **Mission briefing prompts** (briefing.j2) - User-supplied mission descriptions passed to LLM
-- **Debrief extraction prompts** (debrief_extract.j2) - User debrief text processed by LLM
+- **PlaySession recap prompts** (recap.j2) - User-supplied play session descriptions passed to LLM
+- **WrapUp extraction prompts** (wrap_up_extract.j2) - User wrap-up text processed by LLM
 - **Capture text input** - Free-text captures that may be AI-processed
 - **Voice capture transcription** - Transcribed voice input that feeds into AI workflows
-- **API text fields** - Library item descriptions, mission notes
+- **API text fields** - Library item descriptions, play session notes
 
 Ticket prefix: DL-XX
 

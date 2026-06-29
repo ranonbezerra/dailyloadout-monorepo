@@ -11,8 +11,8 @@ description: Load when writing unit tests, integration tests, fixing test failur
 cd packages/api
 poetry run pytest                                            # all tests
 poetry run pytest -v                                         # verbose
-poetry run pytest tests/test_mission.py                      # specific file
-poetry run pytest -k "test_create_mission"                   # name pattern
+poetry run pytest tests/test_play_session.py                      # specific file
+poetry run pytest -k "test_create_play_session"                   # name pattern
 poetry run pytest --cov=src/dailyloadout --cov-report=term-missing  # coverage
 poetry run pytest -x                                         # stop on first failure
 poetry run pytest --tb=short                                 # short traceback
@@ -43,9 +43,9 @@ tests/
 ├── test_capture.py              # Capture flow tests
 ├── test_library.py              # Library CRUD tests
 ├── test_loadout.py              # Loadout suggestion tests
-├── test_mission.py              # Mission lifecycle tests
+├── test_play_session.py              # PlaySession lifecycle tests
 ├── test_stats.py                # Analytics tests
-└── test_debrief_task.py         # Async task tests
+└── test_wrap_up_task.py         # Async task tests
 ```
 
 ## Test Fixtures (conftest.py)
@@ -74,9 +74,9 @@ async def library_entry(async_client, auth_headers):
 
 ```python
 @pytest.mark.anyio
-async def test_create_mission(async_client, auth_headers, library_entry):
+async def test_create_play_session(async_client, auth_headers, library_entry):
     response = await async_client.post(
-        "/api/v1/missions/",
+        "/api/v1/play-sessions/",
         json={"library_entry_id": str(library_entry["public_id"])},
         headers=auth_headers,
     )
@@ -84,7 +84,7 @@ async def test_create_mission(async_client, auth_headers, library_entry):
     data = response.json()
     assert "public_id" in data
     assert data["status"] == "active"
-    assert data["briefing_text"] is not None
+    assert data["recap_text"] is not None
 ```
 
 ## Testing LLM Integration
@@ -97,26 +97,26 @@ The test suite uses `LLM_PROVIDER=dummy` which returns canned responses:
 # without hitting a real LLM
 
 @pytest.mark.anyio
-async def test_briefing_generation(async_client, auth_headers, library_entry):
+async def test_recap_generation(async_client, auth_headers, library_entry):
     response = await async_client.post(
-        "/api/v1/missions/",
+        "/api/v1/play-sessions/",
         json={"library_entry_id": str(library_entry["public_id"])},
         headers=auth_headers,
     )
     assert response.status_code == 201
-    # Dummy LLM returns a valid briefing
-    assert response.json()["briefing_text"] is not None
+    # Dummy LLM returns a valid recap
+    assert response.json()["recap_text"] is not None
 ```
 
 ## Testing Async Tasks (Taskiq)
 
 ```python
-from dailyloadout.infrastructure.tasks.debrief_extraction import extract_debrief_state_task
+from dailyloadout.infrastructure.tasks.wrap_up_extraction import extract_wrap_up_state_task
 
 @pytest.mark.anyio
-async def test_debrief_extraction_task():
+async def test_wrap_up_extraction_task():
     # Call the original function directly (bypass broker)
-    await extract_debrief_state_task.original_func(mission_public_id="...")
+    await extract_wrap_up_state_task.original_func(play_session_public_id="...")
     # Verify the extraction was persisted
 ```
 
@@ -147,18 +147,18 @@ assert "updated_at" in data
 
 # User isolation
 response = await async_client.get(
-    f"/api/v1/missions/{other_user_mission_id}",
+    f"/api/v1/play-sessions/{other_user_play_session_id}",
     headers=auth_headers,
 )
 assert response.status_code == 404  # Cannot see other user's data
 
-# One active mission constraint
+# One active play session constraint
 response = await async_client.post(
-    "/api/v1/missions/",
+    "/api/v1/play-sessions/",
     json={"library_entry_id": str(entry["public_id"])},
     headers=auth_headers,
 )
-assert response.status_code == 409  # Already has active mission
+assert response.status_code == 409  # Already has active play session
 ```
 
 ## Test Data Helpers

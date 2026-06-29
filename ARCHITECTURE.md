@@ -57,7 +57,7 @@ dailyloadout-monorepo/
 - **ruff** for lint + format, **mypy** for types
 - **pytest** + **pytest-asyncio** + **factory-boy** for tests
 
-**Why FastAPI for both API and AI orchestration:** the AI workload is "thin" — call Ollama, validate output, persist. No fine-tuning, no model serving, no GPU pipeline. Splitting into a separate NestJS API and Python AI engine adds inter-service communication overhead with no real boundary benefit at this scale. A clean `infrastructure/llm/` module inside FastAPI carries the AI concern; if a future product needs the same briefing engine, then it gets extracted. YAGNI until then.
+**Why FastAPI for both API and AI orchestration:** the AI workload is "thin" — call Ollama, validate output, persist. No fine-tuning, no model serving, no GPU pipeline. Splitting into a separate NestJS API and Python AI engine adds inter-service communication overhead with no real boundary benefit at this scale. A clean `infrastructure/llm/` module inside FastAPI carries the AI concern; if a future product needs the same recap engine, then it gets extracted. YAGNI until then.
 
 ### 2.2 `packages/app/` — Flutter mobile client
 
@@ -215,7 +215,7 @@ CREATE TABLE library_entries (
     status              library_status NOT NULL DEFAULT 'backlog',
     acquired_at         DATE,
     last_played_at      TIMESTAMPTZ,
-    mission_next_action TEXT,           -- denormalized; updated by debrief_processor
+    play_session_next_action TEXT,           -- denormalized; updated by wrap_up_processor
     notes               TEXT,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -226,39 +226,39 @@ CREATE INDEX idx_library_user_status ON library_entries(user_id, status);
 CREATE INDEX idx_library_user_last_played ON library_entries(user_id, last_played_at DESC NULLS LAST);
 ```
 
-### 3.7 `missions`
+### 3.7 `play sessions`
 
 ```sql
-CREATE TYPE mission_ended_via AS ENUM (
-    'debrief_completed',
+CREATE TYPE play_session_ended_via AS ENUM (
+    'wrap_up_completed',
     'paused_app',
     'auto_clamp_8h',
     'cancelled'
 );
 
-CREATE TABLE missions (
+CREATE TABLE play sessions (
     id                  BIGSERIAL PRIMARY KEY,
     public_id           UUID NOT NULL DEFAULT gen_random_uuid() UNIQUE,
     user_id             BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     library_entry_id    BIGINT NOT NULL REFERENCES library_entries(id) ON DELETE CASCADE,
     started_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
     ended_at            TIMESTAMPTZ,
-    ended_via           mission_ended_via,
-    briefing_text       TEXT,
-    debrief_text        TEXT,
+    ended_via           play_session_ended_via,
+    recap_text       TEXT,
+    wrap_up_text        TEXT,
     extracted_state     JSONB,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Global constraint: one active mission per user.
-CREATE UNIQUE INDEX idx_missions_one_active_per_user
-    ON missions(user_id) WHERE ended_at IS NULL;
+-- Global constraint: one active play session per user.
+CREATE UNIQUE INDEX idx_play_sessions_one_active_per_user
+    ON play sessions(user_id) WHERE ended_at IS NULL;
 
-CREATE INDEX idx_missions_user_recent ON missions(user_id, started_at DESC);
-CREATE INDEX idx_missions_library_entry ON missions(library_entry_id, started_at DESC);
+CREATE INDEX idx_play_sessions_user_recent ON play sessions(user_id, started_at DESC);
+CREATE INDEX idx_play_sessions_library_entry ON play sessions(library_entry_id, started_at DESC);
 ```
 
-**Why `user_id` is denormalized on `missions`:** the partial unique index above requires the column to live on the same table. Without this denormalization, the "one active mission per user" rule would be application-only — a race condition could create two. Trade-off: a small write-time cost (must keep `user_id` consistent with `library_entries.user_id`) for an absolute database-level guarantee.
+**Why `user_id` is denormalized on `play sessions`:** the partial unique index above requires the column to live on the same table. Without this denormalization, the "one active play session per user" rule would be application-only — a race condition could create two. Trade-off: a small write-time cost (must keep `user_id` consistent with `library_entries.user_id`) for an absolute database-level guarantee.
 
 ### 3.8 `captures` and `capture_candidates`
 
@@ -325,7 +325,7 @@ CREATE TABLE loadouts (
     suggested_library_entry_id  BIGINT REFERENCES library_entries(id),
     reasoning                   TEXT NOT NULL,
     action                      loadout_action NOT NULL DEFAULT 'pending',
-    resulting_mission_id        BIGINT REFERENCES missions(id),
+    resulting_play_session_id        BIGINT REFERENCES play sessions(id),
     created_at                  TIMESTAMPTZ NOT NULL DEFAULT now(),
     resolved_at                 TIMESTAMPTZ
 );
@@ -339,7 +339,7 @@ CREATE INDEX idx_loadouts_user_recent ON loadouts(user_id, created_at DESC);
 CREATE TABLE audit_log (
     id          BIGSERIAL PRIMARY KEY,
     user_id     BIGINT REFERENCES users(id) ON DELETE SET NULL,
-    action      TEXT NOT NULL,              -- 'mission.start', 'library_entry.delete'
+    action      TEXT NOT NULL,              -- 'play session.start', 'library_entry.delete'
     target_type TEXT NOT NULL,
     target_id   BIGINT,
     metadata    JSONB,
@@ -370,7 +370,7 @@ packages/api/
 │       │   ├── library.py
 │       │   ├── games.py
 │       │   ├── captures.py
-│       │   ├── missions.py
+│       │   ├── play sessions.py
 │       │   ├── loadouts.py
 │       │   ├── stats.py
 │       │   └── admin.py            # web dashboard endpoints
@@ -378,7 +378,7 @@ packages/api/
 │       │   ├── auth/
 │       │   ├── library/
 │       │   ├── capture/
-│       │   ├── mission/
+│       │   ├── play session/
 │       │   ├── loadout/
 │       │   └── stats/
 │       ├── infrastructure/
@@ -407,15 +407,15 @@ packages/api/
 │       ├── workers/
 │       │   ├── arq_settings.py
 │       │   ├── capture_processor.py
-│       │   ├── mission_auto_clamp.py
-│       │   ├── debrief_processor.py
-│       │   └── briefing_warmer.py
+│       │   ├── play_session_auto_clamp.py
+│       │   ├── wrap_up_processor.py
+│       │   └── recap_warmer.py
 │       └── prompts/
 │           ├── capture_parse.j2
 │           ├── capture_parse_vision.j2
-│           ├── briefing.j2
+│           ├── recap.j2
 │           ├── loadout.j2
-│           └── debrief_extract.j2
+│           └── wrap_up_extract.j2
 └── tests/
     ├── conftest.py
     ├── factories.py
@@ -459,31 +459,31 @@ Client                  API                       arq worker            External
 
 **Idempotency:** the worker is idempotent. Re-running `capture_processor` on a stuck capture is safe — state machine prevents double-processing. Recovery from a crashed worker is automatic via arq's retry policy.
 
-### 5.2 Briefing (anti-hallucination flow)
+### 5.2 Recap (anti-hallucination flow)
 
 ```text
-1. User taps "Start Mission" on LibraryEntry X.
-2. API validates: user has no other active mission (partial unique index).
-3. API creates mission row.
+1. User taps "Start PlaySession" on LibraryEntry X.
+2. API validates: user has no other active play session (partial unique index).
+3. API creates play session row.
 4. API queries:
-       SELECT * FROM missions
+       SELECT * FROM play sessions
         WHERE library_entry_id = X
           AND user_id = current_user
-          AND ended_via = 'debrief_completed'
+          AND ended_via = 'wrap_up_completed'
           AND extracted_state IS NOT NULL
         ORDER BY started_at DESC
         LIMIT 3
-5. API renders prompts/briefing.j2 with those debriefs + entry.mission_next_action.
+5. API renders prompts/recap.j2 with those wrap-ups + entry.play_session_next_action.
 6. API calls Ollama (smart model).
 7. ANTI-HALLUCINATION CHECK:
        - Tokenize output: proper nouns, capitalized terms, numbers
        - Tokenize input context same way
        - Compute overlap = |output_tokens ∩ input_tokens| / |output_tokens|
-       - If overlap < 0.7: log 'suspicious_briefing', set flag in response
-8. Save briefing_text on mission. Return to app.
+       - If overlap < 0.7: log 'suspicious_recap', set flag in response
+8. Save recap_text on play session. Return to app.
 ```
 
-**Why this is in the database, not just the application:** the partial unique index enforces "one active mission" at the storage layer. Even a buggy app or a malicious direct DB write cannot violate the invariant. The application logic is redundant defense, not the primary guard.
+**Why this is in the database, not just the application:** the partial unique index enforces "one active play session" at the storage layer. Even a buggy app or a malicious direct DB write cannot violate the invariant. The application logic is redundant defense, not the primary guard.
 
 ### 5.3 Daily Loadout (UUID validation flow)
 
@@ -492,7 +492,7 @@ Client                  API                       arq worker            External
 2. API queries eligible library_entries:
        status IN ('backlog', 'playing', 'paused')
        AND NOT EXISTS (
-           SELECT 1 FROM missions m
+           SELECT 1 FROM play sessions m
            WHERE m.library_entry_id = library_entries.id
              AND m.ended_at > now() - interval '12 hours'
        )
@@ -508,14 +508,14 @@ Client                  API                       arq worker            External
 
 The validation step is **deterministic** layered on top of probabilistic LLM output. No retraining, no fine-tuning — just an explicit guardrail.
 
-### 5.4 Debrief extraction (async-first with sync fallback)
+### 5.4 WrapUp extraction (async-first with sync fallback)
 
 ```text
 Client                  API                     Taskiq worker          External
   |                      |                            |                     |
-  |--PATCH debrief------>|                            |                     |
-  |                      |--save debrief_text         |                     |
-  |                      |--end mission               |                     |
+  |--PATCH wrap-up------>|                            |                     |
+  |                      |--save wrap_up_text         |                     |
+  |                      |--end play session               |                     |
   |                      |--dispatch task------------>|                     |
   |<--200 (instant)------|                            |                     |
   |                                                   |                     |
@@ -524,21 +524,21 @@ Client                  API                     Taskiq worker          External
   |                                                   |--update next_action |
   |                                                   |--commit             |
   |                                                                         |
-  |            [Later: user starts next mission]                            |
-  |--POST /missions----->|                                                  |
-  |                      |--check: previous mission has extracted_state?    |
-  |                      |    YES → use it for briefing                     |
-  |                      |    NO  → sync fallback: extract now, then brief  |
-  |<--201 + briefing-----|                                                  |
+  |            [Later: user starts next play session]                            |
+  |--POST /play-sessions----->|                                                  |
+  |                      |--check: previous play session has extracted_state?    |
+  |                      |    YES → use it for recap                     |
+  |                      |    NO  → sync fallback: extract now, then recap  |
+  |<--201 + recap-----|                                                  |
 ```
 
-**Why async:** debrief extraction calls the LLM (1–10s depending on hardware). The user doesn't need the extracted state immediately — it's only consumed when generating the *next* briefing for that game. Blocking the HTTP response for a result the user won't see until their next session is unnecessary latency.
+**Why async:** wrap-up extraction calls the LLM (1–10s depending on hardware). The user doesn't need the extracted state immediately — it's only consumed when generating the *next* recap for that game. Blocking the HTTP response for a result the user won't see until their next session is unnecessary latency.
 
 **Why Taskiq:** asyncio-native (tasks are plain `async def`), Redis broker (already in the stack), built-in retry support, actively maintained. Celery lacks async support; arq is maintenance-only.
 
 **Retry with exponential backoff:** the Taskiq worker retries failed extractions up to 3 times with exponential backoff (2s → 4s → 8s). This handles transient Ollama failures without hammering the LLM.
 
-**Sync fallback:** if the worker fails all retries (or hasn't processed yet), `ensure_extractions_complete()` runs the extraction synchronously before generating a briefing. This is a safety net, not the happy path. The user sees a brief loading indicator ("Loading context from your last session...") only in this rare case.
+**Sync fallback:** if the worker fails all retries (or hasn't processed yet), `ensure_extractions_complete()` runs the extraction synchronously before generating a recap. This is a safety net, not the happy path. The user sees a short loading indicator ("Loading context from your last session...") only in this rare case.
 
 ---
 
@@ -554,18 +554,18 @@ These are the decisions worth a paragraph each, in order of "what differentiates
 
 LLM outputs are validated against context before persisting or surfacing to the user. Two layers:
 
-- **Token-overlap check** (briefings): tokenize both input and output for proper nouns and numbers; require ≥70% overlap. Below threshold → flag, disclaimer.
+- **Token-overlap check** (recaps): tokenize both input and output for proper nouns and numbers; require ≥70% overlap. Below threshold → flag, disclaimer.
 - **UUID existence check** (loadouts, structured outputs): any UUID/ID the LLM returns must exist in the candidate set provided to it. Failure → reroll once → 422.
 
 These are deterministic safeguards on probabilistic outputs. No fine-tuning, no model retraining. Cheap to implement, dramatically reduces user-facing hallucination.
 
 ### 6.3 State machines for AI workflows
 
-Captures and missions are modeled as explicit state machines, not as boolean flags. Each transition is a method on the domain model with preconditions checked. Workers are idempotent because they consult state before acting. Recovery from partial failure is automatic and explicit, not "hope nothing went wrong."
+Captures and play sessions are modeled as explicit state machines, not as boolean flags. Each transition is a method on the domain model with preconditions checked. Workers are idempotent because they consult state before acting. Recovery from partial failure is automatic and explicit, not "hope nothing went wrong."
 
 ### 6.4 Database-level invariants over application-level rules
 
-The "one active mission per user" rule is enforced by a partial unique index, not by app code alone. This forces a small denormalization (`user_id` on `missions`) which is documented and justified. The trade-off is conscious: a small write-time cost for an absolute guarantee.
+The "one active play session per user" rule is enforced by a partial unique index, not by app code alone. This forces a small denormalization (`user_id` on `play sessions`) which is documented and justified. The trade-off is conscious: a small write-time cost for an absolute guarantee.
 
 ### 6.5 Local-first AI as the default
 
@@ -577,7 +577,7 @@ LLM, STT, storage, email, IGDB — each follows the same shape: abstract base cl
 
 ### 6.7 Async-first LLM processing with sync fallback
 
-Debrief extraction is fire-and-forget: submit the debrief, end the mission, dispatch a Taskiq task, return instantly. The background worker processes the LLM call with retries and exponential backoff. If the worker fails or hasn't run by the time the data is needed (next briefing), the system falls back to synchronous extraction — the user sees a brief loading state, but never loses data. This pattern ("optimistic background processing, pessimistic on-demand fallback") avoids two failure modes: (1) blocking the user on LLM latency for a result they don't need yet, and (2) silently losing debriefs when the worker is down.
+WrapUp extraction is fire-and-forget: submit the wrap-up, end the play session, dispatch a Taskiq task, return instantly. The background worker processes the LLM call with retries and exponential backoff. If the worker fails or hasn't run by the time the data is needed (next recap), the system falls back to synchronous extraction — the user sees a short loading state, but never loses data. This pattern ("optimistic background processing, pessimistic on-demand fallback") avoids two failure modes: (1) blocking the user on LLM latency for a result they don't need yet, and (2) silently losing wrap-ups when the worker is down.
 
 ### 6.8 Application caching layer (Epic 18)
 
@@ -587,12 +587,12 @@ The seam is `cached_call()` (`infrastructure/cache/layer.py`): a read-through he
 
 Two invalidation strategies, picked by data shape:
 
-- **Per-user, event-invalidated** — `stats:<user_id>:*`. Cached on read; busted on every mutation that shifts an aggregate (mission start/end/debrief, library add/update/delete, capture confirm). Invalidation is **ambient**, like `structlog`'s logger: `invalidate_user_stats(user_id)` resolves the process cache itself, so no service threads a cache for the write side. The boundary: *busting is ambient; caching reads are an injected dependency.*
-- **Content-addressed, TTL-only** — `briefing:`, `research:`, `llm:`, `ref:`. The key is a digest of the inputs, so when inputs change the key changes and stale entries simply age out. The **deep briefing** is the marquee case: its key digests the full `MissionContext` (which *includes* the session's debriefs), so "bust on new debrief" is structural — a new debrief yields a fresh key, no explicit hook. Degraded results (a deep briefing that fell back to quick, an empty LLM/search response) are never stored (`cache_if`), so a transient failure isn't remembered.
+- **Per-user, event-invalidated** — `stats:<user_id>:*`. Cached on read; busted on every mutation that shifts an aggregate (play session start/end/wrap-up, library add/update/delete, capture confirm). Invalidation is **ambient**, like `structlog`'s logger: `invalidate_user_stats(user_id)` resolves the process cache itself, so no service threads a cache for the write side. The boundary: *busting is ambient; caching reads are an injected dependency.*
+- **Content-addressed, TTL-only** — `recap:`, `research:`, `llm:`, `ref:`. The key is a digest of the inputs, so when inputs change the key changes and stale entries simply age out. The **deep recap** is the marquee case: its key digests the full `PlaySessionContext` (which *includes* the session's wrap-ups), so "bust on new wrap-up" is structural — a new wrap-up yields a fresh key, no explicit hook. Degraded results (a deep recap that fell back to quick, an empty LLM/search response) are never stored (`cache_if`), so a transient failure isn't remembered.
 
 Hit/miss is observable per namespace via `GET /v1/cache/stats` (and `make cache-stats`), so TTLs can be tuned against real hit rates.
 
-**Ops:** the cache is advisory, so set Redis `maxmemory` with `maxmemory-policy allkeys-lru` — content-addressed keys (briefings, completions) accumulate orphans by design and should be evicted under pressure rather than erroring. Per-namespace TTLs are config-driven (`*_CACHE_TTL_SECONDS`).
+**Ops:** the cache is advisory, so set Redis `maxmemory` with `maxmemory-policy allkeys-lru` — content-addressed keys (recaps, completions) accumulate orphans by design and should be evicted under pressure rather than erroring. Per-namespace TTLs are config-driven (`*_CACHE_TTL_SECONDS`).
 
 ---
 
@@ -619,8 +619,8 @@ REDIS_URL=redis://localhost:6380/0
 
 # Caching (Epic 18) — off => NullCache (behaves as "no caching")
 CACHE_ENABLED=true
-STATS_CACHE_TTL_SECONDS=300            # per-user stats; busted on mission/library writes
-BRIEFING_CACHE_TTL_SECONDS=604800      # deep briefings (content-addressed); 7 days
+STATS_CACHE_TTL_SECONDS=300            # per-user stats; busted on play session/library writes
+RECAP_CACHE_TTL_SECONDS=604800      # deep recaps (content-addressed); 7 days
 RESEARCH_CACHE_TTL_SECONDS=21600       # web-research queries; 6 hours
 LLM_CACHE_TTL_SECONDS=86400            # idempotent LLM completions; 1 day
 REFERENCE_CACHE_TTL_SECONDS=3600       # genre list and other reference data; 1 hour
@@ -663,7 +663,7 @@ SMTP_FROM=DailyLoadout <noreply@dailyloadout.local>
 CAPTURE_MAX_AUDIO_SECONDS=60
 CAPTURE_MAX_IMAGE_MB=10
 CAPTURE_MAX_GAMES_PER_SHELF=12
-MISSION_AUTO_CLAMP_HOURS=8
+PLAY_SESSION_AUTO_CLAMP_HOURS=8
 
 # Observability (optional)
 SENTRY_DSN=
@@ -723,7 +723,7 @@ Documented in detail in [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md).
 
 ### 9.2 App
 
-- **Widget tests** — critical screens (auth, library, capture review, briefing).
+- **Widget tests** — critical screens (auth, library, capture review, recap).
 - **BLoC tests** — `bloc_test` package, every BLoC has at least happy-path and error-path tests.
 - **Integration tests** — basic end-to-end on macOS target only (lighter than full mobile matrix).
 

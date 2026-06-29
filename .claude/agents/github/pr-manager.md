@@ -173,10 +173,10 @@ mcp__claude-flow__agent_spawn { type: "coordinator", name: "PR Coordinator" }
 mcp__github__create_pull_request {
   owner: "ranonbezerra",
   repo: "dailyloadout-monorepo",
-  title: "feat(mission): Add mission briefing with LLM-powered analysis",
-  head: "epic/6-mission-briefing",
+  title: "feat(play session): Add play session recap with LLM-powered analysis",
+  head: "epic/6-play session-recap",
   base: "main",
-  body: "## Summary\n- Mission briefing API with Ollama integration\n- Mantine modal for briefing display\n- Taskiq worker for auto-clamp\n\n## Test Plan\n- pytest coverage >= 90%\n- Biome lint passes\n- Alembic migration reversible"
+  body: "## Summary\n- PlaySession recap API with Ollama integration\n- Mantine modal for recap display\n- Taskiq worker for auto-clamp\n\n## Test Plan\n- pytest coverage >= 90%\n- Biome lint passes\n- Alembic migration reversible"
 }
 
 // Orchestrate review process
@@ -207,8 +207,8 @@ mcp__github__merge_pull_request {
   repo: "dailyloadout-monorepo",
   pull_number: 54,
   merge_method: "squash",
-  commit_title: "feat(mission): Add mission briefing with LLM integration (#54)",
-  commit_message: "Comprehensive mission briefing with Ollama-powered analysis and Mantine UI"
+  commit_title: "feat(play session): Add play session recap with LLM integration (#54)",
+  commit_message: "Comprehensive play session recap with Ollama-powered analysis and Mantine UI"
 }
 
 // Post-merge coordination

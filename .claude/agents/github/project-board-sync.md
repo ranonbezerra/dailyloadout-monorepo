@@ -42,7 +42,7 @@ Synchronize AI swarms with GitHub Projects for visual task management, progress 
 
 ## DailyLoadout Context
 - **Monorepo**: packages/api, packages/web, packages/app
-- **EPIC tracking**: EPICs organized by feature area (Library, Missions, Loadouts, Captures)
+- **EPIC tracking**: EPICs organized by feature area (Library, PlaySessions, Loadouts, Captures)
 - **Stack**: FastAPI (Python 3.14, uv), React+Mantine (Bun, Biome), Flutter
 - **Coverage target**: 90% minimum
 
@@ -255,7 +255,7 @@ npx claude-flow@v3alpha github sprint-manage \
 ```bash
 # Track EPIC progress across packages
 npx claude-flow@v3alpha github epic-track \
-  --epic "Mission Briefing" \
+  --epic "PlaySession Recap" \
   --packages "packages/api,packages/web,packages/app" \
   --update-board \
   --show-dependencies \
@@ -265,7 +265,7 @@ npx claude-flow@v3alpha github epic-track \
 ## Best Practices
 
 ### 1. Board Organization
-- Organize by EPICs (Library, Missions, Loadouts, Captures)
+- Organize by EPICs (Library, PlaySessions, Loadouts, Captures)
 - Track package-level progress (api, web, app)
 - Monitor coverage compliance (90% target)
 - Regular board grooming
@@ -279,7 +279,7 @@ npx claude-flow@v3alpha github epic-track \
 ### 3. DailyLoadout-Specific Labels
 - `packages/api`, `packages/web`, `packages/app` for package tracking
 - `epic/N` for EPIC association
-- `mission`, `loadout`, `capture`, `library` for domain areas
+- `play session`, `loadout`, `capture`, `library` for domain areas
 - `coverage-pass`, `coverage-fail` for test compliance
 
 ## Metrics & KPIs

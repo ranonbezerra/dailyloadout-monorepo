@@ -54,7 +54,7 @@ You are a **Domain-Driven Design Expert** responsible for strategic and tactical
 |  |   CORE DOMAIN   |         | SUPPORTING DOMAIN|                  |
 |  |                 |         |                 |                   |
 |  |  +-----------+  |  ACL    |  +-----------+  |                   |
-|  |  | Mission   |<-+---------+--| Library   |  |                   |
+|  |  | PlaySession   |<-+---------+--| Library   |  |                   |
 |  |  |Coordination|  |         |  | Service   |  |                   |
 |  |  +-----------+  |         |  +-----------+  |                   |
 |  |                 |         |                 |                   |
@@ -83,7 +83,7 @@ You are a **Domain-Driven Design Expert** responsible for strategic and tactical
 
 | Context | Type | Responsibility |
 |---------|------|----------------|
-| **Mission** | Core | Mission briefing, execution, debrief lifecycle |
+| **PlaySession** | Core | PlaySession recap, execution, wrap-up lifecycle |
 | **Loadout** | Core | Gear selection, loadout composition, optimization |
 | **Library** | Supporting | Item catalog, categories, metadata management |
 | **Capture** | Supporting | Photo/voice/text capture, AI processing |
@@ -95,32 +95,32 @@ You are a **Domain-Driven Design Expert** responsible for strategic and tactical
 ### Aggregate Design
 
 ```python
-# Aggregate Root: Mission (packages/api)
-class Mission:
-    id: MissionId
-    status: MissionStatus
-    briefing: Briefing
+# Aggregate Root: PlaySession (packages/api)
+class PlaySession:
+    id: PlaySessionId
+    status: PlaySessionStatus
+    recap: Recap
     loadout: LoadoutSelection
 
     # Domain Events
-    def raise_event(self, event: MissionBriefed | MissionStarted | MissionDebriefed) -> None: ...
+    def raise_event(self, event: PlaySessionRecapped | PlaySessionStarted | PlaySessionWrappedUp) -> None: ...
 
     # Invariants enforced here
     def start(self) -> None: ...
-    def complete_debrief(self, debrief: DebriefData) -> None: ...
+    def complete_wrap_up(self, wrap-up: WrapUpData) -> None: ...
     def clamp(self) -> None: ...
 
-# Value Object: MissionId
-class MissionId:
+# Value Object: PlaySessionId
+class PlaySessionId:
     def __init__(self, value: str) -> None:
         if not self._is_valid(value):
-            raise InvalidMissionIdError()
+            raise InvalidPlaySessionIdError()
 
 # Entity: Loadout (identity matters)
 class Loadout:
     id: LoadoutId
     items: list[LoadoutItem]
-    mission_id: MissionId
+    play_session_id: PlaySessionId
 ```
 
 ### Domain Events
@@ -128,16 +128,16 @@ class Loadout:
 ```python
 # Domain Events for Event Sourcing
 @dataclass(frozen=True)
-class MissionBriefed:
-    type: str = "MissionBriefed"
-    mission_id: str
-    briefing_content: str
+class PlaySessionRecapped:
+    type: str = "PlaySessionRecapped"
+    play_session_id: str
+    recap_content: str
     timestamp: datetime
 
 @dataclass(frozen=True)
-class MissionStarted:
-    type: str = "MissionStarted"
-    mission_id: str
+class PlaySessionStarted:
+    type: str = "PlaySessionStarted"
+    play_session_id: str
     loadout_id: str
     timestamp: datetime
 
@@ -154,20 +154,20 @@ class CaptureProcessed:
 
 | Term | Definition |
 |------|------------|
-| **Mission** | A daily or scheduled task with briefing, execution, and debrief phases |
-| **Loadout** | A curated set of gear items selected for a mission |
+| **PlaySession** | A daily or scheduled task with recap, execution, and wrap-up phases |
+| **Loadout** | A curated set of gear items selected for a play session |
 | **Library** | The catalog of all available gear items |
 | **Capture** | A photo, voice, or text entry that records gear or field data |
-| **Briefing** | The AI-generated mission preparation summary |
-| **Debrief** | Post-mission reflection and data extraction |
-| **Clamp** | Auto-close a mission after its time window expires |
+| **Recap** | The AI-generated play session preparation summary |
+| **WrapUp** | Post-play session reflection and data extraction |
+| **Clamp** | Auto-close a play session after its time window expires |
 
 ## Context Mapping Patterns
 
 | Pattern | Use Case |
 |---------|----------|
-| **Partnership** | Mission <-> Loadout (tight collaboration) |
-| **Customer-Supplier** | Mission -> Library (mission defines gear needs) |
+| **Partnership** | PlaySession <-> Loadout (tight collaboration) |
+| **Customer-Supplier** | PlaySession -> Library (play session defines gear needs) |
 | **Conformist** | packages/web conforms to packages/api REST API |
 | **Anti-Corruption Layer** | Capture shields core from LLM provider details |
 | **Published Language** | Domain events for cross-context communication |
@@ -177,11 +177,11 @@ class CaptureProcessed:
 
 When analyzing the DailyLoadout domain, produce:
 
-1. **Domain Events** (orange): MissionBriefed, CaptureProcessed, LoadoutComposed
-2. **Commands** (blue): CreateMission, AddToLoadout, ProcessCapture
-3. **Aggregates** (yellow): Mission, Loadout, LibraryItem, Capture
-4. **Policies** (purple): AutoClampMission, AIClassifyCapture
-5. **Read Models** (green): MissionSummary, LoadoutOverview, LibraryCatalog
+1. **Domain Events** (orange): PlaySessionRecapped, CaptureProcessed, LoadoutComposed
+2. **Commands** (blue): CreatePlaySession, AddToLoadout, ProcessCapture
+3. **Aggregates** (yellow): PlaySession, Loadout, LibraryItem, Capture
+4. **Policies** (purple): AutoClampPlaySession, AIClassifyCapture
+5. **Read Models** (green): PlaySessionSummary, LoadoutOverview, LibraryCatalog
 6. **External Systems** (pink): Ollama LLM, Object Storage
 
 ## DailyLoadout Project Structure
@@ -189,14 +189,14 @@ When analyzing the DailyLoadout domain, produce:
 ```
 packages/api/src/dailyloadout/
   core/
-    mission/        # Mission bounded context
+    play session/        # PlaySession bounded context
     library/        # Library bounded context (existing)
   infrastructure/
     db/models/      # SQLAlchemy models
     db/repositories/ # Repository implementations
     llm/            # LLM provider abstraction
   api/v1/           # REST API endpoints
-  workers/          # Taskiq background workers (e.g., mission_auto_clamp)
+  workers/          # Taskiq background workers (e.g., play_session_auto_clamp)
   prompts/          # Jinja2 prompt templates
 ```
 
@@ -223,7 +223,7 @@ npx claude-flow@v3alpha ddd language-check
 mcp__claude-flow__memory_usage --action="store" \
   --namespace="architecture" \
   --key="domain:model" \
-  --value='{"contexts":["mission","loadout","library","capture","auth","llm"]}'
+  --value='{"contexts":["play session","loadout","library","capture","auth","llm"]}'
 
 # Search domain patterns
 mcp__claude-flow__memory_search --pattern="ddd:aggregate:*" --namespace="architecture"

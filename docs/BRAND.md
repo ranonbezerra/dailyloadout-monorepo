@@ -134,10 +134,10 @@ Talk like the friend who knows your backlog. Concise. A little dry. Never hype, 
 | Prefer | Over |
 | --- | --- |
 | Loadout / tonight's pick | Deploy |
-| Library / backlog | Mission log |
-| Session | Mission (in UI) |
-| Recap / "Previously on..." | Briefing / intel |
-| Your wrap-up / where you left off | Debrief |
+| Library / backlog | PlaySession log |
+| Session | PlaySession (in UI) |
+| Recap / "Previously on..." | Recap / intel |
+| Your wrap-up / where you left off | WrapUp |
 | Set aside | Dropped / abandoned |
 
 ### Rules
@@ -147,7 +147,7 @@ Talk like the friend who knows your backlog. Concise. A little dry. Never hype, 
 - Respect autonomy — suggest, don't command
 - Admit uncertainty — weak context = say so
 
-The data model and code keep the tactical metaphor (`mission`, `briefing`, `debrief`) — that's precise and already built. **User-facing copy leans warm by default** (the table above); the tactical flavor is reserved for an opt-in "Operator mode" easter egg.
+The data model and code keep the tactical metaphor (`play session`, `recap`, `wrap-up`) — that's precise and already built. **User-facing copy leans warm by default** (the table above); the tactical flavor is reserved for an opt-in "Operator mode" easter egg.
 
 > **TODO (owner decision — pending):** "Operator mode" is the only place the brand deliberately embraces the tactical register. Decide whether to **keep** it (opt-in easter egg), **rename** it (a warmer label for the same toggle), or **remove** it. Not resolved here — needs the owner's sign-off.
 >

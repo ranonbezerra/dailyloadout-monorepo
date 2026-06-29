@@ -41,7 +41,7 @@ ADRs within DailyLoadout cover decisions for:
 - **packages/web**: Frontend architecture (React, TypeScript)
 - **packages/app**: Mobile architecture
 - **Infrastructure**: PostgreSQL, Redis, Ollama LLM
-- **Domain**: Library management, mission workflow, loadout system, capture pipeline
+- **Domain**: Library management, play session workflow, loadout system, capture pipeline
 
 Ticket prefix: DL-XX
 

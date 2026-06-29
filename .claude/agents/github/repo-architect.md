@@ -46,7 +46,7 @@ Repository structure optimization and monorepo management with swarm coordinatio
 - **Monorepo**: ranonbezerra/dailyloadout-monorepo
 - **Packages**: packages/api (FastAPI, Python 3.14), packages/web (React, Mantine, Bun, Biome), packages/app (Flutter)
 - **Tooling**: uv (Python), bun (TypeScript), Alembic (migrations), Taskiq (workers)
-- **Domain**: Library, Missions, Loadouts, Captures
+- **Domain**: Library, PlaySessions, Loadouts, Captures
 - **Coverage**: 90% minimum
 
 ## Capabilities
@@ -115,7 +115,7 @@ dailyloadout-monorepo/
 │   │   │   └── versions/
 │   │   ├── src/dailyloadout/
 │   │   │   ├── api/v1/        # FastAPI routers
-│   │   │   ├── core/          # Business logic (auth, mission, capture, loadout)
+│   │   │   ├── core/          # Business logic (auth, play session, capture, loadout)
 │   │   │   ├── infrastructure/
 │   │   │   │   ├── db/        # SQLAlchemy models, repositories
 │   │   │   │   └── llm/       # Ollama client, Jinja2 prompts
@@ -126,7 +126,7 @@ dailyloadout-monorepo/
 │   │   └── pyproject.toml
 │   ├── web/                    # React frontend (TypeScript, Mantine)
 │   │   ├── src/
-│   │   │   ├── pages/         # Page components (Library, Missions, etc.)
+│   │   │   ├── pages/         # Page components (Library, PlaySessions, etc.)
 │   │   │   ├── hooks/         # Custom React hooks
 │   │   │   ├── lib/           # API clients
 │   │   │   └── types/         # TypeScript types

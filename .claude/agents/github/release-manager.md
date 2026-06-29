@@ -89,7 +89,7 @@ Automated release coordination and deployment with swarm orchestration for seaml
 - **Tooling**: uv (Python deps), bun (TS deps), Alembic (migrations), Taskiq (workers), Biome (lint)
 - **Coverage target**: 90% minimum across all packages
 - **Branch strategy**: epic/* -> main, release/* for versioned releases
-- **Domain**: Library, Missions, Loadouts, Captures
+- **Domain**: Library, PlaySessions, Loadouts, Captures
 
 ## Core Capabilities
 - **Automated release pipelines** with comprehensive testing (90% coverage gate)
@@ -204,14 +204,14 @@ mcp__github__push_files {
 ## [1.1.0] - ${new Date().toISOString().split('T')[0]}
 
 ### Added
-- Mission briefing with LLM-powered analysis
+- PlaySession recap with LLM-powered analysis
 - Loadout auto-picker AI integration
-- Debrief extraction with Taskiq workers
+- WrapUp extraction with Taskiq workers
 
 ### Changed
-- Mantine UI components for mission flow
+- Mantine UI components for play session flow
 - Biome lint configuration updates
-- Alembic migration for missions table
+- Alembic migration for play sessions table
 
 ### Fixed
 - Jinja2 SSTI vulnerability (SandboxedEnvironment)
@@ -219,7 +219,7 @@ mcp__github__push_files {
 - LLM factory test isolation`
     }
   ],
-  message: "release: Prepare v1.1.0 with mission briefing and loadout features"
+  message: "release: Prepare v1.1.0 with play session recap and loadout features"
 }
 ```
 
@@ -237,21 +237,21 @@ Bash("cd packages/app && flutter test --coverage")
 mcp__github__create_pull_request {
   owner: "ranonbezerra",
   repo: "dailyloadout-monorepo",
-  title: "Release v1.1.0: Mission Briefing and Loadout Features",
+  title: "Release v1.1.0: PlaySession Recap and Loadout Features",
   head: "release/v1.1.0",
   base: "main",
   body: `## Release v1.1.0
 
 ### Release Highlights
-- **Mission Briefing**: LLM-powered mission analysis with Ollama
+- **PlaySession Recap**: LLM-powered play session analysis with Ollama
 - **Loadout Auto-Picker**: AI-driven gear selection from library
-- **Debrief Extraction**: Taskiq workers for post-mission processing
+- **WrapUp Extraction**: Taskiq workers for post-play session processing
 - **Security Hardening**: SSTI mitigation, JWT production guard
 
 ### Package Updates
-- **packages/api**: Mission endpoints, Alembic migrations, Taskiq workers
+- **packages/api**: PlaySession endpoints, Alembic migrations, Taskiq workers
 - **packages/web**: Mantine modals, React hooks, Biome compliance
-- **packages/app**: Flutter mission screens
+- **packages/app**: Flutter play session screens
 
 ### Validation Results
 - [x] API tests: 90%+ coverage
@@ -271,7 +271,7 @@ Generated with Claude Code`
 ```javascript
 const versionStrategy = {
   major: "Breaking changes or architecture overhauls",
-  minor: "New EPICs (missions, loadouts), feature additions",
+  minor: "New EPICs (play sessions, loadouts), feature additions",
   patch: "Bug fixes, security patches, documentation updates",
   coordination: "Cross-package version alignment (api, web, app)"
 }

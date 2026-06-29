@@ -67,7 +67,7 @@ services:
 
   taskiq-worker:
     build: ./packages/api
-    command: ["taskiq", "worker", "dailyloadout.infrastructure.tasks.debrief_extraction:broker"]
+    command: ["taskiq", "worker", "dailyloadout.infrastructure.tasks.wrap_up_extraction:broker"]
     depends_on: [postgres, redis]
 ```
 

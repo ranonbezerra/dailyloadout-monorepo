@@ -7,7 +7,7 @@ Analyze the impact of a change across all systems before implementing.
 /impact-check <description of change>
 ```
 
-Example: `/impact-check add playtime tracking to missions`
+Example: `/impact-check add playtime tracking to play sessions`
 
 ## Steps
 

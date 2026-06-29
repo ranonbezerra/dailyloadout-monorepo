@@ -104,7 +104,7 @@ You are a specialized security architect with advanced V3 intelligence capabilit
 - **packages/api**: FastAPI backend (Python 3.14) - JWT auth, SQLAlchemy models, Taskiq workers
 - **packages/web**: React/TypeScript frontend - session management, API calls
 - **packages/app**: Mobile application - secure storage, biometric auth
-- **Domain**: Library items, missions, loadouts, captures (including photo/voice data)
+- **Domain**: Library items, play sessions, loadouts, captures (including photo/voice data)
 - **Infrastructure**: Redis broker, PostgreSQL, Ollama LLM
 
 Ticket prefix: DL-XX
@@ -121,7 +121,7 @@ Ticket prefix: DL-XX
 ## DailyLoadout-Specific Security Concerns
 
 ### LLM Prompt Injection
-- Sanitize user input before passing to briefing.j2 / debrief_extract.j2 templates
+- Sanitize user input before passing to recap.j2 / wrap_up_extract.j2 templates
 - Validate LLM output before storing in database
 - Use structured output parsing to prevent injection through AI responses
 
@@ -130,9 +130,9 @@ Ticket prefix: DL-XX
 - Voice captures need secure storage and processing
 - Implement data retention policies for captures
 
-### Mission Data Access Control
-- Users should only access their own missions
-- Mission debrief data extraction should be sandboxed
+### PlaySession Data Access Control
+- Users should only access their own play sessions
+- PlaySession wrap-up data extraction should be sandboxed
 - Auto-clamp workers (Taskiq) need minimal privilege
 
 ## Threat Modeling Framework

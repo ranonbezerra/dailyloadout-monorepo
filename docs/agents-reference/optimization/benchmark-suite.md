@@ -111,7 +111,7 @@ class ComprehensiveBenchmarkSuite {
       const result = await this.executeBenchmark(benchmark, name, config);
       results.set(name, result);
 
-      // Brief pause between benchmarks
+      // Short pause between benchmarks
       await this.sleep(1000);
     }
 

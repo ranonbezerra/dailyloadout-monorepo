@@ -21,7 +21,7 @@ jobs:
             echo ""
             echo "Valid types: feat, fix, chore, docs, refactor, test, ci, perf, style, build, revert"
             echo "Examples:"
-            echo "  feat(mission): add retroactive debrief flow"
+            echo "  feat(play-session): add retroactive wrap-up flow"
             echo "  fix(api): handle missing library entry gracefully"
             echo "  chore: update dependencies"
             exit 1

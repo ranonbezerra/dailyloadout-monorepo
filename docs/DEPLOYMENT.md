@@ -120,10 +120,10 @@ poetry run uvicorn src.dailyloadout.main:app --host 0.0.0.0 --port 8100 --worker
 > runs in a container. Never use `*` in production — it lets any client spoof
 > its source IP.
 
-For the Taskiq background worker (async debrief extraction):
+For the Taskiq background worker (async wrap-up extraction):
 
 ```bash
-poetry run taskiq worker dailyloadout.infrastructure.tasks.debrief_extraction:broker
+poetry run taskiq worker dailyloadout.infrastructure.tasks.wrap_up_extraction:broker
 ```
 
 ### 1.5 Build and serve the web dashboard
@@ -213,7 +213,7 @@ After=network.target redis.service
 [Service]
 User=dailyloadout
 WorkingDirectory=/opt/dailyloadout/packages/api
-ExecStart=/opt/dailyloadout/packages/api/.venv/bin/taskiq worker dailyloadout.infrastructure.tasks.debrief_extraction:broker
+ExecStart=/opt/dailyloadout/packages/api/.venv/bin/taskiq worker dailyloadout.infrastructure.tasks.wrap_up_extraction:broker
 Restart=always
 EnvironmentFile=/opt/dailyloadout/.env
 
@@ -403,7 +403,7 @@ backstop for failures that only surface against real production data.
 > **For safe rollbacks, write expand/contract migrations** (backward-compatible:
 > add columns/tables in one release, remove the old ones a release later). Then
 > the still-running old version keeps working with the new schema during the
-> brief migrate-before-restart window, and a rollback never needs a lossy
+> short migrate-before-restart window, and a rollback never needs a lossy
 > `downgrade`.
 
 ---

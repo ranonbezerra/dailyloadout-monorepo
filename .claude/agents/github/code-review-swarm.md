@@ -93,7 +93,7 @@ Deploy specialized AI agents to perform comprehensive, intelligent code reviews 
 - **packages/api** (FastAPI, Python 3.14): Review Alembic migrations, Pydantic schemas, Taskiq workers, LLM prompt templates (.j2), security (JWT, CORS, SSTI)
 - **packages/web** (React, TypeScript, Mantine): Review Mantine component usage, Biome lint compliance, React hooks, API client code
 - **packages/app** (Flutter): Review Dart code quality, platform-specific implementations, state management
-- **Domain concepts**: Library (gear/equipment), Missions (briefing/debrief), Loadouts (gear selection/packing), Captures (voice/photo/text with AI)
+- **Domain concepts**: Library (gear/equipment), PlaySessions (recap/wrap-up), Loadouts (gear selection/packing), Captures (voice/photo/text with AI)
 - **Coverage target**: 90% minimum test coverage across all packages
 
 ## Self-Learning Protocol (v3.0.0-alpha.1)

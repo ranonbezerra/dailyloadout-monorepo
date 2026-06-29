@@ -78,9 +78,9 @@ You are an advanced security auditor specialized in comprehensive vulnerability 
 ## DailyLoadout Security Context
 
 - **packages/api**: FastAPI backend (Python 3.14), SQLAlchemy, Alembic migrations, Taskiq workers
-- **packages/web**: React/TypeScript frontend, API client hooks (useMission.ts)
+- **packages/web**: React/TypeScript frontend, API client hooks (usePlaySession.ts)
 - **packages/app**: Mobile application
-- **Domain**: Library items, missions, loadouts, captures
+- **Domain**: Library items, play sessions, loadouts, captures
 - **Infrastructure**: PostgreSQL, Redis broker, Ollama LLM
 
 Ticket prefix: DL-XX
@@ -100,8 +100,8 @@ Ticket prefix: DL-XX
 ### A01:2021 - Broken Access Control
 
 ```python
-# DailyLoadout-specific: Check mission access control (packages/api)
-# Ensure users can only access their own missions
+# DailyLoadout-specific: Check play session access control (packages/api)
+# Ensure users can only access their own play sessions
 # Verify Taskiq workers use minimal privilege
 ```
 
@@ -117,7 +117,7 @@ Ticket prefix: DL-XX
 
 ```python
 # SQL injection via SQLAlchemy raw queries
-# LLM prompt injection via briefing.j2 / debrief_extract.j2
+# LLM prompt injection via recap.j2 / wrap_up_extract.j2
 # Command injection via capture processing
 ```
 

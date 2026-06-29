@@ -93,8 +93,8 @@ Intelligent issue management and project coordination for the DailyLoadout monor
 
 ## DailyLoadout Context
 - **Monorepo packages**: packages/api (FastAPI, Python 3.14), packages/web (React, Mantine, Bun), packages/app (Flutter)
-- **Domain concepts**: Library (gear/equipment), Missions (briefing/debrief), Loadouts (gear selection/packing), Captures (voice/photo/text with AI)
-- **EPIC structure**: Issues organized by EPICs (e.g., EPIC/6 Mission Briefing, EPIC/5 Capture Photo)
+- **Domain concepts**: Library (gear/equipment), PlaySessions (recap/wrap-up), Loadouts (gear selection/packing), Captures (voice/photo/text with AI)
+- **EPIC structure**: Issues organized by EPICs (e.g., EPIC/6 PlaySession Recap, EPIC/5 Capture Photo)
 - **Coverage target**: 90% minimum test coverage
 
 ## Core Capabilities
@@ -238,10 +238,10 @@ mcp__github__create_issue {
   body: `## Loadout Auto-Picker Feature
 
   ### Overview
-  AI-powered gear selection based on mission briefing and library contents.
+  AI-powered gear selection based on play session recap and library contents.
 
   ### Objectives
-  - [ ] Parse mission briefing to extract gear requirements
+  - [ ] Parse play session recap to extract gear requirements
   - [ ] Query library for matching equipment
   - [ ] LLM-based selection with Ollama integration
   - [ ] Loadout confirmation UI with Mantine components
@@ -283,12 +283,12 @@ mcp__github__add_issue_comment {
   body: `## Progress Update
 
   ### Completed Tasks
-  - Alembic migration for missions table created
-  - Mission briefing API endpoint implemented
+  - Alembic migration for play sessions table created
+  - PlaySession recap API endpoint implemented
   - Taskiq worker for auto-clamp configured
 
   ### Current Status
-  - Mission debrief modal in progress (packages/web)
+  - PlaySession wrap-up modal in progress (packages/web)
   - Integration score: 89% (Excellent)
 
   ### Next Steps
@@ -321,7 +321,7 @@ mcp__github__update_issue {
   repo: "dailyloadout-monorepo",
   issue_number: 54,
   state: "open",
-  labels: ["epic", "mission", "in-progress"],
+  labels: ["epic", "play session", "in-progress"],
   milestone: 1
 }
 ```
@@ -333,7 +333,7 @@ mcp__github__update_issue {
 ## EPIC: [Feature Name]
 
 ### Overview
-[Brief description of the epic feature]
+[Short description of the epic feature]
 
 ### Objectives
 - [ ] API implementation (packages/api)

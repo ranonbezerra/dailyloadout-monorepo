@@ -87,7 +87,7 @@ You are an algorithm design specialist focused on the Pseudocode phase of the SP
 DailyLoadout is a gaming companion monorepo. Key algorithm domains include:
 
 - **LLM Integration**: Prompt rendering (Jinja2), response parsing, anti-hallucination validation
-- **Mission Flow**: Briefing generation, debrief extraction, auto-clamp scheduling
+- **PlaySession Flow**: Recap generation, wrap-up extraction, auto-clamp scheduling
 - **Capture Pipeline**: Text/voice/photo input -> LLM extraction -> library enrichment
 - **Loadout Suggestions**: AI-powered daily game picks from user library
 
@@ -150,10 +150,10 @@ if (algorithmFailures.length > 0) {
 ```typescript
 // Use GNN to find similar algorithm implementations (+12.4% accuracy)
 const algorithmGraph = {
-  nodes: [llmPipeline, captureFlow, missionOrchestration],
-  edges: [[0, 1], [0, 2]], // LLM pipeline feeds both captures and missions
+  nodes: [llmPipeline, captureFlow, playSessionOrchestration],
+  edges: [[0, 1], [0, 2]], // LLM pipeline feeds both captures and play sessions
   edgeWeights: [0.9, 0.7],
-  nodeLabels: ['LLM', 'Capture', 'Mission']
+  nodeLabels: ['LLM', 'Capture', 'PlaySession']
 };
 
 const relatedAlgorithms = await agentDB.gnnEnhancedSearch(
@@ -264,16 +264,16 @@ The Pseudocode phase bridges specifications and implementation by:
 ### 1. Structure and Syntax
 
 ```
-ALGORITHM: GenerateMissionBriefing
+ALGORITHM: GeneratePlaySessionRecap
 INPUT: library_entry_id (uuid), user_id (uuid)
-OUTPUT: mission (Mission object) or error
+OUTPUT: play session (PlaySession object) or error
 
 BEGIN
-    // Validate one-active-mission constraint
-    active_mission <- MissionRepository.find_active(user_id)
+    // Validate one-active-play session constraint
+    active_play_session <- PlaySessionRepository.find_active(user_id)
 
-    IF active_mission is not null THEN
-        RETURN error("One active mission at a time")
+    IF active_play_session is not null THEN
+        RETURN error("One active play session at a time")
     END IF
 
     // Retrieve game from library
@@ -284,9 +284,9 @@ BEGIN
     END IF
 
     // Render prompt via Jinja2 template
-    prompt <- render_template("prompts/briefing.j2", {game: game})
+    prompt <- render_template("prompts/recap.j2", {game: game})
 
-    // Generate briefing via Ollama (smart model)
+    // Generate recap via Ollama (smart model)
     llm_response <- LLMClient.generate(prompt, model="gemma3:12b")
 
     // Anti-hallucination validation (token overlap)
@@ -296,16 +296,16 @@ BEGIN
         RETURN error("LLM output failed validation")
     END IF
 
-    // Create mission record
-    mission <- MissionRepository.create({
+    // Create play session record
+    play session <- PlaySessionRepository.create({
         user_id: user_id,
         library_entry_id: game.id,
-        briefing: llm_response.text,
+        recap: llm_response.text,
         status: "active",
         started_at: now_utc()
     })
 
-    RETURN mission
+    RETURN play session
 END
 ```
 
@@ -337,14 +337,14 @@ LoadoutSuggestionCache:
         - accept(suggestion_id): O(1)
         - auto_ignore(): O(k) where k = expired suggestions
 
-MissionStateMap:
+PlaySessionStateMap:
     Type: Enum-driven state machine
     States: active -> completed | clamped
-    Purpose: Enforce mission lifecycle
+    Purpose: Enforce play session lifecycle
 
     Transitions:
         - start(): null -> active
-        - complete(debrief): active -> completed
+        - complete(wrap-up): active -> completed
         - clamp(): active -> clamped (auto, 24h)
 ```
 
@@ -437,21 +437,21 @@ END
 ### 5. Complexity Analysis
 
 ```
-ANALYSIS: Mission Briefing Generation
+ANALYSIS: PlaySession Recap Generation
 
 Time Complexity:
-    - Active mission check: O(1) with user_id index
+    - Active play session check: O(1) with user_id index
     - Library lookup: O(1) with public_id index
     - Prompt rendering (Jinja2): O(m) where m = template size
     - LLM generation: O(t) where t = token count (dominant, ~1-5s)
     - Token overlap validation: O(n) where n = output token count
-    - Mission creation: O(1) DB insert
+    - PlaySession creation: O(1) DB insert
     - Total: O(t) dominated by LLM generation
 
 Space Complexity:
     - Prompt string: O(m)
     - LLM response: O(t)
-    - Mission record: O(1)
+    - PlaySession record: O(1)
     - Total: O(t)
 
 ANALYSIS: Capture Processing Pipeline
@@ -471,7 +471,7 @@ Space Complexity:
 Optimization Notes:
     - LLM calls are async (non-blocking)
     - Heavy processing offloaded to Taskiq workers
-    - Use fast model (4b) for captures, smart model (12b) for briefings
+    - Use fast model (4b) for captures, smart model (12b) for recaps
     - Anti-hallucination check is O(n) and runs in-memory
 ```
 

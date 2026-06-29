@@ -147,21 +147,21 @@ async def test_library_crud_on_real_database():
 # Validate against real Ollama instance
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_ollama_briefing_generation():
-    """Validate briefing generation with real Ollama."""
+async def test_ollama_recap_generation():
+    """Validate recap generation with real Ollama."""
     from dailyloadout.infrastructure.llm.ollama import OllamaProvider
 
     provider = OllamaProvider(base_url=os.environ["OLLAMA_BASE_URL"])
 
     # Test actual LLM call
     response = await provider.generate(
-        prompt="Generate a short mission briefing for playing Elden Ring.",
+        prompt="Generate a short play session recap for playing Elden Ring.",
         model="gemma3:12b",
     )
 
     assert response.text is not None
     assert len(response.text) > 10
-    # Briefing should mention the game
+    # Recap should mention the game
     assert "elden" in response.text.lower() or "ring" in response.text.lower()
 
 
@@ -186,12 +186,12 @@ async def test_ollama_handles_unavailability_gracefully():
 # Validate real background job processing
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_taskiq_debrief_extraction_job():
-    """Validate debrief extraction runs as real Taskiq task."""
-    from dailyloadout.workers.mission_auto_clamp import extract_debrief_state_task
+async def test_taskiq_wrap_up_extraction_job():
+    """Validate wrap-up extraction runs as real Taskiq task."""
+    from dailyloadout.workers.play_session_auto_clamp import extract_wrap_up_state_task
 
     # Enqueue real task
-    result = await extract_debrief_state_task.kiq(mission_id=1)
+    result = await extract_wrap_up_state_task.kiq(play_session_id=1)
 
     # Verify task was accepted by Redis broker
     assert result is not None
@@ -332,7 +332,7 @@ def validate_environment():
 async def test_api_requires_authentication():
     """Protected endpoints should require auth."""
     async with AsyncClient(base_url="http://localhost:8100") as client:
-        response = await client.post("/api/v1/missions", json={})
+        response = await client.post("/api/v1/play-sessions", json={})
         assert response.status_code == 401
 
 @pytest.mark.integration
@@ -418,10 +418,10 @@ async def test_all_jinja2_templates_render():
         loader=FileSystemLoader("packages/api/src/dailyloadout/prompts/")
     )
 
-    templates = ["briefing.j2", "debrief_extract.j2"]
+    templates = ["recap.j2", "wrap_up_extract.j2"]
     test_context = {
         "game": {"title": "Elden Ring", "platform": "PS5", "genre": "Action RPG"},
-        "debrief_text": "It was an amazing experience",
+        "wrap_up_text": "It was an amazing experience",
     }
 
     for template_name in templates:

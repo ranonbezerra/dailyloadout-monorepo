@@ -120,16 +120,16 @@ Content-Type: application/json
 | POST | `/{public_id}/candidates/{cid}/confirm` | Confirm a candidate |
 | POST | `/{public_id}/candidates/{cid}/reject` | Reject a candidate |
 
-### Missions (`/v1/missions`)
+### PlaySessions (`/v1/play-sessions`)
 
 | Method | Path | Description |
 | --- | --- | --- |
-| POST | `/` | Start a mission |
-| GET | `/active` | Get active mission |
-| POST | `/{public_id}/debrief` | Submit debrief text |
-| POST | `/{public_id}/end` | End mission without debrief |
-| POST | `/{public_id}/briefing/preview` | Preview briefing before starting |
-| POST | `/{public_id}/briefing/regenerate` | Regenerate briefing |
+| POST | `/` | Start a play session |
+| GET | `/active` | Get active play session |
+| POST | `/{public_id}/wrap-up` | Submit wrap-up text |
+| POST | `/{public_id}/end` | End play session without wrap-up |
+| POST | `/{public_id}/recap/preview` | Preview recap before starting |
+| POST | `/{public_id}/recap/regenerate` | Regenerate recap |
 
 ### Loadouts (`/v1/loadouts`)
 
@@ -138,14 +138,14 @@ Content-Type: application/json
 | POST | `/` | Create loadout suggestion(s) |
 | GET | `/` | List loadouts (paginated) |
 | GET | `/latest` | Get latest pending loadout |
-| POST | `/{public_id}/accept` | Accept and start mission |
+| POST | `/{public_id}/accept` | Accept and start play session |
 | POST | `/{public_id}/reject` | Reject suggestion |
 
 ### Stats (`/v1/stats`)
 
 | Method | Path | Description |
 | --- | --- | --- |
-| GET | `/overview` | KPI summary (games, missions, durations) |
+| GET | `/overview` | KPI summary (games, play sessions, durations) |
 | GET | `/sessions` | Recent sessions (paginated) |
 
 ### Backoffice (`/internal/v1`)

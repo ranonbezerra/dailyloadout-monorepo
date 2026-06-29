@@ -7,7 +7,7 @@ Create a new Alembic migration for the DailyLoadout API.
 /new-migration <description>
 ```
 
-Example: `/new-migration add_playtime_to_missions`
+Example: `/new-migration add_playtime_to_play_sessions`
 
 ## Steps
 

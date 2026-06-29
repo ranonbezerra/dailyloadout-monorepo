@@ -31,7 +31,7 @@ packages/api/
 ### 1. Analyze the domain
 - Read `ARCHITECTURE.md` and `PRODUCT.md` to understand the domain
 - Identify the CRUD operations and business rules
-- Check existing domains in `core/` for patterns to follow (e.g., `core/library/`, `core/mission/`)
+- Check existing domains in `core/` for patterns to follow (e.g., `core/library/`, `core/play-session/`)
 
 ### 2. Create the files
 Follow established patterns strictly:

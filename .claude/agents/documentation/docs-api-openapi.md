@@ -326,7 +326,7 @@ servers:
 paths:
   /endpoint:
     get:
-      summary: Brief description
+      summary: Short description
       description: Detailed description
       parameters: []
       responses:

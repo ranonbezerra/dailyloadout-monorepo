@@ -9,7 +9,7 @@ Run the backend tests (packages/api) with pytest.
 
 Examples:
 - `/test-api` -> run all tests
-- `/test-api mission` -> run tests matching "mission" in path or name
+- `/test-api play session` -> run tests matching "play session" in path or name
 - `/test-api test_create_loadout` -> run specific test
 
 ## Execution

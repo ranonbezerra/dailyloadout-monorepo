@@ -44,7 +44,7 @@ Within DailyLoadout, distributed memory coordination covers:
 
 - **packages/api**: Redis state (Taskiq broker), PostgreSQL shared data, session state
 - **packages/web**: Frontend cache synchronization
-- **Domain state**: Mission progress tracking, library catalog state, loadout composition state
+- **Domain state**: PlaySession progress tracking, library catalog state, loadout composition state
 
 Ticket prefix: DL-XX
 

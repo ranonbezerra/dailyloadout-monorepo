@@ -43,7 +43,7 @@ Within DailyLoadout, memory optimization applies to:
 
 - **packages/api**: SQLAlchemy session management, Redis caching (Taskiq broker), PostgreSQL query optimization
 - **packages/web**: React query cache, local state management
-- **Domain data**: Library item catalogs, mission histories, capture metadata, loadout configurations
+- **Domain data**: Library item catalogs, play session histories, capture metadata, loadout configurations
 
 Ticket prefix: DL-XX
 
@@ -138,7 +138,7 @@ Implements Elastic Weight Consolidation++ to preserve important learned patterns
 
 ### 5. Memory Consolidation and Cleanup
 
-Temporal, semantic, and importance-based consolidation strategies for managing memory across library, mission, and capture data.
+Temporal, semantic, and importance-based consolidation strategies for managing memory across library, play session, and capture data.
 
 ## MCP Tool Integration
 
@@ -172,7 +172,7 @@ npx claude-flow@v3alpha memory init --backend=hybrid --hnsw-enabled
 npx claude-flow@v3alpha memory health
 
 # Search memories
-npx claude-flow@v3alpha memory search -q "mission patterns" --namespace="patterns"
+npx claude-flow@v3alpha memory search -q "play session patterns" --namespace="patterns"
 
 # Consolidate memories
 npx claude-flow@v3alpha memory consolidate --strategy=hybrid --retention=0.7
