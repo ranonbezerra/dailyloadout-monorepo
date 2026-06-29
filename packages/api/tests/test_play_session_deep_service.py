@@ -48,7 +48,7 @@ def _entry() -> SimpleNamespace:
 
 
 async def _recap(agent: AbstractRecapAgent | None, mode: str) -> str:
-    return await generate_recap_for_mode(
+    text, _ = await generate_recap_for_mode(
         _FakePlaySessionRepo(),  # type: ignore[arg-type]
         SimpleNamespace(),  # type: ignore[arg-type]  # library_repo unused on empty path
         DummyLLMClient(),
@@ -57,6 +57,7 @@ async def _recap(agent: AbstractRecapAgent | None, mode: str) -> str:
         _entry(),  # type: ignore[arg-type]
         mode,  # type: ignore[arg-type]
     )
+    return text
 
 
 def _is_quick(text: str) -> bool:

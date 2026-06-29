@@ -69,18 +69,16 @@ async def start_play_session(
 
     recap_text: str | None = None
     if choice != "none":
-        recap_text = (
-            await generate_recap_for_mode(
-                play_session_repo,
-                library_repo,
-                llm_client,
-                agent,
-                settings,
-                entry,
-                "quick",
-            )
-            or None
+        text, _ = await generate_recap_for_mode(
+            play_session_repo,
+            library_repo,
+            llm_client,
+            agent,
+            settings,
+            entry,
+            "quick",
         )
+        recap_text = text or None
 
     try:
         await create_play_session_for_entry(
@@ -124,7 +122,7 @@ async def generate_recap(
     # turn must not be able to trigger the full deep-research graph and bypass the
     # recap limiter + cost guard.
     selected: RecapMode = "quick"
-    recap_text = await generate_recap_for_mode(
+    recap_text, _ = await generate_recap_for_mode(
         play_session_repo,
         library_repo,
         llm_client,

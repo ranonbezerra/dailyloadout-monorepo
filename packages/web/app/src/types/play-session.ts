@@ -48,4 +48,6 @@ export interface RecapPreview {
 	libraryEntry: LibraryEntry;
 	recapText: string | null;
 	lastSessionContext: SessionContext | null;
+	/** Anti-hallucination verdict — low overlap with the player's notes. */
+	suspicious: boolean;
 }

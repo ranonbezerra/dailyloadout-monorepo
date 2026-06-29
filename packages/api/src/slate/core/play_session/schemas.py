@@ -148,6 +148,9 @@ class RecapPreviewResponse(BaseModel):
     library_entry: LibraryEntryResponse
     recap_text: str | None = None
     last_session_context: ExtractedState | None = None
+    # Anti-hallucination verdict (low overlap with the player's notes) — the client
+    # shows a discreet note. Applies to both quick and deep recaps.
+    suspicious: bool = False
 
     model_config = {"from_attributes": True}
 

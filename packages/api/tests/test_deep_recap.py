@@ -184,7 +184,7 @@ class TestNodes:
         assert out["source"] == "deep_research"
         assert "Heads up" not in out["recap"]
 
-    async def test_anti_hallucination_ungrounded_appends_disclaimer(self) -> None:
+    async def test_anti_hallucination_flags_ungrounded_but_keeps_text_clean(self) -> None:
         state = {
             "context": _ctx(location=None, previous_wrap_ups=[]),
             "draft": "Defeat Radahn in Caelid then visit Sellia",
@@ -192,7 +192,8 @@ class TestNodes:
         }
         out = await nodes.anti_hallucination(state)
         assert out["suspicious"] is True
-        assert "Heads up" in out["recap"]
+        # No disclaimer baked into the body — the caller surfaces it as a note.
+        assert out["recap"] == "Defeat Radahn in Caelid then visit Sellia"
 
     async def test_anti_hallucination_tolerant_threshold_passes(self) -> None:
         """A more tolerant threshold accepts thinner overlap (the deep path)."""

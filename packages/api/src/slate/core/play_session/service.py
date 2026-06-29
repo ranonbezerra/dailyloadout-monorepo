@@ -78,7 +78,7 @@ class PlaySessionService:
         entry = await self._load_startable_entry(user_id, library_entry_public_id)
 
         if recap_text is None and not skip_recap:
-            recap_text = await generate_recap_for_mode(
+            recap_text, _ = await generate_recap_for_mode(
                 self._play_session_repo,
                 self._library_repo,
                 self._llm_client,
@@ -284,7 +284,7 @@ class PlaySessionService:
             )
 
         entry = play_session.library_entry
-        recap_text = await generate_recap(
+        recap_text, _ = await generate_recap(
             self._play_session_repo,
             self._library_repo,
             self._llm_client,

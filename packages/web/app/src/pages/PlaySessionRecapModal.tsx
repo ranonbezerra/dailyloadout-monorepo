@@ -57,6 +57,7 @@ export function PlaySessionRecapModal(props: PlaySessionRecapModalProps) {
 	const [correction, setCorrection] = useState("");
 	const [retroactiveText, setRetroactiveText] = useState("");
 	const [currentRecap, setCurrentRecap] = useState<string | null>(null);
+	const [suspicious, setSuspicious] = useState(false);
 	const [deepLoading, setDeepLoading] = useState(false);
 	const deepAbortRef = useRef<AbortController | null>(null);
 
@@ -79,6 +80,7 @@ export function PlaySessionRecapModal(props: PlaySessionRecapModalProps) {
 		setCorrection("");
 		setRetroactiveText("");
 		setCurrentRecap(null);
+		setSuspicious(false);
 		setDeepLoading(false);
 		deepAbortRef.current?.abort();
 		deepAbortRef.current = null;
@@ -102,6 +104,7 @@ export function PlaySessionRecapModal(props: PlaySessionRecapModalProps) {
 					mode: "quick",
 				});
 				setCurrentRecap(updated.recapText);
+				setSuspicious(updated.suspicious);
 			} catch (err) {
 				notifications.show({
 					title: "Couldn't load recap",
@@ -121,7 +124,10 @@ export function PlaySessionRecapModal(props: PlaySessionRecapModalProps) {
 				mode: "deep",
 				signal: controller.signal,
 			});
-			if (!controller.signal.aborted) setCurrentRecap(updated.recapText);
+			if (!controller.signal.aborted) {
+				setCurrentRecap(updated.recapText);
+				setSuspicious(updated.suspicious);
+			}
 		} catch (err) {
 			if (controller.signal.aborted) return; // user cancelled — stay silent
 			notifications.show({
@@ -155,6 +161,7 @@ export function PlaySessionRecapModal(props: PlaySessionRecapModalProps) {
 					positionOverride: correction.trim(),
 				});
 				setCurrentRecap(updated.recapText);
+				setSuspicious(updated.suspicious);
 				setStep("recap");
 			} else {
 				const updated = await regenerate.mutateAsync({
@@ -181,6 +188,7 @@ export function PlaySessionRecapModal(props: PlaySessionRecapModalProps) {
 				wrapUpText: retroactiveText.trim(),
 			});
 			setCurrentRecap(updatedPreview.recapText);
+			setSuspicious(updatedPreview.suspicious);
 			setRetroactiveText("");
 			setStep("recap");
 			notifications.show({
@@ -385,6 +393,13 @@ export function PlaySessionRecapModal(props: PlaySessionRecapModalProps) {
 								{isPreview
 									? "No recap available for this session. This is your first session for this game — enjoy the adventure!"
 									: "No recap was saved for this session."}
+							</Text>
+						)}
+						{/* Anti-hallucination note — discreet footer, applies to quick and deep alike. */}
+						{suspicious && displayRecap && (
+							<Text size="xs" c="dimmed">
+								⚠ This recap may be inaccurate — some details couldn't be verified against your
+								notes.
 							</Text>
 						)}
 						{/* Preview = the accept/adjust flow before starting. View = the recap of an

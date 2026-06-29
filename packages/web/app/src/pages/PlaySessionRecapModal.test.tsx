@@ -120,6 +120,7 @@ function makePreview(overrides: Partial<RecapPreview> = {}): RecapPreview {
 		libraryEntry: makeEntry(),
 		recapText: QUICK_TEXT,
 		lastSessionContext: null,
+		suspicious: false,
 		...overrides,
 	};
 }
@@ -338,6 +339,17 @@ describe("PlaySessionRecapModal", () => {
 			expect(screen.getByRole("button", { name: "Got it, let's go" })).toBeInTheDocument();
 			expect(screen.getByRole("button", { name: "Update this recap" })).toBeInTheDocument();
 			expect(screen.queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument();
+		});
+
+		it("shows a discreet inaccuracy note when the recap is suspicious", async () => {
+			mockPreviewMutateAsync.mockResolvedValue(makePreview({ suspicious: true }));
+			await renderPreviewRecap();
+			expect(screen.getByText(/may be inaccurate/i)).toBeInTheDocument();
+		});
+
+		it("hides the inaccuracy note when the recap is not suspicious", async () => {
+			await renderPreviewRecap();
+			expect(screen.queryByText(/may be inaccurate/i)).not.toBeInTheDocument();
 		});
 
 		it("'Update this recap' opens the fix menu with both options", async () => {
