@@ -14,9 +14,9 @@ from dailyloadout.infrastructure.db.models import (  # noqa: F401
     Game,
     LibraryEntry,
     Loadout,
-    Mission,
     OAuthIdentity,
     Platform,
+    PlaySession,
     RefreshToken,
     User,
 )
