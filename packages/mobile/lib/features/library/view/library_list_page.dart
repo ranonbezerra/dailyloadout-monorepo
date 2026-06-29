@@ -422,7 +422,7 @@ class _IgdbAttribution extends StatelessWidget {
       child: Text(
         'Game data provided by IGDB.com',
         textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 11, color: DLColors.textDim),
+        style: TextStyle(fontSize: 11, color: SlateColors.textDim),
       ),
     );
   }

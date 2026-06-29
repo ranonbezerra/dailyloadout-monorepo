@@ -3,55 +3,55 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('DLColors', () {
+  group('SlateColors', () {
     test('constants are not null', () {
       // Neutrals
-      expect(DLColors.bg, isNotNull);
-      expect(DLColors.bg2, isNotNull);
-      expect(DLColors.surface, isNotNull);
-      expect(DLColors.surface2, isNotNull);
-      expect(DLColors.line, isNotNull);
-      expect(DLColors.lineSoft, isNotNull);
+      expect(SlateColors.bg, isNotNull);
+      expect(SlateColors.bg2, isNotNull);
+      expect(SlateColors.surface, isNotNull);
+      expect(SlateColors.surface2, isNotNull);
+      expect(SlateColors.line, isNotNull);
+      expect(SlateColors.lineSoft, isNotNull);
 
       // Text
-      expect(DLColors.text, isNotNull);
-      expect(DLColors.textMuted, isNotNull);
-      expect(DLColors.textDim, isNotNull);
+      expect(SlateColors.text, isNotNull);
+      expect(SlateColors.textMuted, isNotNull);
+      expect(SlateColors.textDim, isNotNull);
 
       // Hero
-      expect(DLColors.coral, isNotNull);
-      expect(DLColors.coralBright, isNotNull);
-      expect(DLColors.coralDeep, isNotNull);
+      expect(SlateColors.coral, isNotNull);
+      expect(SlateColors.coralBright, isNotNull);
+      expect(SlateColors.coralDeep, isNotNull);
 
       // Secondary
-      expect(DLColors.violet, isNotNull);
-      expect(DLColors.violetDeep, isNotNull);
+      expect(SlateColors.violet, isNotNull);
+      expect(SlateColors.violetDeep, isNotNull);
 
       // Semantic
-      expect(DLColors.green, isNotNull);
-      expect(DLColors.red, isNotNull);
+      expect(SlateColors.green, isNotNull);
+      expect(SlateColors.red, isNotNull);
 
       // Status
-      expect(DLColors.statusBacklog, isNotNull);
-      expect(DLColors.statusPlaying, isNotNull);
-      expect(DLColors.statusPaused, isNotNull);
-      expect(DLColors.statusCompleted, isNotNull);
-      expect(DLColors.statusSetAside, isNotNull);
+      expect(SlateColors.statusBacklog, isNotNull);
+      expect(SlateColors.statusPlaying, isNotNull);
+      expect(SlateColors.statusPaused, isNotNull);
+      expect(SlateColors.statusCompleted, isNotNull);
+      expect(SlateColors.statusSetAside, isNotNull);
     });
 
     test('status colors map to the expected brand colors', () {
-      expect(DLColors.statusPlaying, equals(DLColors.coral));
-      expect(DLColors.statusPaused, equals(DLColors.violet));
-      expect(DLColors.statusCompleted, equals(DLColors.green));
-      expect(DLColors.statusSetAside, equals(DLColors.textDim));
+      expect(SlateColors.statusPlaying, equals(SlateColors.coral));
+      expect(SlateColors.statusPaused, equals(SlateColors.violet));
+      expect(SlateColors.statusCompleted, equals(SlateColors.green));
+      expect(SlateColors.statusSetAside, equals(SlateColors.textDim));
     });
 
     test('bg color matches midnight hex value 0xFF121119', () {
-      expect(DLColors.bg, equals(const Color(0xFF121119)));
+      expect(SlateColors.bg, equals(const Color(0xFF121119)));
     });
 
     test('coral color matches hex value 0xFFFF5A4D', () {
-      expect(DLColors.coral, equals(const Color(0xFFFF5A4D)));
+      expect(SlateColors.coral, equals(const Color(0xFFFF5A4D)));
     });
   });
 
@@ -68,40 +68,40 @@ void main() {
       expect(theme.colorScheme.brightness, equals(Brightness.dark));
     });
 
-    test('dark theme scaffoldBackgroundColor is DLColors.bg', () {
+    test('dark theme scaffoldBackgroundColor is SlateColors.bg', () {
       final theme = SlateTheme.dark;
 
-      expect(theme.scaffoldBackgroundColor, equals(DLColors.bg));
+      expect(theme.scaffoldBackgroundColor, equals(SlateColors.bg));
     });
 
-    test('dark theme appBarTheme backgroundColor is DLColors.bg', () {
+    test('dark theme appBarTheme backgroundColor is SlateColors.bg', () {
       final theme = SlateTheme.dark;
 
-      expect(theme.appBarTheme.backgroundColor, equals(DLColors.bg));
+      expect(theme.appBarTheme.backgroundColor, equals(SlateColors.bg));
     });
 
     test('dark theme primary color is coral', () {
       final theme = SlateTheme.dark;
 
-      expect(theme.colorScheme.primary, equals(DLColors.coral));
+      expect(theme.colorScheme.primary, equals(SlateColors.coral));
     });
 
     test('dark theme secondary color is violet', () {
       final theme = SlateTheme.dark;
 
-      expect(theme.colorScheme.secondary, equals(DLColors.violet));
+      expect(theme.colorScheme.secondary, equals(SlateColors.violet));
     });
 
-    test('dark theme surface color matches DLColors.surface', () {
+    test('dark theme surface color matches SlateColors.surface', () {
       final theme = SlateTheme.dark;
 
-      expect(theme.colorScheme.surface, equals(DLColors.surface));
+      expect(theme.colorScheme.surface, equals(SlateColors.surface));
     });
 
-    test('dark theme cardColor is DLColors.surface', () {
+    test('dark theme cardColor is SlateColors.surface', () {
       final theme = SlateTheme.dark;
 
-      expect(theme.cardColor, equals(DLColors.surface));
+      expect(theme.cardColor, equals(SlateColors.surface));
     });
 
     test('dark theme appBar elevation is zero', () {

@@ -189,7 +189,7 @@ When working within Slate, apply these integration patterns to:
 
 Domain areas: library items, play sessions, picks, captures.
 
-Ticket prefix: DL-XX
+Ticket prefix: SLA-XX
 
 ## Commands
 

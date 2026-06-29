@@ -46,7 +46,7 @@ Within Slate, distributed memory coordination covers:
 - **packages/web**: Frontend cache synchronization
 - **Domain state**: PlaySession progress tracking, library catalog state, pick composition state
 
-Ticket prefix: DL-XX
+Ticket prefix: SLA-XX
 
 ## Architecture
 

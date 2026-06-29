@@ -69,7 +69,9 @@ class PickQuestionnaire extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           formatMinutes(minutes.round()),
-          style: theme.textTheme.headlineSmall?.copyWith(color: DLColors.coral),
+          style: theme.textTheme.headlineSmall?.copyWith(
+            color: SlateColors.coral,
+          ),
         ),
         Slider(
           value: minutes,
@@ -110,7 +112,7 @@ class PickQuestionnaire extends StatelessWidget {
           value: multiMode,
           onChanged: onMultiModeChanged,
           contentPadding: EdgeInsets.zero,
-          activeTrackColor: DLColors.coral,
+          activeTrackColor: SlateColors.coral,
         ),
         const SizedBox(height: 24),
 
@@ -118,7 +120,7 @@ class PickQuestionnaire extends StatelessWidget {
         if (error != null) ...[
           Text(
             error!,
-            style: theme.textTheme.bodyMedium?.copyWith(color: DLColors.red),
+            style: theme.textTheme.bodyMedium?.copyWith(color: SlateColors.red),
           ),
           const SizedBox(height: 12),
         ],
@@ -134,7 +136,7 @@ class PickQuestionnaire extends StatelessWidget {
                     height: 18,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: DLColors.bg,
+                      color: SlateColors.bg,
                     ),
                   )
                 : const Icon(Icons.casino),
@@ -159,9 +161,9 @@ class PickQuestionnaire extends StatelessWidget {
           label: Text(e.value),
           selected: isSelected,
           onSelected: (_) => onChanged(e.key),
-          selectedColor: DLColors.coral,
+          selectedColor: SlateColors.coral,
           labelStyle: TextStyle(
-            color: isSelected ? DLColors.bg : DLColors.text,
+            color: isSelected ? SlateColors.bg : SlateColors.text,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
           ),
         );

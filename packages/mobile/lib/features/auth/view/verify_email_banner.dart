@@ -93,7 +93,7 @@ class _Banner extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Material(
-      color: DLColors.surface2,
+      color: SlateColors.surface2,
       child: SafeArea(
         bottom: false,
         child: Padding(
@@ -105,7 +105,7 @@ class _Banner extends StatelessWidget {
                 children: [
                   const Icon(
                     Icons.mark_email_unread_outlined,
-                    color: DLColors.coral,
+                    color: SlateColors.coral,
                     size: 20,
                   ),
                   const SizedBox(width: 8),

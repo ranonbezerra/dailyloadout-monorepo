@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 /// Mirrors `brand/BRAND.md` §14. Dark-first "Night Den": a midnight base
 /// with a coral spotlight and a violet secondary. Do not introduce ad-hoc
 /// colors in widgets — reference these tokens (or the [ColorScheme]) instead.
-abstract final class DLColors {
+abstract final class SlateColors {
   // Neutrals
   static const Color bg = Color(0xFF121119); // Midnight — app background
   static const Color bg2 = Color(0xFF17161F);
@@ -64,28 +64,28 @@ abstract final class SlateTheme {
 
   static const ColorScheme darkScheme = ColorScheme(
     brightness: Brightness.dark,
-    primary: DLColors.coral,
-    onPrimary: DLColors.bg,
-    primaryContainer: DLColors.coralDeep,
-    onPrimaryContainer: DLColors.text,
-    secondary: DLColors.violet,
-    onSecondary: DLColors.bg,
-    secondaryContainer: DLColors.violetDeep,
-    onSecondaryContainer: DLColors.text,
-    tertiary: DLColors.green,
-    onTertiary: DLColors.bg,
-    error: DLColors.red,
-    onError: DLColors.text,
-    surface: DLColors.surface,
-    onSurface: DLColors.text,
-    onSurfaceVariant: DLColors.textMuted,
-    surfaceContainerLowest: DLColors.bg,
-    surfaceContainerLow: DLColors.bg2,
-    surfaceContainer: DLColors.surface,
-    surfaceContainerHigh: DLColors.surface2,
-    surfaceContainerHighest: DLColors.surface2,
-    outline: DLColors.line,
-    outlineVariant: DLColors.lineSoft,
+    primary: SlateColors.coral,
+    onPrimary: SlateColors.bg,
+    primaryContainer: SlateColors.coralDeep,
+    onPrimaryContainer: SlateColors.text,
+    secondary: SlateColors.violet,
+    onSecondary: SlateColors.bg,
+    secondaryContainer: SlateColors.violetDeep,
+    onSecondaryContainer: SlateColors.text,
+    tertiary: SlateColors.green,
+    onTertiary: SlateColors.bg,
+    error: SlateColors.red,
+    onError: SlateColors.text,
+    surface: SlateColors.surface,
+    onSurface: SlateColors.text,
+    onSurfaceVariant: SlateColors.textMuted,
+    surfaceContainerLowest: SlateColors.bg,
+    surfaceContainerLow: SlateColors.bg2,
+    surfaceContainer: SlateColors.surface,
+    surfaceContainerHigh: SlateColors.surface2,
+    surfaceContainerHighest: SlateColors.surface2,
+    outline: SlateColors.line,
+    outlineVariant: SlateColors.lineSoft,
   );
 
   static ThemeData get dark {
@@ -94,62 +94,62 @@ abstract final class SlateTheme {
     final textTheme = base.textTheme
         .apply(
           fontFamily: bodyFamily,
-          bodyColor: DLColors.text,
-          displayColor: DLColors.text,
+          bodyColor: SlateColors.text,
+          displayColor: SlateColors.text,
         )
         .copyWith(
           displayLarge: base.textTheme.displayLarge?.copyWith(
             fontFamily: displayFamily,
             fontWeight: FontWeight.w700,
-            color: DLColors.text,
+            color: SlateColors.text,
           ),
           displayMedium: base.textTheme.displayMedium?.copyWith(
             fontFamily: displayFamily,
             fontWeight: FontWeight.w700,
-            color: DLColors.text,
+            color: SlateColors.text,
           ),
           displaySmall: base.textTheme.displaySmall?.copyWith(
             fontFamily: displayFamily,
             fontWeight: FontWeight.w700,
-            color: DLColors.text,
+            color: SlateColors.text,
           ),
           headlineLarge: base.textTheme.headlineLarge?.copyWith(
             fontFamily: displayFamily,
             fontWeight: FontWeight.w700,
-            color: DLColors.text,
+            color: SlateColors.text,
           ),
           headlineMedium: base.textTheme.headlineMedium?.copyWith(
             fontFamily: displayFamily,
             fontWeight: FontWeight.w700,
-            color: DLColors.text,
+            color: SlateColors.text,
           ),
           headlineSmall: base.textTheme.headlineSmall?.copyWith(
             fontFamily: displayFamily,
             fontWeight: FontWeight.w600,
-            color: DLColors.text,
+            color: SlateColors.text,
           ),
           titleLarge: base.textTheme.titleLarge?.copyWith(
             fontFamily: displayFamily,
             fontWeight: FontWeight.w600,
-            color: DLColors.text,
+            color: SlateColors.text,
           ),
         );
 
     return base.copyWith(
       colorScheme: darkScheme,
-      scaffoldBackgroundColor: DLColors.bg,
-      canvasColor: DLColors.bg,
-      cardColor: DLColors.surface,
-      dividerColor: DLColors.line,
+      scaffoldBackgroundColor: SlateColors.bg,
+      canvasColor: SlateColors.bg,
+      cardColor: SlateColors.surface,
+      dividerColor: SlateColors.line,
       dividerTheme: const DividerThemeData(
-        color: DLColors.line,
+        color: SlateColors.line,
         thickness: 0.5,
         space: 1,
       ),
       textTheme: textTheme,
       appBarTheme: const AppBarTheme(
-        backgroundColor: DLColors.bg,
-        foregroundColor: DLColors.text,
+        backgroundColor: SlateColors.bg,
+        foregroundColor: SlateColors.text,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
@@ -157,24 +157,24 @@ abstract final class SlateTheme {
           fontFamily: displayFamily,
           fontWeight: FontWeight.w700,
           fontSize: 20,
-          color: DLColors.text,
+          color: SlateColors.text,
         ),
       ),
       cardTheme: CardThemeData(
-        color: DLColors.surface,
+        color: SlateColors.surface,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: DLColors.line, width: 0.5),
+          side: const BorderSide(color: SlateColors.line, width: 0.5),
         ),
         margin: EdgeInsets.zero,
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: DLColors.coral,
-          foregroundColor: DLColors.bg,
-          disabledBackgroundColor: DLColors.surface2,
-          disabledForegroundColor: DLColors.textDim,
+          backgroundColor: SlateColors.coral,
+          foregroundColor: SlateColors.bg,
+          disabledBackgroundColor: SlateColors.surface2,
+          disabledForegroundColor: SlateColors.textDim,
           textStyle: const TextStyle(
             fontFamily: displayFamily,
             fontWeight: FontWeight.w700,
@@ -188,8 +188,8 @@ abstract final class SlateTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: DLColors.coral,
-          foregroundColor: DLColors.bg,
+          backgroundColor: SlateColors.coral,
+          foregroundColor: SlateColors.bg,
           elevation: 0,
           textStyle: const TextStyle(
             fontFamily: displayFamily,
@@ -203,41 +203,41 @@ abstract final class SlateTheme {
         ),
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(foregroundColor: DLColors.coral),
+        style: TextButton.styleFrom(foregroundColor: SlateColors.coral),
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: DLColors.surface2,
-        labelStyle: const TextStyle(color: DLColors.textMuted, fontSize: 13),
+        backgroundColor: SlateColors.surface2,
+        labelStyle: const TextStyle(color: SlateColors.textMuted, fontSize: 13),
         side: BorderSide.none,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: DLColors.surface,
-        hintStyle: const TextStyle(color: DLColors.textDim),
+        fillColor: SlateColors.surface,
+        hintStyle: const TextStyle(color: SlateColors.textDim),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,
           vertical: 14,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: DLColors.line, width: 0.5),
+          borderSide: const BorderSide(color: SlateColors.line, width: 0.5),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: DLColors.line, width: 0.5),
+          borderSide: const BorderSide(color: SlateColors.line, width: 0.5),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: DLColors.coral, width: 1.5),
+          borderSide: const BorderSide(color: SlateColors.coral, width: 1.5),
         ),
       ),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
-        color: DLColors.coral,
+        color: SlateColors.coral,
       ),
-      iconTheme: const IconThemeData(color: DLColors.textMuted),
-      splashColor: DLColors.coralDeep.withValues(alpha: 0.12),
-      highlightColor: DLColors.coralDeep.withValues(alpha: 0.08),
+      iconTheme: const IconThemeData(color: SlateColors.textMuted),
+      splashColor: SlateColors.coralDeep.withValues(alpha: 0.12),
+      highlightColor: SlateColors.coralDeep.withValues(alpha: 0.08),
     );
   }
 }

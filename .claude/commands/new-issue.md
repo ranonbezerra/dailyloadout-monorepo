@@ -64,9 +64,9 @@ EOF
 ```
 ## Issue created!
 
-**ID:** #42 / DL-24
+**ID:** #42 / SLA-24
 **Title:** [title]
 **URL:** [url]
 
-To start working: /start #42 (or /start DL-24)
+To start working: /start #42 (or /start SLA-24)
 ```

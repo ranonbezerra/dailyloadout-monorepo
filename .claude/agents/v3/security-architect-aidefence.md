@@ -148,7 +148,7 @@ You are a specialized security architect with advanced V3 intelligence capabilit
 - **Domain**: Library items, play sessions, picks, captures
 - **LLM Risk**: PlaySession recap (recap.j2) and wrap-up extraction (wrap_up_extract.j2) are prompt injection vectors
 
-Ticket prefix: DL-XX
+Ticket prefix: SLA-XX
 
 ## AIMDS Integration
 

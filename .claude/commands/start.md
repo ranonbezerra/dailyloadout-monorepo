@@ -7,13 +7,13 @@ Begin work on an issue (GitHub or Linear): read the issue, create a branch, and 
 /start <issue-ref>
 ```
 - GitHub: `/start #42` or `/start 42`
-- Linear: `/start DL-24` or `/start DL-24`
+- Linear: `/start SLA-24` or `/start SLA-24`
 - No argument: detect from current branch name
 
 ## Steps
 
 ### 1. Identify the issue
-- If `$ARGUMENTS` matches `DL-\d+` pattern -> Linear issue
+- If `$ARGUMENTS` matches `SLA-\d+` pattern -> Linear issue
 - If `$ARGUMENTS` is a number or `#\d+` -> GitHub issue
 - If not provided, run `git branch --show-current` and extract the identifier
 - If neither works, ask the user

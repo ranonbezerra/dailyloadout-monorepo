@@ -50,9 +50,9 @@ class PickResultCard extends StatelessWidget {
   Color? get _rankColor {
     if (totalResults <= 1) return null;
     return switch (rank) {
-      0 => DLColors.green,
-      1 => DLColors.violet,
-      _ => DLColors.textDim,
+      0 => SlateColors.green,
+      1 => SlateColors.violet,
+      _ => SlateColors.textDim,
     };
   }
 
@@ -115,7 +115,7 @@ class PickResultCard extends StatelessWidget {
                 pick.reasoning!,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   fontStyle: FontStyle.italic,
-                  color: DLColors.textMuted,
+                  color: SlateColors.textMuted,
                 ),
               ),
             ],
@@ -136,12 +136,12 @@ class PickResultCard extends StatelessWidget {
     if (pick.action == 'accepted') {
       return Row(
         children: [
-          const Icon(Icons.check_circle, color: DLColors.green, size: 20),
+          const Icon(Icons.check_circle, color: SlateColors.green, size: 20),
           const SizedBox(width: 8),
           Text(
             'Session started!',
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: DLColors.green,
+              color: SlateColors.green,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -152,7 +152,7 @@ class PickResultCard extends StatelessWidget {
     if (pick.action == 'rejected') {
       return Text(
         'Rejected',
-        style: theme.textTheme.bodyMedium?.copyWith(color: DLColors.textDim),
+        style: theme.textTheme.bodyMedium?.copyWith(color: SlateColors.textDim),
       );
     }
 
@@ -168,7 +168,7 @@ class PickResultCard extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: DLColors.surface2,
+              color: SlateColors.surface2,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Column(
@@ -179,13 +179,13 @@ class PickResultCard extends StatelessWidget {
                     const Icon(
                       Icons.article_outlined,
                       size: 16,
-                      color: DLColors.violet,
+                      color: SlateColors.violet,
                     ),
                     const SizedBox(width: 6),
                     Text(
                       'Recap',
                       style: theme.textTheme.labelMedium?.copyWith(
-                        color: DLColors.violet,
+                        color: SlateColors.violet,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -235,8 +235,8 @@ class PickResultCard extends StatelessWidget {
           child: OutlinedButton(
             onPressed: busy ? null : onReject,
             style: OutlinedButton.styleFrom(
-              foregroundColor: DLColors.red,
-              side: const BorderSide(color: DLColors.red),
+              foregroundColor: SlateColors.red,
+              side: const BorderSide(color: SlateColors.red),
             ),
             child: const Text('Reject'),
           ),
@@ -249,8 +249,8 @@ class PickResultCard extends StatelessWidget {
           child: FilledButton.icon(
             onPressed: busy ? null : (hasRecap ? onStartWithRecap : onAccept),
             style: FilledButton.styleFrom(
-              backgroundColor: DLColors.green,
-              foregroundColor: DLColors.bg,
+              backgroundColor: SlateColors.green,
+              foregroundColor: SlateColors.bg,
             ),
             icon: isActioning
                 ? const SizedBox(
@@ -258,7 +258,7 @@ class PickResultCard extends StatelessWidget {
                     height: 16,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: DLColors.bg,
+                      color: SlateColors.bg,
                     ),
                   )
                 : const Icon(Icons.play_arrow),
@@ -318,12 +318,12 @@ class _InfoChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: DLColors.surface2,
+        color: SlateColors.surface2,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
         label,
-        style: const TextStyle(color: DLColors.textMuted, fontSize: 12),
+        style: const TextStyle(color: SlateColors.textMuted, fontSize: 12),
       ),
     );
   }

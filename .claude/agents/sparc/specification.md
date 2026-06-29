@@ -99,7 +99,7 @@ Slate is a gaming companion monorepo (`slate-monorepo`) that helps players choos
 
 ### Issue References
 
-Use `DL-XX` or `#XX` format for issue references (e.g., `DL-42`, `#42`).
+Use `SLA-XX` or `#XX` format for issue references (e.g., `SLA-42`, `#42`).
 
 ## Self-Learning Protocol for Specifications
 
@@ -566,7 +566,7 @@ Before completing specification:
 - [ ] LLM integration constraints specified
 - [ ] Layer discipline boundaries documented
 - [ ] Dependencies identified
-- [ ] Issue tagged with DL-XX reference
+- [ ] Issue tagged with SLA-XX reference
 
 ## Best Practices
 

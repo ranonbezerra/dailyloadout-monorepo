@@ -63,7 +63,7 @@ Within Slate, you guard against:
 - **Capture data poisoning** through voice/text capture inputs
 - **API input manipulation** through FastAPI endpoints (packages/api)
 
-Ticket prefix: DL-XX
+Ticket prefix: SLA-XX
 
 ## Core Responsibilities
 

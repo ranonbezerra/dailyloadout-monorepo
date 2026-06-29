@@ -169,7 +169,7 @@ class _PickPageState extends State<PickPage> {
         ..showSnackBar(
           const SnackBar(
             content: Text('Session started!'),
-            backgroundColor: DLColors.green,
+            backgroundColor: SlateColors.green,
           ),
         );
       _navigateToPlayHubAfterDelay();
@@ -282,7 +282,7 @@ class _LoadingViewState extends State<_LoadingView> {
             height: 48,
             child: CircularProgressIndicator(
               strokeWidth: 3,
-              color: DLColors.coral,
+              color: SlateColors.coral,
             ),
           ),
           const SizedBox(height: 24),
@@ -303,7 +303,7 @@ class _LoadingViewState extends State<_LoadingView> {
               _messages[_index],
               key: ValueKey(_index),
               style: theme.textTheme.titleMedium?.copyWith(
-                color: DLColors.textMuted,
+                color: SlateColors.textMuted,
               ),
               textAlign: TextAlign.center,
             ),

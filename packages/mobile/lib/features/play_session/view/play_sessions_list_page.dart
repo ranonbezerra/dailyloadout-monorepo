@@ -222,10 +222,10 @@ class _PlaySessionCard extends StatelessWidget {
   Color _statusColor(ColorScheme colors) {
     if (_isActive) return colors.primary; // blue/coral
     return switch (playSession.endedVia) {
-      'wrapUp' => DLColors.green,
-      'paused_app' => DLColors.violet,
-      'auto_clamp' => DLColors.textDim,
-      'retroactive' => DLColors.violetDeep,
+      'wrapUp' => SlateColors.green,
+      'paused_app' => SlateColors.violet,
+      'auto_clamp' => SlateColors.textDim,
+      'retroactive' => SlateColors.violetDeep,
       _ => colors.surfaceContainerHighest,
     };
   }

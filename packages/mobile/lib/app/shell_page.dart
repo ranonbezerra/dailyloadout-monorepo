@@ -54,9 +54,9 @@ class ShellPage extends StatelessWidget {
         currentIndex: _currentIndex(context, tabs),
         onTap: (index) => context.go(tabs[index].path),
         type: BottomNavigationBarType.fixed,
-        backgroundColor: DLColors.bg,
-        selectedItemColor: DLColors.coral,
-        unselectedItemColor: DLColors.textDim,
+        backgroundColor: SlateColors.bg,
+        selectedItemColor: SlateColors.coral,
+        unselectedItemColor: SlateColors.textDim,
         items: [
           for (final tab in tabs)
             BottomNavigationBarItem(icon: Icon(tab.icon), label: tab.label),

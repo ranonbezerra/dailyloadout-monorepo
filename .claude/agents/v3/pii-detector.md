@@ -36,7 +36,7 @@ Within Slate, PII risks include:
 - **Config files**: API keys for Ollama or other LLM providers
 - **Environment variables**: Database credentials, Redis URLs
 
-Ticket prefix: DL-XX
+Ticket prefix: SLA-XX
 
 ## Detection Targets
 

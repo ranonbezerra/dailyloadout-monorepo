@@ -46,7 +46,7 @@ SPARC methodology applies to all Slate development:
 - **packages/mobile**: Mobile application features
 - **Domain features**: Library management, play session recap/wrap-up, pick composition, capture processing
 
-Ticket prefix: DL-XX
+Ticket prefix: SLA-XX
 
 ## SPARC Methodology Overview
 

@@ -72,7 +72,7 @@ How Claude Code uses the artifacts in this `.claude/` directory to assist with S
 
 | Command | What it does |
 |---------|-------------|
-| `/start #42` or `/start DL-24` | Read issue (GitHub/Linear), create branch, plan, begin work |
+| `/start #42` or `/start SLA-24` | Read issue (GitHub/Linear), create branch, plan, begin work |
 | `/ship` | Scan for secrets, commit, push, create PR, update Linear status |
 | `/new-domain capture` | Scaffold full domain (router + service + repo + schema + model + tests) |
 | `/new-migration add_playtime` | Generate Alembic migration |
@@ -111,7 +111,7 @@ Task(flutter-engineer: "implement play session BLoC")
 - **Haiku**: quick file lookups, simple searches via Explore
 
 ### Linear MCP Integration
-- Use `/start DL-XX` to begin working on a Linear issue
+- Use `/start SLA-XX` to begin working on a Linear issue
 - `/ship` automatically updates Linear status to "In Review" and adds PR link
 - `/new-issue --linear` creates issues directly in Linear
 - Read Linear comments before implementation — they may contain decisions

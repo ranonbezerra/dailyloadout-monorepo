@@ -8,51 +8,53 @@ Widget _wrap(Widget child) => MaterialApp(
 );
 
 void main() {
-  group('DLSlot', () {
+  group('SlateSlot', () {
     testWidgets('lit slot uses the coral border', (tester) async {
-      await tester.pumpWidget(_wrap(const DLSlot(lit: true, child: Text('P'))));
+      await tester.pumpWidget(
+        _wrap(const SlateSlot(lit: true, child: Text('P'))),
+      );
       expect(find.text('P'), findsOneWidget);
       final container = tester.widget<Container>(find.byType(Container));
       final decoration = container.decoration! as BoxDecoration;
-      expect(decoration.border!.top.color, DLColors.coral);
+      expect(decoration.border!.top.color, SlateColors.coral);
       expect(decoration.boxShadow, isNotNull);
     });
 
     testWidgets('waiting slot uses the muted line border, no shadow', (
       tester,
     ) async {
-      await tester.pumpWidget(_wrap(const DLSlot()));
+      await tester.pumpWidget(_wrap(const SlateSlot()));
       final container = tester.widget<Container>(find.byType(Container));
       final decoration = container.decoration! as BoxDecoration;
-      expect(decoration.border!.top.color, DLColors.line);
+      expect(decoration.border!.top.color, SlateColors.line);
       expect(decoration.boxShadow, isNull);
     });
   });
 
-  group('DLLineup', () {
+  group('SlateLineup', () {
     testWidgets('renders the requested number of slots', (tester) async {
-      await tester.pumpWidget(_wrap(const DLLineup(count: 4, litIndex: 2)));
-      expect(find.byType(DLSlot), findsNWidgets(4));
+      await tester.pumpWidget(_wrap(const SlateLineup(count: 4, litIndex: 2)));
+      expect(find.byType(SlateSlot), findsNWidgets(4));
     });
   });
 
-  testWidgets('DLRecapLabel renders the glyph and uppercases the label', (
+  testWidgets('SlateRecapLabel renders the glyph and uppercases the label', (
     tester,
   ) async {
-    await tester.pumpWidget(_wrap(const DLRecapLabel('previously on')));
+    await tester.pumpWidget(_wrap(const SlateRecapLabel('previously on')));
     expect(find.text('▸ PREVIOUSLY ON'), findsOneWidget);
   });
 
-  group('DLSpotlight', () {
+  group('SlateSpotlight', () {
     testWidgets('active wraps the child in a glow', (tester) async {
-      await tester.pumpWidget(_wrap(const DLSpotlight(child: Text('pick'))));
+      await tester.pumpWidget(_wrap(const SlateSpotlight(child: Text('pick'))));
       expect(find.text('pick'), findsOneWidget);
       expect(find.byType(DecoratedBox), findsWidgets);
     });
 
     testWidgets('inactive returns the child unwrapped', (tester) async {
       await tester.pumpWidget(
-        _wrap(const DLSpotlight(active: false, child: Text('pick'))),
+        _wrap(const SlateSpotlight(active: false, child: Text('pick'))),
       );
       expect(find.text('pick'), findsOneWidget);
     });

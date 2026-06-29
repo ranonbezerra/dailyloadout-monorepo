@@ -108,7 +108,7 @@ class _ToolActivity extends StatelessWidget {
           const SizedBox(width: 8),
           Text(
             '${_toolLabels[tool] ?? tool}…',
-            style: const TextStyle(color: DLColors.textMuted, fontSize: 12),
+            style: const TextStyle(color: SlateColors.textMuted, fontSize: 12),
           ),
         ],
       ),
@@ -127,7 +127,7 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.auto_awesome, size: 36, color: DLColors.coral),
+            Icon(Icons.auto_awesome, size: 36, color: SlateColors.coral),
             SizedBox(height: 12),
             Text(
               'What should you play tonight?',
@@ -138,7 +138,7 @@ class _EmptyState extends StatelessWidget {
               'Try “I have 30 minutes and want something chill” or '
               '“What was I doing in my last RPG?”',
               textAlign: TextAlign.center,
-              style: TextStyle(color: DLColors.textMuted),
+              style: TextStyle(color: SlateColors.textMuted),
             ),
           ],
         ),
@@ -164,9 +164,9 @@ class _MessageBubble extends StatelessWidget {
           maxWidth: MediaQuery.of(context).size.width * 0.8,
         ),
         decoration: BoxDecoration(
-          color: isUser ? DLColors.coralDeep : DLColors.surface,
+          color: isUser ? SlateColors.coralDeep : SlateColors.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: DLColors.line),
+          border: Border.all(color: SlateColors.line),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -230,14 +230,14 @@ class _Composer extends StatelessWidget {
                   const CancelConciergeStream(),
                 ),
                 icon: const Icon(Icons.stop),
-                color: DLColors.coral,
+                color: SlateColors.coral,
                 tooltip: 'Stop',
               )
             else
               IconButton(
                 onPressed: onSend,
                 icon: const Icon(Icons.send),
-                color: DLColors.coral,
+                color: SlateColors.coral,
                 tooltip: 'Send',
               ),
           ],

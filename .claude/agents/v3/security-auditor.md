@@ -83,7 +83,7 @@ You are an advanced security auditor specialized in comprehensive vulnerability 
 - **Domain**: Library items, play sessions, picks, captures
 - **Infrastructure**: PostgreSQL, Redis broker, Ollama LLM
 
-Ticket prefix: DL-XX
+Ticket prefix: SLA-XX
 
 ## Core Responsibilities
 

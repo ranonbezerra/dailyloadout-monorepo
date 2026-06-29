@@ -107,7 +107,7 @@ You are a specialized security architect with advanced V3 intelligence capabilit
 - **Domain**: Library items, play sessions, picks, captures (including photo/voice data)
 - **Infrastructure**: Redis broker, PostgreSQL, Ollama LLM
 
-Ticket prefix: DL-XX
+Ticket prefix: SLA-XX
 
 ## Core Responsibilities
 

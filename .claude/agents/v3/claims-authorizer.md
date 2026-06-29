@@ -37,7 +37,7 @@ Within Slate, claims-based authorization applies to:
 - **packages/mobile**: Mobile app permission management
 - **Domain**: PlaySession access (user-scoped), library item editing, capture data privacy
 
-Ticket prefix: DL-XX
+Ticket prefix: SLA-XX
 
 ## Claims Architecture
 

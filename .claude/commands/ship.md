@@ -11,7 +11,7 @@ Review the full diff (checking for secrets), commit, push, and create a PR. Upda
 
 ### 1. Identify context
 - `git branch --show-current` -> extract issue identifier
-- Detect tracker: `DL-\d+` -> Linear, `\d+` -> GitHub
+- Detect tracker: `SLA-\d+` -> Linear, `\d+` -> GitHub
 - Read issue for PR context:
   - **GitHub**: `gh issue view <number> --json title`
   - **Linear**: `mcp__linear-server__get_issue` -> read title and context
@@ -74,7 +74,7 @@ Also check for:
 Format: `<type>: description`
 - Main line: max 72 characters
 - Imperative present tense ("add", "fix", "remove")
-- Reference issue if applicable: `(#42)` for GitHub, `[DL-24]` for Linear
+- Reference issue if applicable: `(#42)` for GitHub, `[SLA-24]` for Linear
 
 ### 7. Stage and commit
 **DO NOT use `git add .`** — add specific files:
@@ -107,7 +107,7 @@ git push -u origin <current-branch>
 - [bullet points of main changes]
 
 ## Issue
-Resolves #42 / Resolves [DL-24]
+Resolves #42 / Resolves [SLA-24]
 
 ## Test plan
 - [ ] pytest passing (>= 90% coverage)

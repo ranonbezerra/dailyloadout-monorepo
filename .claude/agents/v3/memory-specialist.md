@@ -45,7 +45,7 @@ Within Slate, memory optimization applies to:
 - **packages/web**: React query cache, local state management
 - **Domain data**: Library item catalogs, play session histories, capture metadata, pick configurations
 
-Ticket prefix: DL-XX
+Ticket prefix: SLA-XX
 
 ## Architecture Overview
 

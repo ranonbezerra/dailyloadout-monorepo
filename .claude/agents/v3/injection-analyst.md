@@ -37,7 +37,7 @@ Within Slate, injection attack surfaces include:
 - **Voice capture transcription** - Transcribed voice input that feeds into AI workflows
 - **API text fields** - Library item descriptions, play session notes
 
-Ticket prefix: DL-XX
+Ticket prefix: SLA-XX
 
 ## Analysis Capabilities
 

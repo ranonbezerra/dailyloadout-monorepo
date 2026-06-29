@@ -110,7 +110,7 @@ The Slate monorepo consists of:
 
 Key performance areas: LLM inference (play session recap/wrap-up via Ollama), image processing (captures), database queries (library/play-sessions), background task scheduling (Taskiq auto-clamp workers).
 
-Ticket prefix: DL-XX
+Ticket prefix: SLA-XX
 
 ## V3 Performance Targets
 

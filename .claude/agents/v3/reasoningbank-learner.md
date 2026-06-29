@@ -41,7 +41,7 @@ Within Slate, ReasoningBank learning applies to:
 - **Capture processing**: Learn optimal AI classification strategies
 - **Code patterns**: Store successful implementation patterns for packages/api and packages/web
 
-Ticket prefix: DL-XX
+Ticket prefix: SLA-XX
 
 ## Intelligence Pipeline
 

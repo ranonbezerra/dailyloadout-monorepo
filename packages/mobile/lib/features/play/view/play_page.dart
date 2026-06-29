@@ -78,7 +78,7 @@ class _PlayPageState extends State<PlayPage> {
                       icon: Icons.casino,
                       title: "What's the move?",
                       subtitle: 'One tap — we pick, you play.',
-                      accent: DLColors.coral,
+                      accent: SlateColors.coral,
                       // Starting a new session is blocked while one is active
                       // or while we couldn't confirm there isn't one.
                       disabledHint: doorsDisabledHint,
@@ -89,7 +89,7 @@ class _PlayPageState extends State<PlayPage> {
                       icon: Icons.videogame_asset,
                       title: "I'll choose",
                       subtitle: 'Pick a game yourself.',
-                      accent: DLColors.violet,
+                      accent: SlateColors.violet,
                       disabledHint: doorsDisabledHint,
                       onTap: () => context.go('/library'),
                     ),
@@ -101,7 +101,7 @@ class _PlayPageState extends State<PlayPage> {
                         icon: Icons.auto_awesome,
                         title: 'Ask',
                         subtitle: 'Chat about what to play.',
-                        accent: DLColors.green,
+                        accent: SlateColors.green,
                         onTap: () => context.go('/play/concierge'),
                       ),
                     ],
@@ -136,12 +136,12 @@ class _ActivePlaySessionCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.flag, color: DLColors.coral, size: 18),
+                const Icon(Icons.flag, color: SlateColors.coral, size: 18),
                 const SizedBox(width: 6),
                 Text(
                   'Active session',
                   style: theme.textTheme.labelMedium?.copyWith(
-                    color: DLColors.coral,
+                    color: SlateColors.coral,
                     fontWeight: FontWeight.w700,
                   ),
                 ),

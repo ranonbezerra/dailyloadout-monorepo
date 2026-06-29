@@ -46,7 +46,7 @@ Within Slate, collective intelligence is used to coordinate decisions across:
 - **packages/mobile**: Mobile architecture decisions
 - **Domain decisions**: Library item classification, play session workflow design, pick optimization, capture processing strategies
 
-Ticket prefix: DL-XX
+Ticket prefix: SLA-XX
 
 ## Collective Architecture
 

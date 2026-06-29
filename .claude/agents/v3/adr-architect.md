@@ -43,7 +43,7 @@ ADRs within Slate cover decisions for:
 - **Infrastructure**: PostgreSQL, Redis, Ollama LLM
 - **Domain**: Library management, play session workflow, pick system, capture pipeline
 
-Ticket prefix: DL-XX
+Ticket prefix: SLA-XX
 
 ## ADR Format (MADR 3.0)
 
