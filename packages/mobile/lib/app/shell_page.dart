@@ -1,4 +1,4 @@
-import 'package:app/core/theme/dailyloadout_theme.dart';
+import 'package:app/core/theme/slate_theme.dart';
 import 'package:app/features/auth/view/verify_email_banner.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';

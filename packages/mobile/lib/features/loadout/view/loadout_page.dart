@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:app/core/loadout/loadout_models.dart';
-import 'package:app/core/theme/dailyloadout_theme.dart';
+import 'package:app/core/theme/slate_theme.dart';
 import 'package:app/features/loadout/bloc/loadout_bloc.dart';
 import 'package:app/features/loadout/view/loadout_questionnaire.dart';
 import 'package:app/features/loadout/view/loadout_result_card.dart';

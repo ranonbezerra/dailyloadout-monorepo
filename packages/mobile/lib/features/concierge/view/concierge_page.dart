@@ -1,5 +1,5 @@
 import 'package:app/core/concierge/concierge_models.dart';
-import 'package:app/core/theme/dailyloadout_theme.dart';
+import 'package:app/core/theme/slate_theme.dart';
 import 'package:app/features/concierge/bloc/concierge_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';

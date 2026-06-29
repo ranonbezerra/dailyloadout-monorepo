@@ -1,7 +1,7 @@
 import 'package:app/app/routes.dart';
 import 'package:app/core/config/feature_flags.dart';
 import 'package:app/core/library/library_repository.dart';
-import 'package:app/core/theme/dailyloadout_theme.dart';
+import 'package:app/core/theme/slate_theme.dart';
 import 'package:app/features/analytics/bloc/analytics_bloc.dart';
 import 'package:app/features/auth/bloc/auth_bloc.dart';
 import 'package:app/features/capture/bloc/capture_bloc.dart';

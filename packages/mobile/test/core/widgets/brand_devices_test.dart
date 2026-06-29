@@ -1,4 +1,4 @@
-import 'package:app/core/theme/dailyloadout_theme.dart';
+import 'package:app/core/theme/slate_theme.dart';
 import 'package:app/core/widgets/brand_devices.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';

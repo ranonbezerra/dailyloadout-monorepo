@@ -1,5 +1,5 @@
 import 'package:app/core/loadout/loadout_models.dart';
-import 'package:app/core/theme/dailyloadout_theme.dart';
+import 'package:app/core/theme/slate_theme.dart';
 import 'package:flutter/material.dart';
 
 /// Displays a single loadout suggestion with game info,

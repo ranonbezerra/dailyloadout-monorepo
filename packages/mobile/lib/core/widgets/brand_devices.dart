@@ -1,4 +1,4 @@
-import 'package:app/core/theme/dailyloadout_theme.dart';
+import 'package:app/core/theme/slate_theme.dart';
 import 'package:flutter/material.dart';
 
 /// Brand devices (BRAND.md §9) — reusable elements that make any screen feel
