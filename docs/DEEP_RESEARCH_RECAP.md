@@ -174,9 +174,9 @@ import time
 
 import structlog
 
-from dailyloadout.core.play session.validators import check_recap_overlap  # Epic 6, reused
-from dailyloadout.infrastructure.llm.base import AbstractLLMClient
-from dailyloadout.infrastructure.research.base import AbstractResearchClient
+from slate.core.play session.validators import check_recap_overlap  # Epic 6, reused
+from slate.infrastructure.llm.base import AbstractLLMClient
+from slate.infrastructure.research.base import AbstractResearchClient
 
 from .render import render  # thin Jinja loader, same SandboxedEnvironment as ollama.py
 

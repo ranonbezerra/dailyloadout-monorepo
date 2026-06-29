@@ -7,7 +7,7 @@ This document is the technical companion to [PRODUCT.md](./PRODUCT.md). It cover
 ## 1. Repository layout
 
 ```text
-dailyloadout-monorepo/
+slate-monorepo/
 ├── README.md
 ├── PRODUCT.md
 ├── ARCHITECTURE.md
@@ -361,7 +361,7 @@ packages/api/
 ├── alembic.ini
 ├── alembic/versions/
 ├── src/
-│   └── dailyloadout/
+│   └── slate/
 │       ├── main.py                 # FastAPI app factory + lifespan
 │       ├── config.py               # Pydantic Settings (envs)
 │       ├── deps.py                 # FastAPI dependencies (get_db, get_current_user)
@@ -611,10 +611,10 @@ API_PORT=8100
 WEB_PORT=3200
 
 # Database
-POSTGRES_USER=dailyloadout
-POSTGRES_PASSWORD=dailyloadout
-POSTGRES_DB=dailyloadout
-DATABASE_URL=postgresql+asyncpg://dailyloadout:dailyloadout@localhost:5433/dailyloadout
+POSTGRES_USER=slate
+POSTGRES_PASSWORD=slate
+POSTGRES_DB=slate
+DATABASE_URL=postgresql+asyncpg://slate:slate@localhost:5433/slate
 REDIS_URL=redis://localhost:6380/0
 
 # Caching (Epic 18) — off => NullCache (behaves as "no caching")
@@ -642,7 +642,7 @@ WHISPER_MODEL=base                   # tiny | base | small | medium
 
 # Storage
 STORAGE_PROVIDER=local_fs            # local_fs | s3
-STORAGE_LOCAL_PATH=/var/lib/dailyloadout/uploads
+STORAGE_LOCAL_PATH=/var/lib/slate/uploads
 
 # IGDB (optional)
 IGDB_CLIENT_ID=
@@ -657,7 +657,7 @@ SMTP_HOST=
 SMTP_PORT=587
 SMTP_USER=
 SMTP_PASSWORD=
-SMTP_FROM=Slate <noreply@dailyloadout.local>
+SMTP_FROM=Slate <noreply@slate.local>
 
 # Limits
 CAPTURE_MAX_AUDIO_SECONDS=60

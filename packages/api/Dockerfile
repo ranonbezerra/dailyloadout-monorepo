@@ -40,4 +40,4 @@ EXPOSE 8100
 # --timeout-keep-alive bounds idle keep-alive sockets (slow-loris mitigation;
 # the reverse proxy should also enforce request read/write timeouts).
 ENV FORWARDED_ALLOW_IPS=172.17.0.1
-CMD ["sh", "-c", "uvicorn src.dailyloadout.main:app --host 0.0.0.0 --port 8100 --proxy-headers --forwarded-allow-ips \"$FORWARDED_ALLOW_IPS\" --timeout-keep-alive 5"]
+CMD ["sh", "-c", "uvicorn src.slate.main:app --host 0.0.0.0 --port 8100 --proxy-headers --forwarded-allow-ips \"$FORWARDED_ALLOW_IPS\" --timeout-keep-alive 5"]

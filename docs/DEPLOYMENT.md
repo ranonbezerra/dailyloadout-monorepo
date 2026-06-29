@@ -28,8 +28,8 @@ A 4 vCPU / 8 GB RAM VPS handles the full stack including Ollama with `gemma3:4b`
 
 ```bash
 # Clone and configure
-git clone https://github.com/ranonbezerra/dailyloadout-monorepo.git
-cd dailyloadout-monorepo
+git clone https://github.com/ranonbezerra/slate-monorepo.git
+cd slate-monorepo
 cp .env.example .env
 ```
 
@@ -40,7 +40,7 @@ APP_ENV=production
 SECRET_KEY=<generate-a-64-char-random-string>
 
 # Strong, unique secrets — REQUIRED. Compose refuses to start without these.
-# Never reuse the dev default "dailyloadout". SECRET_KEY must be >= 32 chars
+# Never reuse the dev default "slate". SECRET_KEY must be >= 32 chars
 # (the API also refuses to boot in production with a short/default secret).
 POSTGRES_PASSWORD=<generate-a-32-char-random-string>
 REDIS_PASSWORD=<generate-a-32-char-random-string>
@@ -49,7 +49,7 @@ SEARXNG_SECRET=<generate-a-32-char-random-string>
 # Registration CAPTCHA — REQUIRED in production (the API fails fast without it).
 TURNSTILE_SECRET=<your-cloudflare-turnstile-secret>
 
-DATABASE_URL=postgresql+asyncpg://dailyloadout:<POSTGRES_PASSWORD>@postgres:5432/dailyloadout
+DATABASE_URL=postgresql+asyncpg://slate:<POSTGRES_PASSWORD>@postgres:5432/slate
 # Redis requires auth now; include the password in the URL.
 REDIS_URL=redis://:<REDIS_PASSWORD>@redis:6379/0
 CORS_ORIGINS=["https://your-domain.com"]
@@ -106,7 +106,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 cd packages/api
 poetry install --without dev
 poetry run alembic upgrade head
-poetry run uvicorn src.dailyloadout.main:app --host 0.0.0.0 --port 8100 --workers 2 \
+poetry run uvicorn src.slate.main:app --host 0.0.0.0 --port 8100 --workers 2 \
     --proxy-headers --forwarded-allow-ips "127.0.0.1"
 ```
 
@@ -123,7 +123,7 @@ poetry run uvicorn src.dailyloadout.main:app --host 0.0.0.0 --port 8100 --worker
 For the Taskiq background worker (async wrap-up extraction):
 
 ```bash
-poetry run taskiq worker dailyloadout.infrastructure.tasks.wrap_up_extraction:broker
+poetry run taskiq worker slate.infrastructure.tasks.wrap_up_extraction:broker
 ```
 
 ### 1.5 Build and serve the web dashboard
@@ -188,34 +188,34 @@ your-domain.com {
 Create service files for persistent operation:
 
 ```ini
-# /etc/systemd/system/dailyloadout-api.service
+# /etc/systemd/system/slate-api.service
 [Unit]
 Description=Slate API
 After=network.target postgresql.service redis.service
 
 [Service]
-User=dailyloadout
-WorkingDirectory=/opt/dailyloadout/packages/api
-ExecStart=/opt/dailyloadout/packages/api/.venv/bin/uvicorn src.dailyloadout.main:app --host 0.0.0.0 --port 8100 --workers 2 --proxy-headers --forwarded-allow-ips 127.0.0.1
+User=slate
+WorkingDirectory=/opt/slate/packages/api
+ExecStart=/opt/slate/packages/api/.venv/bin/uvicorn src.slate.main:app --host 0.0.0.0 --port 8100 --workers 2 --proxy-headers --forwarded-allow-ips 127.0.0.1
 Restart=always
-EnvironmentFile=/opt/dailyloadout/.env
+EnvironmentFile=/opt/slate/.env
 
 [Install]
 WantedBy=multi-user.target
 ```
 
 ```ini
-# /etc/systemd/system/dailyloadout-worker.service
+# /etc/systemd/system/slate-worker.service
 [Unit]
 Description=Slate Taskiq Worker
 After=network.target redis.service
 
 [Service]
-User=dailyloadout
-WorkingDirectory=/opt/dailyloadout/packages/api
-ExecStart=/opt/dailyloadout/packages/api/.venv/bin/taskiq worker dailyloadout.infrastructure.tasks.wrap_up_extraction:broker
+User=slate
+WorkingDirectory=/opt/slate/packages/api
+ExecStart=/opt/slate/packages/api/.venv/bin/taskiq worker slate.infrastructure.tasks.wrap_up_extraction:broker
 Restart=always
-EnvironmentFile=/opt/dailyloadout/.env
+EnvironmentFile=/opt/slate/.env
 
 [Install]
 WantedBy=multi-user.target
@@ -235,11 +235,11 @@ reachable only through an SSH tunnel.
 ssh you@vps
 # Interactive psql shell:
 docker compose -f docker-compose.yml -f docker-compose.prod.yml \
-    exec postgres psql -U dailyloadout dailyloadout
+    exec postgres psql -U slate slate
 
 # Backup (run on the VPS, stream to a local file):
 docker compose -f docker-compose.yml -f docker-compose.prod.yml \
-    exec -T postgres pg_dump -U dailyloadout dailyloadout > backup.sql
+    exec -T postgres pg_dump -U slate slate > backup.sql
 ```
 
 This never opens a port at all — `exec` runs the client inside the container
@@ -284,18 +284,18 @@ Ready-to-use tooling lives in [`infra/backup/`](../infra/backup/):
 rclone config            # create a remote, e.g. "r2"
 
 # 2. Backup env (chmod 600 — it names the DB, not secrets, but keep it tight):
-sudo mkdir -p /etc/dailyloadout
-sudo cp infra/backup/backup.env.example /etc/dailyloadout/backup.env
-sudo nano /etc/dailyloadout/backup.env     # set POSTGRES_*, RCLONE_REMOTE=r2:dl-backups
+sudo mkdir -p /etc/slate
+sudo cp infra/backup/backup.env.example /etc/slate/backup.env
+sudo nano /etc/slate/backup.env     # set POSTGRES_*, RCLONE_REMOTE=r2:dl-backups
 
 # 3. Install the timer (adjust ExecStart path in the .service to your checkout):
-sudo cp infra/backup/dailyloadout-backup.{service,timer} /etc/systemd/system/
+sudo cp infra/backup/slate-backup.{service,timer} /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable --now dailyloadout-backup.timer
+sudo systemctl enable --now slate-backup.timer
 
 # 4. Run once now and verify it lands off-host:
-sudo systemctl start dailyloadout-backup.service
-journalctl -u dailyloadout-backup.service --no-pager | tail
+sudo systemctl start slate-backup.service
+journalctl -u slate-backup.service --no-pager | tail
 rclone ls r2:dl-backups
 ```
 
@@ -307,8 +307,8 @@ off-host retention via the bucket's lifecycle policy.
 scratch database (never the live one for a drill):
 
 ```bash
-POSTGRES_USER=dailyloadout POSTGRES_DB=dailyloadout_restoretest \
-  infra/backup/restore-db.sh /var/backups/dailyloadout/dl-dailyloadout-<ts>.sql.gz
+POSTGRES_USER=slate POSTGRES_DB=slate_restoretest \
+  infra/backup/restore-db.sh /var/backups/slate/dl-slate-<ts>.sql.gz
 ```
 
 The dumps are taken with `--clean --if-exists`, so a real restore drops and
@@ -369,17 +369,17 @@ transactional DDL auto-rolls-back a half-applied migration.
    ONLY run the deploy:
 
    ```text
-   command="/opt/dailyloadout/infra/deploy/deploy.sh",no-port-forwarding,no-pty ssh-ed25519 AAAA... deploy@dailyloadout
+   command="/opt/slate/infra/deploy/deploy.sh",no-port-forwarding,no-pty ssh-ed25519 AAAA... deploy@slate
    ```
 
    > The forced command pins the deploy script; the ref (tag vs `origin/main`) is
    > forwarded via `$SSH_ORIGINAL_COMMAND` (handled by `deploy.sh`).
 
 2. Grant the deploy user **passwordless sudo** for just the restarts
-   (`sudo visudo -f /etc/sudoers.d/dailyloadout`):
+   (`sudo visudo -f /etc/sudoers.d/slate`):
 
    ```text
-   deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart dailyloadout-api, /usr/bin/systemctl restart dailyloadout-worker
+   deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart slate-api, /usr/bin/systemctl restart slate-worker
    ```
 
 3. Create the GitHub **Environments** `staging` and `production` (Settings →
@@ -454,7 +454,7 @@ EXPOSE 8100
 # the platform; "*" is acceptable only because Fly Machines are not directly
 # reachable except through Fly's proxy. On a self-managed VPS prefer a specific
 # proxy IP instead (see §1.4).
-CMD ["poetry", "run", "uvicorn", "src.dailyloadout.main:app", "--host", "0.0.0.0", "--port", "8100", "--proxy-headers", "--forwarded-allow-ips", "*"]
+CMD ["poetry", "run", "uvicorn", "src.slate.main:app", "--host", "0.0.0.0", "--port", "8100", "--proxy-headers", "--forwarded-allow-ips", "*"]
 ```
 
 ### 2.4 Migrations
@@ -492,7 +492,7 @@ poetry install --without dev && poetry run alembic upgrade head
 ### 3.4 Start command
 
 ```bash
-poetry run uvicorn src.dailyloadout.main:app --host 0.0.0.0 --port ${PORT:-8100}
+poetry run uvicorn src.slate.main:app --host 0.0.0.0 --port ${PORT:-8100}
 ```
 
 ---
@@ -527,7 +527,7 @@ For S3-compatible storage (Cloudflare R2, Backblaze B2), set:
 STORAGE_PROVIDER=s3
 AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
-AWS_S3_BUCKET=dailyloadout-uploads
+AWS_S3_BUCKET=slate-uploads
 AWS_S3_ENDPOINT_URL=https://...  # for non-AWS providers
 ```
 
@@ -541,7 +541,7 @@ Secrets (all must-set in production — compose refuses to start without the DB
 and Redis passwords):
 
 - [ ] Set a strong `SECRET_KEY` (at least 64 random characters)
-- [ ] Set a strong `POSTGRES_PASSWORD` — **must-set**, never the dev default `dailyloadout`
+- [ ] Set a strong `POSTGRES_PASSWORD` — **must-set**, never the dev default `slate`
 - [ ] Set a strong `REDIS_PASSWORD` — **must-set**; reflect it in `REDIS_URL` (`redis://:<pw>@redis:6379/0`)
 - [ ] **Rotate any secret that has ever lived on a workstation** (committed `.env`, shell history, screenshare). Treat workstation-exposed secrets as compromised.
 

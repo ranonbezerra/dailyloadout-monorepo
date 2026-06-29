@@ -4,9 +4,9 @@
 
 > *Less deciding. More playing.* A self-hosted gaming companion and production-AI systems showcase. Voice/photo/text capture, structured play session state, "previously on..." recaps before each session, and a 3-question daily loadout that picks one game for you.
 
-[![CI – API](https://img.shields.io/badge/CI-API-blue)](https://github.com/ranonbezerra/dailyloadout-monorepo/actions/workflows/ci-api.yml)
-[![CI – App](https://img.shields.io/badge/CI-App-blue)](https://github.com/ranonbezerra/dailyloadout-monorepo/actions/workflows/ci-app.yml)
-[![CI – Web](https://img.shields.io/badge/CI-Web-blue)](https://github.com/ranonbezerra/dailyloadout-monorepo/actions/workflows/ci-web.yml)
+[![CI – API](https://img.shields.io/badge/CI-API-blue)](https://github.com/ranonbezerra/slate-monorepo/actions/workflows/ci-api.yml)
+[![CI – App](https://img.shields.io/badge/CI-App-blue)](https://github.com/ranonbezerra/slate-monorepo/actions/workflows/ci-app.yml)
+[![CI – Web](https://img.shields.io/badge/CI-Web-blue)](https://github.com/ranonbezerra/slate-monorepo/actions/workflows/ci-web.yml)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 
 ---
@@ -51,8 +51,8 @@ That design is documented in [docs/DEEP_RESEARCH_RECAP.md](./docs/DEEP_RESEARCH_
 
 ```bash
 # Clone
-git clone https://github.com/ranonbezerra/dailyloadout-monorepo.git
-cd dailyloadout-monorepo
+git clone https://github.com/ranonbezerra/slate-monorepo.git
+cd slate-monorepo
 
 # Configure
 cp .env.example .env

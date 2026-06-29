@@ -34,14 +34,14 @@ Total: **10 weekends ≈ 2.5 months** for v1.0 (assuming 8–12 productive hours
 
 ### Tasks
 
-- [ ] Create `dailyloadout-monorepo` on GitHub, public, MIT license
+- [ ] Create `slate-monorepo` on GitHub, public, MIT license
 - [ ] Initial README (work-in-progress version): problem, vision, stack, "WIP" status badge
 - [ ] `.gitignore` for Python, Flutter, Node, IDE files
 - [ ] `docker-compose.yml` with 4 services: postgres, redis, ollama, api (placeholder returning `{"status": "ok"}` at `/health`)
 - [ ] `docker-compose.dev.yml` with hot-reload
 - [ ] `.env.example` complete (every env var from ARCHITECTURE.md §7)
 - [ ] `packages/api/pyproject.toml` with Poetry, Python 3.14, base deps (FastAPI, Pydantic v2, SQLAlchemy, asyncpg, alembic, arq, structlog, ruff, mypy, pytest, pytest-asyncio)
-- [ ] `packages/api/src/dailyloadout/main.py` with minimal app factory + `/health`
+- [ ] `packages/api/src/slate/main.py` with minimal app factory + `/health`
 - [ ] `packages/app/` initialized via `flutter create`, configured for iOS/Android. Renders "Slate WIP"
 - [ ] `packages/web/` initialized with Vite (Bun), React 19, TypeScript, Mantine v8. Renders empty layout on `localhost:3200`
 - [ ] GitHub Actions: three separate workflows (`ci-api.yml`, `ci-app.yml`, `ci-web.yml`) running lint + test on every PR

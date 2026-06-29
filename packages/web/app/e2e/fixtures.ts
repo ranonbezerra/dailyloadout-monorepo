@@ -14,7 +14,7 @@ const NOW = "2026-01-01T00:00:00Z";
 const user = {
 	id: 1,
 	public_id: "11111111-1111-1111-1111-111111111111",
-	email: "demo@dailyloadout.dev",
+	email: "demo@slate.dev",
 	display_name: "Demo Player",
 	email_verified: true,
 	locale: "en",

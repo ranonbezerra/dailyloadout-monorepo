@@ -50,7 +50,7 @@ See DEPLOYMENT §1.1.
 - [ ] Install Docker + compose plugin; install Ollama on the host (`ollama serve`)
       and `ollama pull` your `OLLAMA_FAST_MODEL` / `OLLAMA_SMART_MODEL` /
       `OLLAMA_VISION_MODEL` / `OLLAMA_AGENT_MODEL`.
-- [ ] `git clone` the repo to `/opt/dailyloadout` (the systemd units assume this path).
+- [ ] `git clone` the repo to `/opt/slate` (the systemd units assume this path).
 
 ---
 
@@ -121,11 +121,11 @@ See DEPLOYMENT §1.3–1.4.
 See DEPLOYMENT §1.9.
 
 - [ ] `rclone config` → create the off-host remote.
-- [ ] `cp infra/backup/backup.env.example /etc/dailyloadout/backup.env` → fill
+- [ ] `cp infra/backup/backup.env.example /etc/slate/backup.env` → fill
       `POSTGRES_*`, `RCLONE_REMOTE`; `chmod 600`.
 - [ ] Install + enable the timer:
-      `cp infra/backup/dailyloadout-backup.{service,timer} /etc/systemd/system/`
-      → `systemctl daemon-reload && systemctl enable --now dailyloadout-backup.timer`.
+      `cp infra/backup/slate-backup.{service,timer} /etc/systemd/system/`
+      → `systemctl daemon-reload && systemctl enable --now slate-backup.timer`.
 - [ ] Run it once and confirm it lands off-host (`rclone ls <remote>`).
 - [ ] **Restore drill** against a scratch DB (`infra/backup/restore-db.sh`).
 

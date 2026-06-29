@@ -45,7 +45,7 @@ test.describe("Email verification — banner + /verify-email", () => {
 		await page.goto("/verify-email?token=valid-token");
 
 		await expect(page.getByText("Email verified — you're all set.")).toBeVisible();
-		const continueLink = page.getByRole("link", { name: /continue to dailyloadout/i });
+		const continueLink = page.getByRole("link", { name: /continue to slate/i });
 		await expect(continueLink).toBeVisible();
 
 		await page.screenshot({ path: `${SHOTS}/verify-email-success.png`, fullPage: true });
