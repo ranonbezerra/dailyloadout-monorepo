@@ -11,6 +11,17 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 from slate.core.sanitization import sanitize_display_name
 
 
+def _validate_password_complexity(v: str) -> str:
+    """Require at least one upper, one lower, and one digit (shared by flows)."""
+    if not re.search(r"[A-Z]", v):
+        raise ValueError("Password must contain at least one uppercase letter")
+    if not re.search(r"[a-z]", v):
+        raise ValueError("Password must contain at least one lowercase letter")
+    if not re.search(r"\d", v):
+        raise ValueError("Password must contain at least one digit")
+    return v
+
+
 # ---------------------------------------------------------------------------
 # Request schemas
 # ---------------------------------------------------------------------------
@@ -28,13 +39,7 @@ class RegisterRequest(BaseModel):
     @field_validator("password")
     @classmethod
     def password_complexity(cls, v: str) -> str:
-        if not re.search(r"[A-Z]", v):
-            raise ValueError("Password must contain at least one uppercase letter")
-        if not re.search(r"[a-z]", v):
-            raise ValueError("Password must contain at least one lowercase letter")
-        if not re.search(r"\d", v):
-            raise ValueError("Password must contain at least one digit")
-        return v
+        return _validate_password_complexity(v)
 
 
 class LoginRequest(BaseModel):
@@ -55,6 +60,30 @@ class VerifyEmailRequest(BaseModel):
 
 class ResendVerificationRequest(BaseModel):
     email: EmailStr
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(min_length=1)
+    new_password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def password_complexity(cls, v: str) -> str:
+        return _validate_password_complexity(v)
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(min_length=1)
+    new_password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def password_complexity(cls, v: str) -> str:
+        return _validate_password_complexity(v)
 
 
 # ---------------------------------------------------------------------------
@@ -84,11 +113,14 @@ class MessageResponse(BaseModel):
 
 
 __all__ = [
+    "ChangePasswordRequest",
+    "ForgotPasswordRequest",
     "LoginRequest",
     "MessageResponse",
     "RefreshRequest",
     "RegisterRequest",
     "ResendVerificationRequest",
+    "ResetPasswordRequest",
     "TokenResponse",
     "UserResponse",
     "VerifyEmailRequest",

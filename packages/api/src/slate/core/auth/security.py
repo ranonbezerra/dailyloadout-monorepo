@@ -137,6 +137,56 @@ def decode_email_verification_token(token: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Password-reset tokens (signed, purpose-scoped, short-lived)
+# ---------------------------------------------------------------------------
+_PASSWORD_RESET_PURPOSE = "password_reset"  # pragma: allowlist secret
+
+
+def create_password_reset_token(public_id: str) -> str:
+    """Create a signed, short-lived token for resetting *public_id*'s password.
+
+    Purpose-scoped (``purpose="password_reset"``) so it can never act as an
+    access or email-verification token, and expires after
+    ``password_reset_ttl_hours`` (intentionally short — a reset link is far more
+    sensitive than a verification link). No DB row is needed: single-use is
+    enforced at use time by bumping the user's ``token_version`` (which also
+    kills every existing session), so a consumed link cannot be replayed once a
+    new password is set and the old access tokens are invalidated.
+    """
+    now = datetime.now(UTC)
+    expire = now + timedelta(hours=settings.password_reset_ttl_hours)
+    payload = {
+        "sub": public_id,
+        "purpose": _PASSWORD_RESET_PURPOSE,
+        "exp": expire,
+        "iat": now,
+    }
+    return str(jwt.encode(payload, settings.secret_key, algorithm=_ALGORITHM))
+
+
+def decode_password_reset_token(token: str) -> str:
+    """Decode a password-reset *token* and return its subject public_id.
+
+    Raises:
+        ValueError: if the token is invalid, expired, or not purpose-scoped to
+            password reset.
+    """
+    try:
+        payload = jwt.decode(token, settings.secret_key, algorithms=[_ALGORITHM])
+    except PyJWTError as exc:
+        raise ValueError("Invalid or expired reset token") from exc
+
+    if payload.get("purpose") != _PASSWORD_RESET_PURPOSE:
+        raise ValueError("Invalid or expired reset token")
+
+    subject = payload.get("sub")
+    if not isinstance(subject, str) or not subject:
+        raise ValueError("Invalid or expired reset token")
+
+    return subject
+
+
+# ---------------------------------------------------------------------------
 # Refresh tokens
 # ---------------------------------------------------------------------------
 def generate_refresh_token() -> str:
@@ -155,8 +205,10 @@ __all__ = [
     "PyJWTError",
     "create_access_token",
     "create_email_verification_token",
+    "create_password_reset_token",
     "decode_access_token",
     "decode_email_verification_token",
+    "decode_password_reset_token",
     "generate_refresh_token",
     "hash_password",
     "hash_refresh_token",

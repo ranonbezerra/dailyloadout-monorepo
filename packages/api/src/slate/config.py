@@ -141,6 +141,12 @@ class Settings(BaseSettings):
     # Public base URL the verification link points at (deep link appends token).
     email_verification_base_url: str = "http://localhost:5173/verify-email"
 
+    # ── Password reset (account recovery) ────────────────────────────────
+    # Signed, purpose-scoped JWTs (no new table); short TTL — a reset link is
+    # more sensitive than verification. Consuming it bumps token_version.
+    password_reset_ttl_hours: int = 1
+    password_reset_base_url: str = "http://localhost:5173/reset-password"
+
     # ── CAPTCHA (Cloudflare Turnstile) ───────────────────────────────────
     # Empty => Turnstile dependency is a no-op; set => register needs a token.
     turnstile_secret: str = ""
@@ -176,9 +182,7 @@ class Settings(BaseSettings):
     # Auth limiters (per client IP) — Redis-backed, shared across workers.
     rate_limit_login_per_minute: int = 10
     rate_limit_register_per_minute: int = 5
-    # Per-USER limits on the expensive (LLM / IGDB / research) routes. Tuned
-    # conservatively for COST (each call is a paid Vertex/Bedrock request, and
-    # the concierge fans out to several model calls per turn), not just abuse.
+    # Per-USER limits on expensive (LLM/IGDB/research) routes — tuned for COST.
     rate_limit_concierge_chat_per_minute: int = 6
     rate_limit_play_session_recap_per_minute: int = 4
     rate_limit_pick_create_per_minute: int = 10
@@ -202,22 +206,18 @@ class Settings(BaseSettings):
     cost_guard_degraded_fallback_enabled: bool = True
     cost_guard_fallback_workers: int = 1
 
-    # Generous default per-user limit the middleware applies to every
-    # authenticated request (backstop for routes lacking an explicit limiter).
+    # Default per-user middleware limit (backstop for routes lacking a limiter).
     rate_limit_default_per_minute: int = 120
 
-    # Per-user/day outbound-IGDB budget shared by create_game/capture (the app-
-    # wide IGDB quota is 4 req/s for everyone). Fails OPEN (best-effort).
+    # Per-user/day outbound-IGDB budget shared by create_game/capture. Fails OPEN.
     igdb_user_budget_per_day: int = 300
 
-    # Process-wide concurrent Whisper transcriptions (mirrors ollama), and the
-    # per-call generated-token cap (Ollama/ChatOllama num_predict) bounding spend.
+    # Concurrent Whisper transcriptions (mirrors ollama) + per-call token cap.
     stt_max_concurrency: int = 2
     llm_max_output_tokens: int = 1024
 
     # ── Request hardening (DoS / security headers) ───────────────────────
-    # Coarse backstop: reject requests over this Content-Length with HTTP 413
-    # before the body is read (~25 MB covers the largest legit upload).
+    # Reject requests over this Content-Length with 413 before the body is read.
     max_request_body_bytes: int = 25 * 1024 * 1024
     # HSTS max-age in seconds advertised to browsers (~2 years).
     hsts_max_age_seconds: int = 63072000

@@ -16,6 +16,7 @@ import {
 	IconDeviceGamepad2,
 	IconHistory,
 	IconLogout,
+	IconUserCog,
 } from "@tabler/icons-react";
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
@@ -23,9 +24,11 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { VerifyEmailBanner } from "./components/VerifyEmailBanner";
 import { useAuthContext } from "./contexts/AuthContext";
 import { FEATURES } from "./lib/features";
+import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { LoginPage } from "./pages/LoginPage";
 import { OAuthCallbackPage } from "./pages/OAuthCallbackPage";
 import { RegisterPage } from "./pages/RegisterPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { VerifyEmailPage } from "./pages/VerifyEmailPage";
 
 // Route-level code-splitting: each page (and its heavy chart/datatable deps)
@@ -50,6 +53,9 @@ const PlaySessionsPage = lazy(() =>
 	import("./pages/PlaySessionsPage").then((m) => ({ default: m.PlaySessionsPage })),
 );
 const PlayPage = lazy(() => import("./pages/PlayPage").then((m) => ({ default: m.PlayPage })));
+const ChangePasswordPage = lazy(() =>
+	import("./pages/ChangePasswordPage").then((m) => ({ default: m.ChangePasswordPage })),
+);
 
 function RouteFallback() {
 	return (
@@ -117,6 +123,12 @@ function AppLayout() {
 							active={location.pathname.startsWith("/analytics")}
 							onClick={() => go("/analytics")}
 						/>
+						<NavLink
+							label="Account"
+							leftSection={<IconUserCog size={18} />}
+							active={location.pathname.startsWith("/account")}
+							onClick={() => go("/account")}
+						/>
 					</Stack>
 					<Stack gap="xs">
 						<Button
@@ -160,6 +172,7 @@ function AppLayout() {
 						<Route path="/history" element={<PlaySessionsPage />} />
 						<Route path="/captures" element={<CapturesPage />} />
 						<Route path="/analytics" element={<AnalyticsPage />} />
+						<Route path="/account" element={<ChangePasswordPage />} />
 						{/* Backward-compatible redirects from the old flat / nested routes. */}
 						<Route path="/pick" element={<Navigate to="/play/pick" replace />} />
 						<Route path="/play-sessions" element={<Navigate to="/history" replace />} />
@@ -178,6 +191,10 @@ function App() {
 		<Routes>
 			<Route path="/login" element={<LoginPage />} />
 			<Route path="/register" element={<RegisterPage />} />
+			{/* Public: account recovery — opened while signed out. The forgot page
+			    requests a link; the reset page consumes the emailed token. */}
+			<Route path="/forgot-password" element={<ForgotPasswordPage />} />
+			<Route path="/reset-password" element={<ResetPasswordPage />} />
 			{/* Public: the verification link is opened straight from the email,
 			    possibly while signed out. */}
 			<Route path="/verify-email" element={<VerifyEmailPage />} />

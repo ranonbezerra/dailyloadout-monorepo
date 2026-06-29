@@ -8,7 +8,13 @@ import {
 } from "@slate/shared/api";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { resendVerification, verifyEmail } from "../lib/auth-api";
+import {
+	changePassword,
+	forgotPassword,
+	resendVerification,
+	resetPassword,
+	verifyEmail,
+} from "../lib/auth-api";
 import { createWrapper } from "../test/wrapper";
 import { useAuth } from "./useAuth";
 
@@ -29,6 +35,9 @@ vi.mock("@slate/shared/api", () => ({
 vi.mock("../lib/auth-api", () => ({
 	verifyEmail: vi.fn(),
 	resendVerification: vi.fn(),
+	forgotPassword: vi.fn(),
+	resetPassword: vi.fn(),
+	changePassword: vi.fn(),
 }));
 
 // AuthProvider inside createWrapper uses useAuth internally -- we need to
@@ -205,6 +214,43 @@ describe("useAuth", () => {
 		});
 
 		expect(resendVerification).toHaveBeenCalledOnce();
+	});
+
+	it("forgotPassword calls the forgot-password API with the email", async () => {
+		vi.mocked(forgotPassword).mockResolvedValueOnce({ message: "sent" });
+
+		const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
+
+		await act(async () => {
+			await result.current.forgotPassword("player@test.com");
+		});
+
+		expect(forgotPassword).toHaveBeenCalledWith("player@test.com");
+	});
+
+	it("resetPassword calls the reset-password API with token + password", async () => {
+		vi.mocked(resetPassword).mockResolvedValueOnce({ message: "reset" });
+
+		const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
+
+		await act(async () => {
+			await result.current.resetPassword("tok-1", "NewPass123");
+		});
+
+		expect(resetPassword).toHaveBeenCalledWith("tok-1", "NewPass123");
+	});
+
+	it("changePassword saves the reissued access token", async () => {
+		vi.mocked(changePassword).mockResolvedValueOnce(fakeTokens);
+
+		const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
+
+		await act(async () => {
+			await result.current.changePassword("OldPass123", "NewPass123");
+		});
+
+		expect(changePassword).toHaveBeenCalledWith("OldPass123", "NewPass123");
+		expect(mockedSaveTokens).toHaveBeenCalledWith("acc-123");
 	});
 
 	it("normalizes email_verified into a camel-case emailVerified field", async () => {

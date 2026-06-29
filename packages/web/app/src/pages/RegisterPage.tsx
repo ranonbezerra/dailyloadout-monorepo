@@ -16,10 +16,12 @@ import { Link, Navigate } from "react-router-dom";
 import { SocialLoginButtons } from "../components/SocialLoginButtons";
 import { type TurnstileHandle, TurnstileWidget } from "../components/TurnstileWidget";
 import { useAuthContext } from "../contexts/AuthContext";
+import { validatePasswordMatch } from "../lib/password";
 
 interface RegisterFormValues {
 	email: string;
 	password: string;
+	confirmPassword: string;
 	displayName: string;
 }
 
@@ -32,10 +34,11 @@ export function RegisterPage() {
 	const turnstileRef = useRef<TurnstileHandle>(null);
 
 	const form = useForm<RegisterFormValues>({
-		initialValues: { email: "", password: "", displayName: "" },
+		initialValues: { email: "", password: "", confirmPassword: "", displayName: "" },
 		validate: {
 			email: (v) => (/^\S+@\S+\.\S+$/.test(v) ? null : "Invalid email"),
 			password: (v) => (v.length >= 8 ? null : "Password must be at least 8 characters"),
+			confirmPassword: (v, values) => validatePasswordMatch(values.password, v),
 			displayName: (v) =>
 				v.trim().length >= 2 ? null : "Display name must be at least 2 characters",
 		},
@@ -98,6 +101,12 @@ export function RegisterPage() {
 							placeholder="Choose a password"
 							required
 							{...form.getInputProps("password")}
+						/>
+						<PasswordInput
+							label="Confirm password"
+							placeholder="Repeat your password"
+							required
+							{...form.getInputProps("confirmPassword")}
 						/>
 						<TurnstileWidget
 							ref={turnstileRef}

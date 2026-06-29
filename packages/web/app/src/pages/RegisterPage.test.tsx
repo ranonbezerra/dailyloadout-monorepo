@@ -131,6 +131,9 @@ describe("RegisterPage", () => {
 		fireEvent.change(displayName, { target: { value: "A" } });
 		fireEvent.change(email, { target: { value: "test@test.com" } });
 		fireEvent.change(password, { target: { value: "password123" } });
+		fireEvent.change(screen.getByPlaceholderText("Repeat your password"), {
+			target: { value: "password123" },
+		});
 
 		const form = screen.getByRole("button", { name: /create account/i }).closest("form");
 		if (!form) throw new Error("form not found");
@@ -151,6 +154,9 @@ describe("RegisterPage", () => {
 		fireEvent.change(displayName, { target: { value: "John Doe" } });
 		fireEvent.change(email, { target: { value: "not-an-email" } });
 		fireEvent.change(password, { target: { value: "password123" } });
+		fireEvent.change(screen.getByPlaceholderText("Repeat your password"), {
+			target: { value: "password123" },
+		});
 
 		const form = screen.getByRole("button", { name: /create account/i }).closest("form");
 		if (!form) throw new Error("form not found");
@@ -181,6 +187,35 @@ describe("RegisterPage", () => {
 		});
 	});
 
+	it("shows validation error when confirm password does not match", async () => {
+		const registerFn = vi.fn();
+		mockUseAuthContext.mockReturnValue({ ...defaultAuth, register: registerFn });
+
+		renderRegisterPage();
+
+		fireEvent.change(screen.getByRole("textbox", { name: /display name/i }), {
+			target: { value: "John Doe" },
+		});
+		fireEvent.change(screen.getByRole("textbox", { name: /email/i }), {
+			target: { value: "test@test.com" },
+		});
+		fireEvent.change(screen.getByPlaceholderText("Choose a password"), {
+			target: { value: "password123" },
+		});
+		fireEvent.change(screen.getByPlaceholderText("Repeat your password"), {
+			target: { value: "different456" },
+		});
+
+		const form = screen.getByRole("button", { name: /create account/i }).closest("form");
+		if (!form) throw new Error("form not found");
+		fireEvent.submit(form);
+
+		await waitFor(() => {
+			expect(screen.getByText("Passwords do not match")).toBeInTheDocument();
+		});
+		expect(registerFn).not.toHaveBeenCalled();
+	});
+
 	it("calls register on valid form submission", async () => {
 		const registerFn = vi.fn().mockResolvedValueOnce(undefined);
 		mockUseAuthContext.mockReturnValue({ ...defaultAuth, register: registerFn });
@@ -194,6 +229,9 @@ describe("RegisterPage", () => {
 		fireEvent.change(displayName, { target: { value: "John Doe" } });
 		fireEvent.change(email, { target: { value: "test@test.com" } });
 		fireEvent.change(password, { target: { value: "password123" } });
+		fireEvent.change(screen.getByPlaceholderText("Repeat your password"), {
+			target: { value: "password123" },
+		});
 
 		const form = screen.getByRole("button", { name: /create account/i }).closest("form");
 		if (!form) throw new Error("form not found");
@@ -223,6 +261,9 @@ describe("RegisterPage", () => {
 			target: { value: "test@test.com" },
 		});
 		fireEvent.change(screen.getByPlaceholderText("Choose a password"), {
+			target: { value: "password123" },
+		});
+		fireEvent.change(screen.getByPlaceholderText("Repeat your password"), {
 			target: { value: "password123" },
 		});
 
@@ -258,6 +299,9 @@ describe("RegisterPage", () => {
 		fireEvent.change(screen.getByPlaceholderText("Choose a password"), {
 			target: { value: "password123" },
 		});
+		fireEvent.change(screen.getByPlaceholderText("Repeat your password"), {
+			target: { value: "password123" },
+		});
 		fireEvent.click(screen.getByTestId("solve-turnstile"));
 
 		const form = screen.getByRole("button", { name: /create account/i }).closest("form");
@@ -282,6 +326,9 @@ describe("RegisterPage", () => {
 		fireEvent.change(displayName, { target: { value: "John Doe" } });
 		fireEvent.change(email, { target: { value: "test@test.com" } });
 		fireEvent.change(password, { target: { value: "password123" } });
+		fireEvent.change(screen.getByPlaceholderText("Repeat your password"), {
+			target: { value: "password123" },
+		});
 
 		const form = screen.getByRole("button", { name: /create account/i }).closest("form");
 		if (!form) throw new Error("form not found");
@@ -311,6 +358,9 @@ describe("RegisterPage", () => {
 		fireEvent.change(displayName, { target: { value: "John Doe" } });
 		fireEvent.change(email, { target: { value: "test@test.com" } });
 		fireEvent.change(password, { target: { value: "password123" } });
+		fireEvent.change(screen.getByPlaceholderText("Repeat your password"), {
+			target: { value: "password123" },
+		});
 
 		const form = screen.getByRole("button", { name: /create account/i }).closest("form");
 		if (!form) throw new Error("form not found");

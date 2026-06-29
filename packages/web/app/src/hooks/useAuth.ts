@@ -9,7 +9,13 @@ import {
 } from "@slate/shared/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
-import { resendVerification as resendVerificationApi, verifyEmail } from "../lib/auth-api";
+import {
+	changePassword as changePasswordApi,
+	forgotPassword as forgotPasswordApi,
+	resendVerification as resendVerificationApi,
+	resetPassword as resetPasswordApi,
+	verifyEmail,
+} from "../lib/auth-api";
 import type { AuthTokens, User } from "../types/auth";
 
 /**
@@ -119,6 +125,28 @@ export function useAuth() {
 		mutationFn: () => resendVerificationApi(),
 	});
 
+	// ---- Password-recovery mutations ---------------------------------------
+	const forgotPasswordMutation = useMutation({
+		mutationFn: (email: string) => forgotPasswordApi(email),
+	});
+
+	const resetPasswordMutation = useMutation({
+		mutationFn: (vars: { token: string; newPassword: string }) =>
+			resetPasswordApi(vars.token, vars.newPassword),
+	});
+
+	// Change-password reissues tokens: store the fresh access token so this
+	// device stays signed in, then refetch /me (other sessions were cut off).
+	const changePasswordMutation = useMutation({
+		mutationFn: async (vars: { currentPassword: string; newPassword: string }) => {
+			const data = await changePasswordApi(vars.currentPassword, vars.newPassword);
+			saveTokens(data.access_token);
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: USER_QUERY_KEY });
+		},
+	});
+
 	// ---- Logout mutation ----------------------------------------------------
 	const logoutMutation = useMutation({
 		mutationFn: async () => {
@@ -171,6 +199,18 @@ export function useAuth() {
 		await resendVerificationMutation.mutateAsync();
 	};
 
+	const forgotPassword = async (email: string): Promise<void> => {
+		await forgotPasswordMutation.mutateAsync(email);
+	};
+
+	const resetPassword = async (token: string, newPassword: string): Promise<void> => {
+		await resetPasswordMutation.mutateAsync({ token, newPassword });
+	};
+
+	const changePassword = async (currentPassword: string, newPassword: string): Promise<void> => {
+		await changePasswordMutation.mutateAsync({ currentPassword, newPassword });
+	};
+
 	/** Force a refetch of /me (e.g. after verifying via the email link). */
 	const refetchUser = () => queryClient.invalidateQueries({ queryKey: USER_QUERY_KEY });
 
@@ -189,13 +229,20 @@ export function useAuth() {
 		completeOAuth,
 		verify,
 		resendVerification,
+		forgotPassword,
+		resetPassword,
+		changePassword,
 		refetchUser,
 		loginError: loginMutation.error,
 		registerError: registerMutation.error,
 		verifyError: verifyEmailMutation.error,
+		changePasswordError: changePasswordMutation.error,
 		isLoginPending: loginMutation.isPending,
 		isRegisterPending: registerMutation.isPending,
 		isVerifyPending: verifyEmailMutation.isPending,
 		isResendPending: resendVerificationMutation.isPending,
+		isForgotPasswordPending: forgotPasswordMutation.isPending,
+		isResetPasswordPending: resetPasswordMutation.isPending,
+		isChangePasswordPending: changePasswordMutation.isPending,
 	};
 }

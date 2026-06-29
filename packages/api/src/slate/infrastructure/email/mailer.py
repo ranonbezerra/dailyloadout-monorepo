@@ -83,3 +83,27 @@ def send_verification_email(mailer: Mailer, *, to: str, token: str) -> bool:
         "If you did not create this account, you can ignore this message."
     )
     return mailer.send(to=to, subject="Verify your Slate email", body=body)
+
+
+def send_password_reset_email(mailer: Mailer, *, to: str, token: str) -> bool:
+    """Compose and best-effort-send a password-reset link."""
+    link = f"{settings.password_reset_base_url}?token={token}"
+    body = (
+        "We received a request to reset your Slate password.\n\n"
+        "Open this link to choose a new password:\n\n"
+        f"{link}\n\n"
+        "This link expires soon. If you did not request a reset, you can safely "
+        "ignore this message — your password will not change."
+    )
+    return mailer.send(to=to, subject="Reset your Slate password", body=body)
+
+
+def send_password_changed_email(mailer: Mailer, *, to: str) -> bool:
+    """Send a security notice that the account password was changed."""
+    body = (
+        "Your Slate password was just changed.\n\n"
+        "If this was you, no action is needed. If you did NOT make this change, "
+        "your account may be compromised: reset your password immediately and "
+        "review your active sessions."
+    )
+    return mailer.send(to=to, subject="Your Slate password was changed", body=body)

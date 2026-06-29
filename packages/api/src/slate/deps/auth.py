@@ -13,6 +13,7 @@ from slate.core.admin.config_service import AdminConfigService
 from slate.core.admin.dashboard_service import AdminDashboardService
 from slate.core.admin.games_service import AdminGameService
 from slate.core.admin.service import AdminUserService
+from slate.core.auth.password_recovery import PasswordRecoveryService
 from slate.core.auth.security import decode_access_token
 from slate.core.auth.service import AuthService
 from slate.infrastructure.config.dynamic import dynamic_config
@@ -79,7 +80,17 @@ def get_auth_service(
     return AuthService(user_repo, rt_repo, oauth_repo=oauth_repo)
 
 
+def get_password_recovery_service(
+    user_repo: UserRepoDep, rt_repo: RefreshTokenRepoDep
+) -> PasswordRecoveryService:
+    """Provide a ``PasswordRecoveryService`` wired to the current repos (mailer internal)."""
+    return PasswordRecoveryService(user_repo, rt_repo)
+
+
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
+PasswordRecoveryServiceDep = Annotated[
+    PasswordRecoveryService, Depends(get_password_recovery_service)
+]
 TokenDep = Annotated[str | None, Depends(oauth2_scheme)]
 
 

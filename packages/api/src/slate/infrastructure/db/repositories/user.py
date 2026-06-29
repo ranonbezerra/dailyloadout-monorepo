@@ -96,6 +96,18 @@ class UserRepository:
         user.email_verified = True
         await self._session.flush()
 
+    async def set_password_and_bump(self, user: User, password_hash: str) -> None:
+        """Set *user*'s password hash and bump ``token_version`` in one flush.
+
+        Bumping ``token_version`` kills every outstanding access token; callers
+        also revoke refresh tokens to complete the session cutoff. The in-memory
+        ``user.token_version`` is updated too, so a fresh access token can be
+        minted immediately (e.g. to keep the current device signed in).
+        """
+        user.password_hash = password_hash
+        user.token_version += 1
+        await self._session.flush()
+
     async def bump_token_version(self, user_id: int) -> None:
         """Increment *user_id*'s ``token_version`` (kills outstanding access tokens)."""
         stmt = update(User).where(User.id == user_id).values(token_version=User.token_version + 1)

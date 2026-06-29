@@ -5,7 +5,12 @@ Re-exports all dependency aliases so existing imports keep working:
     from slate.deps import AuthServiceDep, CurrentUserDep
 """
 
-from .auth import AuthServiceDep, CurrentUserDep, RequireVerifiedUserDep
+from .auth import (
+    AuthServiceDep,
+    CurrentUserDep,
+    PasswordRecoveryServiceDep,
+    RequireVerifiedUserDep,
+)
 from .capture import (
     CaptureCandidateRepoDep,
     CaptureRepoDep,
@@ -43,6 +48,7 @@ __all__ = [
     "LLMClientDep",
     "LibraryRepoDep",
     "LibraryServiceDep",
+    "PasswordRecoveryServiceDep",
     "PickRepoDep",
     "PickServiceDep",
     "PlatformRepoDep",
