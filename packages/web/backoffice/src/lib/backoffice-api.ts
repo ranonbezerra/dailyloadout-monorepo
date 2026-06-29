@@ -5,8 +5,8 @@
  * enough to send as-is.
  */
 
-import { apiFetch } from "@dl/shared/api";
-import { snakeToCamel } from "@dl/shared/case-convert";
+import { apiFetch } from "@slate/shared/api";
+import { snakeToCamel } from "@slate/shared/case-convert";
 import type {
 	AdminCaptureDetail,
 	AdminCaptureList,

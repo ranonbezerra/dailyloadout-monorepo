@@ -1,4 +1,4 @@
-import { apiFetch } from "@dl/shared/api";
+import { apiFetch } from "@slate/shared/api";
 import type { MessageResponse } from "../types/auth";
 
 // ---------------------------------------------------------------------------

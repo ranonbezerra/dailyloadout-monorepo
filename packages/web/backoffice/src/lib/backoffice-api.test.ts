@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 
-vi.mock("@dl/shared/api", () => ({
+vi.mock("@slate/shared/api", () => ({
 	apiFetch: vi.fn(),
 }));
 
-import { apiFetch } from "@dl/shared/api";
+import { apiFetch } from "@slate/shared/api";
 import {
 	banUser,
 	clampPlaySession,

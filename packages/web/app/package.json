@@ -14,7 +14,7 @@
 		"e2e:ui": "playwright test --ui"
 	},
 	"dependencies": {
-		"@dl/shared": "workspace:*",
+		"@slate/shared": "workspace:*",
 		"@mantine/charts": "^9.3.2",
 		"@mantine/core": "^9.3.2",
 		"@mantine/dates": "^9.3.2",

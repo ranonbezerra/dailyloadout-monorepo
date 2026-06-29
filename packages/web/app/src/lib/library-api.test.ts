@@ -1,13 +1,13 @@
 import type { Mock } from "vitest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@dl/shared/api", () => ({
+vi.mock("@slate/shared/api", () => ({
 	apiFetch: vi.fn(),
 	BASE_URL: "http://test",
 	getAccessToken: vi.fn(() => "test-token"),
 }));
 
-import { apiFetch } from "@dl/shared/api";
+import { apiFetch } from "@slate/shared/api";
 import {
 	addToLibrary,
 	createGame,

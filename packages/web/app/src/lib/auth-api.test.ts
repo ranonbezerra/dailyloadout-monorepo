@@ -1,8 +1,8 @@
-import { apiFetch } from "@dl/shared/api";
+import { apiFetch } from "@slate/shared/api";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resendVerification, verifyEmail } from "./auth-api";
 
-vi.mock("@dl/shared/api", () => ({
+vi.mock("@slate/shared/api", () => ({
 	apiFetch: vi.fn(),
 }));
 

@@ -6,7 +6,7 @@ import { createWrapper } from "../test/wrapper";
 // Mocks
 // ---------------------------------------------------------------------------
 
-vi.mock("@dl/shared/api", () => ({
+vi.mock("@slate/shared/api", () => ({
 	BASE_URL: "http://localhost:8100",
 	apiFetch: vi.fn(() => Promise.resolve(null)),
 	getAccessToken: vi.fn(() => null),

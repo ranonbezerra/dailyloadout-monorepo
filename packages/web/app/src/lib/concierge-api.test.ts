@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@dl/shared/api", () => {
+vi.mock("@slate/shared/api", () => {
 	const getAccessToken = vi.fn(() => "test-token" as string | null);
 	// Mirror the real fetchWithAuthRetry: prepend BASE_URL, attach the bearer
 	// token as a Headers instance, and delegate to the global fetch mock.
@@ -17,7 +17,7 @@ vi.mock("@dl/shared/api", () => {
 	};
 });
 
-import { getAccessToken } from "@dl/shared/api";
+import { getAccessToken } from "@slate/shared/api";
 import type { ConciergeEvent } from "../types/concierge";
 import { streamConcierge } from "./concierge-api";
 

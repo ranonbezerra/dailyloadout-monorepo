@@ -4,7 +4,7 @@ import {
 	getAccessToken,
 	refreshSession,
 	saveTokens,
-} from "@dl/shared/api";
+} from "@slate/shared/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AuthTokens } from "../types/auth";
 

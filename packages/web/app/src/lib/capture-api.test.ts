@@ -1,7 +1,7 @@
 import type { Mock } from "vitest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@dl/shared/api", () => {
+vi.mock("@slate/shared/api", () => {
 	const getAccessToken = vi.fn(() => "test-token" as string | null);
 	// Mirror the real fetchWithAuthRetry: attach the bearer token as a Headers
 	// instance (never forcing Content-Type) and delegate to globalThis.fetch so
@@ -20,7 +20,7 @@ vi.mock("@dl/shared/api", () => {
 	};
 });
 
-import { apiFetch, getAccessToken } from "@dl/shared/api";
+import { apiFetch, getAccessToken } from "@slate/shared/api";
 import {
 	bulkConfirmCandidates,
 	confirmCandidate,

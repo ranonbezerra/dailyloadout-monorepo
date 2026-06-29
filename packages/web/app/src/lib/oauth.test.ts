@@ -1,4 +1,4 @@
-import { BASE_URL } from "@dl/shared/api";
+import { BASE_URL } from "@slate/shared/api";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { enabledOAuthProviders, oauthErrorMessage, oauthStartUrl } from "./oauth";
 
