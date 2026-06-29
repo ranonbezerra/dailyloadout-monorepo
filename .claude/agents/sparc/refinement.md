@@ -618,7 +618,7 @@ async def generate_recap(prompt: str) -> str:
 asyncio_mode = "auto"
 
 [tool.coverage.run]
-source = ["src/dailyloadout"]
+source = ["src/slate"]
 omit = ["*/tests/*", "*/alembic/*"]
 
 [tool.coverage.report]

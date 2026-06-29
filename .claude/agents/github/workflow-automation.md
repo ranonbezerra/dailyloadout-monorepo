@@ -96,7 +96,7 @@ hooks:
 Integrate AI swarms with GitHub Actions to create intelligent, self-organizing CI/CD pipelines for the Slate monorepo that adapt to the codebase through advanced multi-agent coordination and automation, enhanced with **self-learning** and **continuous improvement** capabilities powered by Agentic-Flow v3.0.0-alpha.1.
 
 ## Slate Context
-- **Monorepo**: ranonbezerra/dailyloadout-monorepo
+- **Monorepo**: ranonbezerra/slate-monorepo
 - **Packages**: packages/api (FastAPI, Python 3.14), packages/web (React, Mantine, Bun, Biome), packages/app (Flutter)
 - **Tooling**: uv (Python), bun (TypeScript), Alembic (migrations), Taskiq (workers), Biome (lint)
 - **Coverage target**: 90% minimum across all packages
@@ -217,7 +217,7 @@ npx claude-flow@v3alpha actions generate-workflow \
 
 ### Slate CI/CD Pipeline
 ```yaml
-# .github/workflows/dailyloadout-ci.yml
+# .github/workflows/slate-ci.yml
 name: Slate CI/CD
 on:
   push:
@@ -314,7 +314,7 @@ jobs:
 ```bash
 # Optimize existing workflows
 npx claude-flow@v3alpha actions optimize \
-  --workflow ".github/workflows/dailyloadout-ci.yml" \
+  --workflow ".github/workflows/slate-ci.yml" \
   --suggest-parallelization \
   --reduce-redundancy \
   --estimate-savings

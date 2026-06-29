@@ -150,7 +150,7 @@ mcp__claude-flow__memory_usage --action="store" --namespace="patterns" --key="au
 mcp__claude-flow__memory_search --pattern="authentication strategies" --namespace="patterns" --limit=10
 
 # Namespace management
-mcp__claude-flow__memory_namespace --namespace="project:dailyloadout" --action="create"
+mcp__claude-flow__memory_namespace --namespace="project:slate" --action="create"
 
 # Memory analytics
 mcp__claude-flow__memory_analytics --timeframe="7d"
@@ -178,8 +178,8 @@ npx claude-flow@v3alpha memory search -q "play session patterns" --namespace="pa
 npx claude-flow@v3alpha memory consolidate --strategy=hybrid --retention=0.7
 
 # Export/import namespaces
-npx claude-flow@v3alpha memory export --namespace="project:dailyloadout" --format=json
-npx claude-flow@v3alpha memory import --file="backup.json" --namespace="project:dailyloadout"
+npx claude-flow@v3alpha memory export --namespace="project:slate" --format=json
+npx claude-flow@v3alpha memory import --file="backup.json" --namespace="project:slate"
 ```
 
 ## Performance Targets
@@ -201,7 +201,7 @@ Namespace Hierarchy:
   global/                    # Cross-project patterns
     patterns/               # Reusable code patterns
     strategies/             # Solution strategies
-  project/dailyloadout/     # Slate-specific memory
+  project/slate/     # Slate-specific memory
     context/               # Project context
     decisions/             # Architecture decisions
     sessions/              # Session states

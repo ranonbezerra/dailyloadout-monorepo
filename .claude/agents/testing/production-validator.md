@@ -96,7 +96,7 @@ def validate_implementation(source_dirs: list[str]) -> list[dict]:
 
 # Run against Slate API
 violations = validate_implementation([
-    "packages/api/src/dailyloadout/",
+    "packages/api/src/slate/",
 ])
 ```
 
@@ -149,7 +149,7 @@ async def test_library_crud_on_real_database():
 @pytest.mark.asyncio
 async def test_ollama_recap_generation():
     """Validate recap generation with real Ollama."""
-    from dailyloadout.infrastructure.llm.ollama import OllamaProvider
+    from slate.infrastructure.llm.ollama import OllamaProvider
 
     provider = OllamaProvider(base_url=os.environ["OLLAMA_BASE_URL"])
 
@@ -169,7 +169,7 @@ async def test_ollama_recap_generation():
 @pytest.mark.asyncio
 async def test_ollama_handles_unavailability_gracefully():
     """Validate graceful handling when Ollama is unreachable."""
-    from dailyloadout.infrastructure.llm.ollama import OllamaProvider
+    from slate.infrastructure.llm.ollama import OllamaProvider
 
     provider = OllamaProvider(base_url="http://localhost:99999")  # Bad port
 
@@ -188,7 +188,7 @@ async def test_ollama_handles_unavailability_gracefully():
 @pytest.mark.asyncio
 async def test_taskiq_wrap_up_extraction_job():
     """Validate wrap-up extraction runs as real Taskiq task."""
-    from dailyloadout.workers.play_session_auto_clamp import extract_wrap_up_state_task
+    from slate.workers.play_session_auto_clamp import extract_wrap_up_state_task
 
     # Enqueue real task
     result = await extract_wrap_up_state_task.kiq(play_session_id=1)
@@ -340,7 +340,7 @@ async def test_api_requires_authentication():
 async def test_llm_output_is_validated():
     """LLM outputs should always pass anti-hallucination check."""
     # This is tested at the service level -- verify no bypass exists
-    from dailyloadout.core.capture.service import CaptureService
+    from slate.core.capture.service import CaptureService
 
     # Verify validate_token_overlap is called in the code path
     import inspect
@@ -415,7 +415,7 @@ async def test_all_jinja2_templates_render():
     from jinja2 import Environment, FileSystemLoader
 
     env = Environment(
-        loader=FileSystemLoader("packages/api/src/dailyloadout/prompts/")
+        loader=FileSystemLoader("packages/api/src/slate/prompts/")
     )
 
     templates = ["recap.j2", "wrap_up_extract.j2"]
@@ -433,7 +433,7 @@ async def test_all_jinja2_templates_render():
 @pytest.mark.asyncio
 async def test_dummy_provider_not_in_production_config():
     """DummyProvider should never be configured in production."""
-    from dailyloadout.config import get_settings
+    from slate.config import get_settings
 
     settings = get_settings()
     if settings.environment == "production":

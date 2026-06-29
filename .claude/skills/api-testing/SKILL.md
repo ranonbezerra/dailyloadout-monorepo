@@ -13,7 +13,7 @@ poetry run pytest                                            # all tests
 poetry run pytest -v                                         # verbose
 poetry run pytest tests/test_play_session.py                      # specific file
 poetry run pytest -k "test_create_play_session"                   # name pattern
-poetry run pytest --cov=src/dailyloadout --cov-report=term-missing  # coverage
+poetry run pytest --cov=src/slate --cov-report=term-missing  # coverage
 poetry run pytest -x                                         # stop on first failure
 poetry run pytest --tb=short                                 # short traceback
 ```
@@ -111,7 +111,7 @@ async def test_recap_generation(async_client, auth_headers, library_entry):
 ## Testing Async Tasks (Taskiq)
 
 ```python
-from dailyloadout.infrastructure.tasks.wrap_up_extraction import extract_wrap_up_state_task
+from slate.infrastructure.tasks.wrap_up_extraction import extract_wrap_up_state_task
 
 @pytest.mark.anyio
 async def test_wrap_up_extraction_task():

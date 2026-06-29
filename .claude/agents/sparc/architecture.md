@@ -489,7 +489,7 @@ info:
 servers:
   - url: http://localhost:8100/api/v1
     description: Development
-  - url: https://api.dailyloadout.com/api/v1
+  - url: https://api.slate.com/api/v1
     description: Production
 
 components:
@@ -595,8 +595,8 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     environment:
-      - POSTGRES_DB=dailyloadout
-      - POSTGRES_USER=dailyloadout
+      - POSTGRES_DB=slate
+      - POSTGRES_USER=slate
       - POSTGRES_PASSWORD=${DB_PASSWORD}
 
   redis:
@@ -640,7 +640,7 @@ llm_architecture:
 
   prompt_management:
     engine: Jinja2
-    template_dir: "packages/api/src/dailyloadout/prompts/"
+    template_dir: "packages/api/src/slate/prompts/"
     templates:
       - recap.j2
       - wrap_up_extract.j2

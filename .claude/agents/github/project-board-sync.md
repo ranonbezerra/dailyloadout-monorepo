@@ -203,7 +203,7 @@ ISSUES=$(gh issue list --label "epic" --json number,title,body)
 
 # Add issues to project
 echo "$ISSUES" | jq -r '.[].number' | while read -r issue; do
-  gh project item-add $PROJECT_ID --owner @me --url "https://github.com/ranonbezerra/dailyloadout-monorepo/issues/$issue"
+  gh project item-add $PROJECT_ID --owner @me --url "https://github.com/ranonbezerra/slate-monorepo/issues/$issue"
 done
 
 # Process with swarm

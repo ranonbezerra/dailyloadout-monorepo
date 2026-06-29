@@ -1,5 +1,5 @@
 ---
-name: dailyloadout-conventions
+name: slate-conventions
 autoload: true
 description: Core conventions for all Slate development. Auto-loaded for every task.
 ---

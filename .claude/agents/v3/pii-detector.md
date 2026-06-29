@@ -32,7 +32,7 @@ Within Slate, PII risks include:
 
 - **Capture data**: Photos and voice recordings may contain personal information
 - **PlaySession wrap-up**: AI-extracted wrap-up data may inadvertently expose PII
-- **User profiles**: Auth models (packages/api/src/dailyloadout/infrastructure/db/models/auth.py)
+- **User profiles**: Auth models (packages/api/src/slate/infrastructure/db/models/auth.py)
 - **Config files**: API keys for Ollama or other LLM providers
 - **Environment variables**: Database credentials, Redis URLs
 

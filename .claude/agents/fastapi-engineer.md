@@ -53,7 +53,7 @@ API v1 Routers -> Core Services -> Infrastructure Repositories -> DB Models
 
 ```
 packages/api/
-├── src/dailyloadout/
+├── src/slate/
 │   ├── main.py                              # FastAPI app factory, lifespan, router registration
 │   ├── config.py                            # Pydantic Settings
 │   ├── api/v1/
@@ -114,7 +114,7 @@ packages/api/
 # deps/{domain}.py
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from dailyloadout.infrastructure.db.session import get_async_session
+from slate.infrastructure.db.session import get_async_session
 
 async def get_{domain}_service(
     session: AsyncSession = Depends(get_async_session),

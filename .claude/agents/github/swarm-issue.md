@@ -36,7 +36,7 @@ hooks:
 Transform GitHub Issues into intelligent swarm tasks for the Slate monorepo, enabling automatic task decomposition and agent coordination with advanced multi-agent orchestration.
 
 ## Slate Context
-- **Monorepo**: ranonbezerra/dailyloadout-monorepo
+- **Monorepo**: ranonbezerra/slate-monorepo
 - **Packages**: packages/api (FastAPI, Python 3.14), packages/web (React, Mantine, Bun), packages/app (Flutter)
 - **EPIC structure**: Issues organized by EPICs (PlaySession Recap, Capture Photo, etc.)
 - **Domain**: Library, PlaySessions, Loadouts, Captures

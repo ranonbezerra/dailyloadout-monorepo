@@ -1,5 +1,5 @@
 ---
-name: dailyloadout-architect
+name: slate-architect
 description: Use when planning new features, evaluating architecture decisions, designing API contracts, analyzing cross-system impact (API <-> Web <-> App), making decisions about LLM integration, data modeling, or play session/loadout flows. Trigger examples - "how should I implement the settings page?", "design the loadout algorithm", "plan offline sync", "evaluate trade-offs for push notifications", "design analytics pipeline".
 tools: Read, Grep, Glob
 model: opus

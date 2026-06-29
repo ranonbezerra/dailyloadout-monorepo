@@ -33,4 +33,4 @@ cd packages/api && poetry run pytest -v
 
 - If all pass: report how many passed
 - If any fail: read the traceback and suggest the fix
-- If coverage is relevant: run with `--cov=src/dailyloadout --cov-report=term-missing` to see gaps
+- If coverage is relevant: run with `--cov=src/slate --cov-report=term-missing` to see gaps

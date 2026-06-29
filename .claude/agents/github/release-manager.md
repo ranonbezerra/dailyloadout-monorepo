@@ -168,7 +168,7 @@ mcp__claude-flow__agent_spawn { type: "analyst", name: "Deployment Analyst" }
 // Create release preparation branch
 mcp__github__create_branch {
   owner: "ranonbezerra",
-  repo: "dailyloadout-monorepo",
+  repo: "slate-monorepo",
   branch: "release/v1.1.0",
   from_branch: "main"
 }
@@ -186,7 +186,7 @@ mcp__claude-flow__task_orchestrate {
 // Update versions across packages
 mcp__github__push_files {
   owner: "ranonbezerra",
-  repo: "dailyloadout-monorepo",
+  repo: "slate-monorepo",
   branch: "release/v1.1.0",
   files: [
     {
@@ -236,7 +236,7 @@ Bash("cd packages/app && flutter test --coverage")
 // Create release PR with validation results
 mcp__github__create_pull_request {
   owner: "ranonbezerra",
-  repo: "dailyloadout-monorepo",
+  repo: "slate-monorepo",
   title: "Release v1.1.0: PlaySession Recap and Loadout Features",
   head: "release/v1.1.0",
   base: "main",

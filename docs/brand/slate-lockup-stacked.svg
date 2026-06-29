@@ -20,9 +20,8 @@
       <circle cx="27.5" cy="25" r="1.75"/>
     </g>
   </g>
-  <!-- Wordmark (start-anchored at a measured centered x; cairosvg mis-centers
-       multi-tspan text under text-anchor="middle", overlapping the weights). -->
-  <text class="wm" x="65" y="142" font-size="46" letter-spacing="-1.1" fill="#F0EDF5">
+  <!-- Wordmark: single-weight word, centered under the mark (x = viewBox center). -->
+  <text class="wm" x="190" y="142" text-anchor="middle" font-size="46" letter-spacing="-1.1" fill="#F0EDF5">
     <tspan font-weight="700">slate</tspan>
   </text>
 </svg>

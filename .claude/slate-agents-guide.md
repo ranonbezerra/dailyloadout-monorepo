@@ -8,13 +8,13 @@ How Claude Code uses the artifacts in this `.claude/` directory to assist with S
 .claude/
 ├── settings.json                    # Team permissions, hooks, claudeFlow (committed)
 ├── settings.local.json              # Personal tokens, MCP access (gitignored)
-├── dailyloadout-agents-guide.md     # This file
+├── slate-agents-guide.md     # This file
 ├── agents/                          # Specialized subagents
 │   ├── fastapi-engineer.md          # Backend: FastAPI, SQLAlchemy, Alembic, Taskiq
 │   ├── react-engineer.md            # Web dashboard: React, Mantine, TanStack Query
 │   ├── flutter-engineer.md          # Mobile app: Flutter, BLoC, go_router, dio
 │   ├── devops-engineer.md           # Infra: Docker, CI/CD, deployment, observability
-│   └── dailyloadout-architect.md    # Cross-system architect (Opus model)
+│   └── slate-architect.md    # Cross-system architect (Opus model)
 ├── commands/                        # Slash commands (workflow automation)
 │   ├── start.md                     # /start <issue-ref> — begin GitHub/Linear issue
 │   ├── ship.md                      # /ship — commit, push, PR, update Linear
@@ -27,7 +27,7 @@ How Claude Code uses the artifacts in this `.claude/` directory to assist with S
 │   ├── review-pr.md                 # /review-pr [#] — code review
 │   └── impact-check.md             # /impact-check <change> — cross-system
 └── skills/                          # Domain knowledge (auto or on-demand)
-    ├── dailyloadout-conventions/    # Auto-loaded: patterns, naming, rules
+    ├── slate-conventions/    # Auto-loaded: patterns, naming, rules
     ├── alembic-migrations/          # Migration patterns, schema conventions
     └── api-testing/                 # pytest patterns, coverage targets
 ```
@@ -54,7 +54,7 @@ How Claude Code uses the artifacts in this `.claude/` directory to assist with S
 **Model**: sonnet (default)
 **Scope**: Dockerfiles, docker-compose.yml, .github/workflows/, infra/
 
-### dailyloadout-architect (for planning & decisions)
+### slate-architect (for planning & decisions)
 **Trigger**: feature planning, architecture decisions, API contract design, cross-system impact
 **Model**: opus (complex reasoning)
 **Scope**: read-only across entire monorepo
@@ -64,7 +64,7 @@ How Claude Code uses the artifacts in this `.claude/` directory to assist with S
 
 | Skill | Auto-loaded? | Load when... |
 |-------|-------------|--------------|
-| `dailyloadout-conventions` | YES | Always available |
+| `slate-conventions` | YES | Always available |
 | `alembic-migrations` | No | Creating/modifying migrations |
 | `api-testing` | No | Writing or fixing tests |
 

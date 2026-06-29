@@ -37,7 +37,7 @@ hooks:
 Coordinate AI swarms across multiple repositories, enabling organization-wide automation and intelligent cross-project collaboration.
 
 ## Slate Context
-- **Primary monorepo**: ranonbezerra/dailyloadout-monorepo (packages/api, packages/web, packages/app)
+- **Primary monorepo**: ranonbezerra/slate-monorepo (packages/api, packages/web, packages/app)
 - **Stack**: FastAPI (Python 3.14), React+Mantine (Bun, Biome), Flutter
 - **Domain**: Library, PlaySessions, Loadouts, Captures
 - **Tools**: uv (Python), bun (TypeScript), Taskiq (workers), Alembic (migrations)
@@ -49,7 +49,7 @@ Coordinate AI swarms across multiple repositories, enabling organization-wide au
 # Initialize multi-repo swarm with gh CLI
 # List organization repositories
 REPOS=$(gh repo list ranonbezerra --limit 100 --json name,description,languages \
-  --jq '.[] | select(.name | test("dailyloadout|shared"))')
+  --jq '.[] | select(.name | test("slate|shared"))')
 
 # Get repository details
 REPO_DETAILS=$(echo "$REPOS" | jq -r '.name' | while read -r repo; do
@@ -59,7 +59,7 @@ done | jq -s '.')
 # Initialize swarm with repository context
 npx claude-flow@v3alpha github multi-repo-init \
   --repo-details "$REPO_DETAILS" \
-  --repos "ranonbezerra/dailyloadout-monorepo" \
+  --repos "ranonbezerra/slate-monorepo" \
   --topology hierarchical \
   --shared-memory \
   --sync-strategy eventual
@@ -139,7 +139,7 @@ fi
 # .swarm/multi-repo.yml
 version: 1
 organization: ranonbezerra
-monorepo: dailyloadout-monorepo
+monorepo: slate-monorepo
 packages:
   - name: api
     path: packages/api

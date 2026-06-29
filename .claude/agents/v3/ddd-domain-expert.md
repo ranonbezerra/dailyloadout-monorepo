@@ -187,7 +187,7 @@ When analyzing the Slate domain, produce:
 ## Slate Project Structure
 
 ```
-packages/api/src/dailyloadout/
+packages/api/src/slate/
   core/
     play session/        # PlaySession bounded context
     library/        # Library bounded context (existing)

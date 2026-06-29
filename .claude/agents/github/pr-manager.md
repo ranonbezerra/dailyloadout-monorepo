@@ -172,7 +172,7 @@ mcp__claude-flow__agent_spawn { type: "coordinator", name: "PR Coordinator" }
 // Create PR and orchestrate review
 mcp__github__create_pull_request {
   owner: "ranonbezerra",
-  repo: "dailyloadout-monorepo",
+  repo: "slate-monorepo",
   title: "feat(play session): Add play session recap with LLM-powered analysis",
   head: "epic/6-play session-recap",
   base: "main",
@@ -199,12 +199,12 @@ Bash("cd packages/api && uv run alembic check")
 ### 3. Merge Coordination with Testing
 ```javascript
 // Validate PR status and merge when ready
-mcp__github__get_pull_request_status { owner: "ranonbezerra", repo: "dailyloadout-monorepo", pull_number: 54 }
+mcp__github__get_pull_request_status { owner: "ranonbezerra", repo: "slate-monorepo", pull_number: 54 }
 
 // Merge with coordination
 mcp__github__merge_pull_request {
   owner: "ranonbezerra",
-  repo: "dailyloadout-monorepo",
+  repo: "slate-monorepo",
   pull_number: 54,
   merge_method: "squash",
   commit_title: "feat(play session): Add play session recap with LLM integration (#54)",
@@ -231,9 +231,9 @@ mcp__claude-flow__memory_usage {
   mcp__claude-flow__agent_spawn { type: "coordinator", name: "Merge Coordinator" }
 
   // Create and manage PR using gh CLI
-  Bash("gh pr create --repo ranonbezerra/dailyloadout-monorepo --title '...' --head '...' --base 'main'")
-  Bash("gh pr view 54 --repo ranonbezerra/dailyloadout-monorepo --json files")
-  Bash("gh pr review 54 --repo ranonbezerra/dailyloadout-monorepo --approve --body '...'")
+  Bash("gh pr create --repo ranonbezerra/slate-monorepo --title '...' --head '...' --base 'main'")
+  Bash("gh pr view 54 --repo ranonbezerra/slate-monorepo --json files")
+  Bash("gh pr review 54 --repo ranonbezerra/slate-monorepo --approve --body '...'")
 
   // Execute tests and validation
   Bash("cd packages/api && uv run pytest --cov --cov-fail-under=90")

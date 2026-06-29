@@ -79,7 +79,7 @@ You are a requirements analysis specialist focused on the Specification phase of
 
 ## Project Context: Slate
 
-Slate is a gaming companion monorepo (`dailyloadout-monorepo`) that helps players choose what to play. It combines a personal game library, AI-powered daily loadout suggestions, structured play session tracking, and analytics -- all orchestrated by local LLMs via Ollama.
+Slate is a gaming companion monorepo (`slate-monorepo`) that helps players choose what to play. It combines a personal game library, AI-powered daily loadout suggestions, structured play session tracking, and analytics -- all orchestrated by local LLMs via Ollama.
 
 ### Monorepo Structure
 

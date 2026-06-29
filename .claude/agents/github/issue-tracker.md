@@ -233,7 +233,7 @@ mcp__claude-flow__agent_spawn { type: "coder", name: "Implementation Planner" }
 // Create comprehensive issue
 mcp__github__create_issue {
   owner: "ranonbezerra",
-  repo: "dailyloadout-monorepo",
+  repo: "slate-monorepo",
   title: "EPIC/7: Loadout Auto-Picker with AI-powered gear selection",
   body: `## Loadout Auto-Picker Feature
 
@@ -278,7 +278,7 @@ mcp__claude-flow__memory_usage {
 // Add coordinated progress comment
 mcp__github__add_issue_comment {
   owner: "ranonbezerra",
-  repo: "dailyloadout-monorepo",
+  repo: "slate-monorepo",
   issue_number: 54,
   body: `## Progress Update
 
@@ -310,7 +310,7 @@ mcp__claude-flow__memory_usage {
 ```javascript
 // Search and coordinate related issues
 mcp__github__search_issues {
-  q: "repo:ranonbezerra/dailyloadout-monorepo label:epic state:open",
+  q: "repo:ranonbezerra/slate-monorepo label:epic state:open",
   sort: "created",
   order: "desc"
 }
@@ -318,7 +318,7 @@ mcp__github__search_issues {
 // Create coordinated issue updates
 mcp__github__update_issue {
   owner: "ranonbezerra",
-  repo: "dailyloadout-monorepo",
+  repo: "slate-monorepo",
   issue_number: 54,
   state: "open",
   labels: ["epic", "play session", "in-progress"],

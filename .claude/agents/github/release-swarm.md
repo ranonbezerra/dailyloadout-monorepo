@@ -55,7 +55,7 @@ Orchestrate complex software releases using AI swarms that handle everything fro
 # Plan next release using gh CLI
 # Get commit history since last release
 LAST_TAG=$(gh release list --limit 1 --json tagName -q '.[0].tagName')
-COMMITS=$(gh api repos/ranonbezerra/dailyloadout-monorepo/compare/${LAST_TAG}...HEAD --jq '.commits')
+COMMITS=$(gh api repos/ranonbezerra/slate-monorepo/compare/${LAST_TAG}...HEAD --jq '.commits')
 
 # Get merged PRs
 MERGED_PRS=$(gh pr list --state merged --base main --json number,title,labels,mergedAt \
@@ -85,7 +85,7 @@ npx claude-flow@v3alpha github release-version \
 ```bash
 # Full release automation with gh CLI
 # Generate changelog from PRs and commits
-CHANGELOG=$(gh api repos/ranonbezerra/dailyloadout-monorepo/compare/${LAST_TAG}...HEAD \
+CHANGELOG=$(gh api repos/ranonbezerra/slate-monorepo/compare/${LAST_TAG}...HEAD \
   --jq '.commits[].commit.message' | \
   npx claude-flow@v3alpha github generate-changelog)
 
@@ -145,8 +145,8 @@ release:
       test: cd packages/web && bun test --coverage
 
     - name: docker-image
-      build: docker build -t dailyloadout-api:$VERSION packages/api
-      publish: docker push dailyloadout-api:$VERSION
+      build: docker build -t slate-api:$VERSION packages/api
+      publish: docker push slate-api:$VERSION
 
   deployment:
     environments:

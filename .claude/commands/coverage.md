@@ -14,12 +14,12 @@ Examples:
 ## Execution
 
 ```bash
-cd packages/api && poetry run pytest --cov=src/dailyloadout --cov-report=term-missing --cov-report=html -v
+cd packages/api && poetry run pytest --cov=src/slate --cov-report=term-missing --cov-report=html -v
 ```
 
 For specific module:
 ```bash
-cd packages/api && poetry run pytest tests/test_$ARGUMENTS.py --cov=src/dailyloadout/$ARGUMENTS --cov-report=term-missing -v
+cd packages/api && poetry run pytest tests/test_$ARGUMENTS.py --cov=src/slate/$ARGUMENTS --cov-report=term-missing -v
 ```
 
 ## Gap analysis

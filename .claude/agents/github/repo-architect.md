@@ -43,7 +43,7 @@ hooks:
 Repository structure optimization and monorepo management with swarm coordination for scalable project architecture and development workflows for the Slate monorepo.
 
 ## Slate Context
-- **Monorepo**: ranonbezerra/dailyloadout-monorepo
+- **Monorepo**: ranonbezerra/slate-monorepo
 - **Packages**: packages/api (FastAPI, Python 3.14), packages/web (React, Mantine, Bun, Biome), packages/app (Flutter)
 - **Tooling**: uv (Python), bun (TypeScript), Alembic (migrations), Taskiq (workers)
 - **Domain**: Library, PlaySessions, Loadouts, Captures
@@ -68,13 +68,13 @@ mcp__claude-flow__agent_spawn { type: "optimizer", name: "Structure Optimizer" }
 mcp__claude-flow__agent_spawn { type: "coordinator", name: "Multi-Package Coordinator" }
 
 // Analyze current repository structure
-Bash("ls -la packages/api/src/dailyloadout/")
+Bash("ls -la packages/api/src/slate/")
 Bash("ls -la packages/web/src/")
 Bash("ls -la packages/app/lib/")
 
 // Search for related repositories
 mcp__github__search_repositories {
-  query: "user:ranonbezerra dailyloadout",
+  query: "user:ranonbezerra slate",
   sort: "updated",
   order: "desc"
 }
@@ -97,7 +97,7 @@ const packages = [
 ]
 
 // Update common files across packages using gh CLI
-Bash(`gh api repos/ranonbezerra/dailyloadout-monorepo/contents/.github/workflows/ci.yml \
+Bash(`gh api repos/ranonbezerra/slate-monorepo/contents/.github/workflows/ci.yml \
   --method PUT \
   -f message="ci: Standardize CI workflow across packages" \
   -f branch="structure/standardization" \
@@ -108,12 +108,12 @@ Bash(`gh api repos/ranonbezerra/dailyloadout-monorepo/contents/.github/workflows
 
 ### 1. **Slate Monorepo Structure**
 ```
-dailyloadout-monorepo/
+slate-monorepo/
 ├── packages/
 │   ├── api/                    # FastAPI backend (Python 3.14)
 │   │   ├── alembic/           # Database migrations
 │   │   │   └── versions/
-│   │   ├── src/dailyloadout/
+│   │   ├── src/slate/
 │   │   │   ├── api/v1/        # FastAPI routers
 │   │   │   ├── core/          # Business logic (auth, play session, capture, loadout)
 │   │   │   ├── infrastructure/

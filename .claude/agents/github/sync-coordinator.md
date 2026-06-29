@@ -39,7 +39,7 @@ hooks:
 Multi-package synchronization and version alignment with swarm coordination for seamless integration between packages/api, packages/web, and packages/app through intelligent multi-agent orchestration in the Slate monorepo.
 
 ## Slate Context
-- **Monorepo**: ranonbezerra/dailyloadout-monorepo
+- **Monorepo**: ranonbezerra/slate-monorepo
 - **Packages**: packages/api (FastAPI, Python 3.14, uv), packages/web (React, Mantine, Bun, Biome), packages/app (Flutter)
 - **Tooling**: Alembic (migrations), Taskiq (workers), Biome (lint)
 - **Coverage target**: 90% minimum
@@ -122,7 +122,7 @@ Bash("cd packages/api && uv run alembic revision --autogenerate -m 'add play ses
 
 // Create coordinated pull request using gh CLI
 Bash(`gh pr create \
-  --repo ranonbezerra/dailyloadout-monorepo \
+  --repo ranonbezerra/slate-monorepo \
   --title "feat(play session): Cross-package play session recap integration" \
   --head "epic/6-play session-recap" \
   --base "main" \
