@@ -152,8 +152,6 @@ skips = ["B101"]
 # Game-domain words that typos may flag
 loadout = "loadout"
 loadouts = "loadouts"
-debrief = "debrief"
-debriefs = "debriefs"
 
 [tool.typos.files]
 extend-exclude = ["*.lock", "alembic/versions/*"]

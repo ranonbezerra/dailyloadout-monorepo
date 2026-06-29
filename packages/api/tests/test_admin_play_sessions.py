@@ -38,7 +38,7 @@ async def _register(client: AsyncClient, email: str) -> dict[str, Any]:
 
 
 async def _admin_headers(
-    client: AsyncClient, email: str = "missionadmin@example.com"
+    client: AsyncClient, email: str = "sessionadmin@example.com"
 ) -> dict[str, str]:
     tokens = await _register(client, email)
     async with _TestSessionFactory() as session:
