@@ -1,0 +1,34 @@
+<svg width="96" height="96" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Slate mark">
+  <!-- The Pick: one lit slot. The controller is play, chosen for tonight. For every gamer, not a war room. -->
+  <rect x="8" y="8" width="32" height="32" rx="10" fill="#FF5A4D"/>
+  <!-- Controller silhouette (ink): flat-top Xbox wings, fit inside the slot -->
+  <path fill="#121119" d="M18 16.3
+    L30 16.3
+    Q31.6 16.4 32.4 18.0
+    C33.5 20.4 34.6 23.8 35.4 26.8
+    C36.1 29.3 35.9 32.1 33.9 33.3
+    C32.0 34.4 30.1 33.5 29.0 31.8
+    C28.1 30.3 27.3 29.3 25.8 29.0
+    Q24.9 28.8 24 28.8
+    Q23.1 28.8 22.2 29.0
+    C20.7 29.3 19.9 30.3 19.0 31.8
+    C17.9 33.5 16.0 34.4 14.1 33.3
+    C12.1 32.1 11.9 29.3 12.6 26.8
+    C13.4 23.8 14.5 20.4 15.6 18.0
+    Q16.4 16.4 18 16.3 Z"/>
+  <!-- Coral details: symmetric around center (x=24). D-pad + left stick (left), 4 buttons + right stick (right) -->
+  <g fill="#FF5A4D">
+    <!-- D-pad (upper-left) -->
+    <rect x="17.7" y="18.15" width="1.6" height="4.3" rx="0.4"/>
+    <rect x="16.35" y="19.5" width="4.3" height="1.6" rx="0.4"/>
+    <!-- left thumbstick (lower-left) -->
+    <circle cx="20.5" cy="25.0" r="1.75"/>
+    <!-- 4-button diamond (upper-right) -->
+    <circle cx="29.5" cy="18.55" r="0.9"/>
+    <circle cx="29.5" cy="21.65" r="0.9"/>
+    <circle cx="27.95" cy="20.1" r="0.9"/>
+    <circle cx="31.05" cy="20.1" r="0.9"/>
+    <!-- right thumbstick (lower-right) -->
+    <circle cx="27.5" cy="25.0" r="1.75"/>
+  </g>
+</svg>

@@ -1,13 +1,13 @@
 import type { Mock } from "vitest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@dl/shared/api", () => ({
+vi.mock("@slate/shared/api", () => ({
 	apiFetch: vi.fn(),
 	BASE_URL: "http://test",
 	getAccessToken: vi.fn(() => "test-token"),
 }));
 
-import { apiFetch } from "@dl/shared/api";
+import { apiFetch } from "@slate/shared/api";
 import {
 	fetchGenreStats,
 	fetchOverview,
@@ -31,8 +31,8 @@ describe("fetchOverview", () => {
 		const apiResponse = {
 			total_games: 42,
 			status_counts: { playing: 5, backlog: 30, completed: 7 },
-			missions_last_30d: 12,
-			avg_mission_duration_minutes: 65.5,
+			play_sessions_last_30d: 12,
+			avg_play_session_duration_minutes: 65.5,
 			user_created_at: "2024-01-01T00:00:00Z",
 		};
 		mockApiFetch.mockResolvedValueOnce(apiResponse);
@@ -42,24 +42,24 @@ describe("fetchOverview", () => {
 		expect(mockApiFetch).toHaveBeenCalledWith("/v1/stats/overview");
 		expect(result.totalGames).toBe(42);
 		expect(result.statusCounts).toEqual({ playing: 5, backlog: 30, completed: 7 });
-		expect(result.missionsLast30d).toBe(12);
-		expect(result.avgMissionDurationMinutes).toBe(65.5);
+		expect(result.playSessionsLast30d).toBe(12);
+		expect(result.avgPlaySessionDurationMinutes).toBe(65.5);
 		expect(result.userCreatedAt).toBe("2024-01-01T00:00:00Z");
 	});
 
-	it("handles null avg_mission_duration_minutes", async () => {
+	it("handles null avg_play_session_duration_minutes", async () => {
 		const apiResponse = {
 			total_games: 0,
 			status_counts: {},
-			missions_last_30d: 0,
-			avg_mission_duration_minutes: null,
+			play_sessions_last_30d: 0,
+			avg_play_session_duration_minutes: null,
 			user_created_at: "2024-01-01T00:00:00Z",
 		};
 		mockApiFetch.mockResolvedValueOnce(apiResponse);
 
 		const result = await fetchOverview();
 
-		expect(result.avgMissionDurationMinutes).toBeNull();
+		expect(result.avgPlaySessionDurationMinutes).toBeNull();
 	});
 });
 
@@ -116,8 +116,8 @@ describe("fetchGenreStats", () => {
 	it("calls GET /v1/stats/genres and returns camelCased data", async () => {
 		const apiResponse = {
 			genres: [
-				{ genre: "RPG", total_minutes: 500, mission_count: 8 },
-				{ genre: "Action", total_minutes: 300, mission_count: 5 },
+				{ genre: "RPG", total_minutes: 500, play_session_count: 8 },
+				{ genre: "Action", total_minutes: 300, play_session_count: 5 },
 			],
 		};
 		mockApiFetch.mockResolvedValueOnce(apiResponse);
@@ -127,7 +127,7 @@ describe("fetchGenreStats", () => {
 		expect(mockApiFetch).toHaveBeenCalledWith("/v1/stats/genres");
 		expect(result.genres).toHaveLength(2);
 		expect(result.genres[0].totalMinutes).toBe(500);
-		expect(result.genres[0].missionCount).toBe(8);
+		expect(result.genres[0].playSessionCount).toBe(8);
 		expect(result.genres[1].genre).toBe("Action");
 	});
 });
@@ -144,14 +144,14 @@ describe("fetchPlatformStats", () => {
 					platform_slug: "pc",
 					platform_label: "PC",
 					game_count: 20,
-					mission_count: 15,
+					play_session_count: 15,
 					total_minutes: 900,
 				},
 				{
 					platform_slug: "ps5",
 					platform_label: "PlayStation 5",
 					game_count: 10,
-					mission_count: 8,
+					play_session_count: 8,
 					total_minutes: 480,
 				},
 			],
@@ -165,7 +165,7 @@ describe("fetchPlatformStats", () => {
 		expect(result.platforms[0].platformSlug).toBe("pc");
 		expect(result.platforms[0].platformLabel).toBe("PC");
 		expect(result.platforms[0].gameCount).toBe(20);
-		expect(result.platforms[0].missionCount).toBe(15);
+		expect(result.platforms[0].playSessionCount).toBe(15);
 		expect(result.platforms[0].totalMinutes).toBe(900);
 		expect(result.platforms[1].platformSlug).toBe("ps5");
 	});
@@ -204,10 +204,10 @@ describe("fetchTimeline", () => {
 					public_id: "m1",
 					game_title: "Hades",
 					platform_label: "PC",
-					mission_type: "regular",
-					briefing_text: "Continue from Asphodel",
-					debrief_text: "Defeated Theseus",
-					ended_via: "debrief_completed",
+					play_session_type: "regular",
+					recap_text: "Continue from Asphodel",
+					wrap_up_text: "Defeated Theseus",
+					ended_via: "wrap_up_completed",
 					started_at: "2024-06-01T10:00:00Z",
 					ended_at: "2024-06-01T11:05:00Z",
 					duration_minutes: 65,
@@ -222,10 +222,10 @@ describe("fetchTimeline", () => {
 		expect(result.items[0].publicId).toBe("m1");
 		expect(result.items[0].gameTitle).toBe("Hades");
 		expect(result.items[0].platformLabel).toBe("PC");
-		expect(result.items[0].missionType).toBe("regular");
-		expect(result.items[0].briefingText).toBe("Continue from Asphodel");
-		expect(result.items[0].debriefText).toBe("Defeated Theseus");
-		expect(result.items[0].endedVia).toBe("debrief_completed");
+		expect(result.items[0].playSessionType).toBe("regular");
+		expect(result.items[0].recapText).toBe("Continue from Asphodel");
+		expect(result.items[0].wrapUpText).toBe("Defeated Theseus");
+		expect(result.items[0].endedVia).toBe("wrap_up_completed");
 		expect(result.items[0].startedAt).toBe("2024-06-01T10:00:00Z");
 		expect(result.items[0].endedAt).toBe("2024-06-01T11:05:00Z");
 		expect(result.items[0].durationMinutes).toBe(65);
@@ -238,9 +238,9 @@ describe("fetchTimeline", () => {
 					public_id: "m2",
 					game_title: "Celeste",
 					platform_label: "Switch",
-					mission_type: "regular",
-					briefing_text: null,
-					debrief_text: null,
+					play_session_type: "regular",
+					recap_text: null,
+					wrap_up_text: null,
 					ended_via: null,
 					started_at: "2024-06-01T10:00:00Z",
 					ended_at: null,
@@ -253,8 +253,8 @@ describe("fetchTimeline", () => {
 
 		const result = await fetchTimeline();
 
-		expect(result.items[0].briefingText).toBeNull();
-		expect(result.items[0].debriefText).toBeNull();
+		expect(result.items[0].recapText).toBeNull();
+		expect(result.items[0].wrapUpText).toBeNull();
 		expect(result.items[0].endedVia).toBeNull();
 		expect(result.items[0].endedAt).toBeNull();
 		expect(result.items[0].durationMinutes).toBeNull();

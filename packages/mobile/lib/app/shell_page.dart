@@ -1,12 +1,12 @@
-import 'package:app/core/theme/dailyloadout_theme.dart';
+import 'package:app/core/theme/slate_theme.dart';
 import 'package:app/features/auth/view/verify_email_banner.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 /// Shell scaffold that wraps the main authenticated pages with a
 /// [BottomNavigationBar] for tab-based navigation. The nav has four tabs: Play,
-/// Library, History, and Stats. The Loadout and Concierge surfaces live under
-/// the Play hub at `/play/*`; History is the mission log at `/history`.
+/// Library, History, and Stats. The Pick and Concierge surfaces live under
+/// the Play hub at `/play/*`; History is the playSession log at `/history`.
 class ShellPage extends StatelessWidget {
   const ShellPage({required this.child, super.key});
 
@@ -54,9 +54,9 @@ class ShellPage extends StatelessWidget {
         currentIndex: _currentIndex(context, tabs),
         onTap: (index) => context.go(tabs[index].path),
         type: BottomNavigationBarType.fixed,
-        backgroundColor: DLColors.bg,
-        selectedItemColor: DLColors.coral,
-        unselectedItemColor: DLColors.textDim,
+        backgroundColor: SlateColors.bg,
+        selectedItemColor: SlateColors.coral,
+        unselectedItemColor: SlateColors.textDim,
         items: [
           for (final tab in tabs)
             BottomNavigationBarItem(icon: Icon(tab.icon), label: tab.label),

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# DailyLoadout — Postgres backup to a gzipped dump + optional off-host copy.
+# Slate — Postgres backup to a gzipped dump + optional off-host copy.
 #
 # Single-VPS deployments have ONE disk: a failure, an accidental `docker volume
 # rm`, or a bad `alembic downgrade` loses the entire database. This script takes
@@ -8,17 +8,17 @@
 # prunes old local copies. Run it from the systemd timer in this directory.
 #
 # Config via environment (see infra/backup/backup.env.example):
-#   PG_CONTAINER     container name running Postgres   (default: dl-postgres)
+#   PG_CONTAINER     container name running Postgres   (default: slate-postgres)
 #   POSTGRES_USER    db user                            (REQUIRED)
 #   POSTGRES_DB      db name                            (REQUIRED)
-#   BACKUP_DIR       local staging dir                  (default: /var/backups/dailyloadout)
-#   RCLONE_REMOTE    rclone target, e.g. "r2:dl-backups"; empty => local-only ⚠
+#   BACKUP_DIR       local staging dir                  (default: /var/backups/slate)
+#   RCLONE_REMOTE    rclone target, e.g. "r2:slate-backups"; empty => local-only ⚠
 #   RETENTION_DAYS   prune local dumps older than N     (default: 14)
 #
 set -euo pipefail
 
-PG_CONTAINER="${PG_CONTAINER:-dl-postgres}"
-BACKUP_DIR="${BACKUP_DIR:-/var/backups/dailyloadout}"
+PG_CONTAINER="${PG_CONTAINER:-slate-postgres}"
+BACKUP_DIR="${BACKUP_DIR:-/var/backups/slate}"
 RETENTION_DAYS="${RETENTION_DAYS:-14}"
 RCLONE_REMOTE="${RCLONE_REMOTE:-}"
 
@@ -27,7 +27,7 @@ RCLONE_REMOTE="${RCLONE_REMOTE:-}"
 
 ts="$(date -u +%Y%m%dT%H%M%SZ)"
 mkdir -p "$BACKUP_DIR"
-file="${BACKUP_DIR}/dl-${POSTGRES_DB}-${ts}.sql.gz"
+file="${BACKUP_DIR}/slate-${POSTGRES_DB}-${ts}.sql.gz"
 
 # --clean --if-exists makes the dump self-contained and restorable over an
 # existing DB; --no-owner avoids role-ownership mismatches on restore.
@@ -55,4 +55,4 @@ else
 fi
 
 # Prune old LOCAL dumps (off-host retention is the remote's lifecycle policy).
-find "$BACKUP_DIR" -name "dl-*.sql.gz" -mtime "+${RETENTION_DAYS}" -delete
+find "$BACKUP_DIR" -name "slate-*.sql.gz" -mtime "+${RETENTION_DAYS}" -delete

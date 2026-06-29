@@ -1,4 +1,4 @@
-# Minimal SearXNG config for DailyLoadout deep-research briefings.
+# Minimal SearXNG config for Slate deep-research recap.
 # The JSON format is required by SearxngResearchClient and is disabled by
 # default upstream, so it is enabled explicitly here.
 use_default_settings: true

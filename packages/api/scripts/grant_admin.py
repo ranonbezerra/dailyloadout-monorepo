@@ -18,10 +18,10 @@ import sys
 
 from sqlalchemy import select
 
-from dailyloadout.infrastructure.db.models import AdminUser, User
-from dailyloadout.infrastructure.db.repositories.admin import AdminRepository
-from dailyloadout.infrastructure.db.repositories.user import UserRepository
-from dailyloadout.infrastructure.db.session import async_session_factory
+from slate.infrastructure.db.models import AdminUser, User
+from slate.infrastructure.db.repositories.admin import AdminRepository
+from slate.infrastructure.db.repositories.user import UserRepository
+from slate.infrastructure.db.session import async_session_factory
 
 
 async def _grant(email: str) -> int:

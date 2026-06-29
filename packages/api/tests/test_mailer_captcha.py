@@ -9,11 +9,11 @@ from typing import Any
 import pytest
 from fastapi import HTTPException, Request
 
-from dailyloadout.api.v1 import _rate_limit
-from dailyloadout.config import settings
-from dailyloadout.deps import captcha
-from dailyloadout.deps.captcha import verify_turnstile
-from dailyloadout.infrastructure.email.mailer import Mailer, send_verification_email
+from slate.api.v1 import _rate_limit
+from slate.config import settings
+from slate.deps import captcha
+from slate.deps.captcha import verify_turnstile
+from slate.infrastructure.email.mailer import Mailer, send_verification_email
 
 
 def _make_request(headers: dict[str, str] | None = None, body: bytes = b"") -> Request:
@@ -97,7 +97,7 @@ class TestMailer:
             def send_message(self, message: EmailMessage) -> None:
                 calls["sent"] = message["To"]
 
-        import dailyloadout.infrastructure.email.mailer as mailer_mod
+        import slate.infrastructure.email.mailer as mailer_mod
 
         monkeypatch.setattr(mailer_mod.smtplib, "SMTP", _FakeSMTP)
         mailer = Mailer()

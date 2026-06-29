@@ -36,14 +36,14 @@ hooks:
 # GitHub Sync Coordinator
 
 ## Purpose
-Multi-package synchronization and version alignment with swarm coordination for seamless integration between packages/api, packages/web, and packages/app through intelligent multi-agent orchestration in the DailyLoadout monorepo.
+Multi-package synchronization and version alignment with swarm coordination for seamless integration between packages/api, packages/web, and packages/mobile through intelligent multi-agent orchestration in the Slate monorepo.
 
-## DailyLoadout Context
-- **Monorepo**: ranonbezerra/dailyloadout-monorepo
-- **Packages**: packages/api (FastAPI, Python 3.14, uv), packages/web (React, Mantine, Bun, Biome), packages/app (Flutter)
+## Slate Context
+- **Monorepo**: ranonbezerra/slate-monorepo
+- **Packages**: packages/api (FastAPI, Python 3.14, uv), packages/web (React, Mantine, Bun, Biome), packages/mobile (Flutter)
 - **Tooling**: Alembic (migrations), Taskiq (workers), Biome (lint)
 - **Coverage target**: 90% minimum
-- **Domain**: Library, Missions, Loadouts, Captures
+- **Domain**: Library, PlaySessions, Picks, Captures
 
 ## Capabilities
 - **Package synchronization** with intelligent dependency resolution
@@ -75,12 +75,12 @@ mcp__claude-flow__agent_spawn { type: "tester", name: "Validation Engineer" }
 // Analyze current package states
 Read("packages/api/pyproject.toml")
 Read("packages/web/package.json")
-Read("packages/app/pubspec.yaml")
+Read("packages/mobile/pubspec.yaml")
 
 // Synchronize versions and dependencies
 Bash("cd packages/api && uv lock --upgrade")
 Bash("cd packages/web && bun update")
-Bash("cd packages/app && flutter pub upgrade")
+Bash("cd packages/mobile && flutter pub upgrade")
 
 // Orchestrate validation
 mcp__claude-flow__task_orchestrate {
@@ -112,26 +112,26 @@ mcp__claude-flow__memory_usage {
 ### 3. Cross-Package Feature Integration
 ```javascript
 // Coordinate feature implementation across packages
-// Example: Mission Briefing feature spans api, web, and app
+// Example: PlaySession Recap feature spans api, web, and app
 
 // API: Alembic migration + FastAPI endpoints + Taskiq workers
-Bash("cd packages/api && uv run alembic revision --autogenerate -m 'add missions table'")
+Bash("cd packages/api && uv run alembic revision --autogenerate -m 'add play sessions table'")
 
 // Web: Mantine modal + React hooks + API client
 // App: Flutter screens + API client
 
 // Create coordinated pull request using gh CLI
 Bash(`gh pr create \
-  --repo ranonbezerra/dailyloadout-monorepo \
-  --title "feat(mission): Cross-package mission briefing integration" \
-  --head "epic/6-mission-briefing" \
+  --repo ranonbezerra/slate-monorepo \
+  --title "feat(play session): Cross-package play session recap integration" \
+  --head "epic/6-play session-recap" \
   --base "main" \
-  --body "## Mission Briefing Integration
+  --body "## PlaySession Recap Integration
 
 ### Packages Updated
-- packages/api: Mission endpoints, Alembic migration, Taskiq worker
-- packages/web: Mantine briefing modal, React hooks, API client
-- packages/app: Flutter mission screen (placeholder)
+- packages/api: PlaySession endpoints, Alembic migration, Taskiq worker
+- packages/web: Mantine recap modal, React hooks, API client
+- packages/mobile: Flutter play session screen (placeholder)
 
 ### Testing
 - [x] API: pytest coverage >= 90%
@@ -159,7 +159,7 @@ Generated with Claude Code"`)
   // Read current state of all packages
   Read("packages/api/pyproject.toml")
   Read("packages/web/package.json")
-  Read("packages/app/pubspec.yaml")
+  Read("packages/mobile/pubspec.yaml")
   Read("CLAUDE.md")
 
   // Run validation tests
@@ -183,7 +183,7 @@ Generated with Claude Code"`)
     key: "sync/complete/status",
     value: {
       timestamp: Date.now(),
-      packages_synced: ["packages/api", "packages/web", "packages/app"],
+      packages_synced: ["packages/api", "packages/web", "packages/mobile"],
       version_alignment: "completed",
       documentation_sync: "completed",
       test_validation: "passed",
@@ -216,7 +216,7 @@ const apiSyncPattern = {
   sourceOfTruth: "packages/api (FastAPI endpoints)",
   consumers: [
     "packages/web/src/lib/*-api.ts",
-    "packages/app/lib/api/"
+    "packages/mobile/lib/api/"
   ],
   validation: "cross-package integration tests"
 }
@@ -226,7 +226,7 @@ const apiSyncPattern = {
 ```javascript
 // Comprehensive testing across synchronized packages
 const testMatrix = {
-  packages: ["packages/api", "packages/web", "packages/app"],
+  packages: ["packages/api", "packages/web", "packages/mobile"],
   tests: [
     "api_unit_tests",        // uv run pytest --cov-fail-under=90
     "web_unit_tests",        // bun test --coverage

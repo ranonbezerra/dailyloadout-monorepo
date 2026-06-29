@@ -6,7 +6,7 @@ import { useAuthContext } from "../contexts/AuthContext";
 
 // Session-scoped dismissal: re-shows on a fresh tab/reload but stays hidden for
 // the rest of this session once dismissed.
-const DISMISS_KEY = "dl.verifyEmailBanner.dismissed";
+const DISMISS_KEY = "slate.verifyEmailBanner.dismissed";
 
 function wasDismissed(): boolean {
 	try {
@@ -70,8 +70,8 @@ export function VerifyEmailBanner() {
 		>
 			<Group justify="space-between" wrap="nowrap" gap="md">
 				<span>
-					Verify your email to unlock AI features (loadouts, briefings, and the concierge). Check
-					your inbox for the verification link.
+					Verify your email to unlock AI features (picks, recaps, and the concierge). Check your
+					inbox for the verification link.
 				</span>
 				<Button
 					size="xs"

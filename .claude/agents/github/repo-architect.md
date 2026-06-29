@@ -40,13 +40,13 @@ hooks:
 # GitHub Repository Architect
 
 ## Purpose
-Repository structure optimization and monorepo management with swarm coordination for scalable project architecture and development workflows for the DailyLoadout monorepo.
+Repository structure optimization and monorepo management with swarm coordination for scalable project architecture and development workflows for the Slate monorepo.
 
-## DailyLoadout Context
-- **Monorepo**: ranonbezerra/dailyloadout-monorepo
-- **Packages**: packages/api (FastAPI, Python 3.14), packages/web (React, Mantine, Bun, Biome), packages/app (Flutter)
+## Slate Context
+- **Monorepo**: ranonbezerra/slate-monorepo
+- **Packages**: packages/api (FastAPI, Python 3.14), packages/web (React, Mantine, Bun, Biome), packages/mobile (Flutter)
 - **Tooling**: uv (Python), bun (TypeScript), Alembic (migrations), Taskiq (workers)
-- **Domain**: Library, Missions, Loadouts, Captures
+- **Domain**: Library, PlaySessions, Picks, Captures
 - **Coverage**: 90% minimum
 
 ## Capabilities
@@ -68,13 +68,13 @@ mcp__claude-flow__agent_spawn { type: "optimizer", name: "Structure Optimizer" }
 mcp__claude-flow__agent_spawn { type: "coordinator", name: "Multi-Package Coordinator" }
 
 // Analyze current repository structure
-Bash("ls -la packages/api/src/dailyloadout/")
+Bash("ls -la packages/api/src/slate/")
 Bash("ls -la packages/web/src/")
-Bash("ls -la packages/app/lib/")
+Bash("ls -la packages/mobile/lib/")
 
 // Search for related repositories
 mcp__github__search_repositories {
-  query: "user:ranonbezerra dailyloadout",
+  query: "user:ranonbezerra slate",
   sort: "updated",
   order: "desc"
 }
@@ -93,11 +93,11 @@ mcp__claude-flow__task_orchestrate {
 const packages = [
   "packages/api",
   "packages/web",
-  "packages/app"
+  "packages/mobile"
 ]
 
 // Update common files across packages using gh CLI
-Bash(`gh api repos/ranonbezerra/dailyloadout-monorepo/contents/.github/workflows/ci.yml \
+Bash(`gh api repos/ranonbezerra/slate-monorepo/contents/.github/workflows/ci.yml \
   --method PUT \
   -f message="ci: Standardize CI workflow across packages" \
   -f branch="structure/standardization" \
@@ -106,16 +106,16 @@ Bash(`gh api repos/ranonbezerra/dailyloadout-monorepo/contents/.github/workflows
 
 ## Architecture Patterns
 
-### 1. **DailyLoadout Monorepo Structure**
+### 1. **Slate Monorepo Structure**
 ```
-dailyloadout-monorepo/
+slate-monorepo/
 ├── packages/
 │   ├── api/                    # FastAPI backend (Python 3.14)
 │   │   ├── alembic/           # Database migrations
 │   │   │   └── versions/
-│   │   ├── src/dailyloadout/
+│   │   ├── src/slate/
 │   │   │   ├── api/v1/        # FastAPI routers
-│   │   │   ├── core/          # Business logic (auth, mission, capture, loadout)
+│   │   │   ├── core/          # Business logic (auth, play session, capture, pick)
 │   │   │   ├── infrastructure/
 │   │   │   │   ├── db/        # SQLAlchemy models, repositories
 │   │   │   │   └── llm/       # Ollama client, Jinja2 prompts
@@ -126,7 +126,7 @@ dailyloadout-monorepo/
 │   │   └── pyproject.toml
 │   ├── web/                    # React frontend (TypeScript, Mantine)
 │   │   ├── src/
-│   │   │   ├── pages/         # Page components (Library, Missions, etc.)
+│   │   │   ├── pages/         # Page components (Library, PlaySessions, etc.)
 │   │   │   ├── hooks/         # Custom React hooks
 │   │   │   ├── lib/           # API clients
 │   │   │   └── types/         # TypeScript types
@@ -183,7 +183,7 @@ const integrationPattern = {
       tools: ["bun", "biome", "mantine", "vitest"],
       provides: ["UI components", "state management", "API client"]
     },
-    "packages/app": {
+    "packages/mobile": {
       role: "mobile",
       language: "dart",
       tools: ["flutter"],

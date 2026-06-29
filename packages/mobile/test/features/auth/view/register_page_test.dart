@@ -31,10 +31,10 @@ void main() {
   }
 
   group('RegisterPage', () {
-    testWidgets('renders DailyLoadout and Create your account', (tester) async {
+    testWidgets('renders Slate and Create your account', (tester) async {
       await tester.pumpWidget(buildSubject());
 
-      expect(find.text('DailyLoadout'), findsOneWidget);
+      expect(find.text('Slate'), findsOneWidget);
       expect(find.text('Create your account'), findsOneWidget);
     });
 

@@ -98,7 +98,7 @@ class LibraryEntry extends Equatable {
     required this.updatedAt,
     this.acquiredAt,
     this.lastPlayedAt,
-    this.missionNextAction,
+    this.playSessionNextAction,
     this.notes,
   });
 
@@ -114,7 +114,7 @@ class LibraryEntry extends Equatable {
       lastPlayedAt: json['last_played_at'] != null
           ? DateTime.parse(json['last_played_at'] as String)
           : null,
-      missionNextAction: json['mission_next_action'] as String?,
+      playSessionNextAction: json['play_session_next_action'] as String?,
       notes: json['notes'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
@@ -127,7 +127,7 @@ class LibraryEntry extends Equatable {
   final String status;
   final DateTime? acquiredAt;
   final DateTime? lastPlayedAt;
-  final String? missionNextAction;
+  final String? playSessionNextAction;
   final String? notes;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -140,7 +140,7 @@ class LibraryEntry extends Equatable {
     status,
     acquiredAt,
     lastPlayedAt,
-    missionNextAction,
+    playSessionNextAction,
     notes,
     createdAt,
     updatedAt,
@@ -150,7 +150,7 @@ class LibraryEntry extends Equatable {
 /// Per-platform state for an owned game.
 ///
 /// `publicId` is the library ENTRY id — the target for update, delete, and
-/// mission-start operations on this specific platform.
+/// playSession-start operations on this specific platform.
 class LibraryPlatformState extends Equatable {
   const LibraryPlatformState({
     required this.publicId,
@@ -160,7 +160,7 @@ class LibraryPlatformState extends Equatable {
     required this.updatedAt,
     this.acquiredAt,
     this.lastPlayedAt,
-    this.missionNextAction,
+    this.playSessionNextAction,
     this.notes,
   });
 
@@ -175,7 +175,7 @@ class LibraryPlatformState extends Equatable {
       lastPlayedAt: json['last_played_at'] != null
           ? DateTime.parse(json['last_played_at'] as String)
           : null,
-      missionNextAction: json['mission_next_action'] as String?,
+      playSessionNextAction: json['play_session_next_action'] as String?,
       notes: json['notes'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
@@ -187,7 +187,7 @@ class LibraryPlatformState extends Equatable {
   final String status;
   final DateTime? acquiredAt;
   final DateTime? lastPlayedAt;
-  final String? missionNextAction;
+  final String? playSessionNextAction;
   final String? notes;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -199,7 +199,7 @@ class LibraryPlatformState extends Equatable {
     status,
     acquiredAt,
     lastPlayedAt,
-    missionNextAction,
+    playSessionNextAction,
     notes,
     createdAt,
     updatedAt,

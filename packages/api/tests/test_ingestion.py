@@ -8,9 +8,9 @@ import pytest
 from fastapi import UploadFile
 from PIL import Image
 
-from dailyloadout.config import settings
-from dailyloadout.core.capture.exceptions import InvalidUploadError
-from dailyloadout.core.capture.ingestion import (
+from slate.config import settings
+from slate.core.capture.exceptions import InvalidUploadError
+from slate.core.capture.ingestion import (
     read_upload_capped,
     validate_image,
     validate_import_image,

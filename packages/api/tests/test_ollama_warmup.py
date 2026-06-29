@@ -6,7 +6,7 @@ from typing import Any
 
 import httpx
 
-from dailyloadout.infrastructure.llm.warmup import _coerce_keep_alive, warm_ollama_models
+from slate.infrastructure.llm.warmup import _coerce_keep_alive, warm_ollama_models
 
 
 class _SpyClient:

@@ -1,5 +1,5 @@
 import 'package:app/core/concierge/concierge_models.dart';
-import 'package:app/core/theme/dailyloadout_theme.dart';
+import 'package:app/core/theme/slate_theme.dart';
 import 'package:app/features/concierge/bloc/concierge_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -8,12 +8,12 @@ import 'package:go_router/go_router.dart';
 /// Friendly labels for the tool affordance shown while the agent works.
 const _toolLabels = {
   'search_library': 'searching your library',
-  'get_mission_history': 'recalling your last session',
+  'get_play_session_history': 'recalling your last session',
   'get_play_stats': 'checking your stats',
   'estimate_session_fit': 'sizing up the session',
-  'start_mission': 'starting your mission',
-  'generate_briefing': 'writing a briefing',
-  'submit_retroactive_debrief': 'logging your session',
+  'start_play_session': 'starting your session',
+  'generate_recap': 'writing a recap',
+  'submit_retroactive_wrap_up': 'logging your session',
   'set_status': 'updating your library',
 };
 
@@ -108,7 +108,7 @@ class _ToolActivity extends StatelessWidget {
           const SizedBox(width: 8),
           Text(
             '${_toolLabels[tool] ?? tool}…',
-            style: const TextStyle(color: DLColors.textMuted, fontSize: 12),
+            style: const TextStyle(color: SlateColors.textMuted, fontSize: 12),
           ),
         ],
       ),
@@ -127,7 +127,7 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.auto_awesome, size: 36, color: DLColors.coral),
+            Icon(Icons.auto_awesome, size: 36, color: SlateColors.coral),
             SizedBox(height: 12),
             Text(
               'What should you play tonight?',
@@ -138,7 +138,7 @@ class _EmptyState extends StatelessWidget {
               'Try “I have 30 minutes and want something chill” or '
               '“What was I doing in my last RPG?”',
               textAlign: TextAlign.center,
-              style: TextStyle(color: DLColors.textMuted),
+              style: TextStyle(color: SlateColors.textMuted),
             ),
           ],
         ),
@@ -164,9 +164,9 @@ class _MessageBubble extends StatelessWidget {
           maxWidth: MediaQuery.of(context).size.width * 0.8,
         ),
         decoration: BoxDecoration(
-          color: isUser ? DLColors.coralDeep : DLColors.surface,
+          color: isUser ? SlateColors.coralDeep : SlateColors.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: DLColors.line),
+          border: Border.all(color: SlateColors.line),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -179,10 +179,10 @@ class _MessageBubble extends StatelessWidget {
             if (message.recommendation != null) ...[
               const SizedBox(height: 8),
               FilledButton.icon(
-                // Open the briefing-choice flow for the recommended game,
-                // mirroring the library "Start Mission" entry point.
+                // Open the recap-choice flow for the recommended game,
+                // mirroring the library "Start session" entry point.
                 onPressed: () => context.push(
-                  '/missions/briefing?entry=${message.recommendation!.id}',
+                  '/play-sessions/recap?entry=${message.recommendation!.id}',
                 ),
                 icon: const Icon(Icons.play_arrow, size: 18),
                 label: Text('Play ${message.recommendation!.title}'),
@@ -230,14 +230,14 @@ class _Composer extends StatelessWidget {
                   const CancelConciergeStream(),
                 ),
                 icon: const Icon(Icons.stop),
-                color: DLColors.coral,
+                color: SlateColors.coral,
                 tooltip: 'Stop',
               )
             else
               IconButton(
                 onPressed: onSend,
                 icon: const Icon(Icons.send),
-                color: DLColors.coral,
+                color: SlateColors.coral,
                 tooltip: 'Send',
               ),
           ],

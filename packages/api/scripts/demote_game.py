@@ -18,8 +18,8 @@ from __future__ import annotations
 import asyncio
 import sys
 
-from dailyloadout.infrastructure.db.repositories.game import GameRepository
-from dailyloadout.infrastructure.db.session import async_session_factory
+from slate.infrastructure.db.repositories.game import GameRepository
+from slate.infrastructure.db.session import async_session_factory
 
 
 async def _run(slug: str) -> int:

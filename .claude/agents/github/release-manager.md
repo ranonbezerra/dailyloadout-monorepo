@@ -82,14 +82,14 @@ hooks:
 # GitHub Release Manager
 
 ## Purpose
-Automated release coordination and deployment with swarm orchestration for seamless version management, testing, and deployment across the DailyLoadout monorepo packages, enhanced with **self-learning** and **continuous improvement** capabilities powered by Agentic-Flow v3.0.0-alpha.1.
+Automated release coordination and deployment with swarm orchestration for seamless version management, testing, and deployment across the Slate monorepo packages, enhanced with **self-learning** and **continuous improvement** capabilities powered by Agentic-Flow v3.0.0-alpha.1.
 
-## DailyLoadout Context
-- **Monorepo packages**: packages/api (FastAPI, Python 3.14), packages/web (React, Mantine, Bun), packages/app (Flutter)
+## Slate Context
+- **Monorepo packages**: packages/api (FastAPI, Python 3.14), packages/web (React, Mantine, Bun), packages/mobile (Flutter)
 - **Tooling**: uv (Python deps), bun (TS deps), Alembic (migrations), Taskiq (workers), Biome (lint)
 - **Coverage target**: 90% minimum across all packages
 - **Branch strategy**: epic/* -> main, release/* for versioned releases
-- **Domain**: Library, Missions, Loadouts, Captures
+- **Domain**: Library, PlaySessions, Picks, Captures
 
 ## Core Capabilities
 - **Automated release pipelines** with comprehensive testing (90% coverage gate)
@@ -168,7 +168,7 @@ mcp__claude-flow__agent_spawn { type: "analyst", name: "Deployment Analyst" }
 // Create release preparation branch
 mcp__github__create_branch {
   owner: "ranonbezerra",
-  repo: "dailyloadout-monorepo",
+  repo: "slate-monorepo",
   branch: "release/v1.1.0",
   from_branch: "main"
 }
@@ -186,7 +186,7 @@ mcp__claude-flow__task_orchestrate {
 // Update versions across packages
 mcp__github__push_files {
   owner: "ranonbezerra",
-  repo: "dailyloadout-monorepo",
+  repo: "slate-monorepo",
   branch: "release/v1.1.0",
   files: [
     {
@@ -204,14 +204,14 @@ mcp__github__push_files {
 ## [1.1.0] - ${new Date().toISOString().split('T')[0]}
 
 ### Added
-- Mission briefing with LLM-powered analysis
-- Loadout auto-picker AI integration
-- Debrief extraction with Taskiq workers
+- PlaySession recap with LLM-powered analysis
+- Pick auto-picker AI integration
+- WrapUp extraction with Taskiq workers
 
 ### Changed
-- Mantine UI components for mission flow
+- Mantine UI components for play session flow
 - Biome lint configuration updates
-- Alembic migration for missions table
+- Alembic migration for play sessions table
 
 ### Fixed
 - Jinja2 SSTI vulnerability (SandboxedEnvironment)
@@ -219,7 +219,7 @@ mcp__github__push_files {
 - LLM factory test isolation`
     }
   ],
-  message: "release: Prepare v1.1.0 with mission briefing and loadout features"
+  message: "release: Prepare v1.1.0 with play session recap and pick features"
 }
 ```
 
@@ -231,27 +231,27 @@ Bash("cd packages/api && uv run alembic check")
 Bash("cd packages/web && bun test --coverage")
 Bash("cd packages/web && bun run biome check src/")
 Bash("cd packages/web && bun run build")
-Bash("cd packages/app && flutter test --coverage")
+Bash("cd packages/mobile && flutter test --coverage")
 
 // Create release PR with validation results
 mcp__github__create_pull_request {
   owner: "ranonbezerra",
-  repo: "dailyloadout-monorepo",
-  title: "Release v1.1.0: Mission Briefing and Loadout Features",
+  repo: "slate-monorepo",
+  title: "Release v1.1.0: PlaySession Recap and Pick Features",
   head: "release/v1.1.0",
   base: "main",
   body: `## Release v1.1.0
 
 ### Release Highlights
-- **Mission Briefing**: LLM-powered mission analysis with Ollama
-- **Loadout Auto-Picker**: AI-driven gear selection from library
-- **Debrief Extraction**: Taskiq workers for post-mission processing
+- **PlaySession Recap**: LLM-powered play session analysis with Ollama
+- **Pick Auto-Selector**: AI-driven game selection from library
+- **WrapUp Extraction**: Taskiq workers for post-play session processing
 - **Security Hardening**: SSTI mitigation, JWT production guard
 
 ### Package Updates
-- **packages/api**: Mission endpoints, Alembic migrations, Taskiq workers
+- **packages/api**: PlaySession endpoints, Alembic migrations, Taskiq workers
 - **packages/web**: Mantine modals, React hooks, Biome compliance
-- **packages/app**: Flutter mission screens
+- **packages/mobile**: Flutter play session screens
 
 ### Validation Results
 - [x] API tests: 90%+ coverage
@@ -271,7 +271,7 @@ Generated with Claude Code`
 ```javascript
 const versionStrategy = {
   major: "Breaking changes or architecture overhauls",
-  minor: "New EPICs (missions, loadouts), feature additions",
+  minor: "New EPICs (play sessions, picks), feature additions",
   patch: "Bug fixes, security patches, documentation updates",
   coordination: "Cross-package version alignment (api, web, app)"
 }

@@ -1,5 +1,5 @@
 import 'package:app/core/analytics/analytics_models.dart';
-import 'package:app/core/theme/dailyloadout_theme.dart';
+import 'package:app/core/theme/slate_theme.dart';
 import 'package:app/features/analytics/bloc/analytics_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -147,10 +147,15 @@ class _OverviewGrid extends StatelessWidget {
       runSpacing: 8,
       children: [
         _KpiCard(label: 'Total Games', value: '${overview.totalGames}'),
-        _KpiCard(label: 'Sessions (30d)', value: '${overview.missionsLast30d}'),
+        _KpiCard(
+          label: 'Sessions (30d)',
+          value: '${overview.playSessionsLast30d}',
+        ),
         _KpiCard(
           label: 'Avg Session',
-          value: _formatDuration(overview.avgMissionDurationMinutes?.round()),
+          value: _formatDuration(
+            overview.avgPlaySessionDurationMinutes?.round(),
+          ),
         ),
         _LibraryStatusCard(statusCounts: overview.statusCounts),
       ],
@@ -180,7 +185,7 @@ class _KpiCard extends StatelessWidget {
               Text(
                 label,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: DLColors.textMuted,
+                  color: SlateColors.textMuted,
                 ),
               ),
               const SizedBox(height: 4),
@@ -204,11 +209,11 @@ class _LibraryStatusCard extends StatelessWidget {
   final Map<String, int> statusCounts;
 
   static const _statusColors = {
-    'playing': DLColors.green,
+    'playing': SlateColors.green,
     'backlog': Color(0xFFFBBF24), // amber
     'completed': Color(0xFF60A5FA), // blue
-    'dropped': DLColors.red,
-    'paused': DLColors.textDim,
+    'dropped': SlateColors.red,
+    'paused': SlateColors.textDim,
   };
 
   @override
@@ -227,7 +232,7 @@ class _LibraryStatusCard extends StatelessWidget {
               Text(
                 'Library Status',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: DLColors.textMuted,
+                  color: SlateColors.textMuted,
                 ),
               ),
               const SizedBox(height: 8),
@@ -235,7 +240,7 @@ class _LibraryStatusCard extends StatelessWidget {
                 spacing: 4,
                 runSpacing: 4,
                 children: statusCounts.entries.map((e) {
-                  final color = _statusColors[e.key] ?? DLColors.textDim;
+                  final color = _statusColors[e.key] ?? SlateColors.textDim;
                   return _StatusChip(
                     label: '${e.key} ${e.value}',
                     color: color,
@@ -302,10 +307,10 @@ class _PlayActivitySection extends StatelessWidget {
   ];
 
   Color _dayColor(int count) {
-    if (count == 0) return DLColors.surface2;
+    if (count == 0) return SlateColors.surface2;
     if (count == 1) return const Color(0xFF2D6A4F);
     if (count <= 3) return const Color(0xFF40916C);
-    return DLColors.green;
+    return SlateColors.green;
   }
 
   @override
@@ -362,7 +367,7 @@ class _PlayActivitySection extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.visible,
                       style: theme.textTheme.labelSmall?.copyWith(
-                        color: DLColors.textMuted,
+                        color: SlateColors.textMuted,
                         fontSize: 10,
                       ),
                     ),
@@ -384,7 +389,7 @@ class _PlayActivitySection extends StatelessWidget {
                           child: Text(
                             {1, 3, 5}.contains(i) ? _dayLabels[i] : '',
                             style: theme.textTheme.labelSmall?.copyWith(
-                              color: DLColors.textMuted,
+                              color: SlateColors.textMuted,
                               fontSize: 10,
                               height: 1,
                             ),
@@ -470,9 +475,9 @@ class _GenreSection extends StatelessWidget {
   final List<GenreStat> genres;
 
   static const _palette = [
-    DLColors.coral,
-    DLColors.violet,
-    DLColors.green,
+    SlateColors.coral,
+    SlateColors.violet,
+    SlateColors.green,
     Color(0xFF60A5FA),
     Color(0xFFFBBF24),
     Color(0xFFF472B6),
@@ -531,7 +536,7 @@ class _GenreRow extends StatelessWidget {
           width: 80,
           child: Text(
             genre.genre,
-            style: theme.textTheme.bodySmall?.copyWith(color: DLColors.text),
+            style: theme.textTheme.bodySmall?.copyWith(color: SlateColors.text),
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -557,7 +562,7 @@ class _GenreRow extends StatelessWidget {
         Text(
           _formatDuration(genre.totalMinutes),
           style: theme.textTheme.labelSmall?.copyWith(
-            color: DLColors.textMuted,
+            color: SlateColors.textMuted,
           ),
         ),
       ],
@@ -582,7 +587,7 @@ class _PlatformsSection extends StatelessWidget {
           ? Text(
               'No platform data yet.',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: DLColors.textMuted,
+                color: SlateColors.textMuted,
               ),
             )
           : Column(
@@ -590,7 +595,7 @@ class _PlatformsSection extends StatelessWidget {
                 for (var i = 0; i < platforms.length; i++) ...[
                   _PlatformRow(platform: platforms[i]),
                   if (i != platforms.length - 1)
-                    const Divider(height: 16, color: DLColors.lineSoft),
+                    const Divider(height: 16, color: SlateColors.lineSoft),
                 ],
               ],
             ),
@@ -612,7 +617,9 @@ class _PlatformRow extends StatelessWidget {
         Expanded(
           child: Text(
             platform.platformLabel,
-            style: theme.textTheme.bodyMedium?.copyWith(color: DLColors.text),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: SlateColors.text,
+            ),
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -627,8 +634,8 @@ class _PlatformRow extends StatelessWidget {
               children: [
                 _MetricBadge(label: '${platform.gameCount} games'),
                 _MetricBadge(
-                  label: '${platform.missionCount} sessions',
-                  color: DLColors.green,
+                  label: '${platform.playSessionCount} sessions',
+                  color: SlateColors.green,
                 ),
                 _MetricBadge(label: _formatDuration(platform.totalMinutes)),
               ],
@@ -641,7 +648,7 @@ class _PlatformRow extends StatelessWidget {
 }
 
 class _MetricBadge extends StatelessWidget {
-  const _MetricBadge({required this.label, this.color = DLColors.violet});
+  const _MetricBadge({required this.label, this.color = SlateColors.violet});
 
   final String label;
   final Color color;
@@ -799,7 +806,7 @@ class _TimelineCard extends StatelessWidget {
               runSpacing: 4,
               children: [
                 Chip(label: Text(entry.platformLabel)),
-                Chip(label: Text(entry.missionType)),
+                Chip(label: Text(entry.playSessionType)),
               ],
             ),
             const SizedBox(height: 6),
@@ -832,12 +839,12 @@ class _TimelineCard extends StatelessWidget {
                 ),
               ],
             ),
-            if (entry.debriefText != null) ...[
+            if (entry.wrapUpText != null) ...[
               const SizedBox(height: 8),
               Text(
-                entry.debriefText!,
+                entry.wrapUpText!,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: DLColors.textMuted,
+                  color: SlateColors.textMuted,
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,

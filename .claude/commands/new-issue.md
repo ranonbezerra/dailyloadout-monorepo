@@ -15,7 +15,7 @@ If no flag, ask the user which tracker to use.
 
 ### 1. Collect information
 Ask the user:
-- **Title**: brief description (max 80 chars)
+- **Title**: short description (max 80 chars)
 - **Type**: feature | bug | chore | refactor | docs | test
 - **System**: api | web | app | infra
 - **Description**: what needs to be done and why
@@ -44,7 +44,7 @@ EOF
 
 ### 2b. Create Linear issue
 
-- `mcp__linear-server__list_teams` -> get DailyLoadout team
+- `mcp__linear-server__list_teams` -> get Slate team
 - `mcp__linear-server__list_projects` -> get correct project based on system
 - `mcp__linear-server__list_issue_labels` -> list available labels
 - `mcp__linear-server__save_issue` with:
@@ -64,9 +64,9 @@ EOF
 ```
 ## Issue created!
 
-**ID:** #42 / DL-24
+**ID:** #42 / SLA-24
 **Title:** [title]
 **URL:** [url]
 
-To start working: /start #42 (or /start DL-24)
+To start working: /start #42 (or /start SLA-24)
 ```

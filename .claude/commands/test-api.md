@@ -9,8 +9,8 @@ Run the backend tests (packages/api) with pytest.
 
 Examples:
 - `/test-api` -> run all tests
-- `/test-api mission` -> run tests matching "mission" in path or name
-- `/test-api test_create_loadout` -> run specific test
+- `/test-api play session` -> run tests matching "play session" in path or name
+- `/test-api test_create_pick` -> run specific test
 
 ## Execution
 
@@ -33,4 +33,4 @@ cd packages/api && poetry run pytest -v
 
 - If all pass: report how many passed
 - If any fail: read the traceback and suggest the fix
-- If coverage is relevant: run with `--cov=src/dailyloadout --cov-report=term-missing` to see gaps
+- If coverage is relevant: run with `--cov=src/slate --cov-report=term-missing` to see gaps

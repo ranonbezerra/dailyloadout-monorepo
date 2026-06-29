@@ -1,0 +1,10 @@
+[Unit]
+Description=Slate Postgres backup (pg_dump -> gzip -> off-host)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/slate/backup.env
+# Adjust the path to wherever the repo is checked out on the host.
+ExecStart=/opt/slate/infra/backup/backup-db.sh

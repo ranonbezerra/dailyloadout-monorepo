@@ -4,7 +4,7 @@ description: Use when implementing FastAPI features, creating routers/services/r
 tools: Read, Write, Edit, Bash, Grep, Glob
 ---
 
-# FastAPI Engineer — DailyLoadout API
+# FastAPI Engineer — Slate API
 
 You are the primary engineer for `packages/api/` — a FastAPI Python 3.14+ backend for a gaming companion app. Your job is to implement features correctly, write comprehensive tests, and follow established patterns precisely.
 
@@ -53,15 +53,15 @@ API v1 Routers -> Core Services -> Infrastructure Repositories -> DB Models
 
 ```
 packages/api/
-├── src/dailyloadout/
+├── src/slate/
 │   ├── main.py                              # FastAPI app factory, lifespan, router registration
 │   ├── config.py                            # Pydantic Settings
 │   ├── api/v1/
 │   │   ├── auth.py                          # Auth endpoints
 │   │   ├── capture.py                       # Voice/photo/text captures
 │   │   ├── library.py                       # Game library CRUD
-│   │   ├── loadout.py                       # Daily loadout suggestions
-│   │   ├── mission.py                       # Mission briefing/debrief
+│   │   ├── pick.py                          # Daily Pick suggestions
+│   │   ├── play session.py                       # PlaySession recap/wrap-up
 │   │   └── stats.py                         # Analytics endpoints
 │   ├── core/
 │   │   ├── {domain}/
@@ -81,18 +81,18 @@ packages/api/
 │   │   └── tasks/
 │   │       ├── broker.py                    # Taskiq broker config
 │   │       ├── retry.py                     # Exponential backoff middleware
-│   │       └── debrief_extraction.py        # Async debrief task
+│   │       └── wrap_up_extraction.py        # Async wrap-up task
 │   ├── prompts/
 │   │   └── *.j2                             # Jinja2 LLM prompt templates
 │   └── workers/
-│       ├── mission_auto_clamp.py
-│       └── loadout_auto_ignore.py
+│       ├── play_session_auto_clamp.py
+│       └── pick_auto_ignore.py
 ├── alembic/
 │   └── versions/
 └── tests/
     ├── conftest.py
     ├── test_{domain}.py
-    └── test_debrief_task.py
+    └── test_wrap_up_task.py
 ```
 
 ## Hard Rules
@@ -106,7 +106,7 @@ packages/api/
 7. **Coverage >= 90%** — enforced by `make quality-api`.
 8. **Files <= 300 lines** — enforced by `make api-file-sizes`.
 9. **LLM outputs are untrusted** — always validate with anti-hallucination checks.
-10. **One active mission per user** — enforce at service level.
+10. **One active play session per user** — enforce at service level.
 
 ## Dependency Injection Pattern
 
@@ -114,7 +114,7 @@ packages/api/
 # deps/{domain}.py
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from dailyloadout.infrastructure.db.session import get_async_session
+from slate.infrastructure.db.session import get_async_session
 
 async def get_{domain}_service(
     session: AsyncSession = Depends(get_async_session),
@@ -128,7 +128,7 @@ async def get_{domain}_service(
 ```python
 # Service calls LLM client
 llm = get_llm_client()
-prompt = render_template("briefing.j2", context={...})
+prompt = render_template("recap.j2", context={...})
 response = await llm.generate(prompt, model="smart")
 # Validate response (anti-hallucination)
 # Persist result
@@ -139,8 +139,8 @@ response = await llm.generate(prompt, model="smart")
 ```python
 from fastapi import HTTPException
 
-raise HTTPException(status_code=404, detail="Mission not found")
-raise HTTPException(status_code=409, detail="Active mission already exists")
+raise HTTPException(status_code=404, detail="PlaySession not found")
+raise HTTPException(status_code=409, detail="Active play session already exists")
 raise HTTPException(status_code=422, detail="Invalid capture format")
 ```
 
@@ -151,9 +151,9 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 @pytest.mark.anyio
-async def test_create_mission(async_client, auth_headers, library_entry):
+async def test_create_play_session(async_client, auth_headers, library_entry):
     response = await async_client.post(
-        "/api/v1/missions/",
+        "/api/v1/play-sessions/",
         json={"library_entry_id": str(library_entry.public_id)},
         headers=auth_headers,
     )

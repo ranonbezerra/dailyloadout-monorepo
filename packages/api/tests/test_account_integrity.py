@@ -14,12 +14,12 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy import select, update
 
-from dailyloadout.config import Settings, _validate_production_settings, settings
-from dailyloadout.core.auth.security import (
+from slate.config import Settings, _validate_production_settings, settings
+from slate.core.auth.security import (
     create_email_verification_token,
     decode_email_verification_token,
 )
-from dailyloadout.infrastructure.db.models import User
+from slate.infrastructure.db.models import User
 from tests.conftest import _TestSessionFactory
 
 
@@ -78,7 +78,7 @@ class TestVerifyEmail:
             decode_email_verification_token("not-a-jwt")
 
     async def test_decode_rejects_access_token_purpose(self) -> None:
-        from dailyloadout.core.auth.security import create_access_token
+        from slate.core.auth.security import create_access_token
 
         access = create_access_token("some-uuid", token_version=0)
         with pytest.raises(ValueError, match="Invalid or expired"):
@@ -228,10 +228,10 @@ class TestVerifiedGate:
         assert resp.status_code == 403
         assert resp.json()["detail"] == "Email not verified"
 
-    async def test_loadout_create_blocked_when_unverified(self, async_client: AsyncClient) -> None:
+    async def test_pick_create_blocked_when_unverified(self, async_client: AsyncClient) -> None:
         headers = await self._unverified_headers(async_client)
         resp = await async_client.post(
-            "/v1/loadouts",
+            "/v1/picks",
             json={"mood": "chill", "available_minutes": 30, "mental_energy": "low"},
             headers=headers,
         )
@@ -331,7 +331,7 @@ class TestConstantTimeLogin:
         assert resp.status_code == 401
 
     async def test_dummy_verify_runs(self) -> None:
-        from dailyloadout.core.auth.security import verify_password_dummy
+        from slate.core.auth.security import verify_password_dummy
 
         # Should execute a bcrypt check without raising or matching.
         verify_password_dummy("whatever")

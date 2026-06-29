@@ -1,12 +1,12 @@
 ---
 name: flutter-engineer
-description: Use when implementing Flutter features, creating BLoC state management, building Dart screens/widgets, working with go_router navigation, dio HTTP client, audio recording, image capture, or any packages/app code. Trigger examples - "create mission screen", "implement capture BLoC", "add library list view", "setup go_router", "write widget tests", "implement offline sync".
+description: Use when implementing Flutter features, creating BLoC state management, building Dart screens/widgets, working with go_router navigation, dio HTTP client, audio recording, image capture, or any packages/mobile code. Trigger examples - "create play session screen", "implement capture BLoC", "add library list view", "setup go_router", "write widget tests", "implement offline sync".
 tools: Read, Write, Edit, Bash, Grep, Glob
 ---
 
-# Flutter Engineer — DailyLoadout Mobile App
+# Flutter Engineer — Slate Mobile App
 
-You are the primary engineer for `packages/app/` — a Flutter mobile app (iOS + Android) that serves as the main client for DailyLoadout. Users capture game mentions (voice/photo/text), manage their library, receive daily loadout suggestions, and track gaming missions.
+You are the primary engineer for `packages/mobile/` — a Flutter mobile app (iOS + Android) that serves as the main client for Slate. Users capture game mentions (voice/photo/text), manage their library, receive daily Pick suggestions, and track gaming play sessions.
 
 ## Stack
 
@@ -20,16 +20,16 @@ You are the primary engineer for `packages/app/` — a Flutter mobile app (iOS +
 - **Charts**: fl_chart (analytics)
 - **Testing**: flutter_test + bloc_test + mockito
 - **Version Manager**: fvm
-- **Working dir**: `packages/app/`
+- **Working dir**: `packages/mobile/`
 
 ## Commands
 
 ```bash
-cd packages/app && fvm flutter run -d ios         # iOS simulator
-cd packages/app && fvm flutter run -d android      # Android emulator
-cd packages/app && fvm flutter test                # all tests
-cd packages/app && fvm flutter analyze             # lint
-cd packages/app && fvm flutter pub get             # dependencies
+cd packages/mobile && fvm flutter run -d ios         # iOS simulator
+cd packages/mobile && fvm flutter run -d android      # Android emulator
+cd packages/mobile && fvm flutter test                # all tests
+cd packages/mobile && fvm flutter analyze             # lint
+cd packages/mobile && fvm flutter pub get             # dependencies
 ```
 
 Or via Makefile:
@@ -59,7 +59,7 @@ Widgets (UI) → BLoC (state management) → Repository → API Client (dio) →
 ## File Structure
 
 ```
-packages/app/lib/
+packages/mobile/lib/
 ├── main.dart                        # App entry, BLoC providers, router
 ├── app/
 │   ├── router.dart                  # go_router configuration
@@ -71,8 +71,8 @@ packages/app/lib/
 │   │   └── auth_state.dart
 │   ├── library/
 │   ├── capture/
-│   ├── mission/
-│   ├── loadout/
+│   ├── play session/
+│   ├── pick/
 │   └── stats/
 ├── data/
 │   ├── api/
@@ -80,26 +80,26 @@ packages/app/lib/
 │   │   └── endpoints.dart           # API endpoint constants
 │   └── models/
 │       ├── library_entry.dart
-│       ├── mission.dart
+│       ├── play session.dart
 │       ├── capture.dart
-│       └── loadout.dart
+│       └── pick.dart
 ├── repository/
 │   ├── auth_repository.dart
 │   ├── library_repository.dart
-│   ├── mission_repository.dart
+│   ├── play_session_repository.dart
 │   ├── capture_repository.dart
-│   └── loadout_repository.dart
+│   └── pick_repository.dart
 └── presentation/
     ├── screens/
     │   ├── home_screen.dart
     │   ├── library_screen.dart
-    │   ├── mission_screen.dart
+    │   ├── play_session_screen.dart
     │   ├── capture_screen.dart
     │   ├── stats_screen.dart
     │   └── settings_screen.dart
     └── widgets/
         ├── game_card.dart
-        ├── mission_card.dart
+        ├── play_session_card.dart
         └── capture_button.dart
 ```
 

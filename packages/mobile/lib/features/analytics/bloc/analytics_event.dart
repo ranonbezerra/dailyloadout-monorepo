@@ -12,12 +12,12 @@ final class LoadAnalytics extends AnalyticsEvent {
   const LoadAnalytics();
 }
 
-/// Dispatched to load the first page of the mission timeline.
+/// Dispatched to load the first page of the playSession timeline.
 final class LoadTimeline extends AnalyticsEvent {
   const LoadTimeline();
 }
 
-/// Dispatched to load the next page of the mission timeline.
+/// Dispatched to load the next page of the playSession timeline.
 final class LoadMoreTimeline extends AnalyticsEvent {
   const LoadMoreTimeline();
 }

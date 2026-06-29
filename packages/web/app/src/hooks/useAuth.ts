@@ -6,7 +6,7 @@ import {
 	refreshSession,
 	saveTokens,
 	TURNSTILE_HEADER,
-} from "@dl/shared/api";
+} from "@slate/shared/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { resendVerification as resendVerificationApi, verifyEmail } from "../lib/auth-api";

@@ -1,5 +1,5 @@
 name: app
-description: "DailyLoadout — gaming backlog manager"
+description: "Slate — gaming backlog manager"
 publish_to: 'none'
 
 version: 1.0.0+1

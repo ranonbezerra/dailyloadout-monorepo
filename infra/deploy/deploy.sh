@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# DailyLoadout — migration-gated deploy (run ON the VPS, invoked by CD over SSH).
+# Slate — migration-gated deploy (run ON the VPS, invoked by CD over SSH).
 #
 # The rule: try the migrations FIRST; if they fail, abort the deploy and keep the
 # previous version serving. Order is the gate — migrations run BEFORE the service
@@ -16,17 +16,17 @@
 #   6. health-check; UNHEALTHY? downgrade schema + restore old code + restart
 #
 # Setup on the VPS (see docs/DEPLOYMENT.md §1.10):
-#   - repo at $DL_REPO_DIR (default /opt/dailyloadout)
+#   - repo at $SLATE_REPO_DIR (default /opt/slate)
 #   - the deploy user has passwordless sudo for: systemctl restart
-#     dailyloadout-api dailyloadout-worker
-#   - rclone + /etc/dailyloadout/backup.env configured (Phase 5 of PRELAUNCH)
+#     slate-api slate-worker
+#   - rclone + /etc/slate/backup.env configured (Phase 5 of PRELAUNCH)
 #
 set -euo pipefail
 
-REPO_DIR="${DL_REPO_DIR:-/opt/dailyloadout}"
+REPO_DIR="${SLATE_REPO_DIR:-/opt/slate}"
 API_DIR="$REPO_DIR/packages/api"
-HEALTH_URL="${DL_HEALTH_URL:-http://127.0.0.1:8100/health}"
-SERVICES="dailyloadout-api dailyloadout-worker"
+HEALTH_URL="${SLATE_HEALTH_URL:-http://127.0.0.1:8100/health}"
+SERVICES="slate-api slate-worker"
 
 # What to deploy: a git ref — the tag `api/vX.Y.Z` in production, or
 # `origin/main` in staging. Passed as $1 (or $SSH_ORIGINAL_COMMAND's last token
@@ -56,9 +56,9 @@ restore_code() {
 }
 
 # 1. Back up first — a successful-but-wrong migration must be recoverable.
-if [ -x "$REPO_DIR/infra/backup/backup-db.sh" ] && [ -f /etc/dailyloadout/backup.env ]; then
+if [ -x "$REPO_DIR/infra/backup/backup-db.sh" ] && [ -f /etc/slate/backup.env ]; then
   log "pre-deploy backup"
-  set -a; . /etc/dailyloadout/backup.env; set +a
+  set -a; . /etc/slate/backup.env; set +a
   "$REPO_DIR/infra/backup/backup-db.sh" || { log "FATAL: backup failed — aborting deploy"; exit 1; }
 fi
 

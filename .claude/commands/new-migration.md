@@ -1,13 +1,13 @@
 # /new-migration
 
-Create a new Alembic migration for the DailyLoadout API.
+Create a new Alembic migration for the Slate API.
 
 ## Usage
 ```
 /new-migration <description>
 ```
 
-Example: `/new-migration add_playtime_to_missions`
+Example: `/new-migration add_playtime_to_play_sessions`
 
 ## Steps
 

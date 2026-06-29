@@ -4,15 +4,15 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('HomePage', () {
-    testWidgets('renders AppBar with DailyLoadout title', (tester) async {
+    testWidgets('renders AppBar with Slate title', (tester) async {
       await tester.pumpWidget(const MaterialApp(home: HomePage()));
 
       expect(find.byType(AppBar), findsOneWidget);
 
-      // The AppBar title should contain 'DailyLoadout'.
+      // The AppBar title should contain 'Slate'.
       final appBar = tester.widget<AppBar>(find.byType(AppBar));
       final titleWidget = appBar.title! as Text;
-      expect(titleWidget.data, 'DailyLoadout');
+      expect(titleWidget.data, 'Slate');
     });
 
     testWidgets('renders WIP text', (tester) async {

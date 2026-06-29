@@ -1,6 +1,6 @@
 import { createTheme, type MantineColorsTuple } from "@mantine/core";
 
-/// DailyLoadout Mantine theme — "Night Den" (dark-first), coral spotlight +
+/// Slate Mantine theme — "Night Den" (dark-first), coral spotlight +
 /// violet secondary. Mirrors brand/BRAND.md §14.
 ///
 /// Wired in main.tsx: <MantineProvider theme={theme} defaultColorScheme="dark">

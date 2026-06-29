@@ -1,4 +1,4 @@
-# DailyLoadout · Backoffice
+# Slate · Backoffice
 
 The internal **admin** app — a standalone frontend, separate from the player app
 (`packages/web`). Both talk to the same API (`packages/api`): the backoffice uses

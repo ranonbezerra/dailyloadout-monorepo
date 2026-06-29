@@ -31,10 +31,10 @@ void main() {
   }
 
   group('LoginPage', () {
-    testWidgets('renders DailyLoadout title text', (tester) async {
+    testWidgets('renders Slate title text', (tester) async {
       await tester.pumpWidget(buildSubject());
 
-      expect(find.text('DailyLoadout'), findsOneWidget);
+      expect(find.text('Slate'), findsOneWidget);
     });
 
     testWidgets('renders Sign in to your account subtitle', (tester) async {

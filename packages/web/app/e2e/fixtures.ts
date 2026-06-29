@@ -14,7 +14,7 @@ const NOW = "2026-01-01T00:00:00Z";
 const user = {
 	id: 1,
 	public_id: "11111111-1111-1111-1111-111111111111",
-	email: "demo@dailyloadout.dev",
+	email: "demo@slate.dev",
 	display_name: "Demo Player",
 	email_verified: true,
 	locale: "en",
@@ -51,7 +51,7 @@ function platformState(slug: string, status: string, plat = platform) {
 		notes: null,
 		acquired_at: null,
 		last_played_at: null,
-		mission_next_action: null,
+		play_session_next_action: null,
 		created_at: NOW,
 		updated_at: NOW,
 	};
@@ -103,16 +103,16 @@ export const DEFAULT_ROUTES: Record<string, Canned> = {
 		body: [platform, switchPlatform],
 	},
 	"GET /v1/games/genres": { status: 200, body: ["action", "metroidvania", "roguelike"] },
-	"GET /v1/missions/active": { status: 404, body: { detail: "No active mission" } },
-	"GET /v1/missions": { status: 200, body: { items: [], total: 0, limit: 20, offset: 0 } },
+	"GET /v1/play-sessions/active": { status: 404, body: { detail: "No active session" } },
+	"GET /v1/play-sessions": { status: 200, body: { items: [], total: 0, limit: 20, offset: 0 } },
 	"GET /v1/captures": { status: 200, body: { items: [], total: 0, limit: 20, offset: 0 } },
 	"GET /v1/stats/overview": {
 		status: 200,
 		body: {
 			total_games: 3,
 			status_counts: { playing: 1, backlog: 1, completed: 1 },
-			missions_last_30d: 5,
-			avg_mission_duration_minutes: 47,
+			play_sessions_last_30d: 5,
+			avg_play_session_duration_minutes: 47,
 			user_created_at: NOW,
 		},
 	},
@@ -122,7 +122,7 @@ export const DEFAULT_ROUTES: Record<string, Canned> = {
 	},
 	"GET /v1/stats/genres": {
 		status: 200,
-		body: { genres: [{ genre: "action", total_minutes: 120, mission_count: 3 }] },
+		body: { genres: [{ genre: "action", total_minutes: 120, play_session_count: 3 }] },
 	},
 	"GET /v1/stats/platforms": {
 		status: 200,
@@ -132,14 +132,14 @@ export const DEFAULT_ROUTES: Record<string, Canned> = {
 					platform_slug: "pc",
 					platform_label: "PC",
 					game_count: 2,
-					mission_count: 3,
+					play_session_count: 3,
 					total_minutes: 120,
 				},
 			],
 		},
 	},
 	"GET /v1/stats/timeline": { status: 200, body: { items: [], total: 0 } },
-	"GET /v1/loadouts": { status: 200, body: { items: [], total: 0, limit: 20, offset: 0 } },
+	"GET /v1/picks": { status: 200, body: { items: [], total: 0, limit: 20, offset: 0 } },
 };
 
 // A small SSE stream for the concierge chat endpoint.

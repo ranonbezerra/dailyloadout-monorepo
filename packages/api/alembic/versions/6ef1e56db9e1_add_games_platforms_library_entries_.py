@@ -83,7 +83,7 @@ def upgrade() -> None:
         sa.Column("status", sa.String(), nullable=False),
         sa.Column("acquired_at", sa.Date(), nullable=True),
         sa.Column("last_played_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("mission_next_action", sa.String(), nullable=True),
+        sa.Column("play_session_next_action", sa.String(), nullable=True),
         sa.Column("notes", sa.Text(), nullable=True),
         sa.Column(
             "created_at",

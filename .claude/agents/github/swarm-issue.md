@@ -33,13 +33,13 @@ hooks:
 # Swarm Issue - Issue-Based Swarm Coordination
 
 ## Overview
-Transform GitHub Issues into intelligent swarm tasks for the DailyLoadout monorepo, enabling automatic task decomposition and agent coordination with advanced multi-agent orchestration.
+Transform GitHub Issues into intelligent swarm tasks for the Slate monorepo, enabling automatic task decomposition and agent coordination with advanced multi-agent orchestration.
 
-## DailyLoadout Context
-- **Monorepo**: ranonbezerra/dailyloadout-monorepo
-- **Packages**: packages/api (FastAPI, Python 3.14), packages/web (React, Mantine, Bun), packages/app (Flutter)
-- **EPIC structure**: Issues organized by EPICs (Mission Briefing, Capture Photo, etc.)
-- **Domain**: Library, Missions, Loadouts, Captures
+## Slate Context
+- **Monorepo**: ranonbezerra/slate-monorepo
+- **Packages**: packages/api (FastAPI, Python 3.14), packages/web (React, Mantine, Bun), packages/mobile (Flutter)
+- **EPIC structure**: Issues organized by EPICs (PlaySession Recap, Capture Photo, etc.)
+- **Domain**: Library, PlaySessions, Picks, Captures
 - **Tooling**: uv, bun, Alembic, Taskiq, Biome
 - **Coverage target**: 90% minimum
 
@@ -81,7 +81,7 @@ Execute swarm operations via issue comments:
 /swarm start
 ```
 
-### 3. Issue Templates for DailyLoadout
+### 3. Issue Templates for Slate
 
 ```markdown
 <!-- .github/ISSUE_TEMPLATE/epic-task.yml -->
@@ -94,8 +94,8 @@ body:
       label: Domain Area
       options:
         - library
-        - missions
-        - loadouts
+        - play sessions
+        - picks
         - captures
   - type: checkboxes
     id: packages
@@ -104,7 +104,7 @@ body:
       options:
         - label: packages/api
         - label: packages/web
-        - label: packages/app
+        - label: packages/mobile
   - type: textarea
     id: tasks
     attributes:
@@ -129,12 +129,12 @@ body:
       "agents": ["debugger", "tester"]
     },
     {
-      "keywords": ["mission", "briefing", "debrief"],
-      "labels": ["mission", "swarm-feature"],
+      "keywords": ["play session", "recap", "wrap-up"],
+      "labels": ["play session", "swarm-feature"],
       "agents": ["architect", "coder", "tester"]
     },
     {
-      "keywords": ["loadout", "gear", "equipment", "library"],
+      "keywords": ["pick", "gear", "equipment", "library"],
       "labels": ["library", "swarm-feature"],
       "agents": ["coder", "tester"]
     },
@@ -260,7 +260,7 @@ fi
 ```bash
 # EPIC implementation swarm
 npx claude-flow@v3alpha github feature-swarm 456 \
-  --packages "packages/api,packages/web,packages/app" \
+  --packages "packages/api,packages/web,packages/mobile" \
   --design \
   --implement \
   --test-coverage-90 \
@@ -322,8 +322,8 @@ mcp__claude-flow__task_orchestrate {
 - Include complexity estimates
 
 ### 2. Label Strategy
-- Domain labels: mission, loadout, capture, library
-- Package labels: packages/api, packages/web, packages/app
+- Domain labels: play session, pick, capture, library
+- Package labels: packages/api, packages/web, packages/mobile
 - Status labels: in-progress, review, blocked
 - Priority indicators for swarm
 

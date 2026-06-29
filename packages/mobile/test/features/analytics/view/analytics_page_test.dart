@@ -17,8 +17,8 @@ class MockAnalyticsBloc extends MockBloc<AnalyticsEvent, AnalyticsState>
 final _overview = StatsOverview(
   totalGames: 42,
   statusCounts: const {'playing': 5, 'backlog': 20, 'completed': 10},
-  missionsLast30d: 15,
-  avgMissionDurationMinutes: 90.5,
+  playSessionsLast30d: 15,
+  avgPlaySessionDurationMinutes: 90.5,
   userCreatedAt: DateTime.utc(2024),
 );
 
@@ -28,8 +28,8 @@ const _heatmap = PlayHeatmap(
 
 const _genreStats = GenreStats(
   genres: [
-    GenreStat(genre: 'RPG', totalMinutes: 600, missionCount: 10),
-    GenreStat(genre: 'Action', totalMinutes: 300, missionCount: 5),
+    GenreStat(genre: 'RPG', totalMinutes: 600, playSessionCount: 10),
+    GenreStat(genre: 'Action', totalMinutes: 300, playSessionCount: 5),
   ],
 );
 
@@ -39,14 +39,14 @@ const _platformStats = PlatformStats(
       platformSlug: 'ps5',
       platformLabel: 'PlayStation 5',
       gameCount: 12,
-      missionCount: 8,
+      playSessionCount: 8,
       totalMinutes: 480,
     ),
     PlatformStat(
       platformSlug: 'pc',
       platformLabel: 'PC',
       gameCount: 30,
-      missionCount: 20,
+      playSessionCount: 20,
       totalMinutes: 1200,
     ),
   ],
@@ -56,7 +56,7 @@ final _timelineEntry = TimelineEntry(
   publicId: 'tl-001',
   gameTitle: 'Elden Ring',
   platformLabel: 'PlayStation 5',
-  missionType: 'regular',
+  playSessionType: 'regular',
   startedAt: DateTime.utc(2025, 6, 10, 14),
   endedAt: DateTime.utc(2025, 6, 10, 16, 30),
   durationMinutes: 150,
@@ -66,7 +66,7 @@ final _timelineEntry2 = TimelineEntry(
   publicId: 'tl-002',
   gameTitle: 'Hollow Knight',
   platformLabel: 'PC',
-  missionType: 'regular',
+  playSessionType: 'regular',
   startedAt: DateTime.utc(2025, 6, 11, 10),
   endedAt: DateTime.utc(2025, 6, 11, 12),
   durationMinutes: 120,

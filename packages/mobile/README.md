@@ -1,6 +1,6 @@
 # app
 
-DailyLoadout — gaming backlog manager
+Slate — gaming backlog manager
 
 ## Getting Started
 

@@ -40,13 +40,13 @@ hooks:
 # Release Swarm - Intelligent Release Automation
 
 ## Overview
-Orchestrate complex software releases using AI swarms that handle everything from changelog generation to multi-platform deployment for the DailyLoadout monorepo.
+Orchestrate complex software releases using AI swarms that handle everything from changelog generation to multi-platform deployment for the Slate monorepo.
 
-## DailyLoadout Context
-- **Monorepo packages**: packages/api (FastAPI, Python 3.14), packages/web (React, Mantine, Bun), packages/app (Flutter)
+## Slate Context
+- **Monorepo packages**: packages/api (FastAPI, Python 3.14), packages/web (React, Mantine, Bun), packages/mobile (Flutter)
 - **Tooling**: uv, bun, Alembic, Taskiq, Biome
 - **Coverage target**: 90% minimum
-- **Domain**: Library, Missions, Loadouts, Captures
+- **Domain**: Library, PlaySessions, Picks, Captures
 
 ## Core Features
 
@@ -55,7 +55,7 @@ Orchestrate complex software releases using AI swarms that handle everything fro
 # Plan next release using gh CLI
 # Get commit history since last release
 LAST_TAG=$(gh release list --limit 1 --json tagName -q '.[0].tagName')
-COMMITS=$(gh api repos/ranonbezerra/dailyloadout-monorepo/compare/${LAST_TAG}...HEAD --jq '.commits')
+COMMITS=$(gh api repos/ranonbezerra/slate-monorepo/compare/${LAST_TAG}...HEAD --jq '.commits')
 
 # Get merged PRs
 MERGED_PRS=$(gh pr list --state merged --base main --json number,title,labels,mergedAt \
@@ -85,14 +85,14 @@ npx claude-flow@v3alpha github release-version \
 ```bash
 # Full release automation with gh CLI
 # Generate changelog from PRs and commits
-CHANGELOG=$(gh api repos/ranonbezerra/dailyloadout-monorepo/compare/${LAST_TAG}...HEAD \
+CHANGELOG=$(gh api repos/ranonbezerra/slate-monorepo/compare/${LAST_TAG}...HEAD \
   --jq '.commits[].commit.message' | \
   npx claude-flow@v3alpha github generate-changelog)
 
 # Create release draft
 gh release create v1.1.0 \
   --draft \
-  --title "Release v1.1.0 - Mission Briefing & Loadout Features" \
+  --title "Release v1.1.0 - PlaySession Recap & Pick Features" \
   --notes "$CHANGELOG" \
   --target main
 
@@ -145,8 +145,8 @@ release:
       test: cd packages/web && bun test --coverage
 
     - name: docker-image
-      build: docker build -t dailyloadout-api:$VERSION packages/api
-      publish: docker push dailyloadout-api:$VERSION
+      build: docker build -t slate-api:$VERSION packages/api
+      publish: docker push slate-api:$VERSION
 
   deployment:
     environments:
@@ -191,7 +191,7 @@ cd packages/api && uv run pytest --cov --cov-fail-under=90
 cd packages/api && uv run alembic check
 cd packages/web && bun test --coverage
 cd packages/web && bun run biome check src/
-cd packages/app && flutter test --coverage
+cd packages/mobile && flutter test --coverage
 ```
 
 ### Deploy Agent

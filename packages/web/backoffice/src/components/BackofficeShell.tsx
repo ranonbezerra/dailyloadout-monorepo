@@ -22,8 +22,8 @@ const NAV = [
 	{ path: "/users", label: "Users", icon: IconUsers },
 	{ path: "/games", label: "Catalogue", icon: IconDeviceGamepad2 },
 	{ path: "/captures", label: "Captures", icon: IconCamera },
-	{ path: "/missions", label: "Missions", icon: IconTargetArrow },
-	{ path: "/loadouts", label: "Loadouts", icon: IconBolt },
+	{ path: "/play-sessions", label: "Sessions", icon: IconTargetArrow },
+	{ path: "/picks", label: "Picks", icon: IconBolt },
 	{ path: "/config", label: "Config", icon: IconSettings },
 	{ path: "/audit", label: "Audit log", icon: IconHistory },
 ];
@@ -70,7 +70,7 @@ export function BackofficeShell({ children }: { children: ReactNode }) {
 								BACKOFFICE
 							</Text>
 							<Text size="xs" c="dimmed">
-								DailyLoadout
+								Slate
 							</Text>
 						</Group>
 						<Badge color="violet" variant="light" size="xs" radius="sm">

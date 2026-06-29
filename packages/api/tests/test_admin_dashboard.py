@@ -1,7 +1,7 @@
 """Backoffice (Epic 21) Phase 4: dashboard aggregate endpoint.
 
 `GET /internal/v1/dashboard` returns at-a-glance counts (users/banned/unverified/
-admins, active missions, catalogue size, config overrides) plus the most recent
+admins, active play_sessions, catalogue size, config overrides) plus the most recent
 admin actions. Admin-gated like the rest of the backoffice.
 """
 
@@ -12,8 +12,8 @@ from typing import Any
 from httpx import AsyncClient
 from sqlalchemy import select
 
-from dailyloadout.infrastructure.db.models import Game, User
-from dailyloadout.infrastructure.db.repositories.admin import AdminRepository
+from slate.infrastructure.db.models import Game, User
+from slate.infrastructure.db.repositories.admin import AdminRepository
 from tests.conftest import _TestSessionFactory
 
 
@@ -86,7 +86,7 @@ class TestDashboard:
         assert body["users_unverified"] == 1
         assert body["admins"] == 1
         assert body["catalogue_size"] == 1
-        assert body["missions_active"] == 0
+        assert body["play_sessions_active"] == 0
         assert body["config_overrides"] == 0
         assert body["recent_actions"]
         assert body["recent_actions"][0]["action"] == "user.unban"

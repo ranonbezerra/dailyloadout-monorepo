@@ -13,7 +13,7 @@ from tests.conftest import _TestSessionFactory
 
 
 async def _seed_entry_for(email: str) -> None:
-    from dailyloadout.infrastructure.db.models import Game, LibraryEntry, Platform, User
+    from slate.infrastructure.db.models import Game, LibraryEntry, Platform, User
 
     async with _TestSessionFactory() as session:
         user = (await session.execute(select(User).where(User.email == email))).scalar_one()
@@ -93,8 +93,8 @@ async def test_chat_emits_error_event_on_failure(
     async_client: AsyncClient, auth_headers: dict[str, str]
 ) -> None:
     """An agent failure degrades to a clean SSE error event, not a 500."""
-    from dailyloadout.deps.concierge import get_concierge_service
-    from dailyloadout.main import app
+    from slate.deps.concierge import get_concierge_service
+    from slate.main import app
 
     class _BoomService:
         async def reply(self, **_: object) -> str:
@@ -122,9 +122,9 @@ async def test_chat_times_out_without_hanging(
     """A stalled agent closes the stream with a timeout event, never hangs."""
     import asyncio
 
-    from dailyloadout.api.v1 import concierge as concierge_module
-    from dailyloadout.deps.concierge import get_concierge_service
-    from dailyloadout.main import app
+    from slate.api.v1 import concierge as concierge_module
+    from slate.deps.concierge import get_concierge_service
+    from slate.main import app
 
     # Make the ceiling tiny and the agent slower than it.
     monkeypatch.setattr(concierge_module, "_REPLY_TIMEOUT_SECONDS", 0.05)

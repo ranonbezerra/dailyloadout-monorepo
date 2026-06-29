@@ -1,17 +1,17 @@
-# DailyLoadout — Ollama Configuration
+# Slate — Ollama Configuration
 
-DailyLoadout uses [Ollama](https://ollama.com) for all LLM inference. This document covers model selection, hardware requirements, and tuning.
+Slate uses [Ollama](https://ollama.com) for all LLM inference. This document covers model selection, hardware requirements, and tuning.
 
 ---
 
 ## Model roles
 
-DailyLoadout uses three model slots, configured via environment variables:
+Slate uses three model slots, configured via environment variables:
 
 | Slot | Default | Used for | Config var |
 | --- | --- | --- | --- |
-| **Fast** | `gemma3:4b` | Capture text parsing, debrief extraction | `OLLAMA_FAST_MODEL` |
-| **Smart** | `gemma3:12b` | Briefings, loadout reasoning | `OLLAMA_SMART_MODEL` |
+| **Fast** | `gemma3:4b` | Capture text parsing, wrap-up extraction | `OLLAMA_FAST_MODEL` |
+| **Smart** | `gemma3:12b` | Recaps, Pick reasoning | `OLLAMA_SMART_MODEL` |
 | **Vision** | `qwen3-vl:4b` | Photo capture (cover/shelf recognition) | `OLLAMA_VISION_MODEL` |
 
 The fast model handles structured extraction (JSON output) where speed matters more than nuance. The smart model handles free-text generation where quality matters. The vision model handles multimodal image input.
@@ -42,7 +42,7 @@ ollama pull qwen3-vl:4b
 | `gemma3:12b` | ~8 GB | ~10-20s |
 | `qwen3-vl:4b` | ~4 GB | ~5-10s per image |
 
-A machine with 16 GB RAM can run all three models (Ollama loads/unloads as needed). Briefings and loadout suggestions will be slower but functional.
+A machine with 16 GB RAM can run all three models (Ollama loads/unloads as needed). Recaps and Pick suggestions will be slower but functional.
 
 ### GPU (NVIDIA)
 
@@ -84,7 +84,7 @@ You can swap any model slot. Some tested alternatives:
 
 | Model | Size | Notes |
 | --- | --- | --- |
-| `llama3.1:8b` | 8B | Lower VRAM, good briefing quality |
+| `llama3.1:8b` | 8B | Lower VRAM, good recap quality |
 | `qwen3:8b` | 8B | Strong reasoning, multilingual |
 | `gemma3:27b` | 27B | Best quality, needs ~16 GB VRAM |
 | `llama3.3:70b` | 70B | Top quality, needs ~40 GB VRAM |
@@ -106,7 +106,7 @@ OLLAMA_SMART_MODEL=gemma3:4b     # same model for both
 OLLAMA_VISION_MODEL=qwen3-vl:4b
 ```
 
-Briefing quality decreases, but the app remains fully functional. The 4B model produces shorter, less nuanced briefings.
+Recap quality decreases, but the app remains fully functional. The 4B model produces shorter, less nuanced recaps.
 
 ---
 
@@ -118,7 +118,7 @@ Briefing quality decreases, but the app remains fully functional. The 4B model p
 LLM_TIMEOUT_SECONDS=60   # default; increase for slow hardware
 ```
 
-Briefings on CPU with `gemma3:12b` may need 90-120s. Set this higher if you see timeout errors in the logs.
+Recaps on CPU with `gemma3:12b` may need 90-120s. Set this higher if you see timeout errors in the logs.
 
 ### Ollama base URL
 
@@ -185,7 +185,7 @@ The `base` model is recommended for most setups. Use `small` if transcription ac
 
 ## LLM provider fallback
 
-DailyLoadout supports an alternative LLM provider via `LLM_PROVIDER`:
+Slate supports an alternative LLM provider via `LLM_PROVIDER`:
 
 | Value | Backend | Requires |
 | --- | --- | --- |

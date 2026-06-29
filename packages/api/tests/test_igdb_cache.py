@@ -9,9 +9,9 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
-from dailyloadout.infrastructure.cache.base import NullCache
-from dailyloadout.infrastructure.igdb.cached import CachedIGDBClient, _cache_key
-from dailyloadout.infrastructure.igdb.schemas import IGDBGame
+from slate.infrastructure.cache.base import NullCache
+from slate.infrastructure.igdb.cached import CachedIGDBClient, _cache_key
+from slate.infrastructure.igdb.schemas import IGDBGame
 
 
 class _FakeCache:

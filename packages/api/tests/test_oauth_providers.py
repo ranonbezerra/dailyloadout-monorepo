@@ -7,8 +7,8 @@ import hashlib
 
 import pytest
 
-from dailyloadout.config import settings
-from dailyloadout.infrastructure.oauth import (
+from slate.config import settings
+from slate.infrastructure.oauth import (
     OAuthError,
     build_authorize_url,
     build_provider,

@@ -10,13 +10,13 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
-from dailyloadout.core.cache.invalidation import invalidate_user_stats
-from dailyloadout.infrastructure.cache.keys import (
+from slate.core.cache.invalidation import invalidate_user_stats
+from slate.infrastructure.cache.keys import (
     digest,
     stats_key,
     stats_namespace,
 )
-from dailyloadout.infrastructure.cache.layer import (
+from slate.infrastructure.cache.layer import (
     cache_stats,
     cached_call,
     reset_cache_stats,

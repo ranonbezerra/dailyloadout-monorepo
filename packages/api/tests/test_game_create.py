@@ -16,7 +16,7 @@ from typing import Any
 import pytest
 from httpx import AsyncClient
 
-from dailyloadout.infrastructure.igdb.schemas import IGDBGame
+from slate.infrastructure.igdb.schemas import IGDBGame
 
 
 class FakeIGDBClient:
@@ -49,8 +49,8 @@ async def _register(client: AsyncClient, email: str) -> dict[str, str]:
 @pytest.fixture
 def use_igdb() -> Callable[[FakeIGDBClient], None]:
     """Override the IGDB client dependency with a fake; cleaned up after the test."""
-    from dailyloadout.deps.capture import get_igdb_client_dep
-    from dailyloadout.main import app
+    from slate.deps.capture import get_igdb_client_dep
+    from slate.main import app
 
     def _apply(fake: FakeIGDBClient) -> None:
         app.dependency_overrides[get_igdb_client_dep] = lambda: fake
@@ -62,8 +62,8 @@ def use_igdb() -> Callable[[FakeIGDBClient], None]:
 async def _restore_igdb() -> AsyncIterator[None]:
     """Restore the default ``None`` IGDB override after each test."""
     yield
-    from dailyloadout.deps.capture import get_igdb_client_dep
-    from dailyloadout.main import app
+    from slate.deps.capture import get_igdb_client_dep
+    from slate.main import app
 
     app.dependency_overrides[get_igdb_client_dep] = lambda: None
 
@@ -159,7 +159,7 @@ class TestReconcile:
 
 async def _seed_global_unenriched(slug: str, title: str) -> str:
     """Insert a GLOBAL (created_by_user_id=None) row lacking IGDB info."""
-    from dailyloadout.infrastructure.db.repositories.game import GameRepository
+    from slate.infrastructure.db.repositories.game import GameRepository
     from tests.conftest import _TestSessionFactory
 
     async with _TestSessionFactory() as session:
@@ -216,7 +216,7 @@ class TestOnTheFlyEnrichment:
         use_igdb: Callable[[FakeIGDBClient], None],
     ) -> None:
         # An already-IGDB row must not be re-enriched / IGDB not even consulted.
-        from dailyloadout.infrastructure.db.repositories.game import GameRepository
+        from slate.infrastructure.db.repositories.game import GameRepository
         from tests.conftest import _TestSessionFactory
 
         async with _TestSessionFactory() as session:
@@ -249,7 +249,7 @@ class TestOnTheFlyEnrichment:
     ) -> None:
         # The matched igdb_id already belongs to a *different* canonical row, so
         # the un-enriched row is left as-is (collision-skip semantics).
-        from dailyloadout.infrastructure.db.repositories.game import GameRepository
+        from slate.infrastructure.db.repositories.game import GameRepository
         from tests.conftest import _TestSessionFactory
 
         async with _TestSessionFactory() as session:
@@ -440,7 +440,7 @@ class TestDistinctOwnerPromotion:
     """A private manual row is promoted to shared once enough users own it."""
 
     async def _seed_platform(self) -> int:
-        from dailyloadout.infrastructure.db.models import Platform
+        from slate.infrastructure.db.models import Platform
         from tests.conftest import _TestSessionFactory
 
         async with _TestSessionFactory() as session:
@@ -515,7 +515,7 @@ class TestDistinctOwnerPromotion:
         auth_headers: dict[str, str],
     ) -> None:
         """Distinct OWNERS, not entries: one user on many platforms stays private."""
-        from dailyloadout.infrastructure.db.models import Platform
+        from slate.infrastructure.db.models import Platform
         from tests.conftest import _TestSessionFactory
 
         async with _TestSessionFactory() as session:

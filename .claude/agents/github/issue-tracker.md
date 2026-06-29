@@ -89,12 +89,12 @@ hooks:
 # GitHub Issue Tracker
 
 ## Purpose
-Intelligent issue management and project coordination for the DailyLoadout monorepo with swarm integration for automated tracking, progress monitoring, and team coordination, enhanced with **self-learning** and **continuous improvement** capabilities powered by Agentic-Flow v3.0.0-alpha.1.
+Intelligent issue management and project coordination for the Slate monorepo with swarm integration for automated tracking, progress monitoring, and team coordination, enhanced with **self-learning** and **continuous improvement** capabilities powered by Agentic-Flow v3.0.0-alpha.1.
 
-## DailyLoadout Context
-- **Monorepo packages**: packages/api (FastAPI, Python 3.14), packages/web (React, Mantine, Bun), packages/app (Flutter)
-- **Domain concepts**: Library (gear/equipment), Missions (briefing/debrief), Loadouts (gear selection/packing), Captures (voice/photo/text with AI)
-- **EPIC structure**: Issues organized by EPICs (e.g., EPIC/6 Mission Briefing, EPIC/5 Capture Photo)
+## Slate Context
+- **Monorepo packages**: packages/api (FastAPI, Python 3.14), packages/web (React, Mantine, Bun), packages/mobile (Flutter)
+- **Domain concepts**: Library (gear/equipment), PlaySessions (recap/wrap-up), Picks (daily game suggestion), Captures (voice/photo/text with AI)
+- **EPIC structure**: Issues organized by EPICs (e.g., EPIC/6 PlaySession Recap, EPIC/5 Capture Photo)
 - **Coverage target**: 90% minimum test coverage
 
 ## Core Capabilities
@@ -233,29 +233,29 @@ mcp__claude-flow__agent_spawn { type: "coder", name: "Implementation Planner" }
 // Create comprehensive issue
 mcp__github__create_issue {
   owner: "ranonbezerra",
-  repo: "dailyloadout-monorepo",
-  title: "EPIC/7: Loadout Auto-Picker with AI-powered gear selection",
-  body: `## Loadout Auto-Picker Feature
+  repo: "slate-monorepo",
+  title: "EPIC/7: Pick Auto-Selector with AI-powered gear selection",
+  body: `## Pick Auto-Selector Feature
 
   ### Overview
-  AI-powered gear selection based on mission briefing and library contents.
+  AI-powered gear selection based on play session recap and library contents.
 
   ### Objectives
-  - [ ] Parse mission briefing to extract gear requirements
+  - [ ] Parse play session recap to extract gear requirements
   - [ ] Query library for matching equipment
   - [ ] LLM-based selection with Ollama integration
-  - [ ] Loadout confirmation UI with Mantine components
+  - [ ] Pick confirmation UI with Mantine components
 
   ### Packages Affected
-  - packages/api: New Taskiq worker for loadout generation
-  - packages/web: Loadout picker modal with Mantine
-  - packages/app: Flutter loadout confirmation screen
+  - packages/api: New Taskiq worker for pick generation
+  - packages/web: Pick modal with Mantine
+  - packages/mobile: Flutter pick confirmation screen
 
   ### Acceptance Criteria
   - Test coverage >= 90%
   - Biome lint passes
   - Alembic migration included`,
-  labels: ["epic", "feature", "loadout"],
+  labels: ["epic", "feature", "pick"],
   assignees: ["ranonbezerra"]
 }
 
@@ -278,17 +278,17 @@ mcp__claude-flow__memory_usage {
 // Add coordinated progress comment
 mcp__github__add_issue_comment {
   owner: "ranonbezerra",
-  repo: "dailyloadout-monorepo",
+  repo: "slate-monorepo",
   issue_number: 54,
   body: `## Progress Update
 
   ### Completed Tasks
-  - Alembic migration for missions table created
-  - Mission briefing API endpoint implemented
+  - Alembic migration for play sessions table created
+  - PlaySession recap API endpoint implemented
   - Taskiq worker for auto-clamp configured
 
   ### Current Status
-  - Mission debrief modal in progress (packages/web)
+  - PlaySession wrap-up modal in progress (packages/web)
   - Integration score: 89% (Excellent)
 
   ### Next Steps
@@ -310,7 +310,7 @@ mcp__claude-flow__memory_usage {
 ```javascript
 // Search and coordinate related issues
 mcp__github__search_issues {
-  q: "repo:ranonbezerra/dailyloadout-monorepo label:epic state:open",
+  q: "repo:ranonbezerra/slate-monorepo label:epic state:open",
   sort: "created",
   order: "desc"
 }
@@ -318,10 +318,10 @@ mcp__github__search_issues {
 // Create coordinated issue updates
 mcp__github__update_issue {
   owner: "ranonbezerra",
-  repo: "dailyloadout-monorepo",
+  repo: "slate-monorepo",
   issue_number: 54,
   state: "open",
-  labels: ["epic", "mission", "in-progress"],
+  labels: ["epic", "play session", "in-progress"],
   milestone: 1
 }
 ```
@@ -333,12 +333,12 @@ mcp__github__update_issue {
 ## EPIC: [Feature Name]
 
 ### Overview
-[Brief description of the epic feature]
+[Short description of the epic feature]
 
 ### Objectives
 - [ ] API implementation (packages/api)
 - [ ] Web UI implementation (packages/web)
-- [ ] Mobile implementation (packages/app)
+- [ ] Mobile implementation (packages/mobile)
 - [ ] Integration testing
 
 ### Packages Affected
@@ -354,7 +354,7 @@ mcp__github__update_issue {
 - [ ] API client integration
 - [ ] Biome lint compliance
 
-#### packages/app
+#### packages/mobile
 - [ ] Flutter screens
 - [ ] State management
 - [ ] API integration
@@ -388,7 +388,7 @@ Generated with Claude Code
 3. [Step 3]
 
 ### Environment
-- Package: [packages/api | packages/web | packages/app]
+- Package: [packages/api | packages/web | packages/mobile]
 - Python: 3.14 / Bun: latest / Flutter: latest
 - OS: [operating system]
 
@@ -406,7 +406,7 @@ Generated with Claude Code
 
 ### 1. **EPIC-Based Issue Management**
 - Organize features by EPICs with clear scope
-- Track progress across packages/api, packages/web, packages/app
+- Track progress across packages/api, packages/web, packages/mobile
 - Use labels for package identification
 
 ### 2. **Automated Progress Tracking**
@@ -415,7 +415,7 @@ Generated with Claude Code
 - Cross-package dependency management
 
 ### 3. **Smart Labeling and Organization**
-- Labels: epic, feature, bug, packages/api, packages/web, packages/app
+- Labels: epic, feature, bug, packages/api, packages/web, packages/mobile
 - Priority-based issue sorting and assignment
 - Milestone integration for release coordination
 

@@ -165,7 +165,7 @@ void main() {
         'status': 'playing',
         'acquired_at': '2025-03-01T00:00:00Z',
         'last_played_at': '2025-06-15T20:00:00Z',
-        'mission_next_action': 'Beat Margit',
+        'play_session_next_action': 'Beat Margit',
         'notes': 'Love this game',
         'created_at': '2025-01-01T00:00:00Z',
         'updated_at': '2025-06-15T20:00:00Z',
@@ -183,7 +183,7 @@ void main() {
       expect(entry.status, equals('playing'));
       expect(entry.acquiredAt, equals(DateTime.utc(2025, 3)));
       expect(entry.lastPlayedAt, equals(DateTime.utc(2025, 6, 15, 20)));
-      expect(entry.missionNextAction, equals('Beat Margit'));
+      expect(entry.playSessionNextAction, equals('Beat Margit'));
       expect(entry.notes, equals('Love this game'));
     });
 
@@ -211,7 +211,7 @@ void main() {
         'status': 'backlog',
         'acquired_at': null,
         'last_played_at': null,
-        'mission_next_action': null,
+        'play_session_next_action': null,
         'notes': null,
         'created_at': '2025-06-01T00:00:00Z',
         'updated_at': '2025-06-01T00:00:00Z',
@@ -221,7 +221,7 @@ void main() {
 
       expect(entry.acquiredAt, isNull);
       expect(entry.lastPlayedAt, isNull);
-      expect(entry.missionNextAction, isNull);
+      expect(entry.playSessionNextAction, isNull);
       expect(entry.notes, isNull);
     });
 
@@ -259,7 +259,7 @@ void main() {
         'status': 'playing',
         'acquired_at': '2025-03-01T00:00:00Z',
         'last_played_at': '2025-06-15T20:00:00Z',
-        'mission_next_action': 'Beat Margit',
+        'play_session_next_action': 'Beat Margit',
         'notes': 'Love this game',
         'created_at': '2025-01-01T00:00:00Z',
         'updated_at': '2025-06-15T20:00:00Z',
@@ -274,7 +274,7 @@ void main() {
       expect(state.status, equals('playing'));
       expect(state.acquiredAt, equals(DateTime.utc(2025, 3)));
       expect(state.lastPlayedAt, equals(DateTime.utc(2025, 6, 15, 20)));
-      expect(state.missionNextAction, equals('Beat Margit'));
+      expect(state.playSessionNextAction, equals('Beat Margit'));
       expect(state.notes, equals('Love this game'));
     });
 
@@ -290,7 +290,7 @@ void main() {
         'status': 'backlog',
         'acquired_at': null,
         'last_played_at': null,
-        'mission_next_action': null,
+        'play_session_next_action': null,
         'notes': null,
         'created_at': '2025-06-01T00:00:00Z',
         'updated_at': '2025-06-01T00:00:00Z',
@@ -300,7 +300,7 @@ void main() {
 
       expect(state.acquiredAt, isNull);
       expect(state.lastPlayedAt, isNull);
-      expect(state.missionNextAction, isNull);
+      expect(state.playSessionNextAction, isNull);
       expect(state.notes, isNull);
     });
 
@@ -349,7 +349,7 @@ void main() {
             'status': 'playing',
             'acquired_at': null,
             'last_played_at': null,
-            'mission_next_action': null,
+            'play_session_next_action': null,
             'notes': null,
             'created_at': '2025-01-01T00:00:00Z',
             'updated_at': '2025-01-01T00:00:00Z',
@@ -365,7 +365,7 @@ void main() {
             'status': 'backlog',
             'acquired_at': null,
             'last_played_at': null,
-            'mission_next_action': null,
+            'play_session_next_action': null,
             'notes': null,
             'created_at': '2025-01-01T00:00:00Z',
             'updated_at': '2025-01-01T00:00:00Z',
@@ -423,7 +423,7 @@ void main() {
                 'status': 'playing',
                 'acquired_at': null,
                 'last_played_at': null,
-                'mission_next_action': null,
+                'play_session_next_action': null,
                 'notes': null,
                 'created_at': '2025-01-01T00:00:00Z',
                 'updated_at': '2025-01-01T00:00:00Z',

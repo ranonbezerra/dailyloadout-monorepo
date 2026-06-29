@@ -26,7 +26,7 @@ export interface Game {
 
 /**
  * A single platform's library entry for a game. This is the unit that the API
- * lets you update/delete/start-a-mission for — its `publicId` is the library
+ * lets you update/delete/start-a-playSession for — its `publicId` is the library
  * ENTRY id, used to target this specific platform.
  */
 export interface LibraryEntry {
@@ -36,7 +36,7 @@ export interface LibraryEntry {
 	status: LibraryStatus;
 	acquiredAt?: string | null;
 	lastPlayedAt?: string | null;
-	missionNextAction?: string | null;
+	playSessionNextAction?: string | null;
 	notes?: string | null;
 	createdAt: string;
 	updatedAt: string;
@@ -45,7 +45,7 @@ export interface LibraryEntry {
 /**
  * Per-platform state inside a grouped library game. Mirrors a single library
  * entry minus the game (which lives on the parent group). `publicId` is the
- * library ENTRY id — use it to target this platform for update/delete/mission.
+ * library ENTRY id — use it to target this platform for update/delete/playSession.
  */
 export interface LibraryPlatformState {
 	publicId: string;
@@ -53,7 +53,7 @@ export interface LibraryPlatformState {
 	status: LibraryStatus;
 	acquiredAt?: string | null;
 	lastPlayedAt?: string | null;
-	missionNextAction?: string | null;
+	playSessionNextAction?: string | null;
 	notes?: string | null;
 	createdAt: string;
 	updatedAt: string;

@@ -1,4 +1,4 @@
-import { fetchWithAuthRetry } from "@dl/shared/api";
+import { fetchWithAuthRetry } from "@slate/shared/api";
 import type { ConciergeEvent } from "../types/concierge";
 
 // ---------------------------------------------------------------------------

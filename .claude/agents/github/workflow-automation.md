@@ -93,14 +93,14 @@ hooks:
 # Workflow Automation - GitHub Actions Integration
 
 ## Overview
-Integrate AI swarms with GitHub Actions to create intelligent, self-organizing CI/CD pipelines for the DailyLoadout monorepo that adapt to the codebase through advanced multi-agent coordination and automation, enhanced with **self-learning** and **continuous improvement** capabilities powered by Agentic-Flow v3.0.0-alpha.1.
+Integrate AI swarms with GitHub Actions to create intelligent, self-organizing CI/CD pipelines for the Slate monorepo that adapt to the codebase through advanced multi-agent coordination and automation, enhanced with **self-learning** and **continuous improvement** capabilities powered by Agentic-Flow v3.0.0-alpha.1.
 
-## DailyLoadout Context
-- **Monorepo**: ranonbezerra/dailyloadout-monorepo
-- **Packages**: packages/api (FastAPI, Python 3.14), packages/web (React, Mantine, Bun, Biome), packages/app (Flutter)
+## Slate Context
+- **Monorepo**: ranonbezerra/slate-monorepo
+- **Packages**: packages/api (FastAPI, Python 3.14), packages/web (React, Mantine, Bun, Biome), packages/mobile (Flutter)
 - **Tooling**: uv (Python), bun (TypeScript), Alembic (migrations), Taskiq (workers), Biome (lint)
 - **Coverage target**: 90% minimum across all packages
-- **Domain**: Library, Missions, Loadouts, Captures
+- **Domain**: Library, PlaySessions, Picks, Captures
 
 ## Self-Learning Protocol (v3.0.0-alpha.1)
 
@@ -134,10 +134,10 @@ const failedWorkflows = await reasoningBank.searchPatterns({
 
 ## Core Features
 
-### 1. Swarm-Powered Actions for DailyLoadout
+### 1. Swarm-Powered Actions for Slate
 ```yaml
 # .github/workflows/swarm-ci.yml
-name: DailyLoadout CI with Swarms
+name: Slate CI with Swarms
 on: [push, pull_request]
 
 jobs:
@@ -179,7 +179,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
       - name: Run Tests
-        run: cd packages/app && flutter test --coverage
+        run: cd packages/mobile && flutter test --coverage
 ```
 
 ### 2. Dynamic Workflow Generation
@@ -215,10 +215,10 @@ npx claude-flow@v3alpha actions generate-workflow \
 
 ## Workflow Templates
 
-### DailyLoadout CI/CD Pipeline
+### Slate CI/CD Pipeline
 ```yaml
-# .github/workflows/dailyloadout-ci.yml
-name: DailyLoadout CI/CD
+# .github/workflows/slate-ci.yml
+name: Slate CI/CD
 on:
   push:
     branches: [main, 'epic/*']
@@ -243,7 +243,7 @@ jobs:
             web:
               - 'packages/web/**'
             app:
-              - 'packages/app/**'
+              - 'packages/mobile/**'
 
   api-pipeline:
     needs: detect-changes
@@ -277,13 +277,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
-      - run: cd packages/app && flutter test --coverage
+      - run: cd packages/mobile && flutter test --coverage
 ```
 
 ### Adaptive Security Scanning
 ```yaml
 # .github/workflows/security-scan.yml
-name: DailyLoadout Security Scan
+name: Slate Security Scan
 on:
   schedule:
     - cron: '0 0 * * *'
@@ -314,7 +314,7 @@ jobs:
 ```bash
 # Optimize existing workflows
 npx claude-flow@v3alpha actions optimize \
-  --workflow ".github/workflows/dailyloadout-ci.yml" \
+  --workflow ".github/workflows/slate-ci.yml" \
   --suggest-parallelization \
   --reduce-redundancy \
   --estimate-savings

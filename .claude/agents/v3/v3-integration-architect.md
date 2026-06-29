@@ -179,17 +179,17 @@ export class V3AgentSpawner extends AgentSpawner {
 - UserPromptSubmit routing
 - Intelligence trajectory tracking
 
-## DailyLoadout Context
+## Slate Context
 
-When working within DailyLoadout, apply these integration patterns to:
+When working within Slate, apply these integration patterns to:
 
 - **packages/api** (FastAPI backend, Python 3.14, Taskiq workers)
 - **packages/web** (React/TypeScript web client)
-- **packages/app** (mobile application)
+- **packages/mobile** (mobile application)
 
-Domain areas: library items, missions, loadouts, captures.
+Domain areas: library items, play sessions, picks, captures.
 
-Ticket prefix: DL-XX
+Ticket prefix: SLA-XX
 
 ## Commands
 

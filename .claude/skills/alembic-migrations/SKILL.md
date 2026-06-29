@@ -3,7 +3,7 @@ name: alembic-migrations
 description: Load when creating or modifying database migrations, designing schema, adding indexes, or working with PostgreSQL-specific features.
 ---
 
-# Alembic Migrations — DailyLoadout
+# Alembic Migrations — Slate
 
 ## Commands
 
@@ -56,7 +56,7 @@ updated_at = sa.Column(sa.TIMESTAMP(timezone=True), server_default=sa.func.now()
 ### ENUMs
 ```python
 status_enum = sa.Enum("pending", "processing", "done", "failed", name="capture_status")
-mission_status_enum = sa.Enum("active", "ended", name="mission_status")
+play_session_status_enum = sa.Enum("active", "ended", name="play_session_status")
 mood_enum = sa.Enum("great", "good", "meh", "bad", "awful", name="mood")
 energy_enum = sa.Enum("high", "medium", "low", name="mental_energy")
 ```
@@ -84,18 +84,18 @@ CREATE TABLE library_entries (
 );
 ```
 
-### missions
+### play sessions
 ```sql
-CREATE TABLE missions (
+CREATE TABLE play sessions (
     id SERIAL PRIMARY KEY,
     public_id VARCHAR UNIQUE NOT NULL,
     user_id INTEGER REFERENCES users(id) NOT NULL,
     library_entry_id INTEGER REFERENCES library_entries(id) NOT NULL,
     status VARCHAR DEFAULT 'active',
-    briefing_text TEXT,
-    debrief_text TEXT,
-    debrief_mood VARCHAR,
-    debrief_energy VARCHAR,
+    recap_text TEXT,
+    wrap_up_text TEXT,
+    wrap_up_mood VARCHAR,
+    wrap_up_energy VARCHAR,
     started_at TIMESTAMPTZ DEFAULT NOW(),
     ended_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),

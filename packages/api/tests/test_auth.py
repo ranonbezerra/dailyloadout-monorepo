@@ -268,7 +268,7 @@ class TestMe:
         token = resp.json()["access_token"]
 
         # Delete the user directly from the DB.
-        from dailyloadout.infrastructure.db.models import User
+        from slate.infrastructure.db.models import User
         from tests.conftest import _TestSessionFactory
 
         async with _TestSessionFactory() as session:
@@ -283,7 +283,7 @@ class TestMe:
 
 
 _COOKIE_HEADER = {"X-Auth-Mode": "cookie"}
-_COOKIE_NAME = "dl_refresh_token"
+_COOKIE_NAME = "slate_refresh_token"
 
 
 class TestCookieMode:
@@ -422,7 +422,7 @@ class TestRefreshDeletedUser:
         assert resp.status_code == 201
         refresh_token = resp.json()["refresh_token"]
 
-        from dailyloadout.infrastructure.db.models import User
+        from slate.infrastructure.db.models import User
         from tests.conftest import _TestSessionFactory
 
         async with _TestSessionFactory() as session:

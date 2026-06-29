@@ -30,7 +30,7 @@ import {
 	usePlatforms,
 	useUpdateEntry,
 } from "../hooks/useLibrary";
-import { useActiveMission } from "../hooks/useMission";
+import { useActivePlaySession } from "../hooks/usePlaySession";
 import type {
 	Game,
 	LibraryEntry,
@@ -38,15 +38,15 @@ import type {
 	LibraryPlatformState,
 	LibraryStatus,
 } from "../types/library";
-import type { Mission } from "../types/mission";
+import type { PlaySession } from "../types/play-session";
 import { AddGameModal } from "./AddGameModal";
 import { CapturePhotoModal } from "./CapturePhotoModal";
 import { CaptureReviewModal } from "./CaptureReviewModal";
 import { CaptureTextModal } from "./CaptureTextModal";
 import { CaptureVoiceModal } from "./CaptureVoiceModal";
 import { ImageSourceModal } from "./ImageSourceModal";
-import { MissionBriefingModal } from "./MissionBriefingModal";
-import { MissionDebriefModal } from "./MissionDebriefModal";
+import { PlaySessionRecapModal } from "./PlaySessionRecapModal";
+import { PlaySessionWrapUpModal } from "./PlaySessionWrapUpModal";
 
 dayjs.extend(relativeTime);
 
@@ -78,8 +78,8 @@ const STATUS_OPTIONS: { value: LibraryStatus; label: string }[] = [
 const PAGE_SIZE = 50;
 
 /**
- * Build a flat LibraryEntry (the shape the rest of the app — missions,
- * briefings — speaks) from a grouped game plus one of its platform states.
+ * Build a flat LibraryEntry (the shape the rest of the app — playSessions,
+ * recaps — speaks) from a grouped game plus one of its platform states.
  * This is a per-platform projection, NOT aggregation: each entry maps 1:1 to a
  * library row the backend already gave us.
  */
@@ -91,7 +91,7 @@ function toEntry(game: Game, state: LibraryPlatformState): LibraryEntry {
 		status: state.status,
 		acquiredAt: state.acquiredAt,
 		lastPlayedAt: state.lastPlayedAt,
-		missionNextAction: state.missionNextAction,
+		playSessionNextAction: state.playSessionNextAction,
 		notes: state.notes,
 		createdAt: state.createdAt,
 		updatedAt: state.updatedAt,
@@ -111,13 +111,13 @@ export function LibraryPage() {
 	const [imageChooserOpened, setImageChooserOpened] = useState(false);
 	const [reviewCaptureId, setReviewCaptureId] = useState<string | null>(null);
 
-	// View mode: viewing an existing mission's briefing
-	const [briefingMission, setBriefingMission] = useState<Mission | null>(null);
-	// Preview mode: starting a mission for a specific platform entry. The
-	// briefing is fetched inside the modal after the user picks quick vs deep.
+	// View mode: viewing an existing playSession's recap
+	const [recapPlaySession, setRecapPlaySession] = useState<PlaySession | null>(null);
+	// Preview mode: starting a playSession for a specific platform entry. The
+	// recap is fetched inside the modal after the user picks quick vs deep.
 	const [previewEntry, setPreviewEntry] = useState<LibraryEntry | null>(null);
 
-	const [debriefMission, setDebriefMission] = useState<Mission | null>(null);
+	const [wrapUpPlaySession, setWrapUpPlaySession] = useState<PlaySession | null>(null);
 
 	const queryParams = {
 		status: statusFilter === "all" ? undefined : statusFilter,
@@ -126,7 +126,7 @@ export function LibraryPage() {
 	};
 
 	const { data, isLoading, isError, error, refetch } = useLibrary(queryParams);
-	const { data: activeMission } = useActiveMission();
+	const { data: activePlaySession } = useActivePlaySession();
 	const updateMutation = useUpdateEntry();
 	const deleteMutation = useDeleteEntry();
 
@@ -191,33 +191,37 @@ export function LibraryPage() {
 				))}
 			</Group>
 
-			{activeMission && (
+			{activePlaySession && (
 				<Card withBorder p="sm" radius="md">
 					<Group justify="space-between">
 						<Group gap="sm">
 							<Badge color="teal" variant="dot" size="lg">
-								Mission active
+								Session active
 							</Badge>
-							<Text fw={500}>{activeMission.libraryEntry.game.title}</Text>
+							<Text fw={500}>{activePlaySession.libraryEntry.game.title}</Text>
 							<Text size="sm" c="dimmed">
-								{activeMission.libraryEntry.platform.label}
+								{activePlaySession.libraryEntry.platform.label}
 							</Text>
 							<Text size="sm" c="dimmed">
-								started {dayjs(activeMission.startedAt).fromNow()}
+								started {dayjs(activePlaySession.startedAt).fromNow()}
 							</Text>
 						</Group>
 						<Group gap="xs">
-							{activeMission.briefingText && (
+							{activePlaySession.recapText && (
 								<Button
 									size="xs"
 									variant="light"
-									onClick={() => setBriefingMission(activeMission)}
+									onClick={() => setRecapPlaySession(activePlaySession)}
 								>
-									View briefing
+									View recap
 								</Button>
 							)}
-							<Button size="xs" color="teal" onClick={() => setDebriefMission(activeMission)}>
-								End mission
+							<Button
+								size="xs"
+								color="teal"
+								onClick={() => setWrapUpPlaySession(activePlaySession)}
+							>
+								End session
 							</Button>
 						</Group>
 					</Group>
@@ -319,7 +323,7 @@ export function LibraryPage() {
 										});
 									}
 								}}
-								onStartMission={(state) => setPreviewEntry(toEntry(record.game, state))}
+								onStartPlaySession={(state) => setPreviewEntry(toEntry(record.game, state))}
 								isPending={updateMutation.isPending || deleteMutation.isPending}
 							/>
 						),
@@ -370,9 +374,9 @@ export function LibraryPage() {
 			/>
 			<CaptureReviewModal captureId={reviewCaptureId} onClose={() => setReviewCaptureId(null)} />
 
-			{/* Preview mode: choosing briefing mode, then reviewing before starting */}
+			{/* Preview mode: choosing recap mode, then reviewing before starting */}
 			{previewEntry && (
-				<MissionBriefingModal
+				<PlaySessionRecapModal
 					mode="preview"
 					libraryEntry={previewEntry}
 					libraryEntryPublicId={previewEntry.publicId}
@@ -381,17 +385,20 @@ export function LibraryPage() {
 				/>
 			)}
 
-			{/* View mode: viewing an existing mission's briefing */}
-			{briefingMission && (
-				<MissionBriefingModal
+			{/* View mode: viewing an existing playSession's recap */}
+			{recapPlaySession && (
+				<PlaySessionRecapModal
 					mode="view"
-					mission={briefingMission}
-					onClose={() => setBriefingMission(null)}
-					onMissionUpdated={(updated) => setBriefingMission(updated)}
+					playSession={recapPlaySession}
+					onClose={() => setRecapPlaySession(null)}
+					onPlaySessionUpdated={(updated) => setRecapPlaySession(updated)}
 				/>
 			)}
 
-			<MissionDebriefModal mission={debriefMission} onClose={() => setDebriefMission(null)} />
+			<PlaySessionWrapUpModal
+				playSession={wrapUpPlaySession}
+				onClose={() => setWrapUpPlaySession(null)}
+			/>
 		</Stack>
 	);
 }
@@ -407,7 +414,7 @@ interface ExpandedGameRowProps {
 		data: { status?: LibraryStatus; notes?: string },
 	) => Promise<void>;
 	onDelete: (entryPublicId: string) => Promise<void>;
-	onStartMission: (state: LibraryPlatformState) => void;
+	onStartPlaySession: (state: LibraryPlatformState) => void;
 	isPending: boolean;
 }
 
@@ -415,7 +422,7 @@ function ExpandedGameRow({
 	group,
 	onUpdate,
 	onDelete,
-	onStartMission,
+	onStartPlaySession,
 	isPending,
 }: ExpandedGameRowProps) {
 	return (
@@ -442,7 +449,7 @@ function ExpandedGameRow({
 					state={state}
 					onUpdate={onUpdate}
 					onDelete={onDelete}
-					onStartMission={onStartMission}
+					onStartPlaySession={onStartPlaySession}
 					isPending={isPending}
 				/>
 			))}
@@ -455,7 +462,7 @@ function ExpandedGameRow({
 }
 
 // ---------------------------------------------------------------------------
-// Per-platform editor (status, notes, start mission, remove)
+// Per-platform editor (status, notes, start playSession, remove)
 // ---------------------------------------------------------------------------
 
 interface PlatformRowProps {
@@ -466,7 +473,7 @@ interface PlatformRowProps {
 		data: { status?: LibraryStatus; notes?: string },
 	) => Promise<void>;
 	onDelete: (entryPublicId: string) => Promise<void>;
-	onStartMission: (state: LibraryPlatformState) => void;
+	onStartPlaySession: (state: LibraryPlatformState) => void;
 	isPending: boolean;
 }
 
@@ -475,15 +482,15 @@ function PlatformRow({
 	state,
 	onUpdate,
 	onDelete,
-	onStartMission,
+	onStartPlaySession,
 	isPending,
 }: PlatformRowProps) {
 	const [editStatus, setEditStatus] = useState<string | null>(state.status);
 	const [editNotes, setEditNotes] = useState(state.notes ?? "");
-	const { data: activeMission } = useActiveMission();
+	const { data: activePlaySession } = useActivePlaySession();
 
-	const hasActiveMission = activeMission != null;
-	const isThisEntryActive = activeMission?.libraryEntry.publicId === state.publicId;
+	const hasActivePlaySession = activePlaySession != null;
+	const isThisEntryActive = activePlaySession?.libraryEntry.publicId === state.publicId;
 
 	const handleSave = async () => {
 		// Game metadata (title/genres) is immutable — it's a cache of IGDB.
@@ -517,9 +524,9 @@ function PlatformRow({
 			<Stack gap="sm">
 				<Group gap="xs">
 					<Badge variant="filled">{state.platform.label}</Badge>
-					{state.missionNextAction && (
+					{state.playSessionNextAction && (
 						<Text size="sm" c="dimmed">
-							Next objective: {state.missionNextAction}
+							Next objective: {state.playSessionNextAction}
 						</Text>
 					)}
 				</Group>
@@ -547,10 +554,10 @@ function PlatformRow({
 					<Button
 						size="xs"
 						color="teal"
-						disabled={hasActiveMission}
-						onClick={() => onStartMission(state)}
+						disabled={hasActivePlaySession}
+						onClick={() => onStartPlaySession(state)}
 					>
-						{isThisEntryActive ? "Mission active" : "Start Mission"}
+						{isThisEntryActive ? "Session active" : "Start session"}
 					</Button>
 					<Button
 						size="xs"

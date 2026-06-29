@@ -1,6 +1,6 @@
 # /new-domain
 
-Create the full structure for a new domain in the DailyLoadout API: router + service + schemas + repository + model + deps + tests.
+Create the full structure for a new domain in the Slate API: router + service + schemas + repository + model + deps + tests.
 
 ## Usage
 ```
@@ -13,7 +13,7 @@ Example: `/new-domain achievement`
 
 ```
 packages/api/
-├── src/dailyloadout/
+├── src/slate/
 │   ├── api/v1/{domain}.py                       <- APIRouter with basic endpoints
 │   ├── core/{domain}/
 │   │   ├── service.py                            <- Service with business logic
@@ -31,7 +31,7 @@ packages/api/
 ### 1. Analyze the domain
 - Read `ARCHITECTURE.md` and `PRODUCT.md` to understand the domain
 - Identify the CRUD operations and business rules
-- Check existing domains in `core/` for patterns to follow (e.g., `core/library/`, `core/mission/`)
+- Check existing domains in `core/` for patterns to follow (e.g., `core/library/`, `core/play-session/`)
 
 ### 2. Create the files
 Follow established patterns strictly:
@@ -45,7 +45,7 @@ Follow established patterns strictly:
 ### 3. Register the router
 Add to `main.py`:
 ```python
-from dailyloadout.api.v1.{domain} import router as {domain}_router
+from slate.api.v1.{domain} import router as {domain}_router
 app.include_router({domain}_router, prefix="/api/v1/{domain}s", tags=["{Domain}"])
 ```
 
@@ -60,8 +60,8 @@ cd packages/api && poetry run alembic revision --autogenerate -m "create_{domain
 ### 6. Verify
 ```bash
 cd packages/api && poetry run pytest tests/test_{domain}.py -v
-cd packages/api && poetry run ruff check src/dailyloadout/api/v1/{domain}.py src/dailyloadout/core/{domain}/
-cd packages/api && poetry run mypy src/dailyloadout/core/{domain}/
+cd packages/api && poetry run ruff check src/slate/api/v1/{domain}.py src/slate/core/{domain}/
+cd packages/api && poetry run mypy src/slate/core/{domain}/
 ```
 
 ## Model Template
@@ -69,7 +69,7 @@ cd packages/api && poetry run mypy src/dailyloadout/core/{domain}/
 ```python
 from sqlalchemy import String, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from dailyloadout.infrastructure.db.models.base import Base, TimestampMixin, PublicIDMixin
+from slate.infrastructure.db.models.base import Base, TimestampMixin, PublicIDMixin
 
 class {Domain}(Base, TimestampMixin, PublicIDMixin):
     __tablename__ = "{domain}s"
@@ -85,7 +85,7 @@ class {Domain}(Base, TimestampMixin, PublicIDMixin):
 ```python
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from dailyloadout.infrastructure.db.models.{domain} import {Domain}
+from slate.infrastructure.db.models.{domain} import {Domain}
 
 class {Domain}Repository:
     def __init__(self, session: AsyncSession) -> None:

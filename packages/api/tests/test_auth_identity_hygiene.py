@@ -14,14 +14,14 @@ import dns.resolver
 import pytest
 from httpx import AsyncClient
 
-from dailyloadout.config import settings
-from dailyloadout.core.auth.service import EmailRejectedError
-from dailyloadout.core.sanitization import sanitize_display_name
-from dailyloadout.infrastructure.email.disposable_domains import (
+from slate.config import settings
+from slate.core.auth.service import EmailRejectedError
+from slate.core.sanitization import sanitize_display_name
+from slate.infrastructure.email.disposable_domains import (
     DISPOSABLE_EMAIL_DOMAINS,
     is_disposable_domain,
 )
-from dailyloadout.infrastructure.email.validation import (
+from slate.infrastructure.email.validation import (
     domain_has_mail_records,
     is_disposable_email,
 )
@@ -160,7 +160,7 @@ class TestMxCheck:
     async def test_mx_probe_rejects_in_production(self, monkeypatch: MP) -> None:
         # Force the production gate so the (mocked) probe is exercised, and make
         # the probe report "undeliverable" → EmailRejectedError.
-        from dailyloadout.infrastructure.email import validation
+        from slate.infrastructure.email import validation
 
         monkeypatch.setattr(settings, "app_env", "production")
         monkeypatch.setattr(settings, "check_email_mx", True)
@@ -176,7 +176,7 @@ class TestMxCheck:
     async def test_mx_probe_skipped_outside_production(self, monkeypatch: MP) -> None:
         # In the test env (is_production False) the probe never runs, even for a
         # domain that would report undeliverable.
-        from dailyloadout.infrastructure.email import validation
+        from slate.infrastructure.email import validation
 
         called = False
 

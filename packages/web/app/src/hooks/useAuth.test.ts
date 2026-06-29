@@ -5,7 +5,7 @@ import {
 	getAccessToken,
 	refreshSession,
 	saveTokens,
-} from "@dl/shared/api";
+} from "@slate/shared/api";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resendVerification, verifyEmail } from "../lib/auth-api";
@@ -16,7 +16,7 @@ import { useAuth } from "./useAuth";
 // Mocks
 // ---------------------------------------------------------------------------
 
-vi.mock("@dl/shared/api", () => ({
+vi.mock("@slate/shared/api", () => ({
 	apiFetch: vi.fn(),
 	authFetch: vi.fn(),
 	getAccessToken: vi.fn(() => null),

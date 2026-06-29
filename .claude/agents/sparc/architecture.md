@@ -85,9 +85,9 @@ hooks:
 
 You are a system architect focused on the Architecture phase of the SPARC methodology with **self-learning** and **continuous improvement** capabilities powered by Agentic-Flow v3.0.0-alpha.1.
 
-## Project Context: DailyLoadout
+## Project Context: Slate
 
-DailyLoadout is a gaming companion monorepo. The architecture follows strict layer discipline and leverages local LLMs via Ollama for AI features.
+Slate is a gaming companion monorepo. The architecture follows strict layer discipline and leverages local LLMs via Ollama for AI features.
 
 ### Key Architectural Constraints
 
@@ -212,7 +212,7 @@ await reasoningBank.storePattern({
 ### Learn Architecture Patterns by Scale
 
 ```typescript
-// DailyLoadout is a monorepo with modular monolith API
+// Slate is a monorepo with modular monolith API
 const monolithPatterns = await reasoningBank.searchPatterns({
   task: 'architecture: modular monolith with async workers',
   k: 5,
@@ -284,9 +284,9 @@ graph TB
 
     subgraph "Core Services"
         LIBRARY_SVC[Library Service]
-        MISSION_SVC[Mission Service]
+        PLAY_SESSION_SVC[PlaySession Service]
         CAPTURE_SVC[Capture Service]
-        LOADOUT_SVC[Loadout Service]
+        PICK_SVC[Pick Service]
     end
 
     subgraph "Infrastructure Layer"
@@ -302,26 +302,26 @@ graph TB
 
     subgraph "Background Workers"
         TASKIQ[Taskiq Workers]
-        AUTO_CLAMP[Mission Auto-Clamp]
-        AUTO_IGNORE[Loadout Auto-Ignore]
+        AUTO_CLAMP[PlaySession Auto-Clamp]
+        AUTO_IGNORE[Pick Auto-Ignore]
     end
 
     WEB --> FASTAPI
     APP --> FASTAPI
 
     FASTAPI --> LIBRARY_SVC
-    FASTAPI --> MISSION_SVC
+    FASTAPI --> PLAY_SESSION_SVC
     FASTAPI --> CAPTURE_SVC
-    FASTAPI --> LOADOUT_SVC
+    FASTAPI --> PICK_SVC
 
     LIBRARY_SVC --> REPO
-    MISSION_SVC --> REPO
-    MISSION_SVC --> LLM
+    PLAY_SESSION_SVC --> REPO
+    PLAY_SESSION_SVC --> LLM
     CAPTURE_SVC --> REPO
     CAPTURE_SVC --> LLM
     CAPTURE_SVC --> STT
-    LOADOUT_SVC --> REPO
-    LOADOUT_SVC --> LLM
+    PICK_SVC --> REPO
+    PICK_SVC --> LLM
 
     REPO --> POSTGRES
     TASKIQ --> REDIS
@@ -362,27 +362,27 @@ components:
       external:
         - postgresql (data)
 
-  mission_service:
-    name: "Mission Service"
+  play_session_service:
+    name: "PlaySession Service"
     type: "Core Service"
 
     responsibilities:
-      - "Mission creation with LLM briefing"
-      - "One-active-mission enforcement"
-      - "Debrief submission"
+      - "PlaySession creation with LLM recap"
+      - "One-active-play session enforcement"
+      - "WrapUp submission"
       - "Emotional state extraction (async)"
-      - "Auto-clamp expired missions"
+      - "Auto-clamp expired play sessions"
 
     interfaces:
       rest:
-        - POST /api/v1/missions
-        - GET /api/v1/missions
-        - GET /api/v1/missions/{id}
-        - POST /api/v1/missions/{id}/debrief
+        - POST /api/v1/play-sessions
+        - GET /api/v1/play-sessions
+        - GET /api/v1/play-sessions/{id}
+        - POST /api/v1/play-sessions/{id}/wrap-up
 
     dependencies:
       internal:
-        - mission_repository (SQLAlchemy)
+        - play_session_repository (SQLAlchemy)
         - llm_client (Ollama)
         - taskiq_broker (background jobs)
 
@@ -441,15 +441,15 @@ CREATE TABLE library_entries (
     INDEX idx_title (title)
 );
 
--- Missions Table
-CREATE TABLE missions (
+-- PlaySessions Table
+CREATE TABLE play sessions (
     id SERIAL PRIMARY KEY,
     public_id UUID UNIQUE NOT NULL DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL,
     library_entry_id INTEGER NOT NULL REFERENCES library_entries(id),
-    briefing TEXT NOT NULL,
-    debrief TEXT,
-    debrief_state VARCHAR(100),
+    recap TEXT NOT NULL,
+    wrap-up TEXT,
+    wrap_up_state VARCHAR(100),
     status VARCHAR(50) NOT NULL DEFAULT 'active',
     started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ended_at TIMESTAMP,
@@ -457,7 +457,7 @@ CREATE TABLE missions (
     INDEX idx_user_id (user_id),
     INDEX idx_public_id (public_id),
     INDEX idx_status (status),
-    INDEX idx_user_active (user_id, status) -- For one-active-mission constraint
+    INDEX idx_user_active (user_id, status) -- For one-active-play session constraint
 );
 
 -- Captures Table
@@ -482,14 +482,14 @@ CREATE TABLE captures (
 ```yaml
 openapi: 3.0.0
 info:
-  title: DailyLoadout API
+  title: Slate API
   version: 1.0.0
   description: Gaming companion API with AI-powered features via Ollama
 
 servers:
   - url: http://localhost:8100/api/v1
     description: Development
-  - url: https://api.dailyloadout.com/api/v1
+  - url: https://api.slate.com/api/v1
     description: Production
 
 components:
@@ -507,13 +507,13 @@ components:
         genre:
           type: string
 
-    Mission:
+    PlaySession:
       type: object
       properties:
         public_id:
           type: string
           format: uuid
-        briefing:
+        recap:
           type: string
         status:
           type: string
@@ -530,11 +530,11 @@ components:
           type: string
 
 paths:
-  /missions:
+  /play-sessions:
     post:
-      summary: Start a new mission
-      operationId: create_mission
-      tags: [Missions]
+      summary: Start a new play session
+      operationId: create_play_session
+      tags: [PlaySessions]
       requestBody:
         required: true
         content:
@@ -548,13 +548,13 @@ paths:
                   format: uuid
       responses:
         201:
-          description: Mission created
+          description: PlaySession created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Mission'
+                $ref: '#/components/schemas/PlaySession'
         409:
-          description: Active mission already exists
+          description: Active play session already exists
 ```
 
 ### 5. Infrastructure Architecture
@@ -595,8 +595,8 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     environment:
-      - POSTGRES_DB=dailyloadout
-      - POSTGRES_USER=dailyloadout
+      - POSTGRES_DB=slate
+      - POSTGRES_USER=slate
       - POSTGRES_PASSWORD=${DB_PASSWORD}
 
   redis:
@@ -624,9 +624,9 @@ llm_architecture:
     smart:
       name: "gemma3:12b"
       use_cases:
-        - mission_briefing_generation
-        - loadout_suggestion_picks
-        - debrief_emotional_extraction
+        - play_session_recap_generation
+        - pick_selection
+        - wrap_up_emotional_extraction
 
     vision:
       name: "qwen3-vl:4b"
@@ -640,10 +640,10 @@ llm_architecture:
 
   prompt_management:
     engine: Jinja2
-    template_dir: "packages/api/src/dailyloadout/prompts/"
+    template_dir: "packages/api/src/slate/prompts/"
     templates:
-      - briefing.j2
-      - debrief_extract.j2
+      - recap.j2
+      - wrap_up_extract.j2
       - capture_extract.j2
 
   validation:
@@ -664,21 +664,21 @@ background_jobs:
   broker: Taskiq + Redis
 
   tasks:
-    extract_debrief_state:
-      trigger: "Mission debrief submitted"
-      purpose: "Extract emotional state from debrief text via LLM"
+    extract_wrap_up_state:
+      trigger: "PlaySession wrap-up submitted"
+      purpose: "Extract emotional state from wrap-up text via LLM"
       model: "gemma3:12b"
       retry: "exponential backoff, max 3"
 
-    mission_auto_clamp:
+    play_session_auto_clamp:
       trigger: "Periodic (hourly)"
-      purpose: "End missions older than 24h"
-      query: "SELECT missions WHERE status='active' AND started_at < now() - interval '24h'"
+      purpose: "End play sessions older than 24h"
+      query: "SELECT play sessions WHERE status='active' AND started_at < now() - interval '24h'"
 
-    loadout_auto_ignore:
+    pick_auto_ignore:
       trigger: "Periodic (hourly)"
-      purpose: "Ignore stale loadout suggestions after 24h"
-      query: "SELECT loadouts WHERE status='pending' AND created_at < now() - interval '24h'"
+      purpose: "Ignore stale pick suggestions after 24h"
+      query: "SELECT picks WHERE status='pending' AND created_at < now() - interval '24h'"
 
   monitoring:
     - task_duration_seconds
@@ -690,7 +690,7 @@ background_jobs:
 
 1. **System Design Document**: Complete architecture specification
 2. **Component Diagrams**: Visual representation of system components
-3. **Sequence Diagrams**: Key interaction flows (mission creation, capture processing)
+3. **Sequence Diagrams**: Key interaction flows (play session creation, capture processing)
 4. **Deployment Diagrams**: Docker Compose infrastructure
 5. **Technology Decisions**: Rationale for Ollama, Taskiq, Mantine, etc.
 6. **LLM Integration Plan**: Model selection, prompt management, validation
@@ -699,7 +699,7 @@ background_jobs:
 
 1. **Design for Failure**: Assume Ollama can be unavailable; queue and retry
 2. **Loose Coupling**: Services communicate through repositories, not direct DB access
-3. **High Cohesion**: Each domain (library, mission, capture) is self-contained
+3. **High Cohesion**: Each domain (library, play session, capture) is self-contained
 4. **Security First**: LLM outputs always validated; no secrets in code
 5. **Observable Systems**: Design for monitoring background jobs and LLM latency
 6. **Documentation**: Keep architecture docs up-to-date with ARCHITECTURE.md

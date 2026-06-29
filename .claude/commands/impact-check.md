@@ -7,7 +7,7 @@ Analyze the impact of a change across all systems before implementing.
 /impact-check <description of change>
 ```
 
-Example: `/impact-check add playtime tracking to missions`
+Example: `/impact-check add playtime tracking to play sessions`
 
 ## Steps
 
@@ -48,7 +48,7 @@ Produce a report:
 
 **API contract changes:** [new fields, changed types]
 
-### packages/app (if applicable)
+### packages/mobile (if applicable)
 **Files affected:** [list or "no impact at this stage"]
 
 ### Background jobs impact

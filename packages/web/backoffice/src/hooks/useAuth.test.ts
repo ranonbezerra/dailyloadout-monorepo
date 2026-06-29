@@ -2,7 +2,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { createWrapper } from "../test/wrapper";
 
-vi.mock("@dl/shared/api", () => ({
+vi.mock("@slate/shared/api", () => ({
 	authFetch: vi.fn(),
 	clearTokens: vi.fn(),
 	getAccessToken: vi.fn(),
@@ -16,7 +16,7 @@ import {
 	getAccessToken,
 	refreshSession,
 	saveTokens,
-} from "@dl/shared/api";
+} from "@slate/shared/api";
 import { useAuth } from "./useAuth";
 
 beforeEach(() => {

@@ -32,8 +32,8 @@ void main() {
         (_) async => _response('/v1/stats/overview', <String, dynamic>{
           'total_games': 12,
           'status_counts': <String, dynamic>{'playing': 3, 'backlog': 9},
-          'missions_last_30d': 7,
-          'avg_mission_duration_minutes': 85.5,
+          'play_sessions_last_30d': 7,
+          'avg_play_session_duration_minutes': 85.5,
           'user_created_at': '2025-01-01T00:00:00Z',
         }),
       );
@@ -130,7 +130,7 @@ void main() {
             <String, dynamic>{
               'genre': 'RPG',
               'total_minutes': 120,
-              'mission_count': 4,
+              'play_session_count': 4,
             },
           ],
         }),
@@ -153,7 +153,7 @@ void main() {
               'platform_slug': 'ps5',
               'platform_label': 'PS5',
               'game_count': 5,
-              'mission_count': 8,
+              'play_session_count': 8,
               'total_minutes': 300,
             },
           ],
@@ -184,7 +184,7 @@ void main() {
               'public_id': 'm-1',
               'game_title': 'Elden Ring',
               'platform_label': 'PS5',
-              'mission_type': 'story',
+              'play_session_type': 'story',
               'started_at': '2025-06-01T18:00:00Z',
             },
           ],

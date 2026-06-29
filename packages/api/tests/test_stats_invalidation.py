@@ -13,7 +13,7 @@ from uuid import uuid4
 
 import pytest
 
-from dailyloadout.infrastructure.cache.keys import stats_namespace
+from slate.infrastructure.cache.keys import stats_namespace
 
 
 class SpyCache:
@@ -40,7 +40,7 @@ def spy_cache(monkeypatch: pytest.MonkeyPatch) -> SpyCache:
     """Replace the ambient cache resolver so invalidation hits the spy."""
     spy = SpyCache()
     monkeypatch.setattr(
-        "dailyloadout.core.cache.invalidation.get_cache",
+        "slate.core.cache.invalidation.get_cache",
         lambda _settings: spy,
     )
     return spy
@@ -49,41 +49,41 @@ def spy_cache(monkeypatch: pytest.MonkeyPatch) -> SpyCache:
 # ── Auto-clamp worker ────────────────────────────────────────────────────
 
 
-class _StaleMission:
-    def __init__(self, mission_id: int, user_id: int) -> None:
-        self.id = mission_id
+class _StalePlaySession:
+    def __init__(self, play_session_id: int, user_id: int) -> None:
+        self.id = play_session_id
         self.user_id = user_id
         self.started_at = "2026-01-01T00:00:00Z"
 
 
 class _ClampRepo:
-    def __init__(self, stale: list[_StaleMission]) -> None:
+    def __init__(self, stale: list[_StalePlaySession]) -> None:
         self._stale = stale
         self.clamped: list[int] = []
 
-    async def get_stale_missions(self, max_hours: int) -> list[_StaleMission]:
+    async def get_stale_play_sessions(self, max_hours: int) -> list[_StalePlaySession]:
         return self._stale
 
-    async def auto_clamp(self, mission_id: int, max_hours: int) -> None:
-        self.clamped.append(mission_id)
+    async def auto_clamp(self, play_session_id: int, max_hours: int) -> None:
+        self.clamped.append(play_session_id)
 
 
 async def test_auto_clamp_busts_each_affected_user_once(spy_cache: SpyCache) -> None:
-    from dailyloadout.workers.mission_auto_clamp import auto_clamp_stale_missions
+    from slate.workers.play_session_auto_clamp import auto_clamp_stale_play_sessions
 
-    repo = _ClampRepo([_StaleMission(1, 7), _StaleMission(2, 7), _StaleMission(3, 9)])
+    repo = _ClampRepo([_StalePlaySession(1, 7), _StalePlaySession(2, 7), _StalePlaySession(3, 9)])
 
-    clamped = await auto_clamp_stale_missions(repo, max_hours=8)  # type: ignore[arg-type]
+    clamped = await auto_clamp_stale_play_sessions(repo, max_hours=8)  # type: ignore[arg-type]
 
     assert clamped == 3
-    # Two distinct users → two busts (user 7 collapsed despite two missions).
+    # Two distinct users → two busts (user 7 collapsed despite two play_sessions).
     assert sorted(spy_cache.busted) == sorted([stats_namespace(7), stats_namespace(9)])
 
 
 async def test_auto_clamp_no_stale_does_not_bust(spy_cache: SpyCache) -> None:
-    from dailyloadout.workers.mission_auto_clamp import auto_clamp_stale_missions
+    from slate.workers.play_session_auto_clamp import auto_clamp_stale_play_sessions
 
-    assert await auto_clamp_stale_missions(_ClampRepo([])) == 0  # type: ignore[arg-type]
+    assert await auto_clamp_stale_play_sessions(_ClampRepo([])) == 0  # type: ignore[arg-type]
     assert spy_cache.busted == []
 
 
@@ -122,7 +122,7 @@ class _Entry:
         self.status = "backlog"
         self.acquired_at = None
         self.last_played_at = None
-        self.mission_next_action = None
+        self.play_session_next_action = None
         self.notes = None
         self.created_at = "2026-01-01T00:00:00Z"
         self.updated_at = "2026-01-01T00:00:00Z"
@@ -169,7 +169,7 @@ class _PlatformRepo:
 
 
 def _library_service() -> Any:
-    from dailyloadout.core.library.service import LibraryService
+    from slate.core.library.service import LibraryService
 
     return LibraryService(_GameRepo(), _LibRepo(), _PlatformRepo())  # type: ignore[arg-type]
 
@@ -204,7 +204,7 @@ class _ConciergeLibRepo:
 
 
 async def test_concierge_set_status_busts_stats(spy_cache: SpyCache) -> None:
-    from dailyloadout.infrastructure.agent.concierge import tools_write
+    from slate.infrastructure.agent.concierge import tools_write
 
     msg = await tools_write.set_status(
         _ConciergeLibRepo(),  # type: ignore[arg-type]
@@ -264,7 +264,7 @@ class _CaptureGameRepo:
 
 
 async def test_capture_confirm_busts_stats(spy_cache: SpyCache) -> None:
-    from dailyloadout.core.capture.service import CaptureService
+    from slate.core.capture.service import CaptureService
 
     service = CaptureService(
         _CaptureRepo(),  # type: ignore[arg-type]

@@ -25,7 +25,7 @@ const summary: DashboardSummary = {
 	usersBanned: 3,
 	usersUnverified: 7,
 	admins: 2,
-	missionsActive: 5,
+	playSessionsActive: 5,
 	catalogueSize: 128,
 	configOverrides: 1,
 	recentActions: [
@@ -47,7 +47,7 @@ describe("DashboardPage", () => {
 		renderPage();
 		expect(screen.getByText("42")).toBeInTheDocument();
 		expect(screen.getByText("128")).toBeInTheDocument();
-		expect(screen.getByText("Active missions")).toBeInTheDocument();
+		expect(screen.getByText("Active sessions")).toBeInTheDocument();
 	});
 
 	it("lists recent admin actions", () => {

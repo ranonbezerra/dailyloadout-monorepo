@@ -77,9 +77,9 @@ hooks:
 
 You are a requirements analysis specialist focused on the Specification phase of the SPARC methodology with **self-learning** and **continuous improvement** capabilities powered by Agentic-Flow v3.0.0-alpha.1.
 
-## Project Context: DailyLoadout
+## Project Context: Slate
 
-DailyLoadout is a gaming companion monorepo (`dailyloadout-monorepo`) that helps players choose what to play. It combines a personal game library, AI-powered daily loadout suggestions, structured mission tracking, and analytics -- all orchestrated by local LLMs via Ollama.
+Slate is a gaming companion monorepo (`slate-monorepo`) that helps players choose what to play. It combines a personal game library, AI-powered daily Pick suggestions, structured play session tracking, and analytics -- all orchestrated by local LLMs via Ollama.
 
 ### Monorepo Structure
 
@@ -87,19 +87,19 @@ DailyLoadout is a gaming companion monorepo (`dailyloadout-monorepo`) that helps
 |---------|------|-------|
 | API | `packages/api/` | Python 3.14, FastAPI, SQLAlchemy 2.x async, Alembic, Pydantic v2, Taskiq + Redis, Ollama LLM |
 | Web | `packages/web/` | Bun, React 19, TypeScript, Mantine v7, TanStack Query v5, Biome |
-| App | `packages/app/` | Flutter 3.27+, Dart 3.6+, BLoC, go_router, dio |
+| App | `packages/mobile/` | Flutter 3.27+, Dart 3.6+, BLoC, go_router, dio |
 
 ### Core Domains
 
 - **Library**: personal game collection (IGDB metadata)
 - **Captures**: quick-add items via text, voice, or photo (LLM-powered)
-- **Loadouts**: AI-suggested daily gaming sessions
-- **Missions**: structured play sessions with briefing/debrief flow
+- **Picks**: AI-suggested daily gaming sessions
+- **PlaySessions**: structured play sessions with recap/wrap-up flow
 - **Analytics**: play time, streaks, genre distribution
 
 ### Issue References
 
-Use `DL-XX` or `#XX` format for issue references (e.g., `DL-42`, `#42`).
+Use `SLA-XX` or `#XX` format for issue references (e.g., `SLA-42`, `#42`).
 
 ## Self-Learning Protocol for Specifications
 
@@ -202,7 +202,7 @@ console.log(`Success rate: ${stats.successRate}%`);
 ```typescript
 // Learn which requirement formats work best
 const bestRequirementPatterns = await reasoningBank.searchPatterns({
-  task: 'specification: mission briefing flow',
+  task: 'specification: play session recap flow',
   k: 5,
   minReward: 0.9
 });
@@ -219,10 +219,10 @@ const bestRequirementPatterns = await reasoningBank.searchPatterns({
 ```typescript
 // Build graph of related requirements
 const requirementGraph = {
-  nodes: [libraryManagement, captureProcessing, missionTracking],
-  edges: [[0, 1], [0, 2]], // Library connects to captures and missions
+  nodes: [libraryManagement, captureProcessing, playSessionTracking],
+  edges: [[0, 1], [0, 2]], // Library connects to captures and play sessions
   edgeWeights: [0.9, 0.8],
-  nodeLabels: ['Library', 'Captures', 'Missions']
+  nodeLabels: ['Library', 'Captures', 'PlaySessions']
 };
 
 // GNN-enhanced requirement discovery
@@ -268,20 +268,20 @@ The Specification phase is the foundation of SPARC methodology, where we:
 specification:
   functional_requirements:
     - id: "FR-001"
-      description: "System shall generate daily loadout suggestions via Ollama LLM"
+      description: "System shall generate daily Pick suggestions via Ollama LLM"
       priority: "high"
       acceptance_criteria:
-        - "Loadout suggestion includes 1-3 games from user library"
+        - "Pick suggestion includes 1-3 games from user library"
         - "LLM output passes anti-hallucination validation (token overlap)"
         - "Suggestion expires after 24 hours (auto-ignore)"
 
     - id: "FR-002"
-      description: "Users can start missions with AI-generated briefings"
+      description: "Users can start play sessions with AI-generated recaps"
       priority: "high"
       acceptance_criteria:
-        - "Only one active mission per user at a time"
-        - "Briefing generated via Ollama smart model (gemma3:12b)"
-        - "Mission auto-clamps after 24 hours"
+        - "Only one active play session per user at a time"
+        - "Recap generated via Ollama smart model (gemma3:12b)"
+        - "PlaySession auto-clamps after 24 hours"
 
   non_functional_requirements:
     - id: "NFR-001"
@@ -325,26 +325,26 @@ constraints:
 ```yaml
 use_cases:
   - id: "UC-001"
-    title: "Start a Mission"
+    title: "Start a PlaySession"
     actor: "Player"
     preconditions:
       - "Player has games in library"
-      - "No active mission exists for player"
+      - "No active play session exists for player"
     flow:
       1. "Player selects a game from library"
-      2. "System generates mission briefing via Ollama"
-      3. "Player reviews and accepts briefing"
-      4. "System creates active mission record"
+      2. "System generates play session recap via Ollama"
+      3. "Player reviews and accepts recap"
+      4. "System creates active play session record"
       5. "Player plays the game"
-      6. "Player submits debrief"
+      6. "Player submits wrap-up"
       7. "System extracts emotional state via LLM (async Taskiq job)"
     postconditions:
-      - "Mission marked as completed"
-      - "Debrief state extracted and stored"
+      - "PlaySession marked as completed"
+      - "WrapUp state extracted and stored"
     exceptions:
-      - "Active mission exists: Show error, suggest completing current mission"
-      - "LLM unavailable: Queue briefing generation, show fallback"
-      - "Mission exceeds 24h: Auto-clamp via background worker"
+      - "Active play session exists: Show error, suggest completing current play session"
+      - "LLM unavailable: Queue recap generation, show fallback"
+      - "PlaySession exceeds 24h: Auto-clamp via background worker"
 
   - id: "UC-002"
     title: "Quick Capture"
@@ -368,26 +368,26 @@ use_cases:
 ### 4. Acceptance Criteria
 
 ```gherkin
-Feature: Mission Briefing
+Feature: PlaySession Recap
 
-  Scenario: Successful mission start
+  Scenario: Successful play session start
     Given I have games in my library
-    And I have no active mission
-    When I select a game and request a mission
-    Then a briefing should be generated via Ollama
-    And the mission should be created with status "active"
-    And I should see the briefing content
+    And I have no active play session
+    When I select a game and request a play session
+    Then a recap should be generated via Ollama
+    And the play session should be created with status "active"
+    And I should see the recap content
 
-  Scenario: Blocked by active mission
-    Given I already have an active mission
-    When I try to start a new mission
-    Then I should see an error "One active mission at a time"
-    And no new mission should be created
+  Scenario: Blocked by active play session
+    Given I already have an active play session
+    When I try to start a new play session
+    Then I should see an error "One active play session at a time"
+    And no new play session should be created
 
-  Scenario: Mission auto-clamp
-    Given I have an active mission older than 24 hours
+  Scenario: PlaySession auto-clamp
+    Given I have an active play session older than 24 hours
     When the auto-clamp worker runs
-    Then the mission should be ended automatically
+    Then the play session should be ended automatically
     And the status should be "clamped"
 ```
 
@@ -400,21 +400,21 @@ Feature: Mission Briefing
 
 ## 1. Introduction
 ### 1.1 Purpose
-DailyLoadout helps gamers organize their library and get AI-powered suggestions...
+Slate helps gamers organize their library and get AI-powered suggestions...
 
 ### 1.2 Scope
 - Personal game library management
 - AI-powered captures (text, voice, photo)
-- Daily loadout suggestions
-- Structured mission tracking with briefing/debrief
+- Daily Pick suggestions
+- Structured play session tracking with recap/wrap-up
 - Play analytics and streaks
 
 ### 1.3 Definitions
 - **Library**: User's personal game collection
 - **Capture**: Quick-add entry via text/voice/photo processed by LLM
-- **Loadout**: AI-suggested daily gaming session
-- **Mission**: Structured play session with briefing and debrief
-- **Briefing**: AI-generated mission context and goals
+- **Pick**: AI-suggested daily gaming session
+- **PlaySession**: Structured play session with recap and wrap-up
+- **Recap**: AI-generated play session context and goals
 
 ## 2. Functional Requirements
 
@@ -428,10 +428,10 @@ DailyLoadout helps gamers organize their library and get AI-powered suggestions.
 - FR-2.2.2: Voice capture via faster-whisper + LLM
 - FR-2.2.3: Photo capture via vision model (qwen3-vl:4b)
 
-### 2.3 Mission Tracking
-- FR-2.3.1: Mission creation with LLM briefing
-- FR-2.3.2: One active mission per user constraint
-- FR-2.3.3: Debrief submission with emotional state extraction
+### 2.3 PlaySession Tracking
+- FR-2.3.1: PlaySession creation with LLM recap
+- FR-2.3.2: One active play session per user constraint
+- FR-2.3.3: WrapUp submission with emotional state extraction
 - FR-2.3.4: Auto-clamp after 24 hours
 
 ## 3. Non-Functional Requirements
@@ -467,18 +467,18 @@ entities:
       - created_at: timestamp (UTC)
       - updated_at: timestamp (UTC)
     relationships:
-      - has_many: Missions
+      - has_many: PlaySessions
       - has_many: Captures
 
-  Mission:
+  PlaySession:
     attributes:
       - id: integer (primary key, auto-increment)
       - public_id: uuid (unique, external)
       - user_id: uuid (foreign key)
       - library_entry_id: integer (foreign key)
-      - briefing: text
-      - debrief: text (nullable)
-      - debrief_state: string (nullable, extracted by LLM)
+      - recap: text
+      - wrap-up: text (nullable)
+      - wrap_up_state: string (nullable, extracted by LLM)
       - status: string (active, completed, clamped)
       - started_at: timestamp (UTC)
       - ended_at: timestamp (UTC, nullable)
@@ -505,13 +505,13 @@ entities:
 ```yaml
 openapi: 3.0.0
 info:
-  title: DailyLoadout API
+  title: Slate API
   version: 1.0.0
 
 paths:
-  /api/v1/missions:
+  /api/v1/play-sessions:
     post:
-      summary: Start a new mission
+      summary: Start a new play session
       requestBody:
         required: true
         content:
@@ -525,21 +525,21 @@ paths:
                   format: uuid
       responses:
         201:
-          description: Mission created with briefing
+          description: PlaySession created with recap
           content:
             application/json:
               schema:
                 type: object
                 properties:
                   public_id: string
-                  briefing: string
+                  recap: string
                   status: string
         409:
-          description: Active mission already exists
+          description: Active play session already exists
 
-  /api/v1/missions/{id}/debrief:
+  /api/v1/play-sessions/{id}/wrap-up:
     post:
-      summary: Submit mission debrief
+      summary: Submit play session wrap-up
       requestBody:
         required: true
         content:
@@ -552,7 +552,7 @@ paths:
                   type: string
       responses:
         200:
-          description: Debrief accepted, state extraction queued
+          description: WrapUp accepted, state extraction queued
 ```
 
 ## Validation Checklist
@@ -566,14 +566,14 @@ Before completing specification:
 - [ ] LLM integration constraints specified
 - [ ] Layer discipline boundaries documented
 - [ ] Dependencies identified
-- [ ] Issue tagged with DL-XX reference
+- [ ] Issue tagged with SLA-XX reference
 
 ## Best Practices
 
 1. **Be Specific**: Avoid ambiguous terms like "fast" or "user-friendly"
 2. **Make it Testable**: Each requirement should have clear pass/fail criteria
-3. **Consider Edge Cases**: What happens when LLM is unavailable? What about concurrent missions?
-4. **Think End-to-End**: Consider the full player journey from library to mission to analytics
+3. **Consider Edge Cases**: What happens when LLM is unavailable? What about concurrent play sessions?
+4. **Think End-to-End**: Consider the full player journey from library to play session to analytics
 5. **Version Control**: Track specification changes
 6. **Get Feedback**: Validate with stakeholders early
 

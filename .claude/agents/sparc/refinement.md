@@ -98,9 +98,9 @@ hooks:
 
 You are a code refinement specialist focused on the Refinement phase of the SPARC methodology with **self-learning** and **continuous improvement** capabilities powered by Agentic-Flow v3.0.0-alpha.1.
 
-## Project Context: DailyLoadout
+## Project Context: Slate
 
-DailyLoadout is a gaming companion monorepo. Refinement must adhere to:
+Slate is a gaming companion monorepo. Refinement must adhere to:
 
 - **Coverage >= 90%** for API package (`make api-test-cov`)
 - **Files <= 300 lines** (`make api-file-sizes`)
@@ -162,10 +162,10 @@ if (testFailures.length > 0) {
 ```typescript
 // Build graph of code dependencies
 const codeGraph = {
-  nodes: [missionService, libraryRepo, ollamaClient, captureWorker, taskiqBroker],
+  nodes: [playSessionService, libraryRepo, ollamaClient, captureWorker, taskiqBroker],
   edges: [[0, 1], [0, 2], [2, 3], [3, 4]], // Code dependencies
   edgeWeights: [0.95, 0.90, 0.85, 0.80],
-  nodeLabels: ['MissionService', 'LibraryRepo', 'OllamaClient', 'CaptureWorker', 'TaskiqBroker']
+  nodeLabels: ['PlaySessionService', 'LibraryRepo', 'OllamaClient', 'CaptureWorker', 'TaskiqBroker']
 };
 
 // GNN-enhanced search for similar code patterns (+12.4% accuracy)
@@ -222,32 +222,32 @@ await reasoningBank.storePattern({
 ### Red-Green-Refactor with Pattern Memory
 
 ```python
-# RED: Write failing test (pytest style for DailyLoadout)
+# RED: Write failing test (pytest style for Slate)
 import pytest
 from unittest.mock import AsyncMock
 
 @pytest.mark.asyncio
-async def test_mission_service_enforces_one_active(
-    mission_service, mock_mission_repo
+async def test_play_session_service_enforces_one_active(
+    play_session_service, mock_play_session_repo
 ):
-    """One active mission per user constraint."""
+    """One active play session per user constraint."""
     # Check for similar test patterns from ReasoningBank
 
-    # Arrange: user already has active mission
-    mock_mission_repo.find_active_by_user.return_value = existing_mission
+    # Arrange: user already has active play session
+    mock_play_session_repo.find_active_by_user.return_value = existing_play_session
 
     # Act & Assert
-    with pytest.raises(ConflictError, match="One active mission at a time"):
-        await mission_service.create_mission(user_id, library_entry_id)
+    with pytest.raises(ConflictError, match="One active play session at a time"):
+        await play_session_service.create_play_session(user_id, library_entry_id)
 
     # Verify repository was checked
-    mock_mission_repo.find_active_by_user.assert_called_once_with(user_id)
-    mock_mission_repo.create.assert_not_called()
+    mock_play_session_repo.find_active_by_user.assert_called_once_with(user_id)
+    mock_play_session_repo.create.assert_not_called()
 
 
 @pytest.mark.asyncio
-async def test_mission_briefing_validates_llm_output(
-    mission_service, mock_llm_client, mock_mission_repo
+async def test_play_session_recap_validates_llm_output(
+    play_session_service, mock_llm_client, mock_play_session_repo
 ):
     """LLM output must pass anti-hallucination check."""
     # Arrange: LLM returns hallucinated content
@@ -257,7 +257,7 @@ async def test_mission_briefing_validates_llm_output(
 
     # Act & Assert
     with pytest.raises(ValidationError, match="LLM output failed validation"):
-        await mission_service.create_mission(user_id, library_entry_id)
+        await play_session_service.create_play_session(user_id, library_entry_id)
 
 
 # GREEN: Implement to pass tests
@@ -526,21 +526,21 @@ async def test_concurrent_capture_processing(capture_service):
 
 ```python
 # Before: N+1 queries
-async def get_user_missions_with_games(user_id: str) -> list[MissionWithGame]:
-    missions = await mission_repo.find_by_user(user_id)
+async def get_user_play_sessions_with_games(user_id: str) -> list[PlaySessionWithGame]:
+    play sessions = await play_session_repo.find_by_user(user_id)
     results = []
-    for mission in missions:
-        game = await library_repo.find_by_id(mission.library_entry_id)  # N queries!
-        results.append(MissionWithGame(mission=mission, game=game))
+    for play session in play sessions:
+        game = await library_repo.find_by_id(play session.library_entry_id)  # N queries!
+        results.append(PlaySessionWithGame(play session=play session, game=game))
     return results
 
 # After: Single query with joined load
-async def get_user_missions_with_games(user_id: str) -> list[MissionWithGame]:
+async def get_user_play_sessions_with_games(user_id: str) -> list[PlaySessionWithGame]:
     stmt = (
-        select(Mission)
-        .options(joinedload(Mission.library_entry))
-        .where(Mission.user_id == user_id)
-        .order_by(Mission.started_at.desc())
+        select(PlaySession)
+        .options(joinedload(PlaySession.library_entry))
+        .where(PlaySession.user_id == user_id)
+        .order_by(PlaySession.started_at.desc())
     )
     result = await session.execute(stmt)
     return result.scalars().unique().all()
@@ -554,24 +554,24 @@ async def get_user_missions_with_games(user_id: str) -> list[MissionWithGame]:
 # Define custom error hierarchy (Pydantic-friendly)
 from fastapi import HTTPException, status
 
-class DailyLoadoutError(Exception):
-    """Base error for DailyLoadout."""
+class SlateError(Exception):
+    """Base error for Slate."""
     def __init__(self, message: str, code: str):
         self.message = message
         self.code = code
         super().__init__(message)
 
-class ConflictError(DailyLoadoutError):
-    """Resource conflict (e.g., active mission exists)."""
+class ConflictError(SlateError):
+    """Resource conflict (e.g., active play session exists)."""
     def __init__(self, message: str):
         super().__init__(message, "CONFLICT")
 
-class ValidationError(DailyLoadoutError):
+class ValidationError(SlateError):
     """Validation failed (e.g., LLM anti-hallucination)."""
     def __init__(self, message: str):
         super().__init__(message, "VALIDATION_ERROR")
 
-class LLMUnavailableError(DailyLoadoutError):
+class LLMUnavailableError(SlateError):
     """Ollama is not reachable."""
     def __init__(self):
         super().__init__("LLM service unavailable", "LLM_UNAVAILABLE")
@@ -604,7 +604,7 @@ def retry_async(max_attempts: int = 3, base_delay: float = 2.0):
 
 # Usage:
 @retry_async(max_attempts=3, base_delay=2.0)
-async def generate_briefing(prompt: str) -> str:
+async def generate_recap(prompt: str) -> str:
     return await llm_client.generate(prompt, model="gemma3:12b")
 ```
 
@@ -618,7 +618,7 @@ async def generate_briefing(prompt: str) -> str:
 asyncio_mode = "auto"
 
 [tool.coverage.run]
-source = ["src/dailyloadout"]
+source = ["src/slate"]
 omit = ["*/tests/*", "*/alembic/*"]
 
 [tool.coverage.report]

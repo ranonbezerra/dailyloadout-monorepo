@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 
-vi.mock("@dl/shared/api", () => ({
+vi.mock("@slate/shared/api", () => ({
 	apiFetch: vi.fn(),
 }));
 
-import { apiFetch } from "@dl/shared/api";
+import { apiFetch } from "@slate/shared/api";
 import {
 	banUser,
-	clampMission,
+	clampPlaySession,
 	clearConfig,
 	demoteGame,
 	editGame,
@@ -18,10 +18,10 @@ import {
 	fetchConfig,
 	fetchDashboard,
 	fetchGames,
-	fetchLoadout,
-	fetchLoadouts,
-	fetchMission,
-	fetchMissions,
+	fetchPick,
+	fetchPicks,
+	fetchPlaySession,
+	fetchPlaySessions,
 	fetchUser,
 	fetchUsers,
 	promoteGame,
@@ -211,49 +211,49 @@ describe("backoffice-api", () => {
 		expect(mockApiFetch).toHaveBeenCalledWith("/internal/v1/captures/c1", { method: "DELETE" });
 	});
 
-	it("fetchMissions builds the query string and converts tallies", async () => {
+	it("fetchPlaySessions builds the query string and converts tallies", async () => {
 		mockApiFetch.mockResolvedValue({
 			items: [{ public_id: "m1", user_email: "a@b.com", game_title: "Hades" }],
 			total: 1,
 			status_counts: [{ status: "active", count: 1 }],
 		});
-		const r = await fetchMissions({ q: "a@b.com", status: "active", limit: 20, offset: 0 });
+		const r = await fetchPlaySessions({ q: "a@b.com", status: "active", limit: 20, offset: 0 });
 		expect(mockApiFetch).toHaveBeenCalledWith(
-			"/internal/v1/missions?q=a%40b.com&status=active&limit=20&offset=0",
+			"/internal/v1/play-sessions?q=a%40b.com&status=active&limit=20&offset=0",
 		);
 		expect(r.statusCounts[0]).toMatchObject({ status: "active", count: 1 });
 		expect(r.items[0]).toMatchObject({ publicId: "m1", userEmail: "a@b.com", gameTitle: "Hades" });
 	});
 
-	it("fetchMissions omits the query string when no params", async () => {
+	it("fetchPlaySessions omits the query string when no params", async () => {
 		mockApiFetch.mockResolvedValue({ items: [], total: 0, status_counts: [] });
-		await fetchMissions();
-		expect(mockApiFetch).toHaveBeenCalledWith("/internal/v1/missions");
+		await fetchPlaySessions();
+		expect(mockApiFetch).toHaveBeenCalledWith("/internal/v1/play-sessions");
 	});
 
-	it("fetchMission hits the detail path", async () => {
+	it("fetchPlaySession hits the detail path", async () => {
 		mockApiFetch.mockResolvedValue({ public_id: "m1" });
-		await fetchMission("m1");
-		expect(mockApiFetch).toHaveBeenCalledWith("/internal/v1/missions/m1");
+		await fetchPlaySession("m1");
+		expect(mockApiFetch).toHaveBeenCalledWith("/internal/v1/play-sessions/m1");
 	});
 
-	it("clampMission POSTs to the clamp path", async () => {
+	it("clampPlaySession POSTs to the clamp path", async () => {
 		mockApiFetch.mockResolvedValue({ public_id: "m1" });
-		await clampMission("m1");
-		expect(mockApiFetch).toHaveBeenCalledWith("/internal/v1/missions/m1/clamp", {
+		await clampPlaySession("m1");
+		expect(mockApiFetch).toHaveBeenCalledWith("/internal/v1/play-sessions/m1/clamp", {
 			method: "POST",
 		});
 	});
 
-	it("fetchLoadouts builds the query string and converts tallies", async () => {
+	it("fetchPicks builds the query string and converts tallies", async () => {
 		mockApiFetch.mockResolvedValue({
 			items: [{ public_id: "l1", user_email: "a@b.com", available_minutes: 60 }],
 			total: 1,
 			action_counts: [{ action: "pending", count: 1 }],
 		});
-		const r = await fetchLoadouts({ q: "a@b.com", action: "pending", limit: 20, offset: 0 });
+		const r = await fetchPicks({ q: "a@b.com", action: "pending", limit: 20, offset: 0 });
 		expect(mockApiFetch).toHaveBeenCalledWith(
-			"/internal/v1/loadouts?q=a%40b.com&action=pending&limit=20&offset=0",
+			"/internal/v1/picks?q=a%40b.com&action=pending&limit=20&offset=0",
 		);
 		expect(r.actionCounts[0]).toMatchObject({ action: "pending", count: 1 });
 		expect(r.items[0]).toMatchObject({
@@ -263,15 +263,15 @@ describe("backoffice-api", () => {
 		});
 	});
 
-	it("fetchLoadouts omits the query string when no params", async () => {
+	it("fetchPicks omits the query string when no params", async () => {
 		mockApiFetch.mockResolvedValue({ items: [], total: 0, action_counts: [] });
-		await fetchLoadouts();
-		expect(mockApiFetch).toHaveBeenCalledWith("/internal/v1/loadouts");
+		await fetchPicks();
+		expect(mockApiFetch).toHaveBeenCalledWith("/internal/v1/picks");
 	});
 
-	it("fetchLoadout hits the detail path", async () => {
+	it("fetchPick hits the detail path", async () => {
 		mockApiFetch.mockResolvedValue({ public_id: "l1" });
-		await fetchLoadout("l1");
-		expect(mockApiFetch).toHaveBeenCalledWith("/internal/v1/loadouts/l1");
+		await fetchPick("l1");
+		expect(mockApiFetch).toHaveBeenCalledWith("/internal/v1/picks/l1");
 	});
 });

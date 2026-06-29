@@ -43,7 +43,7 @@ class AnalyticsRepository {
     return PlatformStats.fromJson(response.data!);
   }
 
-  /// Fetches the paginated mission timeline.
+  /// Fetches the paginated playSession timeline.
   Future<TimelineResponse> getTimeline({int limit = 20, int offset = 0}) async {
     final response = await _apiClient.dio.get<Map<String, dynamic>>(
       '/v1/stats/timeline',

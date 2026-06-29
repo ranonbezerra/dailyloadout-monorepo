@@ -1,12 +1,12 @@
-# DailyLoadout
+# Slate
 
-![DailyLoadout](./docs/brand/readme-hero.png)
+![Slate](./docs/brand/readme-hero.png)
 
-> *Less deciding. More playing.* A self-hosted gaming companion and production-AI systems showcase. Voice/photo/text capture, structured mission state, "previously on..." briefings before each session, and a 3-question daily loadout that picks one game for you.
+> *Less deciding. More playing.* A self-hosted gaming companion and production-AI systems showcase. Voice/photo/text capture, structured play session state, "previously on..." recaps before each session, and a 3-question daily Pick that selects one game for you.
 
-[![CI – API](https://img.shields.io/badge/CI-API-blue)](https://github.com/ranonbezerra/dailyloadout-monorepo/actions/workflows/ci-api.yml)
-[![CI – App](https://img.shields.io/badge/CI-App-blue)](https://github.com/ranonbezerra/dailyloadout-monorepo/actions/workflows/ci-app.yml)
-[![CI – Web](https://img.shields.io/badge/CI-Web-blue)](https://github.com/ranonbezerra/dailyloadout-monorepo/actions/workflows/ci-web.yml)
+[![CI – API](https://img.shields.io/badge/CI-API-blue)](https://github.com/ranonbezerra/slate-monorepo/actions/workflows/ci-api.yml)
+[![CI – App](https://img.shields.io/badge/CI-App-blue)](https://github.com/ranonbezerra/slate-monorepo/actions/workflows/ci-app.yml)
+[![CI – Web](https://img.shields.io/badge/CI-Web-blue)](https://github.com/ranonbezerra/slate-monorepo/actions/workflows/ci-web.yml)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 
 ---
@@ -15,11 +15,11 @@
 
 You own 60 games. You play 2. Every time you sit down, half the session is spent deciding what to play — and when you come back to a game after 3 weeks, you've forgotten where you stopped.
 
-DailyLoadout treats the backlog as a **decision problem**, not a cataloging problem. Three ideas:
+Slate treats the backlog as a **decision problem**, not a cataloging problem. Three ideas:
 
 1. **Frictionless capture.** Speak "got Hollow Knight on Switch" and the app fills the metadata. No forms.
-2. **Mission briefings.** Before each session, the app generates a "previously on..." paragraph from your past debriefs — like a TV show recap.
-3. **Daily Loadout.** Three quick questions (mood, time, mental energy) → one suggested game with reasoning. You don't choose; the app does.
+2. **PlaySession recaps.** Before each session, the app generates a "previously on..." paragraph from your past wrap-ups — like a TV show recap.
+3. **Daily Pick.** Three quick questions (mood, time, mental energy) → one suggested game with reasoning. You don't choose; the app does.
 
 No streaks. No "X days without playing" guilt. Dropping a game is a legitimate decision, not a failure.
 
@@ -27,23 +27,23 @@ No streaks. No "X days without playing" guilt. Dropping a game is a legitimate d
 
 ## Why This Repo Exists
 
-DailyLoadout is a production-style AI application wrapped in a real product I use: a full-stack, self-hosted system for turning messy player input into structured state, recommendations, and mission briefings. It runs entirely on your own hardware and uses **local LLMs via Ollama** instead of requiring cloud APIs.
+Slate is a production-style AI application wrapped in a real product I use: a full-stack, self-hosted system for turning messy player input into structured state, recommendations, and play session recaps. It runs entirely on your own hardware and uses **local LLMs via Ollama** instead of requiring cloud APIs.
 
 This is not a prompt demo. The interesting parts are the reliability boundaries around probabilistic systems:
 
 - **Local-first AI with provider boundaries.** The API talks to an `AbstractLLMClient`; Ollama is the real local backend and `DummyLLMClient` keeps tests deterministic. Faster-Whisper handles speech-to-text locally.
-- **Structured outputs with deterministic guards.** Capture parsing, debrief extraction, and loadout picks are treated as untrusted model output. The app validates JSON shape, candidate IDs, user ownership, and context overlap before persisting or showing results.
-- **Anti-hallucination as a product feature.** Briefings are checked against the user's actual mission context. Suspicious output is flagged instead of silently trusted. Loadout suggestions must reference an existing library entry; invalid UUIDs trigger a reroll path.
+- **Structured outputs with deterministic guards.** Capture parsing, wrap-up extraction, and Pick selections are treated as untrusted model output. The app validates JSON shape, candidate IDs, user ownership, and context overlap before persisting or showing results.
+- **Anti-hallucination as a product feature.** Recaps are checked against the user's actual play session context. Suspicious output is flagged instead of silently trusted. Pick suggestions must reference an existing library entry; invalid UUIDs trigger a reroll path.
 - **State machines for AI workflows.** Captures cross three systems (LLM, optional IGDB, user review). They're modeled as an explicit state machine (`queued → processing → review → committed/partially_committed/failed/cancelled`), making retries and partial commits safe.
-- **Failure handling over happy paths.** Background debrief extraction has retry/backoff behavior and synchronous fallback before briefing generation. Capture processing degrades to review/failed states instead of corrupting the library.
+- **Failure handling over happy paths.** Background wrap-up extraction has retry/backoff behavior and synchronous fallback before recap generation. Capture processing degrades to review/failed states instead of corrupting the library.
 
 The repo also includes versioned AI-engineering workflow files (`CLAUDE.md`, `.claude/`, `.mcp.json`) that document how agents, project conventions, review flows, and MCP tools are expected to work against this codebase.
 
 ### Agentic Roadmap
 
-The next implementation track is a LangGraph-based **Deep Research Briefing**: a local SearXNG + Ollama graph that searches, grades, refines, synthesizes, spoiler-filters, and then reuses the existing anti-hallucination validator before returning a briefing. The current single-shot briefing remains the fast path and fallback.
+The next implementation track is a LangGraph-based **Deep Research Recap**: a local SearXNG + Ollama graph that searches, grades, refines, synthesizes, spoiler-filters, and then reuses the existing anti-hallucination validator before returning a recap. The current single-shot recap remains the fast path and fallback.
 
-That design is documented in [docs/DEEP_RESEARCH_BRIEFING.md](./docs/DEEP_RESEARCH_BRIEFING.md) and tracked in [ROADMAP.md](./ROADMAP.md). It is intentionally documented separately because the shipped v1 path is already useful and the LangGraph path adds long-running orchestration, bounded loops, cancellation, and graceful degradation.
+That design is documented in [docs/DEEP_RESEARCH_RECAP.md](./docs/DEEP_RESEARCH_RECAP.md) and tracked in [ROADMAP.md](./ROADMAP.md). It is intentionally documented separately because the shipped v1 path is already useful and the LangGraph path adds long-running orchestration, bounded loops, cancellation, and graceful degradation.
 
 ---
 
@@ -51,8 +51,8 @@ That design is documented in [docs/DEEP_RESEARCH_BRIEFING.md](./docs/DEEP_RESEAR
 
 ```bash
 # Clone
-git clone https://github.com/ranonbezerra/dailyloadout-monorepo.git
-cd dailyloadout-monorepo
+git clone https://github.com/ranonbezerra/slate-monorepo.git
+cd slate-monorepo
 
 # Configure
 cp .env.example .env
@@ -87,7 +87,7 @@ Run `make help` to see all available commands.
 | Package | Stack |
 | --- | --- |
 | `packages/api/` | Python 3.14 · FastAPI · Pydantic v2 · SQLAlchemy 2 async · PostgreSQL 18 · Redis · Taskiq · Poetry |
-| `packages/app/` | Flutter 3.27+ · BLoC · go_router · dio · faster-whisper (server-side) |
+| `packages/mobile/` | Flutter 3.27+ · BLoC · go_router · dio · faster-whisper (server-side) |
 | `packages/web/` | Bun · Vite · React 19 · TypeScript · Mantine v8 · TanStack Query |
 | AI | `AbstractLLMClient` port · **Ollama** backend · deterministic dummy backend for tests · **faster-whisper** local |
 | Infra | Docker Compose · GitHub Actions · AGPL-3.0 |
@@ -107,18 +107,18 @@ Detailed architecture in [ARCHITECTURE.md](./ARCHITECTURE.md).
 - [x] **Capture by voice** — record up to 60s, transcribed locally with faster-whisper
 - [x] **Capture by photo** — single cover or shelf, processed by multimodal LLM
 - [x] **IGDB enrichment** (optional) — cover art, genres, release dates
-- [x] **Mission lifecycle** — start a session, write a debrief at the end
-- [x] **Briefing generation** — LLM-generated "previously on..." with anti-hallucination validation
-- [x] **Structured debrief extraction** — async LLM extraction of next actions, location, quest, level, and notes
-- [x] **Daily Loadout** — 3 questions → 1 suggested game with reasoning
-- [x] **Analytics dashboard** (web + mobile) — play heatmap, genre/platform distribution, mission timeline
+- [x] **PlaySession lifecycle** — start a session, write a wrap-up at the end
+- [x] **Recap generation** — LLM-generated "previously on..." with anti-hallucination validation
+- [x] **Structured wrap-up extraction** — async LLM extraction of next actions, location, quest, level, and notes
+- [x] **Daily Pick** — 3 questions → 1 suggested game with reasoning
+- [x] **Analytics dashboard** (web + mobile) — play heatmap, genre/platform distribution, play session timeline
 - [x] Single-user mode for personal self-hosting
 - [x] Mobile: iOS, Android
 
 ### In Design / Next
 
-- [ ] **Deep Research Briefing** — LangGraph graph over local SearXNG + Ollama, with bounded search/refine loops, spoiler filtering, anti-hallucination validation, and quick-briefing fallback.
-- [ ] **Backlog Concierge** — optional tool-using conversational agent over the user's real library, preserving the same UUID validation guard as Daily Loadout.
+- [ ] **Deep Research Recap** — LangGraph graph over local SearXNG + Ollama, with bounded search/refine loops, spoiler filtering, anti-hallucination validation, and quick-recap fallback.
+- [ ] **Backlog Concierge** — optional tool-using conversational agent over the user's real library, preserving the same UUID validation guard as Daily Pick.
 - [ ] **Cloud provider adapters** — the runtime is provider-shaped today; cloud LLM providers such as Bedrock belong behind the existing LLM port, not in product code.
 
 ### Out of scope (deliberate)
@@ -132,14 +132,14 @@ Detailed architecture in [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 - Multi-device offline sync with conflict resolution
 - Push notifications (paused game reminders)
-- Live Activities on iOS (mission timer)
+- Live Activities on iOS (play session timer)
 - Plugin system for custom prompts
 
 ---
 
 ## Self-hosting
 
-The Docker Compose setup is the recommended way to run DailyLoadout. For deploying to a VPS or PaaS, see [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) (Fly.io, Railway, Hetzner).
+The Docker Compose setup is the recommended way to run Slate. For deploying to a VPS or PaaS, see [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) (Fly.io, Railway, Hetzner).
 
 For Ollama model configuration and hardware requirements, see [docs/OLLAMA.md](./docs/OLLAMA.md).
 

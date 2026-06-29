@@ -3,7 +3,7 @@ import { setupMockedApp } from "./fixtures";
 
 const SHOTS = "e2e/screenshots";
 
-test.describe("DailyLoadout web — smoke + UX capture", () => {
+test.describe("Slate web — smoke + UX capture", () => {
 	test("redirects unauthenticated users to login", async ({ page }) => {
 		// No token seeded and every call 401 → the guard should bounce to /login.
 		await page.route("**/v1/**", (r) =>
@@ -51,11 +51,11 @@ test.describe("DailyLoadout web — smoke + UX capture", () => {
 		await page.screenshot({ path: `${SHOTS}/analytics.png`, fullPage: true });
 	});
 
-	test("loadout shows the questionnaire", async ({ page }) => {
+	test("pick shows the questionnaire", async ({ page }) => {
 		await setupMockedApp(page);
-		await page.goto("/play/loadout");
+		await page.goto("/play/pick");
 		await expect(page.getByRole("button", { name: /Roll the dice/i })).toBeVisible();
-		await page.screenshot({ path: `${SHOTS}/loadout.png`, fullPage: true });
+		await page.screenshot({ path: `${SHOTS}/pick.png`, fullPage: true });
 	});
 
 	test("mobile nav opens via the burger and exposes IGDB attribution", async ({ page }) => {

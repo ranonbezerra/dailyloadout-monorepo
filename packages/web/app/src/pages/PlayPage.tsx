@@ -19,10 +19,10 @@ import {
 } from "@tabler/icons-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useActiveMission } from "../hooks/useMission";
+import { useActivePlaySession } from "../hooks/usePlaySession";
 import { FEATURES } from "../lib/features";
-import { MissionBriefingModal } from "./MissionBriefingModal";
-import { MissionDebriefModal } from "./MissionDebriefModal";
+import { PlaySessionRecapModal } from "./PlaySessionRecapModal";
+import { PlaySessionWrapUpModal } from "./PlaySessionWrapUpModal";
 
 interface DoorCardProps {
 	title: string;
@@ -33,7 +33,7 @@ interface DoorCardProps {
 	onClick: () => void;
 }
 
-const DISABLED_REASON = "Finish your active mission first";
+const DISABLED_REASON = "Finish your active session first";
 
 function DoorCard({ title, subtitle, icon, accent, disabled, onClick }: DoorCardProps) {
 	// Render as a real <button> (UnstyledButton) so the door is keyboard
@@ -85,10 +85,10 @@ function DoorCard({ title, subtitle, icon, accent, disabled, onClick }: DoorCard
 
 export function PlayPage() {
 	const navigate = useNavigate();
-	const { data: activeMission } = useActiveMission();
-	const [showBriefing, setShowBriefing] = useState(false);
-	const [showDebrief, setShowDebrief] = useState(false);
-	const hasActiveMission = Boolean(activeMission);
+	const { data: activePlaySession } = useActivePlaySession();
+	const [showRecap, setShowRecap] = useState(false);
+	const [showWrapUp, setShowWrapUp] = useState(false);
+	const hasActivePlaySession = Boolean(activePlaySession);
 
 	return (
 		<Stack maw={720} mx="auto" mt="md">
@@ -97,20 +97,20 @@ export function PlayPage() {
 				Pick how you want to start your session.
 			</Text>
 
-			{activeMission ? (
+			{activePlaySession ? (
 				<Card withBorder p="lg" radius="md">
 					<Stack gap="md">
 						<Group gap="sm">
 							<Badge color="teal" variant="dot" size="lg">
-								Mission active
+								Session active
 							</Badge>
-							<Title order={3}>{activeMission.libraryEntry.game.title}</Title>
+							<Title order={3}>{activePlaySession.libraryEntry.game.title}</Title>
 						</Group>
 
-						{activeMission.briefingText && (
+						{activePlaySession.recapText && (
 							<Card withBorder p="sm" radius="sm">
 								<Text size="sm" c="dimmed" lineClamp={3}>
-									{activeMission.briefingText}
+									{activePlaySession.recapText}
 								</Text>
 							</Card>
 						)}
@@ -119,16 +119,16 @@ export function PlayPage() {
 							<Button
 								leftSection={<IconBook size={18} />}
 								variant="light"
-								onClick={() => setShowBriefing(true)}
+								onClick={() => setShowRecap(true)}
 							>
-								Briefing
+								Recap
 							</Button>
 							<Button
 								leftSection={<IconFlagCheck size={18} />}
 								color="teal"
-								onClick={() => setShowDebrief(true)}
+								onClick={() => setShowWrapUp(true)}
 							>
-								End / Debrief
+								Wrap up
 							</Button>
 						</Group>
 					</Stack>
@@ -136,7 +136,7 @@ export function PlayPage() {
 			) : (
 				<Card withBorder p="lg" radius="md">
 					<Text c="dimmed" ta="center" py="sm">
-						No active mission. Choose a door below to get rolling.
+						No active session. Choose a door below to get rolling.
 					</Text>
 				</Card>
 			)}
@@ -147,14 +147,14 @@ export function PlayPage() {
 					subtitle="One tap — we pick, you play."
 					icon={<IconDice3 size={28} />}
 					accent
-					disabled={hasActiveMission}
-					onClick={() => navigate("/play/loadout")}
+					disabled={hasActivePlaySession}
+					onClick={() => navigate("/play/pick")}
 				/>
 				<DoorCard
 					title="I'll choose"
 					subtitle="Pick a game yourself."
 					icon={<IconHandClick size={28} />}
-					disabled={hasActiveMission}
+					disabled={hasActivePlaySession}
 					onClick={() => navigate("/library")}
 				/>
 				{FEATURES.backlogConcierge && (
@@ -167,16 +167,16 @@ export function PlayPage() {
 				)}
 			</SimpleGrid>
 
-			{showBriefing && activeMission && (
-				<MissionBriefingModal
+			{showRecap && activePlaySession && (
+				<PlaySessionRecapModal
 					mode="view"
-					mission={activeMission}
-					onClose={() => setShowBriefing(false)}
+					playSession={activePlaySession}
+					onClose={() => setShowRecap(false)}
 				/>
 			)}
-			<MissionDebriefModal
-				mission={showDebrief ? (activeMission ?? null) : null}
-				onClose={() => setShowDebrief(false)}
+			<PlaySessionWrapUpModal
+				playSession={showWrapUp ? (activePlaySession ?? null) : null}
+				onClose={() => setShowWrapUp(false)}
 			/>
 		</Stack>
 	);

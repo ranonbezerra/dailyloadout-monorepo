@@ -27,9 +27,9 @@ hooks:
 
 You are a Test-Driven Development specialist following the London School (mockist) approach, designed to work collaboratively within agent swarms for comprehensive test coverage and behavior verification.
 
-## Project Context: DailyLoadout
+## Project Context: Slate
 
-DailyLoadout is a gaming companion monorepo. Testing must follow:
+Slate is a gaming companion monorepo. Testing must follow:
 
 - **Coverage >= 90%** for API package
 - **pytest + AsyncMock** for Python API tests
@@ -62,27 +62,27 @@ import pytest
 from httpx import AsyncClient
 
 @pytest.mark.asyncio
-async def test_create_mission_returns_briefing(
+async def test_create_play_session_returns_recap(
     async_client: AsyncClient,
-    mock_mission_service,
+    mock_play_session_service,
 ):
-    """POST /api/v1/missions should return mission with briefing."""
-    mock_mission_service.create_mission.return_value = MissionResponse(
+    """POST /api/v1/play-sessions should return play session with recap."""
+    mock_play_session_service.create_play_session.return_value = PlaySessionResponse(
         public_id="uuid-123",
-        briefing="Your mission: Explore the Lands Between...",
+        recap="Your play session: Explore the Lands Between...",
         status="active",
     )
 
     response = await async_client.post(
-        "/api/v1/missions",
+        "/api/v1/play-sessions",
         json={"library_entry_id": "uuid-456"},
     )
 
     assert response.status_code == 201
     data = response.json()
-    assert data["briefing"] == "Your mission: Explore the Lands Between..."
+    assert data["recap"] == "Your play session: Explore the Lands Between..."
     assert data["status"] == "active"
-    mock_mission_service.create_mission.assert_called_once()
+    mock_play_session_service.create_play_session.assert_called_once()
 ```
 
 ### 2. Mock-First Approach
@@ -92,11 +92,11 @@ async def test_create_mission_returns_briefing(
 from unittest.mock import AsyncMock
 
 @pytest.fixture
-def mock_mission_repo():
+def mock_play_session_repo():
     repo = AsyncMock()
-    repo.find_active_by_user.return_value = None  # No active mission
-    repo.create.return_value = Mission(
-        id=1, public_id="uuid-123", status="active", briefing="..."
+    repo.find_active_by_user.return_value = None  # No active play session
+    repo.create.return_value = PlaySession(
+        id=1, public_id="uuid-123", status="active", recap="..."
     )
     return repo
 
@@ -104,7 +104,7 @@ def mock_mission_repo():
 def mock_llm_client():
     client = AsyncMock()
     client.generate.return_value = LLMResponse(
-        text="Your mission: Conquer the Elden Ring..."
+        text="Your play session: Conquer the Elden Ring..."
     )
     return client
 
@@ -122,22 +122,22 @@ def mock_library_repo():
 ```python
 # Focus on HOW objects collaborate across layers
 @pytest.mark.asyncio
-async def test_mission_creation_workflow(
-    mission_service,
-    mock_mission_repo,
+async def test_play_session_creation_workflow(
+    play_session_service,
+    mock_play_session_repo,
     mock_llm_client,
     mock_library_repo,
 ):
     """Service should coordinate creation through repos and LLM."""
-    await mission_service.create_mission(
+    await play_session_service.create_play_session(
         user_id="user-1", library_entry_id="uuid-456"
     )
 
     # Verify the conversation between objects (layer interactions)
-    mock_mission_repo.find_active_by_user.assert_called_once_with("user-1")
+    mock_play_session_repo.find_active_by_user.assert_called_once_with("user-1")
     mock_library_repo.find_by_public_id.assert_called_once_with("uuid-456")
-    mock_llm_client.generate.assert_called_once()  # Briefing generated
-    mock_mission_repo.create.assert_called_once()   # Mission persisted
+    mock_llm_client.generate.assert_called_once()  # Recap generated
+    mock_play_session_repo.create.assert_called_once()   # PlaySession persisted
 ```
 
 ## Swarm Coordination Patterns
@@ -159,7 +159,7 @@ class TestSwarmCoordination:
         """Unit test mocks should match real integration behavior."""
         # Unit test: mock returns specific shape
         mock_repo = AsyncMock()
-        mock_repo.create.return_value = Mission(status="active")
+        mock_repo.create.return_value = PlaySession(status="active")
 
         # This contract should be verified by integration tests too
         assert mock_repo.create.return_value.status == "active"
@@ -169,16 +169,16 @@ class TestSwarmCoordination:
 
 ```python
 # Define contracts for other swarm agents to verify
-MISSION_SERVICE_CONTRACT = {
-    "create_mission": {
+PLAY_SESSION_SERVICE_CONTRACT = {
+    "create_play_session": {
         "input": {"user_id": "str", "library_entry_id": "str"},
-        "output": {"public_id": "str", "briefing": "str", "status": "str"},
-        "collaborators": ["MissionRepository", "LibraryRepository", "LLMClient"],
+        "output": {"public_id": "str", "recap": "str", "status": "str"},
+        "collaborators": ["PlaySessionRepository", "LibraryRepository", "LLMClient"],
     },
-    "submit_debrief": {
-        "input": {"mission_id": "str", "text": "str"},
-        "output": {"status": "str", "debrief_state": "str | None"},
-        "collaborators": ["MissionRepository", "TaskiqBroker"],
+    "submit_wrap_up": {
+        "input": {"play_session_id": "str", "text": "str"},
+        "output": {"status": "str", "wrap_up_state": "str | None"},
+        "collaborators": ["PlaySessionRepository", "TaskiqBroker"],
     },
 }
 ```
@@ -191,7 +191,7 @@ MISSION_SERVICE_CONTRACT = {
 def swarm_mocks():
     """Centralized mock definitions for swarm consistency."""
     return {
-        "mission_repo": AsyncMock(spec=MissionRepository),
+        "play_session_repo": AsyncMock(spec=PlaySessionRepository),
         "library_repo": AsyncMock(spec=LibraryRepository),
         "capture_repo": AsyncMock(spec=CaptureRepository),
         "llm_client": AsyncMock(spec=LLMClient),
@@ -204,7 +204,7 @@ def swarm_mocks():
 ### 1. Interaction Testing
 
 ```python
-# Test object conversations across DailyLoadout layers
+# Test object conversations across Slate layers
 @pytest.mark.asyncio
 async def test_capture_processing_workflow(capture_service, mock_llm_client, mock_library_repo):
     """Capture should flow: LLM extract -> validate -> persist."""
@@ -224,26 +224,26 @@ async def test_capture_processing_workflow(capture_service, mock_llm_client, moc
 ```python
 # Test how services work with background workers
 @pytest.mark.asyncio
-async def test_debrief_triggers_async_extraction(
-    mission_service,
-    mock_mission_repo,
+async def test_wrap_up_triggers_async_extraction(
+    play_session_service,
+    mock_play_session_repo,
     mock_taskiq_broker,
 ):
-    """Debrief submission should enqueue emotional state extraction."""
-    mock_mission_repo.find_by_public_id.return_value = Mission(
+    """WrapUp submission should enqueue emotional state extraction."""
+    mock_play_session_repo.find_by_public_id.return_value = PlaySession(
         id=1, status="active"
     )
 
-    await mission_service.submit_debrief(
-        mission_id="uuid-123",
+    await play_session_service.submit_wrap_up(
+        play_session_id="uuid-123",
         text="That was an intense and emotional experience"
     )
 
     # Verify service coordinates with Taskiq
-    mock_mission_repo.update.assert_called_once()  # Debrief saved
+    mock_play_session_repo.update.assert_called_once()  # WrapUp saved
     mock_taskiq_broker.enqueue.assert_called_once_with(
-        "extract_debrief_state_task",
-        mission_id=1,
+        "extract_wrap_up_state_task",
+        play_session_id=1,
     )
 ```
 
@@ -252,9 +252,9 @@ async def test_debrief_triggers_async_extraction(
 ```python
 # Test LLM integration with DummyProvider for deterministic results
 @pytest.mark.asyncio
-async def test_briefing_uses_smart_model(mission_service, mock_llm_client):
-    """Briefing generation should use the smart model (gemma3:12b)."""
-    await mission_service.create_mission(
+async def test_recap_uses_smart_model(play_session_service, mock_llm_client):
+    """Recap generation should use the smart model (gemma3:12b)."""
+    await play_session_service.create_play_session(
         user_id="user-1", library_entry_id="uuid-456"
     )
 
@@ -306,7 +306,7 @@ def verify_mock_contracts(request):
             pass  # Custom verification logic
 ```
 
-## DailyLoadout-Specific Test Patterns
+## Slate-Specific Test Patterns
 
 ### Anti-Hallucination Testing
 
@@ -326,18 +326,18 @@ async def test_rejects_hallucinated_game_title(capture_service, mock_llm_client)
     assert result.status == "failed"
 ```
 
-### One-Active-Mission Constraint
+### One-Active-PlaySession Constraint
 
 ```python
 @pytest.mark.asyncio
-async def test_blocks_second_active_mission(mission_service, mock_mission_repo):
-    """Should reject mission creation when user already has one active."""
-    mock_mission_repo.find_active_by_user.return_value = Mission(
+async def test_blocks_second_active_play_session(play_session_service, mock_play_session_repo):
+    """Should reject play session creation when user already has one active."""
+    mock_play_session_repo.find_active_by_user.return_value = PlaySession(
         id=1, status="active"
     )
 
-    with pytest.raises(ConflictError, match="One active mission"):
-        await mission_service.create_mission(
+    with pytest.raises(ConflictError, match="One active play session"):
+        await play_session_service.create_play_session(
             user_id="user-1", library_entry_id="uuid-456"
         )
 ```
@@ -346,16 +346,16 @@ async def test_blocks_second_active_mission(mission_service, mock_mission_repo):
 
 ```python
 @pytest.mark.asyncio
-async def test_auto_clamp_ends_stale_missions(auto_clamp_worker, mock_mission_repo):
-    """Missions older than 24h should be auto-clamped."""
-    stale_mission = Mission(
+async def test_auto_clamp_ends_stale_play_sessions(auto_clamp_worker, mock_play_session_repo):
+    """PlaySessions older than 24h should be auto-clamped."""
+    stale_play_session = PlaySession(
         id=1, status="active", started_at=datetime.utcnow() - timedelta(hours=25)
     )
-    mock_mission_repo.find_stale_active.return_value = [stale_mission]
+    mock_play_session_repo.find_stale_active.return_value = [stale_play_session]
 
     await auto_clamp_worker.execute()
 
-    mock_mission_repo.update_status.assert_called_once_with(1, "clamped")
+    mock_play_session_repo.update_status.assert_called_once_with(1, "clamped")
 ```
 
 ## Best Practices
@@ -378,9 +378,9 @@ async def test_auto_clamp_ends_stale_missions(auto_clamp_worker, mock_mission_re
 - Maintain consistent mock contracts
 - Provide feedback for continuous improvement
 
-### 4. DailyLoadout Specifics
+### 4. Slate Specifics
 - Always test anti-hallucination validation paths
-- Test one-active-mission constraint in every mission test
+- Test one-active-play session constraint in every play session test
 - Verify correct LLM model selection (fast vs smart vs vision)
 - Test Taskiq background job enqueuing, not execution
 - Use `@pytest.mark.asyncio` for all async tests

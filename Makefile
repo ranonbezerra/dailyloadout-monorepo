@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────
-# DailyLoadout — Root Makefile
+# Slate — Root Makefile
 # All commands run from the monorepo root.
 # ─────────────────────────────────────────────
 
@@ -71,7 +71,7 @@ ollama-pull: ## Pull Ollama models (gemma3:4b + gemma3:12b)
 
 .PHONY: api
 api: ## Run API dev server (uvicorn with reload)
-	cd $(API_DIR) && HF_HOME=$(HOME)/.cache/huggingface poetry run uvicorn src.dailyloadout.main:app --reload --host 0.0.0.0 --port $${API_PORT:-8100}
+	cd $(API_DIR) && HF_HOME=$(HOME)/.cache/huggingface poetry run uvicorn src.slate.main:app --reload --host 0.0.0.0 --port $${API_PORT:-8100}
 
 .PHONY: api-test
 api-test: ## Run API tests (parallel; ARGS="-n0" to force serial for debugging)
@@ -79,7 +79,7 @@ api-test: ## Run API tests (parallel; ARGS="-n0" to force serial for debugging)
 
 .PHONY: api-test-cov
 api-test-cov: ## Run API tests with coverage (parallel; fail under 90%)
-	cd $(API_DIR) && poetry run pytest -n auto --cov=src/dailyloadout --cov-report=term-missing --cov-fail-under=90
+	cd $(API_DIR) && poetry run pytest -n auto --cov=src/slate --cov-report=term-missing --cov-fail-under=90
 
 .PHONY: igdb-check
 igdb-check: ## Smoke-test the live IGDB client (make igdb-check q="Hollow Knight")
@@ -130,8 +130,8 @@ api-fmt: ## Format API code
 	cd $(API_DIR) && poetry run ruff format .
 
 .PHONY: worker
-worker: ## Run Taskiq worker (async debrief extraction)
-	cd $(API_DIR) && poetry run taskiq worker dailyloadout.infrastructure.tasks.debrief_extraction:broker
+worker: ## Run Taskiq worker (async wrapup extraction)
+	cd $(API_DIR) && poetry run taskiq worker slate.infrastructure.tasks.wrap_up_extraction:broker
 
 .PHONY: api-migrate
 api-migrate: ## Run Alembic migrations
@@ -146,7 +146,7 @@ api-install: ## Install API dependencies
 	cd $(API_DIR) && poetry install
 
 # ─────────────────────────────────────────────
-# Web shared lib (packages/web/shared) — @dl/shared
+# Web shared lib (packages/web/shared) — @slate/shared
 # ─────────────────────────────────────────────
 
 .PHONY: shared-test
@@ -266,7 +266,7 @@ quality-api: ## Full API quality gate
 	$(call check,Bandit security,            cd $(API_DIR) && poetry run bandit -r src/ -ll -ii -c pyproject.toml -q)
 	$(call check,Typos spell-check,          cd $(API_DIR) && poetry run typos src/ tests/)
 	$(call check,File sizes (≤300 lines),    $(MAKE) api-file-sizes > /dev/null 2>&1)
-	$(call check,Pytest + coverage ≥90%,     cd $(API_DIR) && poetry run pytest -n auto -q --tb=short --cov=src/dailyloadout --cov-report=term-missing --cov-fail-under=90)
+	$(call check,Pytest + coverage ≥90%,     cd $(API_DIR) && poetry run pytest -n auto -q --tb=short --cov=src/slate --cov-report=term-missing --cov-fail-under=90)
 	@echo "\033[1;32m══════ API: All checks passed ══════\033[0m\n"
 
 .PHONY: quality-web
@@ -319,7 +319,7 @@ pre-commit: ## Run pre-commit hooks on all files
 .PHONY: quality
 quality: ## Run ALL quality gates (pre-commit + api + web + mobile)
 	@echo "\n\033[1;35m╔══════════════════════════════════════╗\033[0m"
-	@echo "\033[1;35m║     DailyLoadout — Quality Gate      ║\033[0m"
+	@echo "\033[1;35m║     Slate — Quality Gate      ║\033[0m"
 	@echo "\033[1;35m╚══════════════════════════════════════╝\033[0m"
 	$(call check,Pre-commit hooks,  pre-commit run --all-files)
 	@$(MAKE) quality-api

@@ -14,9 +14,9 @@ from __future__ import annotations
 import asyncio
 import sys
 
-from dailyloadout.config import settings
-from dailyloadout.infrastructure.igdb.client import IGDBClient
-from dailyloadout.infrastructure.igdb.exceptions import IGDBNotConfiguredError
+from slate.config import settings
+from slate.infrastructure.igdb.client import IGDBClient
+from slate.infrastructure.igdb.exceptions import IGDBNotConfiguredError
 
 
 async def main() -> int:

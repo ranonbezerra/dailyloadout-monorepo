@@ -76,7 +76,7 @@ export function RegisterPage() {
 					Create an account
 				</Title>
 				<Text c="dimmed" size="sm" ta="center" mb="lg">
-					Join DailyLoadout
+					Join Slate
 				</Text>
 
 				<form onSubmit={form.onSubmit(handleSubmit)}>

@@ -3,7 +3,7 @@ name: swarm-memory-manager
 type: coordinator
 color: "#00BCD4"
 version: "3.0.0"
-description: V3 distributed memory manager for cross-agent state synchronization, CRDT replication, and namespace coordination across the swarm within the DailyLoadout monorepo
+description: V3 distributed memory manager for cross-agent state synchronization, CRDT replication, and namespace coordination across the swarm within the Slate monorepo
 capabilities:
   - distributed_memory_sync
   - crdt_replication
@@ -36,17 +36,17 @@ hooks:
 
 # V3 Swarm Memory Manager Agent
 
-You are a **Swarm Memory Manager** responsible for coordinating distributed memory across all agents in the swarm within the **DailyLoadout** monorepo. You ensure eventual consistency, handle conflict resolution, and optimize memory access patterns.
+You are a **Swarm Memory Manager** responsible for coordinating distributed memory across all agents in the swarm within the **Slate** monorepo. You ensure eventual consistency, handle conflict resolution, and optimize memory access patterns.
 
-## DailyLoadout Context
+## Slate Context
 
-Within DailyLoadout, distributed memory coordination covers:
+Within Slate, distributed memory coordination covers:
 
 - **packages/api**: Redis state (Taskiq broker), PostgreSQL shared data, session state
 - **packages/web**: Frontend cache synchronization
-- **Domain state**: Mission progress tracking, library catalog state, loadout composition state
+- **Domain state**: PlaySession progress tracking, library catalog state, pick composition state
 
-Ticket prefix: DL-XX
+Ticket prefix: SLA-XX
 
 ## Architecture
 

@@ -24,8 +24,10 @@ vi.mock("./contexts/AuthContext", () => ({
 
 vi.mock("./pages/PlayPage", () => ({ PlayPage: () => <div>PlayPage</div> }));
 vi.mock("./pages/LibraryPage", () => ({ LibraryPage: () => <div>LibraryPage</div> }));
-vi.mock("./pages/LoadoutPage", () => ({ LoadoutPage: () => <div>LoadoutPage</div> }));
-vi.mock("./pages/MissionsPage", () => ({ MissionsPage: () => <div>MissionsPage</div> }));
+vi.mock("./pages/PickPage", () => ({ PickPage: () => <div>PickPage</div> }));
+vi.mock("./pages/PlaySessionsPage", () => ({
+	PlaySessionsPage: () => <div>PlaySessionsPage</div>,
+}));
 vi.mock("./pages/CapturesPage", () => ({ CapturesPage: () => <div>CapturesPage</div> }));
 vi.mock("./pages/AnalyticsPage", () => ({ AnalyticsPage: () => <div>AnalyticsPage</div> }));
 
@@ -97,14 +99,14 @@ describe("App - unauthenticated routes", () => {
 
 	it("renders LoginPage at the /login route", () => {
 		renderApp(["/login"]);
-		expect(screen.getByText("Sign in to DailyLoadout")).toBeInTheDocument();
+		expect(screen.getByText("Sign in to Slate")).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: /sign in/i })).toBeInTheDocument();
 	});
 
 	it("renders RegisterPage at the /register route", () => {
 		renderApp(["/register"]);
 		expect(screen.getByText("Create an account")).toBeInTheDocument();
-		expect(screen.getByText("Join DailyLoadout")).toBeInTheDocument();
+		expect(screen.getByText("Join Slate")).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: /create account/i })).toBeInTheDocument();
 	});
 });
@@ -119,9 +121,9 @@ describe("App - authenticated layout", () => {
 		expect(await screen.findByText("PlayPage")).toBeInTheDocument();
 	});
 
-	it("displays the DailyLoadout brand text in the navbar", () => {
+	it("displays the Slate brand text in the navbar", () => {
 		renderApp(["/play"]);
-		expect(screen.getByText("DailyLoadout")).toBeInTheDocument();
+		expect(screen.getByText("Slate")).toBeInTheDocument();
 	});
 
 	it("renders the primary nav links", () => {
@@ -148,29 +150,29 @@ describe("App - authenticated layout", () => {
 		expect(await screen.findByText("PlayPage")).toBeInTheDocument();
 	});
 
-	it("renders LoadoutPage at /play/loadout", async () => {
-		renderApp(["/play/loadout"]);
-		expect(await screen.findByText("LoadoutPage")).toBeInTheDocument();
+	it("renders PickPage at /play/pick", async () => {
+		renderApp(["/play/pick"]);
+		expect(await screen.findByText("PickPage")).toBeInTheDocument();
 	});
 
-	it("renders MissionsPage (Mission History) at /history", async () => {
+	it("renders PlaySessionsPage (Session history) at /history", async () => {
 		renderApp(["/history"]);
-		expect(await screen.findByText("MissionsPage")).toBeInTheDocument();
+		expect(await screen.findByText("PlaySessionsPage")).toBeInTheDocument();
 	});
 
-	it("redirects the old /loadout route to /play/loadout", async () => {
-		renderApp(["/loadout"]);
-		expect(await screen.findByText("LoadoutPage")).toBeInTheDocument();
+	it("redirects the old /pick route to /play/pick", async () => {
+		renderApp(["/pick"]);
+		expect(await screen.findByText("PickPage")).toBeInTheDocument();
 	});
 
-	it("redirects the old /missions route to /history", async () => {
-		renderApp(["/missions"]);
-		expect(await screen.findByText("MissionsPage")).toBeInTheDocument();
+	it("redirects the old /play-sessions route to /history", async () => {
+		renderApp(["/play-sessions"]);
+		expect(await screen.findByText("PlaySessionsPage")).toBeInTheDocument();
 	});
 
-	it("redirects the old /play/missions route to /history", async () => {
-		renderApp(["/play/missions"]);
-		expect(await screen.findByText("MissionsPage")).toBeInTheDocument();
+	it("redirects the old /play/play-sessions route to /history", async () => {
+		renderApp(["/play/play-sessions"]);
+		expect(await screen.findByText("PlaySessionsPage")).toBeInTheDocument();
 	});
 
 	it("renders CapturesPage at /captures", async () => {
@@ -231,7 +233,7 @@ describe("App - NavLink navigation", () => {
 		});
 	});
 
-	it("clicking 'History' NavLink navigates to /history and shows the mission history", async () => {
+	it("clicking 'History' NavLink navigates to /history and shows the playSession history", async () => {
 		renderApp(["/play"]);
 
 		expect(await screen.findByText("PlayPage")).toBeInTheDocument();
@@ -239,7 +241,7 @@ describe("App - NavLink navigation", () => {
 		fireEvent.click(screen.getByText("History"));
 
 		await waitFor(() => {
-			expect(screen.getByText("MissionsPage")).toBeInTheDocument();
+			expect(screen.getByText("PlaySessionsPage")).toBeInTheDocument();
 		});
 	});
 

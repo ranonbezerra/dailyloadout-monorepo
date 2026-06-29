@@ -6,7 +6,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	banUser,
-	clampMission,
+	clampPlaySession,
 	clearConfig,
 	demoteGame,
 	editGame,
@@ -17,10 +17,10 @@ import {
 	fetchConfig,
 	fetchDashboard,
 	fetchGames,
-	fetchLoadout,
-	fetchLoadouts,
-	fetchMission,
-	fetchMissions,
+	fetchPick,
+	fetchPicks,
+	fetchPlaySession,
+	fetchPlaySessions,
 	fetchUser,
 	fetchUsers,
 	promoteGame,
@@ -35,8 +35,8 @@ import type {
 	ConfigValue,
 	GameEdit,
 	GameListParams,
-	LoadoutListParams,
-	MissionListParams,
+	PickListParams,
+	PlaySessionListParams,
 	UserListParams,
 } from "../types/backoffice";
 
@@ -177,50 +177,50 @@ export function useCaptureActions() {
 	return { reprocess, purge };
 }
 
-export function useMissions(params: MissionListParams) {
+export function usePlaySessions(params: PlaySessionListParams) {
 	return useQuery({
-		queryKey: [...BO, "missions", params],
-		queryFn: () => fetchMissions(params),
+		queryKey: [...BO, "playSessions", params],
+		queryFn: () => fetchPlaySessions(params),
 	});
 }
 
-export function useMission(publicId: string | null) {
+export function usePlaySession(publicId: string | null) {
 	return useQuery({
-		queryKey: [...BO, "mission", publicId],
-		queryFn: () => fetchMission(publicId as string),
+		queryKey: [...BO, "playSession", publicId],
+		queryFn: () => fetchPlaySession(publicId as string),
 		enabled: !!publicId,
 	});
 }
 
-/** Force-clamp a mission, invalidating the missions list + detail + dashboard + audit. */
-export function useMissionActions() {
+/** Force-clamp a playSession, invalidating the playSessions list + detail + dashboard + audit. */
+export function usePlaySessionActions() {
 	const qc = useQueryClient();
 	const invalidate = () => {
-		qc.invalidateQueries({ queryKey: [...BO, "missions"] });
-		qc.invalidateQueries({ queryKey: [...BO, "mission"] });
+		qc.invalidateQueries({ queryKey: [...BO, "playSessions"] });
+		qc.invalidateQueries({ queryKey: [...BO, "playSession"] });
 		qc.invalidateQueries({ queryKey: [...BO, "dashboard"] });
 		qc.invalidateQueries({ queryKey: [...BO, "audit"] });
 	};
 
 	const clamp = useMutation({
-		mutationFn: (publicId: string) => clampMission(publicId),
+		mutationFn: (publicId: string) => clampPlaySession(publicId),
 		onSuccess: invalidate,
 	});
 
 	return { clamp };
 }
 
-export function useLoadouts(params: LoadoutListParams) {
+export function usePicks(params: PickListParams) {
 	return useQuery({
-		queryKey: [...BO, "loadouts", params],
-		queryFn: () => fetchLoadouts(params),
+		queryKey: [...BO, "picks", params],
+		queryFn: () => fetchPicks(params),
 	});
 }
 
-export function useLoadout(publicId: string | null) {
+export function usePick(publicId: string | null) {
 	return useQuery({
-		queryKey: [...BO, "loadout", publicId],
-		queryFn: () => fetchLoadout(publicId as string),
+		queryKey: [...BO, "pick", publicId],
+		queryFn: () => fetchPick(publicId as string),
 		enabled: !!publicId,
 	});
 }

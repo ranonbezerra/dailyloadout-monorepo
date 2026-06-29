@@ -6,9 +6,9 @@ import 'package:app/features/auth/view/login_page.dart';
 import 'package:app/features/auth/view/splash_page.dart';
 import 'package:app/features/library/bloc/library_bloc.dart';
 import 'package:app/features/library/view/library_list_page.dart';
-import 'package:app/features/mission/bloc/mission_bloc.dart';
-import 'package:app/features/mission/view/missions_list_page.dart';
 import 'package:app/features/play/view/play_page.dart';
+import 'package:app/features/play_session/bloc/play_session_bloc.dart';
+import 'package:app/features/play_session/view/play_sessions_list_page.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -23,26 +23,26 @@ class MockAuthBloc extends MockBloc<AuthEvent, AuthState> implements AuthBloc {}
 class MockLibraryBloc extends MockBloc<LibraryEvent, LibraryState>
     implements LibraryBloc {}
 
-class MockMissionBloc extends MockBloc<MissionEvent, MissionState>
-    implements MissionBloc {}
+class MockPlaySessionBloc extends MockBloc<PlaySessionEvent, PlaySessionState>
+    implements PlaySessionBloc {}
 
 void main() {
   late MockAuthBloc authBloc;
   late MockLibraryBloc libraryBloc;
-  late MockMissionBloc missionBloc;
+  late MockPlaySessionBloc playSessionBloc;
   late MockLibraryRepository mockLibraryRepository;
 
   setUp(() {
     authBloc = MockAuthBloc();
     libraryBloc = MockLibraryBloc();
-    missionBloc = MockMissionBloc();
+    playSessionBloc = MockPlaySessionBloc();
     mockLibraryRepository = MockLibraryRepository();
   });
 
   tearDown(() {
     authBloc.close();
     libraryBloc.close();
-    missionBloc.close();
+    playSessionBloc.close();
   });
 
   /// Creates a [MaterialApp.router] that provides the necessary BLoCs and
@@ -52,7 +52,7 @@ void main() {
       providers: [
         BlocProvider<AuthBloc>.value(value: authBloc),
         BlocProvider<LibraryBloc>.value(value: libraryBloc),
-        BlocProvider<MissionBloc>.value(value: missionBloc),
+        BlocProvider<PlaySessionBloc>.value(value: playSessionBloc),
       ],
       child: MaterialApp.router(routerConfig: router),
     );
@@ -164,7 +164,7 @@ void main() {
           ),
         ),
       );
-      when(() => missionBloc.state).thenReturn(const MissionInitial());
+      when(() => playSessionBloc.state).thenReturn(const PlaySessionInitial());
 
       final router = createRouter(
         authBloc,
@@ -200,7 +200,7 @@ void main() {
           ),
         ),
       );
-      when(() => missionBloc.state).thenReturn(const MissionInitial());
+      when(() => playSessionBloc.state).thenReturn(const PlaySessionInitial());
 
       final router = createRouter(
         authBloc,
@@ -233,7 +233,7 @@ void main() {
         ),
       );
       when(() => libraryBloc.state).thenReturn(const LibraryInitial());
-      when(() => missionBloc.state).thenReturn(const MissionInitial());
+      when(() => playSessionBloc.state).thenReturn(const PlaySessionInitial());
 
       final router = createRouter(
         authBloc,
@@ -255,7 +255,9 @@ void main() {
       router.dispose();
     });
 
-    testWidgets('Route /history renders the mission history', (tester) async {
+    testWidgets('Route /history renders the playSession history', (
+      tester,
+    ) async {
       when(() => authBloc.state).thenReturn(
         Authenticated(
           user: User(
@@ -269,7 +271,7 @@ void main() {
           ),
         ),
       );
-      when(() => missionBloc.state).thenReturn(const MissionInitial());
+      when(() => playSessionBloc.state).thenReturn(const PlaySessionInitial());
 
       final router = createRouter(
         authBloc,
@@ -282,12 +284,14 @@ void main() {
       router.go('/history');
       await tester.pumpAndSettle();
 
-      expect(find.byType(MissionsListPage), findsOneWidget);
+      expect(find.byType(PlaySessionsListPage), findsOneWidget);
 
       router.dispose();
     });
 
-    testWidgets('Legacy /play/missions redirects to /history', (tester) async {
+    testWidgets('Legacy /play/play-sessions redirects to /history', (
+      tester,
+    ) async {
       when(() => authBloc.state).thenReturn(
         Authenticated(
           user: User(
@@ -301,7 +305,7 @@ void main() {
           ),
         ),
       );
-      when(() => missionBloc.state).thenReturn(const MissionInitial());
+      when(() => playSessionBloc.state).thenReturn(const PlaySessionInitial());
 
       final router = createRouter(
         authBloc,
@@ -311,10 +315,10 @@ void main() {
       await tester.pumpWidget(buildRoutedApp(router));
       await tester.pumpAndSettle();
 
-      router.go('/play/missions');
+      router.go('/play/play-sessions');
       await tester.pumpAndSettle();
 
-      expect(find.byType(MissionsListPage), findsOneWidget);
+      expect(find.byType(PlaySessionsListPage), findsOneWidget);
 
       router.dispose();
     });
@@ -333,7 +337,7 @@ void main() {
           ),
         ),
       );
-      when(() => missionBloc.state).thenReturn(const MissionInitial());
+      when(() => playSessionBloc.state).thenReturn(const PlaySessionInitial());
 
       final router = createRouter(
         authBloc,

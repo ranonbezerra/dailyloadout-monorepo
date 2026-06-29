@@ -1,4 +1,4 @@
-"""Tests for the loadout auto-ignore worker."""
+"""Tests for the pick auto-ignore worker."""
 
 from __future__ import annotations
 
@@ -31,12 +31,12 @@ async def _create_library_entry(
     return resp.json()
 
 
-async def _create_loadout(
+async def _create_pick(
     client: AsyncClient,
     headers: dict[str, str],
 ) -> dict[str, Any]:
     resp = await client.post(
-        "/v1/loadouts",
+        "/v1/picks",
         json={"mood": "chill", "available_minutes": 60, "mental_energy": "medium"},
         headers=headers,
     )
@@ -45,66 +45,66 @@ async def _create_loadout(
 
 
 class TestAutoIgnore:
-    async def test_stale_loadout_gets_ignored(
+    async def test_stale_pick_gets_ignored(
         self,
         async_client: AsyncClient,
         auth_headers: dict[str, str],
         seed_platforms: list[dict[str, Any]],
     ) -> None:
         await _create_library_entry(async_client, auth_headers, seed_platforms)
-        await _create_loadout(async_client, auth_headers)
+        await _create_pick(async_client, auth_headers)
 
-        from dailyloadout.infrastructure.db.models import Loadout
+        from slate.infrastructure.db.models import Pick
         from tests.conftest import _TestSessionFactory
 
         async with _TestSessionFactory() as session:
-            lo = await session.get(Loadout, 1)
-            assert lo is not None
-            lo.created_at = datetime.now(UTC) - timedelta(hours=25)
+            p = await session.get(Pick, 1)
+            assert p is not None
+            p.created_at = datetime.now(UTC) - timedelta(hours=25)
             await session.commit()
 
-        from dailyloadout.infrastructure.db.repositories.loadout import LoadoutRepository
-        from dailyloadout.workers.loadout_auto_ignore import auto_ignore_stale_loadouts
+        from slate.infrastructure.db.repositories.pick import PickRepository
+        from slate.workers.pick_auto_ignore import auto_ignore_stale_picks
 
         async with _TestSessionFactory() as session:
-            repo = LoadoutRepository(session)
-            ignored = await auto_ignore_stale_loadouts(repo, max_hours=24)
+            repo = PickRepository(session)
+            ignored = await auto_ignore_stale_picks(repo, max_hours=24)
             await session.commit()
 
         assert ignored == 1
 
-        resp = await async_client.get("/v1/loadouts", headers=auth_headers)
+        resp = await async_client.get("/v1/picks", headers=auth_headers)
         assert resp.status_code == 200
         items = resp.json()["items"]
         assert items[0]["action"] == "ignored"
 
-    async def test_fresh_loadout_not_ignored(
+    async def test_fresh_pick_not_ignored(
         self,
         async_client: AsyncClient,
         auth_headers: dict[str, str],
         seed_platforms: list[dict[str, Any]],
     ) -> None:
         await _create_library_entry(async_client, auth_headers, seed_platforms)
-        await _create_loadout(async_client, auth_headers)
+        await _create_pick(async_client, auth_headers)
 
-        from dailyloadout.infrastructure.db.repositories.loadout import LoadoutRepository
-        from dailyloadout.workers.loadout_auto_ignore import auto_ignore_stale_loadouts
+        from slate.infrastructure.db.repositories.pick import PickRepository
+        from slate.workers.pick_auto_ignore import auto_ignore_stale_picks
         from tests.conftest import _TestSessionFactory
 
         async with _TestSessionFactory() as session:
-            repo = LoadoutRepository(session)
-            ignored = await auto_ignore_stale_loadouts(repo, max_hours=24)
+            repo = PickRepository(session)
+            ignored = await auto_ignore_stale_picks(repo, max_hours=24)
             await session.commit()
 
         assert ignored == 0
 
     async def test_no_stale_returns_zero(self) -> None:
-        from dailyloadout.infrastructure.db.repositories.loadout import LoadoutRepository
-        from dailyloadout.workers.loadout_auto_ignore import auto_ignore_stale_loadouts
+        from slate.infrastructure.db.repositories.pick import PickRepository
+        from slate.workers.pick_auto_ignore import auto_ignore_stale_picks
         from tests.conftest import _TestSessionFactory
 
         async with _TestSessionFactory() as session:
-            repo = LoadoutRepository(session)
-            ignored = await auto_ignore_stale_loadouts(repo, max_hours=24)
+            repo = PickRepository(session)
+            ignored = await auto_ignore_stale_picks(repo, max_hours=24)
 
         assert ignored == 0

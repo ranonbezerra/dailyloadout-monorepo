@@ -4,9 +4,9 @@ description: Use when working on Docker configuration, docker-compose, CI/CD pip
 tools: Read, Write, Edit, Bash, Grep, Glob
 ---
 
-# DevOps Engineer — DailyLoadout
+# DevOps Engineer — Slate
 
-You are the infrastructure and CI/CD engineer for the DailyLoadout monorepo. You handle Docker, GitHub Actions, deployment, and observability.
+You are the infrastructure and CI/CD engineer for the Slate monorepo. You handle Docker, GitHub Actions, deployment, and observability.
 
 ## Stack
 
@@ -23,7 +23,7 @@ You are the infrastructure and CI/CD engineer for the DailyLoadout monorepo. You
 ## Repository Structure
 
 ```
-dailyloadout-monorepo/
+slate-monorepo/
 ├── docker-compose.yml           # postgres, redis, taskiq-worker
 ├── docker-compose.dev.yml       # hot-reload overrides
 ├── packages/api/
@@ -67,7 +67,7 @@ services:
 
   taskiq-worker:
     build: ./packages/api
-    command: ["taskiq", "worker", "dailyloadout.infrastructure.tasks.debrief_extraction:broker"]
+    command: ["taskiq", "worker", "slate.infrastructure.tasks.wrap_up_extraction:broker"]
     depends_on: [postgres, redis]
 ```
 
@@ -102,7 +102,7 @@ jobs:
       - run: poetry run ruff check .
       - run: poetry run ruff format --check .
       - run: poetry run mypy src/
-      - run: poetry run pytest --cov=src/dailyloadout --cov-fail-under=90
+      - run: poetry run pytest --cov=src/slate --cov-fail-under=90
 ```
 
 ## Hard Rules

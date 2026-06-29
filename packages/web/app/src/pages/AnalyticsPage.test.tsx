@@ -50,8 +50,8 @@ function renderPage() {
 const defaultOverview = {
 	totalGames: 12,
 	statusCounts: { playing: 3, backlog: 5, completed: 4 },
-	missionsLast30d: 8,
-	avgMissionDurationMinutes: 95,
+	playSessionsLast30d: 8,
+	avgPlaySessionDurationMinutes: 95,
 	userCreatedAt: "2024-01-15T00:00:00Z",
 };
 
@@ -153,10 +153,10 @@ describe("AnalyticsPage", () => {
 						publicId: "m-1",
 						gameTitle: "Elden Ring",
 						platformLabel: "PlayStation 5",
-						missionType: "regular",
-						briefingText: "Explore the Lands Between",
-						debriefText: "Defeated Margit",
-						endedVia: "debrief_completed",
+						playSessionType: "regular",
+						recapText: "Explore the Lands Between",
+						wrapUpText: "Defeated Margit",
+						endedVia: "wrap_up_completed",
 						startedAt: "2024-06-15T14:00:00Z",
 						endedAt: "2024-06-15T16:30:00Z",
 						durationMinutes: 150,
@@ -178,7 +178,7 @@ describe("AnalyticsPage", () => {
 
 	it("shows em-dash for avg session when null", () => {
 		(useStatsOverview as Mock).mockReturnValue({
-			data: { ...defaultOverview, avgMissionDurationMinutes: null },
+			data: { ...defaultOverview, avgPlaySessionDurationMinutes: null },
 			isLoading: false,
 		});
 
@@ -192,8 +192,8 @@ describe("AnalyticsPage", () => {
 		(useGenreStats as Mock).mockReturnValue({
 			data: {
 				genres: [
-					{ genre: "Action", totalMinutes: 300, missionCount: 5 },
-					{ genre: "RPG", totalMinutes: 200, missionCount: 3 },
+					{ genre: "Action", totalMinutes: 300, playSessionCount: 5 },
+					{ genre: "RPG", totalMinutes: 200, playSessionCount: 3 },
 				],
 			},
 		});
@@ -212,7 +212,7 @@ describe("AnalyticsPage", () => {
 						platformSlug: "ps5",
 						platformLabel: "PlayStation 5",
 						gameCount: 3,
-						missionCount: 10,
+						playSessionCount: 10,
 						totalMinutes: 600,
 					},
 				],
@@ -235,9 +235,9 @@ describe("AnalyticsPage", () => {
 						publicId: "m-2",
 						gameTitle: "Celeste",
 						platformLabel: "Switch",
-						missionType: "regular",
-						briefingText: null,
-						debriefText: null,
+						playSessionType: "regular",
+						recapText: null,
+						wrapUpText: null,
 						endedVia: null,
 						startedAt: "2024-06-15T14:00:00Z",
 						endedAt: null,
@@ -262,10 +262,10 @@ describe("AnalyticsPage", () => {
 			publicId: `m-${i}`,
 			gameTitle: `Game ${i}`,
 			platformLabel: "PC",
-			missionType: "regular",
-			briefingText: null,
-			debriefText: null,
-			endedVia: "debrief_completed",
+			playSessionType: "regular",
+			recapText: null,
+			wrapUpText: null,
+			endedVia: "wrap_up_completed",
 			startedAt: "2024-06-15T14:00:00Z",
 			endedAt: "2024-06-15T16:00:00Z",
 			durationMinutes: 120,
@@ -353,7 +353,7 @@ describe("formatMinutes", () => {
 
 	it("shows Xm for durations under 60 minutes", () => {
 		(useStatsOverview as Mock).mockReturnValue({
-			data: { ...defaultOverview, avgMissionDurationMinutes: 45 },
+			data: { ...defaultOverview, avgPlaySessionDurationMinutes: 45 },
 			isLoading: false,
 		});
 
@@ -364,7 +364,7 @@ describe("formatMinutes", () => {
 
 	it("shows Xh for exact hour durations", () => {
 		(useStatsOverview as Mock).mockReturnValue({
-			data: { ...defaultOverview, avgMissionDurationMinutes: 120 },
+			data: { ...defaultOverview, avgPlaySessionDurationMinutes: 120 },
 			isLoading: false,
 		});
 
@@ -375,7 +375,7 @@ describe("formatMinutes", () => {
 
 	it("shows Xh Xm for durations with remainder", () => {
 		(useStatsOverview as Mock).mockReturnValue({
-			data: { ...defaultOverview, avgMissionDurationMinutes: 95 },
+			data: { ...defaultOverview, avgPlaySessionDurationMinutes: 95 },
 			isLoading: false,
 		});
 

@@ -6,7 +6,7 @@ import { createWrapper } from "../test/wrapper";
 // Mocks
 // ---------------------------------------------------------------------------
 
-vi.mock("@dl/shared/api", () => ({
+vi.mock("@slate/shared/api", () => ({
 	BASE_URL: "http://localhost:8100",
 	apiFetch: vi.fn(() => Promise.resolve(null)),
 	getAccessToken: vi.fn(() => null),
@@ -18,8 +18,8 @@ vi.mock("@dl/shared/api", () => ({
 const mockOverview = {
 	totalGames: 42,
 	statusCounts: { backlog: 20, playing: 5, completed: 15, paused: 2, dropped: 0 },
-	missionsLast30d: 12,
-	avgMissionDurationMinutes: 95.5,
+	playSessionsLast30d: 12,
+	avgPlaySessionDurationMinutes: 95.5,
 	userCreatedAt: "2023-01-01T00:00:00Z",
 };
 
@@ -33,9 +33,9 @@ const mockHeatmap = {
 
 const mockGenreStats = {
 	genres: [
-		{ genre: "Action", totalMinutes: 5400, missionCount: 30 },
-		{ genre: "RPG", totalMinutes: 3600, missionCount: 20 },
-		{ genre: "Puzzle", totalMinutes: 1200, missionCount: 10 },
+		{ genre: "Action", totalMinutes: 5400, playSessionCount: 30 },
+		{ genre: "RPG", totalMinutes: 3600, playSessionCount: 20 },
+		{ genre: "Puzzle", totalMinutes: 1200, playSessionCount: 10 },
 	],
 };
 
@@ -45,14 +45,14 @@ const mockPlatformStats = {
 			platformSlug: "pc",
 			platformLabel: "PC",
 			gameCount: 25,
-			missionCount: 40,
+			playSessionCount: 40,
 			totalMinutes: 6000,
 		},
 		{
 			platformSlug: "ps5",
 			platformLabel: "PlayStation 5",
 			gameCount: 10,
-			missionCount: 15,
+			playSessionCount: 15,
 			totalMinutes: 2400,
 		},
 	],
@@ -61,24 +61,24 @@ const mockPlatformStats = {
 const mockTimeline = {
 	items: [
 		{
-			publicId: "mission-1",
+			publicId: "playSession-1",
 			gameTitle: "Elden Ring",
 			platformLabel: "PC",
-			missionType: "regular",
-			briefingText: "Continue Stormveil.",
-			debriefText: "Defeated Godrick.",
-			endedVia: "debrief_completed",
+			playSessionType: "regular",
+			recapText: "Continue Stormveil.",
+			wrapUpText: "Defeated Godrick.",
+			endedVia: "wrap_up_completed",
 			startedAt: "2024-06-15T18:00:00Z",
 			endedAt: "2024-06-15T20:00:00Z",
 			durationMinutes: 120,
 		},
 		{
-			publicId: "mission-2",
+			publicId: "playSession-2",
 			gameTitle: "Hades",
 			platformLabel: "PC",
-			missionType: "regular",
-			briefingText: null,
-			debriefText: null,
+			playSessionType: "regular",
+			recapText: null,
+			wrapUpText: null,
 			endedVia: "paused_app",
 			startedAt: "2024-06-14T20:00:00Z",
 			endedAt: "2024-06-14T21:30:00Z",

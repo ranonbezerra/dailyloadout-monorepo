@@ -51,7 +51,7 @@ gh pr view --json title,body,author,additions,deletions,files
 ### Data integrity
 - [ ] Migrations have proper downgrade paths
 - [ ] Foreign keys and indexes present
-- [ ] One-active-mission constraint respected
+- [ ] One-active-play session constraint respected
 - [ ] Capture status transitions valid
 
 ## Review format

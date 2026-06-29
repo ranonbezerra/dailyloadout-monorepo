@@ -80,13 +80,13 @@ jobs:
       postgres:
         image: postgres:18-alpine
         env:
-          POSTGRES_USER: dailyloadout
-          POSTGRES_PASSWORD: dailyloadout
-          POSTGRES_DB: dailyloadout_test
+          POSTGRES_USER: slate
+          POSTGRES_PASSWORD: slate
+          POSTGRES_DB: slate_test
         ports:
           - 5433:5432
         options: >-
-          --health-cmd "pg_isready -U dailyloadout"
+          --health-cmd "pg_isready -U slate"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 5
@@ -119,7 +119,7 @@ jobs:
           poetry run python - <<'PY'
           import asyncio, asyncpg
           async def main():
-              c = await asyncpg.connect("postgresql://dailyloadout:dailyloadout@localhost:5433/dailyloadout_test")
+              c = await asyncpg.connect("postgresql://slate:slate@localhost:5433/slate_test")
               for ext in ("citext", "pg_trgm", "pgcrypto"):
                   await c.execute(f"CREATE EXTENSION IF NOT EXISTS {ext}")
               await c.close()
@@ -132,7 +132,7 @@ jobs:
       # prod-data-dependent failure is still caught by the deploy-time gate.
       - name: Migrations apply cleanly (fresh Postgres)
         env:
-          DATABASE_URL: postgresql+asyncpg://dailyloadout:dailyloadout@localhost:5433/dailyloadout_test
+          DATABASE_URL: postgresql+asyncpg://slate:slate@localhost:5433/slate_test
           # MUST be "testing" (not "test") — only development/testing skip the
           # production guards; "test" is treated as prod and the secret-key guard
           # would fail config import. (pytest gets this from pyproject env.)
@@ -146,11 +146,11 @@ jobs:
 
       - name: Pytest with coverage
         env:
-          DATABASE_URL: postgresql+asyncpg://dailyloadout:dailyloadout@localhost:5433/dailyloadout_test
+          DATABASE_URL: postgresql+asyncpg://slate:slate@localhost:5433/slate_test
           REDIS_URL: redis://localhost:6380/0
           APP_ENV: test
           SECRET_KEY: test-secret
-        run: poetry run pytest -n auto --cov=src/dailyloadout --cov-report=term-missing --cov-fail-under=90
+        run: poetry run pytest -n auto --cov=src/slate --cov-report=term-missing --cov-fail-under=90
 
   api-status:
     if: always()

@@ -87,13 +87,13 @@ hooks:
 ## Overview
 Deploy specialized AI agents to perform comprehensive, intelligent code reviews that go beyond traditional static analysis, enhanced with **self-learning** and **continuous improvement** capabilities powered by Agentic-Flow v3.0.0-alpha.1.
 
-## DailyLoadout Context
+## Slate Context
 
 ### Domain-Specific Review Focus
 - **packages/api** (FastAPI, Python 3.14): Review Alembic migrations, Pydantic schemas, Taskiq workers, LLM prompt templates (.j2), security (JWT, CORS, SSTI)
 - **packages/web** (React, TypeScript, Mantine): Review Mantine component usage, Biome lint compliance, React hooks, API client code
-- **packages/app** (Flutter): Review Dart code quality, platform-specific implementations, state management
-- **Domain concepts**: Library (gear/equipment), Missions (briefing/debrief), Loadouts (gear selection/packing), Captures (voice/photo/text with AI)
+- **packages/mobile** (Flutter): Review Dart code quality, platform-specific implementations, state management
+- **Domain concepts**: Library (gear/equipment), PlaySessions (recap/wrap-up), Picks (daily game suggestion), Captures (voice/photo/text with AI)
 - **Coverage target**: 90% minimum test coverage across all packages
 
 ## Self-Learning Protocol (v3.0.0-alpha.1)
@@ -353,7 +353,7 @@ fi
 | **Review Speed** | 2.49x-7.47x faster | Flash Attention |
 | **Issue Detection Rate** | >95% | Combined capabilities |
 | **Developer Satisfaction** | >90% | Attention Consensus |
-| **Test Coverage Gate** | >=90% | DailyLoadout standard |
+| **Test Coverage Gate** | >=90% | Slate standard |
 
 ## Implementation Examples
 
@@ -384,7 +384,7 @@ if (securityIssues.length > 0) {
 }
 ```
 
-### DailyLoadout-Specific Review Checklist
+### Slate-Specific Review Checklist
 
 ```markdown
 ## API Review (packages/api)
@@ -402,7 +402,7 @@ if (securityIssues.length > 0) {
 - [ ] API client handles loading/error states
 - [ ] Bun lockfile updated if dependencies changed
 
-## App Review (packages/app)
+## App Review (packages/mobile)
 - [ ] Flutter widgets follow composition patterns
 - [ ] Platform-specific code properly guarded
 - [ ] State management follows established patterns

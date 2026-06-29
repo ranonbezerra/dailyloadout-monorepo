@@ -5,7 +5,7 @@ on:
   push:
     branches: [main]
     paths:
-      # The player app depends on @dl/shared, so changes there trigger it too.
+      # The player app depends on @slate/shared, so changes there trigger it too.
       - "packages/web/app/**"
       - "packages/web/shared/**"
       - "packages/web/package.json"

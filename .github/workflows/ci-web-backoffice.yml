@@ -5,7 +5,7 @@ on:
   push:
     branches: [main]
     paths:
-      # The backoffice depends on @dl/shared, so changes there trigger it too.
+      # The backoffice depends on @slate/shared, so changes there trigger it too.
       - "packages/web/backoffice/**"
       - "packages/web/shared/**"
       - "packages/web/package.json"

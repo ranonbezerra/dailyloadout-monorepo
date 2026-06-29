@@ -11,9 +11,9 @@ from typing import Any
 import pytest
 from langgraph.checkpoint.memory import MemorySaver
 
-from dailyloadout.config import Settings
-from dailyloadout.infrastructure.agent.concierge import checkpointer as cp
-from dailyloadout.infrastructure.agent.concierge.checkpointer import (
+from slate.config import Settings
+from slate.infrastructure.agent.concierge import checkpointer as cp
+from slate.infrastructure.agent.concierge.checkpointer import (
     get_checkpointer,
     to_psycopg_conninfo,
 )

@@ -137,7 +137,7 @@ gh pr merge --squash --delete-branch
 ### PR Description Template
 ```markdown
 ## Summary
-Brief description of changes
+Short description of changes
 
 ## Motivation
 Why these changes are needed

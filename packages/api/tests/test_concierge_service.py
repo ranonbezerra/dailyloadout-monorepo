@@ -8,28 +8,28 @@ from uuid import uuid4
 
 import pytest
 
-from dailyloadout.core.concierge.service import ConciergeService
-from dailyloadout.core.stats.service import StatsService
-from dailyloadout.infrastructure.agent.concierge.base import (
+from slate.core.concierge.service import ConciergeService
+from slate.core.stats.service import StatsService
+from slate.infrastructure.agent.concierge.base import (
     AbstractConciergeAgent,
     ConciergeReply,
     ConciergeRequest,
 )
-from dailyloadout.infrastructure.agent.concierge.dummy import DummyConciergeAgent
-from dailyloadout.infrastructure.agent.concierge.streaming import (
+from slate.infrastructure.agent.concierge.dummy import DummyConciergeAgent
+from slate.infrastructure.agent.concierge.streaming import (
     split_recommendation as _split_recommendation,
 )
-from dailyloadout.infrastructure.db.repositories.library import LibraryRepository
-from dailyloadout.infrastructure.db.repositories.mission import MissionRepository
-from dailyloadout.infrastructure.db.repositories.stats import StatsRepository
-from dailyloadout.infrastructure.llm.dummy import DummyLLMClient
+from slate.infrastructure.db.repositories.library import LibraryRepository
+from slate.infrastructure.db.repositories.play_session import PlaySessionRepository
+from slate.infrastructure.db.repositories.stats import StatsRepository
+from slate.infrastructure.llm.dummy import DummyLLMClient
 from tests.conftest import _TestSessionFactory
 
 _FAKE_ID = "00000000-0000-0000-0000-000000000000"
 
 
 async def _seed(session: Any, *, with_entry: bool = True) -> tuple[int, str | None]:
-    from dailyloadout.infrastructure.db.models import Game, LibraryEntry, Platform, User
+    from slate.infrastructure.db.models import Game, LibraryEntry, Platform, User
 
     user = User(email=f"{uuid4().hex}@test.com", password_hash="h", display_name="T")
     session.add(user)
@@ -54,7 +54,7 @@ async def _seed(session: Any, *, with_entry: bool = True) -> tuple[int, str | No
 def _service(session: Any, agent: AbstractConciergeAgent) -> ConciergeService:
     return ConciergeService(
         library_repo=LibraryRepository(session),
-        mission_repo=MissionRepository(session),
+        play_session_repo=PlaySessionRepository(session),
         stats_service=StatsService(StatsRepository(session)),
         agent=agent,
         llm_client=DummyLLMClient(),
@@ -298,16 +298,16 @@ async def test_reply_stream_invalid_recommendation_degrades() -> None:
     ],
 )
 def test_factory_selects_provider(provider: str, app_env: str, expected: str) -> None:
-    from dailyloadout.config import Settings
-    from dailyloadout.infrastructure.agent.concierge.factory import get_concierge_agent
+    from slate.config import Settings
+    from slate.infrastructure.agent.concierge.factory import get_concierge_agent
 
     agent = get_concierge_agent(Settings(concierge_provider=provider, app_env=app_env))
     assert type(agent).__name__ == expected
 
 
 def test_factory_rejects_unknown_provider() -> None:
-    from dailyloadout.config import Settings
-    from dailyloadout.infrastructure.agent.concierge.factory import get_concierge_agent
+    from slate.config import Settings
+    from slate.infrastructure.agent.concierge.factory import get_concierge_agent
 
     with pytest.raises(ValueError, match="Unknown concierge provider"):
         get_concierge_agent(Settings(concierge_provider="bogus", app_env="production"))

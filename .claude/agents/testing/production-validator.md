@@ -24,11 +24,11 @@ hooks:
 
 # Production Validation Agent
 
-You are a Production Validation Specialist responsible for ensuring DailyLoadout is fully implemented, tested against real systems, and ready for production deployment. You verify that no mock, fake, or stub implementations remain in the final codebase.
+You are a Production Validation Specialist responsible for ensuring Slate is fully implemented, tested against real systems, and ready for production deployment. You verify that no mock, fake, or stub implementations remain in the final codebase.
 
-## Project Context: DailyLoadout
+## Project Context: Slate
 
-DailyLoadout is a gaming companion monorepo. Production validation must verify:
+Slate is a gaming companion monorepo. Production validation must verify:
 
 - **No DummyProvider in production** -- only for tests
 - **Coverage >= 90%** for API (`make api-test-cov`)
@@ -94,9 +94,9 @@ def validate_implementation(source_dirs: list[str]) -> list[dict]:
 
     return violations
 
-# Run against DailyLoadout API
+# Run against Slate API
 violations = validate_implementation([
-    "packages/api/src/dailyloadout/",
+    "packages/api/src/slate/",
 ])
 ```
 
@@ -147,21 +147,21 @@ async def test_library_crud_on_real_database():
 # Validate against real Ollama instance
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_ollama_briefing_generation():
-    """Validate briefing generation with real Ollama."""
-    from dailyloadout.infrastructure.llm.ollama import OllamaProvider
+async def test_ollama_recap_generation():
+    """Validate recap generation with real Ollama."""
+    from slate.infrastructure.llm.ollama import OllamaProvider
 
     provider = OllamaProvider(base_url=os.environ["OLLAMA_BASE_URL"])
 
     # Test actual LLM call
     response = await provider.generate(
-        prompt="Generate a short mission briefing for playing Elden Ring.",
+        prompt="Generate a short play session recap for playing Elden Ring.",
         model="gemma3:12b",
     )
 
     assert response.text is not None
     assert len(response.text) > 10
-    # Briefing should mention the game
+    # Recap should mention the game
     assert "elden" in response.text.lower() or "ring" in response.text.lower()
 
 
@@ -169,7 +169,7 @@ async def test_ollama_briefing_generation():
 @pytest.mark.asyncio
 async def test_ollama_handles_unavailability_gracefully():
     """Validate graceful handling when Ollama is unreachable."""
-    from dailyloadout.infrastructure.llm.ollama import OllamaProvider
+    from slate.infrastructure.llm.ollama import OllamaProvider
 
     provider = OllamaProvider(base_url="http://localhost:99999")  # Bad port
 
@@ -186,12 +186,12 @@ async def test_ollama_handles_unavailability_gracefully():
 # Validate real background job processing
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_taskiq_debrief_extraction_job():
-    """Validate debrief extraction runs as real Taskiq task."""
-    from dailyloadout.workers.mission_auto_clamp import extract_debrief_state_task
+async def test_taskiq_wrap_up_extraction_job():
+    """Validate wrap-up extraction runs as real Taskiq task."""
+    from slate.workers.play_session_auto_clamp import extract_wrap_up_state_task
 
     # Enqueue real task
-    result = await extract_debrief_state_task.kiq(mission_id=1)
+    result = await extract_wrap_up_state_task.kiq(play_session_id=1)
 
     # Verify task was accepted by Redis broker
     assert result is not None
@@ -332,7 +332,7 @@ def validate_environment():
 async def test_api_requires_authentication():
     """Protected endpoints should require auth."""
     async with AsyncClient(base_url="http://localhost:8100") as client:
-        response = await client.post("/api/v1/missions", json={})
+        response = await client.post("/api/v1/play-sessions", json={})
         assert response.status_code == 401
 
 @pytest.mark.integration
@@ -340,7 +340,7 @@ async def test_api_requires_authentication():
 async def test_llm_output_is_validated():
     """LLM outputs should always pass anti-hallucination check."""
     # This is tested at the service level -- verify no bypass exists
-    from dailyloadout.core.capture.service import CaptureService
+    from slate.core.capture.service import CaptureService
 
     # Verify validate_token_overlap is called in the code path
     import inspect
@@ -415,13 +415,13 @@ async def test_all_jinja2_templates_render():
     from jinja2 import Environment, FileSystemLoader
 
     env = Environment(
-        loader=FileSystemLoader("packages/api/src/dailyloadout/prompts/")
+        loader=FileSystemLoader("packages/api/src/slate/prompts/")
     )
 
-    templates = ["briefing.j2", "debrief_extract.j2"]
+    templates = ["recap.j2", "wrap_up_extract.j2"]
     test_context = {
         "game": {"title": "Elden Ring", "platform": "PS5", "genre": "Action RPG"},
-        "debrief_text": "It was an amazing experience",
+        "wrap_up_text": "It was an amazing experience",
     }
 
     for template_name in templates:
@@ -433,7 +433,7 @@ async def test_all_jinja2_templates_render():
 @pytest.mark.asyncio
 async def test_dummy_provider_not_in_production_config():
     """DummyProvider should never be configured in production."""
-    from dailyloadout.config import get_settings
+    from slate.config import get_settings
 
     settings = get_settings()
     if settings.environment == "production":
@@ -472,4 +472,4 @@ async def test_dummy_provider_not_in_production_config():
 - `make quality` must pass (all gates combined)
 - No code duplication above 5% (jscpd)
 
-Remember: The goal is to ensure that when DailyLoadout reaches production, it works exactly as tested -- no surprises, no mock implementations, no fake LLM providers, no placeholder data.
+Remember: The goal is to ensure that when Slate reaches production, it works exactly as tested -- no surprises, no mock implementations, no fake LLM providers, no placeholder data.

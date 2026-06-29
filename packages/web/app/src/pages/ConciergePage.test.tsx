@@ -84,7 +84,7 @@ describe("ConciergePage", () => {
 		);
 	});
 
-	it("opens the briefing-choice dialog when the Play CTA is clicked", async () => {
+	it("opens the recap-choice dialog when the Play CTA is clicked", async () => {
 		streamConcierge.mockReturnValue(
 			events([
 				{ token: "Give this a go." },
@@ -92,7 +92,7 @@ describe("ConciergePage", () => {
 				{ done: true, thread_id: "t1" },
 			]),
 		);
-		// The CTA fetches the full entry, then opens the briefing modal for it.
+		// The CTA fetches the full entry, then opens the recap modal for it.
 		fetchLibraryEntry.mockResolvedValue({
 			publicId: "entry-1",
 			game: { title: "Hades" },
@@ -108,10 +108,10 @@ describe("ConciergePage", () => {
 		const playButton = await screen.findByRole("button", { name: /Play Hades/ });
 		fireEvent.click(playButton);
 
-		// The briefing-choice dialog opens for the recommended game.
+		// The recap-choice dialog opens for the recommended game.
 		await waitFor(() => expect(fetchLibraryEntry).toHaveBeenCalledWith("entry-1"));
-		await waitFor(() => expect(screen.getByText("Mission Briefing: Hades")).toBeInTheDocument());
-		expect(screen.getByText(/Quick briefing/)).toBeInTheDocument();
+		await waitFor(() => expect(screen.getByText("Recap: Hades")).toBeInTheDocument());
+		expect(screen.getByText(/Quick recap/)).toBeInTheDocument();
 	});
 
 	it("shows the typing indicator while the reply is pending", async () => {

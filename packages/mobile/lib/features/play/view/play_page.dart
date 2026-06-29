@@ -1,12 +1,12 @@
-import 'package:app/core/mission/mission_models.dart';
-import 'package:app/core/theme/dailyloadout_theme.dart';
-import 'package:app/features/mission/bloc/mission_bloc.dart';
+import 'package:app/core/play_session/play_session_models.dart';
+import 'package:app/core/theme/slate_theme.dart';
+import 'package:app/features/play_session/bloc/play_session_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 /// The Play hub: the landing surface for everything related to deciding what
-/// to play. It surfaces the active mission front-and-centre and offers three
+/// to play. It surfaces the active session front-and-centre and offers three
 /// "doors" — let us pick, pick yourself, or ask the concierge.
 class PlayPage extends StatefulWidget {
   const PlayPage({this.conciergeEnabled = false, super.key});
@@ -22,11 +22,11 @@ class _PlayPageState extends State<PlayPage> {
   @override
   void initState() {
     super.initState();
-    context.read<MissionBloc>().add(const LoadActiveMission());
+    context.read<PlaySessionBloc>().add(const LoadActivePlaySession());
   }
 
   Future<void> _onRefresh() async {
-    context.read<MissionBloc>().add(const LoadActiveMission());
+    context.read<PlaySessionBloc>().add(const LoadActivePlaySession());
   }
 
   @override
@@ -38,35 +38,36 @@ class _PlayPageState extends State<PlayPage> {
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           children: [
-            BlocBuilder<MissionBloc, MissionState>(
+            BlocBuilder<PlaySessionBloc, PlaySessionState>(
               builder: (context, state) {
-                final hasActiveMission =
-                    state is ActiveMissionLoaded && state.mission != null;
-                final hasError = state is MissionError;
+                final hasActivePlaySession =
+                    state is ActivePlaySessionLoaded &&
+                    state.playSession != null;
+                final hasError = state is PlaySessionError;
 
-                // While the mission state is unknown (loading or errored) we
-                // can't safely confirm there is no active mission, so the
+                // While the session state is unknown (loading or errored) we
+                // can't safely confirm there is no active playSession, so the
                 // start-doors stay locked to avoid double-starting.
-                final doorsDisabledHint = hasActiveMission
-                    ? 'Finish your active mission first'
+                final doorsDisabledHint = hasActivePlaySession
+                    ? 'Finish your active session first'
                     : hasError
-                    ? 'Could not check your active mission'
+                    ? 'Could not check your active session'
                     : null;
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (hasActiveMission)
-                      _ActiveMissionCard(mission: state.mission!)
-                    else if (state is MissionLoading)
-                      const _ActiveMissionPlaceholder()
+                    if (hasActivePlaySession)
+                      _ActivePlaySessionCard(playSession: state.playSession!)
+                    else if (state is PlaySessionLoading)
+                      const _ActivePlaySessionPlaceholder()
                     else if (hasError)
-                      _ActiveMissionError(
+                      _ActivePlaySessionError(
                         message: state.message,
                         onRetry: _onRefresh,
                       )
                     else
-                      const _NoActiveMissionCard(),
+                      const _NoActivePlaySessionCard(),
                     const SizedBox(height: 24),
                     Text(
                       "What's next?",
@@ -77,30 +78,30 @@ class _PlayPageState extends State<PlayPage> {
                       icon: Icons.casino,
                       title: "What's the move?",
                       subtitle: 'One tap — we pick, you play.',
-                      accent: DLColors.coral,
-                      // Starting a new mission is blocked while one is active
+                      accent: SlateColors.coral,
+                      // Starting a new session is blocked while one is active
                       // or while we couldn't confirm there isn't one.
                       disabledHint: doorsDisabledHint,
-                      onTap: () => context.go('/play/loadout'),
+                      onTap: () => context.go('/play/pick'),
                     ),
                     const SizedBox(height: 12),
                     _DoorCard(
                       icon: Icons.videogame_asset,
                       title: "I'll choose",
                       subtitle: 'Pick a game yourself.',
-                      accent: DLColors.violet,
+                      accent: SlateColors.violet,
                       disabledHint: doorsDisabledHint,
                       onTap: () => context.go('/library'),
                     ),
                     if (widget.conciergeEnabled) ...[
                       const SizedBox(height: 12),
                       // The Ask door stays enabled even during an active
-                      // mission — it does not start anything.
+                      // playSession — it does not start anything.
                       _DoorCard(
                         icon: Icons.auto_awesome,
                         title: 'Ask',
                         subtitle: 'Chat about what to play.',
-                        accent: DLColors.green,
+                        accent: SlateColors.green,
                         onTap: () => context.go('/play/concierge'),
                       ),
                     ],
@@ -115,17 +116,17 @@ class _PlayPageState extends State<PlayPage> {
   }
 }
 
-/// Prominent card surfacing the currently active mission.
-class _ActiveMissionCard extends StatelessWidget {
-  const _ActiveMissionCard({required this.mission});
+/// Prominent card surfacing the currently active playSession.
+class _ActivePlaySessionCard extends StatelessWidget {
+  const _ActivePlaySessionCard({required this.playSession});
 
-  final Mission mission;
+  final PlaySession playSession;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final briefing = mission.briefingText?.trim();
+    final recap = playSession.recapText?.trim();
 
     return Card(
       child: Padding(
@@ -135,12 +136,12 @@ class _ActiveMissionCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.flag, color: DLColors.coral, size: 18),
+                const Icon(Icons.flag, color: SlateColors.coral, size: 18),
                 const SizedBox(width: 6),
                 Text(
-                  'Active mission',
+                  'Active session',
                   style: theme.textTheme.labelMedium?.copyWith(
-                    color: DLColors.coral,
+                    color: SlateColors.coral,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -148,22 +149,22 @@ class _ActiveMissionCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              mission.libraryEntry.game.title,
+              playSession.libraryEntry.game.title,
               style: theme.textTheme.titleLarge,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 4),
             Text(
-              mission.libraryEntry.platform.label,
+              playSession.libraryEntry.platform.label,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: colors.onSurfaceVariant,
               ),
             ),
-            if (briefing != null && briefing.isNotEmpty) ...[
+            if (recap != null && recap.isNotEmpty) ...[
               const SizedBox(height: 12),
               Text(
-                briefing,
+                recap,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: colors.onSurfaceVariant,
                 ),
@@ -176,18 +177,20 @@ class _ActiveMissionCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: FilledButton.icon(
-                    onPressed: () =>
-                        context.push('/missions/${mission.publicId}/briefing'),
+                    onPressed: () => context.push(
+                      '/play-sessions/${playSession.publicId}/recap',
+                    ),
                     icon: const Icon(Icons.article_outlined),
-                    label: const Text('Briefing'),
+                    label: const Text('Recap'),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () =>
-                        context.push('/missions/${mission.publicId}/debrief'),
-                    child: const Text('End / Debrief'),
+                    onPressed: () => context.push(
+                      '/play-sessions/${playSession.publicId}/wrap-up',
+                    ),
+                    child: const Text('Wrap up'),
                   ),
                 ),
               ],
@@ -199,9 +202,9 @@ class _ActiveMissionCard extends StatelessWidget {
   }
 }
 
-/// Loading placeholder shown while the active mission is being fetched.
-class _ActiveMissionPlaceholder extends StatelessWidget {
-  const _ActiveMissionPlaceholder();
+/// Loading placeholder shown while the active playSession is being fetched.
+class _ActivePlaySessionPlaceholder extends StatelessWidget {
+  const _ActivePlaySessionPlaceholder();
 
   @override
   Widget build(BuildContext context) {
@@ -214,9 +217,9 @@ class _ActiveMissionPlaceholder extends StatelessWidget {
   }
 }
 
-/// Friendly empty state shown when there is no active mission.
-class _NoActiveMissionCard extends StatelessWidget {
-  const _NoActiveMissionCard();
+/// Friendly empty state shown when there is no active playSession.
+class _NoActivePlaySessionCard extends StatelessWidget {
+  const _NoActivePlaySessionCard();
 
   @override
   Widget build(BuildContext context) {
@@ -235,7 +238,7 @@ class _NoActiveMissionCard extends StatelessWidget {
               color: colors.onSurfaceVariant,
             ),
             const SizedBox(height: 12),
-            Text('No mission running', style: theme.textTheme.titleMedium),
+            Text('No session running', style: theme.textTheme.titleMedium),
             const SizedBox(height: 4),
             Text(
               'Pick something below and start playing.',
@@ -250,9 +253,9 @@ class _NoActiveMissionCard extends StatelessWidget {
   }
 }
 
-/// Error card shown when the active mission could not be loaded.
-class _ActiveMissionError extends StatelessWidget {
-  const _ActiveMissionError({required this.message, required this.onRetry});
+/// Error card shown when the active playSession could not be loaded.
+class _ActivePlaySessionError extends StatelessWidget {
+  const _ActivePlaySessionError({required this.message, required this.onRetry});
 
   final String message;
   final VoidCallback onRetry;
@@ -271,7 +274,7 @@ class _ActiveMissionError extends StatelessWidget {
             Icon(Icons.error_outline, size: 40, color: colors.error),
             const SizedBox(height: 12),
             Text(
-              "Couldn't load your mission",
+              "Couldn't load your session",
               style: theme.textTheme.titleMedium,
             ),
             const SizedBox(height: 4),

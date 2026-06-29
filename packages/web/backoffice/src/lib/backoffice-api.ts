@@ -5,18 +5,18 @@
  * enough to send as-is.
  */
 
-import { apiFetch } from "@dl/shared/api";
-import { snakeToCamel } from "@dl/shared/case-convert";
+import { apiFetch } from "@slate/shared/api";
+import { snakeToCamel } from "@slate/shared/case-convert";
 import type {
 	AdminCaptureDetail,
 	AdminCaptureList,
 	AdminGameDetail,
 	AdminGameList,
-	AdminLoadoutDetail,
-	AdminLoadoutList,
 	AdminMe,
-	AdminMissionDetail,
-	AdminMissionList,
+	AdminPickDetail,
+	AdminPickList,
+	AdminPlaySessionDetail,
+	AdminPlaySessionList,
 	AdminUserDetail,
 	AdminUserList,
 	AuditList,
@@ -26,8 +26,8 @@ import type {
 	DashboardSummary,
 	GameEdit,
 	GameListParams,
-	LoadoutListParams,
-	MissionListParams,
+	PickListParams,
+	PlaySessionListParams,
 	UserListParams,
 } from "../types/backoffice";
 
@@ -159,42 +159,46 @@ export async function purgeCapture(publicId: string): Promise<void> {
 	await apiFetch<void>(`${BASE}/captures/${publicId}`, { method: "DELETE" });
 }
 
-export async function fetchMissions(params: MissionListParams = {}): Promise<AdminMissionList> {
+export async function fetchPlaySessions(
+	params: PlaySessionListParams = {},
+): Promise<AdminPlaySessionList> {
 	const sp = new URLSearchParams();
 	if (params.q) sp.set("q", params.q);
 	if (params.status) sp.set("status", params.status);
 	if (params.limit !== undefined) sp.set("limit", String(params.limit));
 	if (params.offset !== undefined) sp.set("offset", String(params.offset));
 	const qs = sp.toString();
-	return snakeToCamel<AdminMissionList>(
-		await apiFetch<unknown>(`${BASE}/missions${qs ? `?${qs}` : ""}`),
+	return snakeToCamel<AdminPlaySessionList>(
+		await apiFetch<unknown>(`${BASE}/play-sessions${qs ? `?${qs}` : ""}`),
 	);
 }
 
-export async function fetchMission(publicId: string): Promise<AdminMissionDetail> {
-	return snakeToCamel<AdminMissionDetail>(await apiFetch<unknown>(`${BASE}/missions/${publicId}`));
-}
-
-export async function clampMission(publicId: string): Promise<AdminMissionDetail> {
-	return snakeToCamel<AdminMissionDetail>(
-		await apiFetch<unknown>(`${BASE}/missions/${publicId}/clamp`, { method: "POST" }),
+export async function fetchPlaySession(publicId: string): Promise<AdminPlaySessionDetail> {
+	return snakeToCamel<AdminPlaySessionDetail>(
+		await apiFetch<unknown>(`${BASE}/play-sessions/${publicId}`),
 	);
 }
 
-export async function fetchLoadouts(params: LoadoutListParams = {}): Promise<AdminLoadoutList> {
+export async function clampPlaySession(publicId: string): Promise<AdminPlaySessionDetail> {
+	return snakeToCamel<AdminPlaySessionDetail>(
+		await apiFetch<unknown>(`${BASE}/play-sessions/${publicId}/clamp`, { method: "POST" }),
+	);
+}
+
+export async function fetchPicks(params: PickListParams = {}): Promise<AdminPickList> {
 	const sp = new URLSearchParams();
 	if (params.q) sp.set("q", params.q);
 	if (params.action) sp.set("action", params.action);
 	if (params.limit !== undefined) sp.set("limit", String(params.limit));
 	if (params.offset !== undefined) sp.set("offset", String(params.offset));
 	const qs = sp.toString();
-	return snakeToCamel<AdminLoadoutList>(
-		await apiFetch<unknown>(`${BASE}/loadouts${qs ? `?${qs}` : ""}`),
+	return snakeToCamel<AdminPickList>(
+		await apiFetch<unknown>(`${BASE}/picks${qs ? `?${qs}` : ""}`),
 	);
 }
 
-export async function fetchLoadout(publicId: string): Promise<AdminLoadoutDetail> {
-	return snakeToCamel<AdminLoadoutDetail>(await apiFetch<unknown>(`${BASE}/loadouts/${publicId}`));
+export async function fetchPick(publicId: string): Promise<AdminPickDetail> {
+	return snakeToCamel<AdminPickDetail>(await apiFetch<unknown>(`${BASE}/picks/${publicId}`));
 }
 
 export async function fetchAudit(

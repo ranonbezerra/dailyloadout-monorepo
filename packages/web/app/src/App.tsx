@@ -45,11 +45,9 @@ const LibraryImportPage = lazy(() =>
 const LibraryPage = lazy(() =>
 	import("./pages/LibraryPage").then((m) => ({ default: m.LibraryPage })),
 );
-const LoadoutPage = lazy(() =>
-	import("./pages/LoadoutPage").then((m) => ({ default: m.LoadoutPage })),
-);
-const MissionsPage = lazy(() =>
-	import("./pages/MissionsPage").then((m) => ({ default: m.MissionsPage })),
+const PickPage = lazy(() => import("./pages/PickPage").then((m) => ({ default: m.PickPage })));
+const PlaySessionsPage = lazy(() =>
+	import("./pages/PlaySessionsPage").then((m) => ({ default: m.PlaySessionsPage })),
 );
 const PlayPage = lazy(() => import("./pages/PlayPage").then((m) => ({ default: m.PlayPage })));
 
@@ -88,7 +86,7 @@ function AppLayout() {
 						size="sm"
 						aria-label="Toggle navigation"
 					/>
-					<Text fw={700}>DailyLoadout</Text>
+					<Text fw={700}>Slate</Text>
 				</Group>
 			</AppShell.Header>
 
@@ -153,19 +151,19 @@ function AppLayout() {
 				<Suspense fallback={<RouteFallback />}>
 					<Routes>
 						<Route path="/play" element={<PlayPage />} />
-						<Route path="/play/loadout" element={<LoadoutPage />} />
+						<Route path="/play/pick" element={<PickPage />} />
 						{FEATURES.backlogConcierge && (
 							<Route path="/play/concierge" element={<ConciergePage />} />
 						)}
 						<Route path="/library" element={<LibraryPage />} />
 						<Route path="/library/import" element={<LibraryImportPage />} />
-						<Route path="/history" element={<MissionsPage />} />
+						<Route path="/history" element={<PlaySessionsPage />} />
 						<Route path="/captures" element={<CapturesPage />} />
 						<Route path="/analytics" element={<AnalyticsPage />} />
 						{/* Backward-compatible redirects from the old flat / nested routes. */}
-						<Route path="/loadout" element={<Navigate to="/play/loadout" replace />} />
-						<Route path="/missions" element={<Navigate to="/history" replace />} />
-						<Route path="/play/missions" element={<Navigate to="/history" replace />} />
+						<Route path="/pick" element={<Navigate to="/play/pick" replace />} />
+						<Route path="/play-sessions" element={<Navigate to="/history" replace />} />
+						<Route path="/play/play-sessions" element={<Navigate to="/history" replace />} />
 						<Route path="/concierge" element={<Navigate to="/play/concierge" replace />} />
 						<Route path="*" element={<Navigate to="/play" replace />} />
 					</Routes>

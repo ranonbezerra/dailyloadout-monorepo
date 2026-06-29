@@ -14,11 +14,11 @@ import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from dailyloadout.api import middleware
-from dailyloadout.api.middleware import DefaultUserRateLimitMiddleware, _bearer_subject
-from dailyloadout.api.v1 import _rate_limit
-from dailyloadout.config import settings
-from dailyloadout.core.auth.security import create_access_token
+from slate.api import middleware
+from slate.api.middleware import DefaultUserRateLimitMiddleware, _bearer_subject
+from slate.api.v1 import _rate_limit
+from slate.config import settings
+from slate.core.auth.security import create_access_token
 
 
 def _build_app() -> FastAPI:

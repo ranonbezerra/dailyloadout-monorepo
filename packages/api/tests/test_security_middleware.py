@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from dailyloadout.api.middleware import MaxBodySizeMiddleware, SecurityHeadersMiddleware
+from slate.api.middleware import MaxBodySizeMiddleware, SecurityHeadersMiddleware
 
 
 async def test_security_headers_present(async_client: AsyncClient) -> None:
@@ -75,7 +75,7 @@ async def test_security_headers_passthrough_for_non_http_scope() -> None:
 
 def test_docs_gated_off_in_production(monkeypatch: pytest.MonkeyPatch) -> None:
     """Outside dev/test the app exposes no /docs and no /openapi.json."""
-    import dailyloadout.main as main_mod
+    import slate.main as main_mod
 
     monkeypatch.setattr(main_mod.settings, "app_env", "production")
     app = main_mod.create_app()
@@ -86,7 +86,7 @@ def test_docs_gated_off_in_production(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_docs_on_in_dev() -> None:
-    import dailyloadout.main as main_mod
+    import slate.main as main_mod
 
     app = main_mod.create_app()
     routes = {getattr(r, "path", None) for r in app.routes}

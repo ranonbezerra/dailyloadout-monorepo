@@ -97,8 +97,8 @@ export function DashboardPage() {
 				/>
 				<Stat label="Admins" value={data.admins} icon={IconShieldCheck} color="green" />
 				<Stat
-					label="Active missions"
-					value={data.missionsActive}
+					label="Active sessions"
+					value={data.playSessionsActive}
 					icon={IconDeviceGamepad2}
 					color="coral"
 				/>

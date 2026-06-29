@@ -1,15 +1,15 @@
 import 'package:app/app/routes.dart';
 import 'package:app/core/config/feature_flags.dart';
 import 'package:app/core/library/library_repository.dart';
-import 'package:app/core/theme/dailyloadout_theme.dart';
+import 'package:app/core/theme/slate_theme.dart';
 import 'package:app/features/analytics/bloc/analytics_bloc.dart';
 import 'package:app/features/auth/bloc/auth_bloc.dart';
 import 'package:app/features/capture/bloc/capture_bloc.dart';
 import 'package:app/features/concierge/bloc/concierge_bloc.dart';
 import 'package:app/features/library/bloc/library_bloc.dart';
 import 'package:app/features/library_import/bloc/library_import_bloc.dart';
-import 'package:app/features/loadout/bloc/loadout_bloc.dart';
-import 'package:app/features/mission/bloc/mission_bloc.dart';
+import 'package:app/features/pick/bloc/pick_bloc.dart';
+import 'package:app/features/play_session/bloc/play_session_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -20,8 +20,8 @@ class App extends StatefulWidget {
     required this.libraryBloc,
     required this.captureBloc,
     required this.libraryImportBloc,
-    required this.missionBloc,
-    required this.loadoutBloc,
+    required this.playSessionBloc,
+    required this.pickBloc,
     required this.analyticsBloc,
     required this.conciergeBloc,
     required this.libraryRepository,
@@ -33,8 +33,8 @@ class App extends StatefulWidget {
   final LibraryBloc libraryBloc;
   final CaptureBloc captureBloc;
   final LibraryImportBloc libraryImportBloc;
-  final MissionBloc missionBloc;
-  final LoadoutBloc loadoutBloc;
+  final PlaySessionBloc playSessionBloc;
+  final PickBloc pickBloc;
   final AnalyticsBloc analyticsBloc;
   final ConciergeBloc conciergeBloc;
   final LibraryRepository libraryRepository;
@@ -72,15 +72,15 @@ class _AppState extends State<App> {
         BlocProvider<LibraryBloc>.value(value: widget.libraryBloc),
         BlocProvider<CaptureBloc>.value(value: widget.captureBloc),
         BlocProvider<LibraryImportBloc>.value(value: widget.libraryImportBloc),
-        BlocProvider<MissionBloc>.value(value: widget.missionBloc),
-        BlocProvider<LoadoutBloc>.value(value: widget.loadoutBloc),
+        BlocProvider<PlaySessionBloc>.value(value: widget.playSessionBloc),
+        BlocProvider<PickBloc>.value(value: widget.pickBloc),
         BlocProvider<AnalyticsBloc>.value(value: widget.analyticsBloc),
         BlocProvider<ConciergeBloc>.value(value: widget.conciergeBloc),
       ],
       child: MaterialApp.router(
-        title: 'DailyLoadout',
-        theme: DailyLoadoutTheme.dark,
-        darkTheme: DailyLoadoutTheme.dark,
+        title: 'Slate',
+        theme: SlateTheme.dark,
+        darkTheme: SlateTheme.dark,
         themeMode: ThemeMode.dark,
         routerConfig: _router,
       ),

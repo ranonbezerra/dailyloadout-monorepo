@@ -1,5 +1,5 @@
 import 'package:app/core/library/library_models.dart';
-import 'package:app/core/theme/dailyloadout_theme.dart';
+import 'package:app/core/theme/slate_theme.dart';
 import 'package:app/features/library/bloc/library_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -118,8 +118,8 @@ class _LibraryListPageState extends State<LibraryListPage> {
                         final group = state.groups[index];
                         return _LibraryGameCard(
                           group: group,
-                          onStartMission: (entryPublicId) => context.push(
-                            '/missions/briefing?entry=$entryPublicId',
+                          onStartPlaySession: (entryPublicId) => context.push(
+                            '/play-sessions/recap?entry=$entryPublicId',
                           ),
                         );
                       },
@@ -210,12 +210,15 @@ class _EmptyState extends StatelessWidget {
 ///
 /// Renders the grouped response as-is — no client-side grouping.
 class _LibraryGameCard extends StatelessWidget {
-  const _LibraryGameCard({required this.group, required this.onStartMission});
+  const _LibraryGameCard({
+    required this.group,
+    required this.onStartPlaySession,
+  });
 
   final LibraryGameGroup group;
 
   /// Called with the chosen platform's entry public_id.
-  final void Function(String entryPublicId) onStartMission;
+  final void Function(String entryPublicId) onStartPlaySession;
 
   @override
   Widget build(BuildContext context) {
@@ -294,8 +297,8 @@ class _LibraryGameCard extends StatelessWidget {
               _PlatformRow(
                 state: state,
                 onTap: () => context.push('/library/${state.publicId}'),
-                onStartMission: state.status == 'playing'
-                    ? () => onStartMission(state.publicId)
+                onStartPlaySession: state.status == 'playing'
+                    ? () => onStartPlaySession(state.publicId)
                     : null,
               ),
           ],
@@ -310,12 +313,12 @@ class _PlatformRow extends StatelessWidget {
   const _PlatformRow({
     required this.state,
     required this.onTap,
-    this.onStartMission,
+    this.onStartPlaySession,
   });
 
   final LibraryPlatformState state;
   final VoidCallback onTap;
-  final VoidCallback? onStartMission;
+  final VoidCallback? onStartPlaySession;
 
   @override
   Widget build(BuildContext context) {
@@ -337,11 +340,11 @@ class _PlatformRow extends StatelessWidget {
             const SizedBox(width: 8),
             _StatusChip(status: state.status),
             const Spacer(),
-            if (onStartMission != null)
+            if (onStartPlaySession != null)
               IconButton(
                 icon: const Icon(Icons.play_arrow),
-                onPressed: onStartMission,
-                tooltip: 'Start Mission',
+                onPressed: onStartPlaySession,
+                tooltip: 'Start session',
                 iconSize: 20,
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
@@ -419,7 +422,7 @@ class _IgdbAttribution extends StatelessWidget {
       child: Text(
         'Game data provided by IGDB.com',
         textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 11, color: DLColors.textDim),
+        style: TextStyle(fontSize: 11, color: SlateColors.textDim),
       ),
     );
   }

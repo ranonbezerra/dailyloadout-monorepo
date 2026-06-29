@@ -100,10 +100,10 @@ class TestTranscribeAudio:
         auth_headers: dict[str, str],
     ) -> None:
         """A transcription longer than capture_max_audio_seconds is rejected 422."""
-        from dailyloadout.config import settings
-        from dailyloadout.deps.capture import get_stt_client_dep
-        from dailyloadout.infrastructure.stt.base import TranscriptionResult
-        from dailyloadout.main import app
+        from slate.config import settings
+        from slate.deps.capture import get_stt_client_dep
+        from slate.infrastructure.stt.base import TranscriptionResult
+        from slate.main import app
 
         class _LongSTT:
             async def transcribe(

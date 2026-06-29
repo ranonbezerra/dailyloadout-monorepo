@@ -4,7 +4,7 @@ import 'dart:typed_data';
 import 'package:app/core/api/api_client.dart';
 import 'package:app/core/auth/auth_token_store.dart';
 import 'package:app/core/concierge/concierge_repository.dart';
-import 'package:app/core/theme/dailyloadout_theme.dart';
+import 'package:app/core/theme/slate_theme.dart';
 import 'package:app/features/concierge/bloc/concierge_bloc.dart';
 import 'package:app/features/concierge/view/concierge_page.dart';
 import 'package:dio/dio.dart';
@@ -33,7 +33,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        theme: DailyLoadoutTheme.dark,
+        theme: SlateTheme.dark,
         home: BlocProvider(
           create: (_) => ConciergeBloc(conciergeRepository: repository),
           child: const ConciergePage(),

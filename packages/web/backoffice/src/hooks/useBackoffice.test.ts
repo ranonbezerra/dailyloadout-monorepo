@@ -12,10 +12,10 @@ vi.mock("../lib/backoffice-api", () => ({
 	fetchGames: vi.fn(),
 	fetchCaptures: vi.fn(),
 	fetchCapture: vi.fn(),
-	fetchMissions: vi.fn(),
-	fetchMission: vi.fn(),
-	fetchLoadouts: vi.fn(),
-	fetchLoadout: vi.fn(),
+	fetchPlaySessions: vi.fn(),
+	fetchPlaySession: vi.fn(),
+	fetchPicks: vi.fn(),
+	fetchPick: vi.fn(),
 	banUser: vi.fn(),
 	unbanUser: vi.fn(),
 	verifyUser: vi.fn(),
@@ -26,7 +26,7 @@ vi.mock("../lib/backoffice-api", () => ({
 	editGame: vi.fn(),
 	reprocessCapture: vi.fn(),
 	purgeCapture: vi.fn(),
-	clampMission: vi.fn(),
+	clampPlaySession: vi.fn(),
 }));
 
 import * as api from "../lib/backoffice-api";
@@ -40,11 +40,11 @@ import {
 	useDashboard,
 	useGameActions,
 	useGames,
-	useLoadout,
-	useLoadouts,
-	useMission,
-	useMissionActions,
-	useMissions,
+	usePick,
+	usePicks,
+	usePlaySession,
+	usePlaySessionActions,
+	usePlaySessions,
 	useUser,
 	useUserActions,
 	useUsers,
@@ -101,27 +101,27 @@ describe("useBackoffice queries", () => {
 		expect(c.result.current.fetchStatus).toBe("idle");
 	});
 
-	it("useMissions passes params; useMission is disabled when id is null", async () => {
-		(api.fetchMissions as Mock).mockResolvedValue({ items: [], status_counts: [] });
+	it("usePlaySessions passes params; usePlaySession is disabled when id is null", async () => {
+		(api.fetchPlaySessions as Mock).mockResolvedValue({ items: [], status_counts: [] });
 		const wrapper = createWrapper();
 
-		renderHook(() => useMissions({ status: "active" }), { wrapper });
-		const m = renderHook(() => useMission(null), { wrapper });
+		renderHook(() => usePlaySessions({ status: "active" }), { wrapper });
+		const m = renderHook(() => usePlaySession(null), { wrapper });
 
-		await waitFor(() => expect(api.fetchMissions).toHaveBeenCalledWith({ status: "active" }));
-		expect(api.fetchMission).not.toHaveBeenCalled();
+		await waitFor(() => expect(api.fetchPlaySessions).toHaveBeenCalledWith({ status: "active" }));
+		expect(api.fetchPlaySession).not.toHaveBeenCalled();
 		expect(m.result.current.fetchStatus).toBe("idle");
 	});
 
-	it("useLoadouts passes params; useLoadout is disabled when id is null", async () => {
-		(api.fetchLoadouts as Mock).mockResolvedValue({ items: [], action_counts: [] });
+	it("usePicks passes params; usePick is disabled when id is null", async () => {
+		(api.fetchPicks as Mock).mockResolvedValue({ items: [], action_counts: [] });
 		const wrapper = createWrapper();
 
-		renderHook(() => useLoadouts({ action: "ignored" }), { wrapper });
-		const l = renderHook(() => useLoadout(null), { wrapper });
+		renderHook(() => usePicks({ action: "ignored" }), { wrapper });
+		const l = renderHook(() => usePick(null), { wrapper });
 
-		await waitFor(() => expect(api.fetchLoadouts).toHaveBeenCalledWith({ action: "ignored" }));
-		expect(api.fetchLoadout).not.toHaveBeenCalled();
+		await waitFor(() => expect(api.fetchPicks).toHaveBeenCalledWith({ action: "ignored" }));
+		expect(api.fetchPick).not.toHaveBeenCalled();
 		expect(l.result.current.fetchStatus).toBe("idle");
 	});
 });
@@ -164,11 +164,11 @@ describe("useBackoffice mutations", () => {
 		expect(api.purgeCapture).toHaveBeenCalledWith("c1");
 	});
 
-	it("mission clamp resolves and calls the API", async () => {
-		(api.clampMission as Mock).mockResolvedValue({});
-		const { result } = renderHook(() => useMissionActions(), { wrapper: createWrapper() });
+	it("playSession clamp resolves and calls the API", async () => {
+		(api.clampPlaySession as Mock).mockResolvedValue({});
+		const { result } = renderHook(() => usePlaySessionActions(), { wrapper: createWrapper() });
 
 		await result.current.clamp.mutateAsync("m1");
-		expect(api.clampMission).toHaveBeenCalledWith("m1");
+		expect(api.clampPlaySession).toHaveBeenCalledWith("m1");
 	});
 });

@@ -1,4 +1,4 @@
-# DailyLoadout — Roadmap
+# Slate — Roadmap
 
 Execution plan organized in weekend-sized epics. Each epic ends in a **demonstrable state** — if the weekend runs out, descope the epic rather than ending in a broken halfway state.
 
@@ -16,12 +16,12 @@ The repository is public from Epic 0 onward. Every commit and PR is part of the 
 | 4 | Capture (text) + IGDB | First AI flow, simplest input |
 | 5 | Capture (voice) | faster-whisper local |
 | 6 | Capture (photo) | Multimodal LLM (vision) |
-| 7 | Mission + Briefing | **Anchor feature** — anti-hallucination |
-| 8 | Daily Loadout | Second AI feature with UUID validation |
-| 8.5 | Async Debrief (Taskiq) | Decouple LLM extraction from debrief flow |
+| 7 | PlaySession + Recap | **Anchor feature** — anti-hallucination |
+| 8 | Daily Pick | Second AI feature with UUID validation |
+| 8.5 | Async WrapUp (Taskiq) | Decouple LLM extraction from wrap-up flow |
 | 9 | Stats + Web analytics | Where the dashboard shines |
 | 10 | Polish + Launch | README final, demo GIF, announcement |
-| 11 | Deep Research Briefing | LangGraph research graph — web-augmented, spoiler-free (v1.1+) |
+| 11 | Deep Research Recap | LangGraph research graph — web-augmented, spoiler-free (v1.1+) |
 | 12 | Backlog Concierge | LangGraph tool-using conversational agent (v1.1+) |
 
 Total: **10 weekends ≈ 2.5 months** for v1.0 (assuming 8–12 productive hours per weekend). Epics 11–12 are v1.1+ enhancements and the home for the agentic (LangGraph) work.
@@ -34,15 +34,15 @@ Total: **10 weekends ≈ 2.5 months** for v1.0 (assuming 8–12 productive hours
 
 ### Tasks
 
-- [ ] Create `dailyloadout-monorepo` on GitHub, public, MIT license
+- [ ] Create `slate-monorepo` on GitHub, public, MIT license
 - [ ] Initial README (work-in-progress version): problem, vision, stack, "WIP" status badge
 - [ ] `.gitignore` for Python, Flutter, Node, IDE files
 - [ ] `docker-compose.yml` with 4 services: postgres, redis, ollama, api (placeholder returning `{"status": "ok"}` at `/health`)
 - [ ] `docker-compose.dev.yml` with hot-reload
 - [ ] `.env.example` complete (every env var from ARCHITECTURE.md §7)
 - [ ] `packages/api/pyproject.toml` with Poetry, Python 3.14, base deps (FastAPI, Pydantic v2, SQLAlchemy, asyncpg, alembic, arq, structlog, ruff, mypy, pytest, pytest-asyncio)
-- [ ] `packages/api/src/dailyloadout/main.py` with minimal app factory + `/health`
-- [ ] `packages/app/` initialized via `flutter create`, configured for iOS/Android. Renders "DailyLoadout WIP"
+- [ ] `packages/api/src/slate/main.py` with minimal app factory + `/health`
+- [ ] `packages/mobile/` initialized via `flutter create`, configured for iOS/Android. Renders "Slate WIP"
 - [ ] `packages/web/` initialized with Vite (Bun), React 19, TypeScript, Mantine v8. Renders empty layout on `localhost:3200`
 - [ ] GitHub Actions: three separate workflows (`ci-api.yml`, `ci-app.yml`, `ci-web.yml`) running lint + test on every PR
 - [ ] Issue templates (bug, feature, question)
@@ -52,7 +52,7 @@ Total: **10 weekends ≈ 2.5 months** for v1.0 (assuming 8–12 productive hours
 ### Definition of Done
 
 - `docker compose up` brings everything online (API responds 200 at `/health`)
-- `cd packages/app && flutter run -d <device>` opens the app
+- `cd packages/mobile && flutter run -d <device>` opens the app
 - `cd packages/web && bun run dev` opens the web
 - CI is green on all three workflows
 - README explains how to run each package
@@ -247,99 +247,99 @@ Before spending a weekend configuring Ollama and prompts, prove that **CRUD on t
 
 ---
 
-## Epic 6 — Mission lifecycle + Briefing (Weekend 7)
+## Epic 6 — PlaySession lifecycle + Recap (Weekend 7)
 
-**Goal:** the **anchor feature** of the vitrine. AI briefing with anti-hallucination validation.
+**Goal:** the **anchor feature** of the vitrine. AI recap with anti-hallucination validation.
 
 ### Tasks
 
-- [ ] Schema: `missions` with partial unique index for "one active per user"
+- [ ] Schema: `play sessions` with partial unique index for "one active per user"
 - [ ] Endpoints:
-  - `POST /v1/missions` (start — validates: has entry? no other active?)
-  - `GET /v1/missions/active`
-  - `PATCH /v1/missions/{public_id}/debrief` (free text from user)
-  - `POST /v1/missions/{public_id}/end` (no debrief, sets `ended_via`)
-- [ ] Worker `debrief_processor.py`:
-  - Picks missions with `debrief_text` but no `extracted_state`
+  - `POST /v1/play-sessions` (start — validates: has entry? no other active?)
+  - `GET /v1/play-sessions/active`
+  - `PATCH /v1/play-sessions/{public_id}/wrap-up` (free text from user)
+  - `POST /v1/play-sessions/{public_id}/end` (no wrap-up, sets `ended_via`)
+- [ ] Worker `wrap_up_processor.py`:
+  - Picks play sessions with `wrap_up_text` but no `extracted_state`
   - LLM extracts: `{location, next_action, level, current_quest}`
   - Saves `extracted_state`
-  - Updates `library_entries.mission_next_action`
-- [ ] Worker `mission_auto_clamp.py`:
+  - Updates `library_entries.play_session_next_action`
+- [ ] Worker `play_session_auto_clamp.py`:
   - Cron hourly
-  - Active mission > 8h → `ended_via='auto_clamp_8h'`, `ended_at=started_at+8h`
-- [ ] Endpoint `POST /v1/missions/{public_id}/briefing/regenerate` (optional)
-- [ ] Briefing logic:
-  - Query: last 3 ended missions of same library_entry with `extracted_state`
-  - Prompt `prompts/briefing.j2` receives those debriefs + current `mission_next_action`
+  - Active play session > 8h → `ended_via='auto_clamp_8h'`, `ended_at=started_at+8h`
+- [ ] Endpoint `POST /v1/play-sessions/{public_id}/recap/regenerate` (optional)
+- [ ] Recap logic:
+  - Query: last 3 ended play sessions of same library_entry with `extracted_state`
+  - Prompt `prompts/recap.j2` receives those wrap-ups + current `play_session_next_action`
   - Call smart LLM
-  - **Anti-hallucination validation:** extract proper nouns + numbers from output, check overlap with input. < 70% overlap → log `suspicious_briefing`, add disclaimer
-- [ ] App: screens `BriefingPage` (briefing + Start Mission / Skip), `MissionActivePage` (simple timer), `DebriefPage`
-- [ ] App: BLoC `MissionBloc` with Active/Idle states
-- [ ] Pytest scenarios: first mission (no prior briefing), third mission (3 debriefs in context), anti-hallucination validation
+  - **Anti-hallucination validation:** extract proper nouns + numbers from output, check overlap with input. < 70% overlap → log `suspicious_recap`, add disclaimer
+- [ ] App: screens `RecapPage` (recap + Start PlaySession / Skip), `PlaySessionActivePage` (simple timer), `WrapUpPage`
+- [ ] App: BLoC `PlaySessionBloc` with Active/Idle states
+- [ ] Pytest scenarios: first play session (no prior recap), third play session (3 wrap-ups in context), anti-hallucination validation
 
 ### Definition of Done
 
-- User taps Start on an entry, sees a generated briefing
-- After the session, user writes a free-text debrief, app extracts state
-- Next time user starts a mission on the same game, briefing reflects the new debrief
-- Attempt to start a second active mission returns 409
-- Mission abandoned > 8h is closed by the cron
-- Mission module coverage ≥ 85% (this is the heart of the app)
+- User taps Start on an entry, sees a generated recap
+- After the session, user writes a free-text wrap-up, app extracts state
+- Next time user starts a play session on the same game, recap reflects the new wrap-up
+- Attempt to start a second active play session returns 409
+- PlaySession abandoned > 8h is closed by the cron
+- PlaySession module coverage ≥ 85% (this is the heart of the app)
 
 ### Technical highlight (the most important of the project)
 
-> **Anti-hallucination validation:** LLM output is parsed for proper nouns and numbers, then validated against the input context. If less than 70% of "interesting tokens" in the output appear in the input, the briefing is flagged as `suspicious_briefing` and the user sees a disclaimer. This is a deterministic safeguard layered on top of probabilistic LLM output — no fine-tuning needed.
+> **Anti-hallucination validation:** LLM output is parsed for proper nouns and numbers, then validated against the input context. If less than 70% of "interesting tokens" in the output appear in the input, the recap is flagged as `suspicious_recap` and the user sees a disclaimer. This is a deterministic safeguard layered on top of probabilistic LLM output — no fine-tuning needed.
 
 In interviews this becomes: *"How do you handle LLM hallucinations in production?"* — concrete answer, not philosophical.
 
 ---
 
-## Epic 7 — Daily Loadout (Weekend 8)
+## Epic 7 — Daily Pick (Weekend 8)
 
 **Goal:** second AI feature. 3 questions → 1 game + reasoning.
 
 ### Tasks
 
-- [ ] Schema: `loadouts` via migration
+- [ ] Schema: `picks` via migration
 - [ ] Endpoints:
-  - `POST /v1/loadouts` (input: mood, available_minutes, mental_energy)
-  - `POST /v1/loadouts/{public_id}/accept` (creates mission)
-  - `POST /v1/loadouts/{public_id}/reject`
+  - `POST /v1/picks` (input: mood, available_minutes, mental_energy)
+  - `POST /v1/picks/{public_id}/accept` (creates play session)
+  - `POST /v1/picks/{public_id}/reject`
 - [ ] Logic:
-  - List eligible library_entries (backlog/playing/paused, no ended mission < 12h ago)
-  - Prompt `prompts/loadout.j2` with list + context
+  - List eligible library_entries (backlog/playing/paused, no ended play session < 12h ago)
+  - Prompt `prompts/pick_selection.j2` with list + context
   - Smart LLM returns `{library_entry_public_id, reasoning}`
   - **UUID validation:** if returned public_id is not in candidate list → reroll. Second failure → 422
-- [ ] Cron: mark loadout `action='ignored'` after 24h without accept/reject
-- [ ] App: screens `LoadoutQuestionsPage` (3 sliders/radio groups), `LoadoutResultPage` (big game card + reasoning)
+- [ ] Cron: mark pick `action='ignored'` after 24h without accept/reject
+- [ ] App: screens `PickQuestionsPage` (3 sliders/radio groups), `PickResultPage` (big game card + reasoning)
 - [ ] Pytest with DummyLLM returning invalid UUID → test the reroll
 
 ### Definition of Done
 
 - User answers 3 questions, sees a suggestion with reasoning within 15s
-- User accepts → mission starts automatically
+- User accepts → play session starts automatically
 - If LLM returns a non-existent UUID, system rerolls and works
 - "Empty library" scenario shows a decent message ("Add games first")
 
 ### Technical highlight
 
-> **Constraint: LLM must pick from existing library.** The loadout endpoint validates that the returned UUID exists in the user's eligible library entries. If not (the LLM hallucinated a UUID), reroll once, then 422. Same anti-hallucination pattern as briefing, applied to structured output.
+> **Constraint: LLM must pick from existing library.** The pick endpoint validates that the returned UUID exists in the user's eligible library entries. If not (the LLM hallucinated a UUID), reroll once, then 422. Same anti-hallucination pattern as recap, applied to structured output.
 
 ---
 
-## Epic 7B — Async Debrief Extraction with Taskiq (Weekend 8.5)
+## Epic 7B — Async WrapUp Extraction with Taskiq (Weekend 8.5)
 
-**Goal:** decouple LLM debrief extraction from the mission end flow. User gets an instant response; extraction happens in a background worker with retries.
+**Goal:** decouple LLM wrap-up extraction from the play session end flow. User gets an instant response; extraction happens in a background worker with retries.
 
 ### Context
 
-When a user submits a debrief, `submit_debrief()` currently calls `extract_debrief_state()` synchronously — blocking the HTTP response while the LLM processes the text. The extracted state (location, next_action, level, current_quest) is only needed later, when generating a briefing for the next mission on that game. There's no reason to make the user wait.
+When a user submits a wrap-up, `submit_wrap_up()` currently calls `extract_wrap_up_state()` synchronously — blocking the HTTP response while the LLM processes the text. The extracted state (location, next_action, level, current_quest) is only needed later, when generating a recap for the next play session on that game. There's no reason to make the user wait.
 
 ### Strategy
 
-1. **Debrief submission returns immediately.** Save the debrief text, end the mission, respond to the user. No LLM call in the request path.
-2. **Async extraction via Taskiq worker.** A background task picks up the debrief and calls `extract_debrief_state()` with automatic retries on failure.
-3. **Sync fallback at next briefing.** When starting a new mission, if the previous mission has `debrief_text` but null `extracted_state` (extraction failed or hasn't run yet), do a synchronous extraction at that point with a friendly loading message. This is a rare edge case — the async worker will have succeeded in almost all cases.
+1. **WrapUp submission returns immediately.** Save the wrap-up text, end the play session, respond to the user. No LLM call in the request path.
+2. **Async extraction via Taskiq worker.** A background task picks up the wrap-up and calls `extract_wrap_up_state()` with automatic retries on failure.
+3. **Sync fallback at next recap.** When starting a new play session, if the previous play session has `wrap_up_text` but null `extracted_state` (extraction failed or hasn't run yet), do a synchronous extraction at that point with a friendly loading message. This is a rare edge case — the async worker will have succeeded in almost all cases.
 
 ### Why Taskiq
 
@@ -354,26 +354,26 @@ When a user submits a debrief, `submit_debrief()` currently calls `extract_debri
 
 - [ ] Add `taskiq`, `taskiq-redis`, and `taskiq-fastapi` to API dependencies
 - [ ] Create `infrastructure/tasks/` module with Taskiq broker configuration (Redis)
-- [ ] Create task `extract_debrief_state_task` that runs the LLM extraction + DB update
+- [ ] Create task `extract_wrap_up_state_task` that runs the LLM extraction + DB update
 - [ ] Configure retry policy: 3 attempts with exponential backoff
-- [ ] Modify `MissionService.submit_debrief()`: save text, end mission, dispatch async task, return immediately
-- [ ] Add sync fallback in `MissionService.start_mission()` / briefing generation: if previous mission has `debrief_text` but null `extracted_state`, run extraction synchronously before generating the briefing
-- [ ] Frontend: add a brief loading state when the sync fallback triggers ("Loading context from your last session...")
+- [ ] Modify `PlaySessionService.submit_wrap_up()`: save text, end play session, dispatch async task, return immediately
+- [ ] Add sync fallback in `PlaySessionService.start_play_session()` / recap generation: if previous play session has `wrap_up_text` but null `extracted_state`, run extraction synchronously before generating the recap
+- [ ] Frontend: add a short loading state when the sync fallback triggers ("Loading context from your last session...")
 - [ ] Add Taskiq worker to `docker-compose.yml` as a separate service
-- [ ] Pytest: test debrief submission returns instantly without LLM call, test extraction task runs correctly, test sync fallback path
+- [ ] Pytest: test wrap-up submission returns instantly without LLM call, test extraction task runs correctly, test sync fallback path
 - [ ] Update `ARCHITECTURE.md` with the async extraction pattern
 
 ### Definition of Done
 
-- Submitting a debrief responds instantly (no LLM latency in the response)
-- Extracted state appears on the mission within seconds (background worker)
-- If the worker fails all retries, the next briefing still works (sync fallback with friendly loading message)
+- Submitting a wrap-up responds instantly (no LLM latency in the response)
+- Extracted state appears on the play session within seconds (background worker)
+- If the worker fails all retries, the next recap still works (sync fallback with friendly loading message)
 - Taskiq worker runs as a separate process alongside the API
 - Tests cover: happy path (async extraction succeeds), failure path (sync fallback triggers)
 
 ### Technical highlight
 
-> **Async-first with sync fallback:** debrief extraction is fire-and-forget with retries. The system optimistically processes in the background, but never loses data — if all retries fail, the extraction runs on-demand when the data is actually needed (next briefing). The user only experiences latency in the rare failure case, and even then gets a clear explanation of what's happening.
+> **Async-first with sync fallback:** wrap-up extraction is fire-and-forget with retries. The system optimistically processes in the background, but never loses data — if all retries fail, the extraction runs on-demand when the data is actually needed (next recap). The user only experiences latency in the rare failure case, and even then gets a clear explanation of what's happening.
 
 ---
 
@@ -384,30 +384,30 @@ When a user submits a debrief, `submit_debrief()` currently calls `extract_debri
 ### Tasks
 
 - [ ] Endpoints `/v1/stats/*`:
-  - `overview` (total games, status counts, missions last 30d, avg mission duration)
-  - `play-heatmap?from=&to=` (missions grouped by day)
+  - `overview` (total games, status counts, play sessions last 30d, avg play session duration)
+  - `play-heatmap?from=&to=` (play sessions grouped by day)
   - `genres` (estimated time per genre)
   - `platforms` (distribution)
-  - `timeline?limit=` (recent missions with debriefs)
+  - `timeline?limit=` (recent play sessions with wrap-ups)
 - [ ] Web: `/analytics/overview` route with KPI cards (Mantine `<Card>`)
 - [ ] Web: `/analytics/heatmap` with GitHub-contributions-style calendar
 - [ ] Web: `/analytics/genres` with pie/donut
-- [ ] Web: `/analytics/timeline` with chronological mission list
+- [ ] Web: `/analytics/timeline` with chronological play session list
 - [ ] Web: period filters (last 7d, 30d, 90d, 1y, custom)
 - [ ] Pytest for each stats endpoint
 
 ### Definition of Done
 
-- Heatmap shows 30 days with intensity by mission count
+- Heatmap shows 30 days with intensity by play session count
 - Genre pie shows real data
-- Timeline shows last 20 missions with expandable debriefs
-- Performance: each endpoint < 500ms with 500 missions
+- Timeline shows last 20 play sessions with expandable wrap-ups
+- Performance: each endpoint < 500ms with 500 play sessions
 
 ### Technical highlight
 
-> **Stats queries use materialized aggregations.** For users with > 1000 missions, naïve aggregation per request hits Postgres hard. A nightly cron pre-computes `daily_user_stats` materialized view. Hot path reads from the view; cold path falls back to raw query. Same pattern used in production Freeler dashboards.
+> **Stats queries use materialized aggregations.** For users with > 1000 play sessions, naïve aggregation per request hits Postgres hard. A nightly cron pre-computes `daily_user_stats` materialized view. Hot path reads from the view; cold path falls back to raw query. Same pattern used in production Freeler dashboards.
 
-This is the spot that connects DailyLoadout to Freeler narratively. A recruiter who reads both notices: *"this engineer applies the same performance pattern across different projects — not a one-off."*
+This is the spot that connects Slate to Freeler narratively. A recruiter who reads both notices: *"this engineer applies the same performance pattern across different projects — not a one-off."*
 
 ---
 
@@ -418,15 +418,15 @@ This is the spot that connects DailyLoadout to Freeler narratively. A recruiter 
 ### Tasks
 
 - [ ] Final README.md with:
-  - Hook: demo GIF (voice capture → review → briefing → loadout)
-  - Brief problem/solution
+  - Hook: demo GIF (voice capture → review → recap → pick)
+  - Short problem/solution
   - Stack badges
   - "Why this exists" (vitrine + personal use)
   - Quickstart "clone + docker compose up + done"
   - Features list with checkboxes
   - Architecture diagram (mermaid)
-  - Brief self-hosting guide, link to docs/DEPLOYMENT.md
-  - Brief contributing section
+  - Short self-hosting guide, link to docs/DEPLOYMENT.md
+  - Short contributing section
   - License
 - [ ] ARCHITECTURE.md with documented technical decisions (all the highlights flagged in epics 1–8)
 - [ ] docs/PRODUCT.md (product vision, copied and adapted from original spec)
@@ -450,21 +450,21 @@ This is the spot that connects DailyLoadout to Freeler narratively. A recruiter 
 
 ---
 
-## Epic 10 — Deep Research Briefing (v1.1+)
+## Epic 10 — Deep Research Recap (v1.1+)
 
-**Goal:** augment mission briefings with web-researched, spoiler-free game knowledge using local deep research.
+**Goal:** augment play session recaps with web-researched, spoiler-free game knowledge using local deep research.
 
 ### Context
 
-Epic 6 briefings use only the LLM's parametric knowledge and the user's own debrief data to suggest next steps. This works well for popular titles but produces vague suggestions for niche games or complex quest structures. Deep research bridging the gap between "what the user told us" and "what's actually available in the game world" would make briefings significantly more useful.
+Epic 6 recaps use only the LLM's parametric knowledge and the user's own wrap-up data to suggest next steps. This works well for popular titles but produces vague suggestions for niche games or complex quest structures. Deep research bridging the gap between "what the user told us" and "what's actually available in the game world" would make recaps significantly more useful.
 
 ### Approach: build the research graph in LangGraph (don't just wire LDR)
 
 [local-deep-research](https://github.com/LearningCircuit/local-deep-research) (LDR) is a privacy-first research agent on Ollama + SearXNG and a good reference — but it is itself built on LangGraph. For the showcase we build our **own** small LangGraph research graph instead of importing LDR wholesale. Same skill, but we own the graph and get a concrete "stateful agent in production" story. No cloud keys; runs alongside the existing stack.
 
-The full design (state schema, node signatures, conditional edges, ports, validators-as-nodes, mermaid diagram) lives in [docs/DEEP_RESEARCH_BRIEFING.md](./docs/DEEP_RESEARCH_BRIEFING.md). This epic tracks the implementation tasks.
+The full design (state schema, node signatures, conditional edges, ports, validators-as-nodes, mermaid diagram) lives in [docs/DEEP_RESEARCH_RECAP.md](./docs/DEEP_RESEARCH_RECAP.md). This epic tracks the implementation tasks.
 
-**Why LangGraph here (and not plain code):** the deep briefing is genuinely multi-step with a bounded refine loop, a 30–60s long-running budget, cancellation, and a quick-briefing fallback. That is exactly LangGraph's territory: durable execution, conditional edges, and (optionally) checkpointed resume. The existing single-shot `generate_briefing` stays untouched as the `quick` path and the fallback.
+**Why LangGraph here (and not plain code):** the deep recap is genuinely multi-step with a bounded refine loop, a 30–60s long-running budget, cancellation, and a quick-recap fallback. That is exactly LangGraph's territory: durable execution, conditional edges, and (optionally) checkpointed resume. The existing single-shot `generate_recap` stays untouched as the `quick` path and the fallback.
 
 ### Module layout (hexagonal — same shape as `llm/`, `stt/`, `storage/`)
 
@@ -475,13 +475,13 @@ infrastructure/
 │   ├── searxng.py           # SearXNG client (local)
 │   ├── dummy.py             # canned results for tests
 │   └── factory.py           # RESEARCH_PROVIDER env
-└── agent/                   # the LangGraph briefing agent
-    ├── base.py              # AbstractBriefingAgent.deep_brief(req) -> BriefResult
+└── agent/                   # the LangGraph recap agent
+    ├── base.py              # AbstractRecapAgent.deep_recap(req) -> RecapResult
     ├── langgraph_agent.py   # compiles + invokes the graph
-    ├── dummy.py             # DummyBriefingAgent for tests
+    ├── dummy.py             # DummyRecapAgent for tests
     ├── factory.py           # AGENT_PROVIDER env
     └── graph/
-        ├── state.py         # ResearchBriefingState (TypedDict)
+        ├── state.py         # ResearchRecapState (TypedDict)
         ├── nodes.py         # build_query, search, grade, refine, synthesize, spoiler_filter, anti_hallucination, fallback_quick
         └── builder.py       # StateGraph wiring + checkpointer
 ```
@@ -491,45 +491,45 @@ infrastructure/
 - [x] Add `langgraph` + `langgraph-checkpoint` to API deps (LangChain not required here — nodes reuse the existing `AbstractLLMClient`)
 - [x] Add SearXNG service to `docker-compose.yml` (local, no external search keys)
 - [x] `infrastructure/research/`: abstract base + `SearxngResearchClient` + `DummyResearchClient` + factory
-- [x] `infrastructure/agent/graph/state.py`: `ResearchBriefingState` TypedDict (see design doc)
+- [x] `infrastructure/agent/graph/state.py`: `ResearchRecapState` TypedDict (see design doc)
 - [x] `infrastructure/agent/graph/nodes.py`: the 8 nodes (see design doc for signatures + model roles)
 - [x] `infrastructure/agent/graph/builder.py`: `StateGraph` wiring, conditional router, `MemorySaver` checkpointer (Postgres saver later)
-- [x] Expose a generic `complete(prompt, role, json=False)` on the LLM port so agent nodes can render their own Jinja prompts (`prompts/research_grade.j2`, `research_refine.j2`, `briefing_research.j2`, `spoiler_filter.j2`)
-- [x] Reuse the Epic 6 token-overlap validator as the `anti_hallucination` node (import from `core/mission`, do not duplicate)
-- [x] `AbstractBriefingAgent` + `LangGraphBriefingAgent` + `DummyBriefingAgent` + factory
-- [x] Wire `core/mission/service.py`: when `mode='deep'`, call the agent port wrapped in `asyncio.wait_for(deadline)`; on timeout/empty, fall back to `generate_briefing`
-- [x] Env: `AGENT_PROVIDER`, `RESEARCH_PROVIDER`, `SEARXNG_BASE_URL`, `DEEP_BRIEFING_DEADLINE_SECONDS`, `DEEP_BRIEFING_MAX_REFINES`, `DEEP_BRIEFING_MAX_RESULTS`
+- [x] Expose a generic `complete(prompt, role, json=False)` on the LLM port so agent nodes can render their own Jinja prompts (`prompts/research_grade.j2`, `research_refine.j2`, `recap_research.j2`, `spoiler_filter.j2`)
+- [x] Reuse the Epic 6 token-overlap validator as the `anti_hallucination` node (import from `core/play-session`, do not duplicate)
+- [x] `AbstractRecapAgent` + `LangGraphRecapAgent` + `DummyRecapAgent` + factory
+- [x] Wire `core/play-session/service.py`: when `mode='deep'`, call the agent port wrapped in `asyncio.wait_for(deadline)`; on timeout/empty, fall back to `generate_recap`
+- [x] Env: `AGENT_PROVIDER`, `RESEARCH_PROVIDER`, `SEARXNG_BASE_URL`, `DEEP_RECAP_DEADLINE_SECONDS`, `DEEP_RECAP_MAX_REFINES`, `DEEP_RECAP_MAX_RESULTS`
 - [x] Pytest: node unit tests (each node in isolation), graph integration test with `DummyResearchClient` + `DummyLLMClient`, fallback-on-timeout test, spoiler-leak regression test
-- [x] Web/App: briefing modal toggle "Quick" vs "Deep (slower, web-researched)" + progress indicator + cancel button
+- [x] Web/App: recap modal toggle "Quick" vs "Deep (slower, web-researched)" + progress indicator + cancel button
 
 ### Definition of Done
 
-- User starts a mission with "deep briefing" selected; within the deadline (60s) the briefing includes web-grounded next steps
+- User starts a play session with "deep recap" selected; within the deadline (60s) the recap includes web-grounded next steps
 - Suggestions are spoiler-free: "explore the northwest passage", never "defeat the hidden boss there"
-- Quick briefing still works in 2–3s (default, no regression) and is the automatic fallback
+- Quick recap still works in 2–3s (default, no regression) and is the automatic fallback
 - Graph falls back gracefully (and visibly) if SearXNG is down or the deadline is hit
 - `anti_hallucination` node runs on the deep output exactly as in Epic 6
 - Agent + research modules coverage ≥ 85% (dummies for both ports; no real LLM/search in CI)
 
 ### Technical highlight
 
-> **Deterministic guards as graph nodes.** The deep briefing is a LangGraph state machine where the probabilistic node (synthesize) is bracketed by deterministic ones: a bounded refine loop gated by an LLM `grade` node, a `spoiler_filter` pass, and the Epic 6 token-overlap `anti_hallucination` validator as the terminal gate. If the graph can't ground a spoiler-safe suggestion within the deadline, a conditional edge routes to the plain quick briefing. No fine-tuning — orchestration plus guards on top of a local model.
+> **Deterministic guards as graph nodes.** The deep recap is a LangGraph state machine where the probabilistic node (synthesize) is bracketed by deterministic ones: a bounded refine loop gated by an LLM `grade` node, a `spoiler_filter` pass, and the Epic 6 token-overlap `anti_hallucination` validator as the terminal gate. If the graph can't ground a spoiler-safe suggestion within the deadline, a conditional edge routes to the plain quick recap. No fine-tuning — orchestration plus guards on top of a local model.
 
 In interviews: *"build a stateful, long-running agent with a refine loop, branching, and a hard correctness constraint, on a local model, with a graceful degradation path"* — concrete, not buzzword.
 
 ### Why this is a separate epic
 
-It adds a Docker service (SearXNG), a new dependency (`langgraph`), two new hexagonal ports (`research/`, `agent/`), and a hard prompt-engineering problem (spoiler filtering). Folding it into Epic 6 would risk the anchor feature. Epic 6 ships actionable briefings from LLM knowledge; Epic 10 layers grounded web research on top, reusing Epic 6's validator unchanged.
+It adds a Docker service (SearXNG), a new dependency (`langgraph`), two new hexagonal ports (`research/`, `agent/`), and a hard prompt-engineering problem (spoiler filtering). Folding it into Epic 6 would risk the anchor feature. Epic 6 ships actionable recaps from LLM knowledge; Epic 10 layers grounded web research on top, reusing Epic 6's validator unchanged.
 
 ---
 
 ## Epic 11 — Backlog Concierge (v1.1+)
 
-**Goal:** an optional, conversational, tool-using agent — the agentic evolution of Daily Loadout. Where the Loadout (Epic 7) is a rigid 3-question → 1-pick form, the Concierge is a multi-turn chat: "I've got an hour, I'm tired, what should I play?" → it calls tools over the real library and reasons across turns.
+**Goal:** an optional, conversational, tool-using agent — the agentic evolution of Daily Pick. Where the Pick (Epic 7) is a rigid 3-question → 1-pick form, the Concierge is a multi-turn chat: "I've got an hour, I'm tired, what should I play?" → it calls tools over the real library and reasons across turns.
 
 ### Product caveat (read before building)
 
-The product thesis is *"you don't choose, the app picks"* — zero friction, indecision killed. A chatty agent **reintroduces** that friction. So the Concierge is **not** a replacement for the one-tap Loadout; it is an opt-in "talk to the operator" mode for power users who want to discuss. The default home action stays the single-tap Loadout. If this caveat ever feels wrong in practice, cut the epic — the Loadout already covers the core need.
+The product thesis is *"you don't choose, the app picks"* — zero friction, indecision killed. A chatty agent **reintroduces** that friction. So the Concierge is **not** a replacement for the one-tap Pick; it is an opt-in "talk to the operator" mode for power users who want to discuss. The default home action stays the single-tap Pick. If this caveat ever feels wrong in practice, cut the epic — the Pick already covers the core need.
 
 ### Why LangGraph here
 
@@ -538,7 +538,7 @@ This is the genuinely agentic case: multi-turn, stateful (conversation threads v
 ### Tools (read-only over existing repositories — no new data model)
 
 - `search_library(status, platform, genre)` — over `library_entries`
-- `get_mission_history(library_entry_public_id)` — last debriefs / `extracted_state` / `mission_next_action`
+- `get_play_session_history(library_entry_public_id)` — last wrap-ups / `extracted_state` / `play_session_next_action`
 - `get_play_stats(window)` — the Epic 8 stats endpoints
 - `estimate_session_fit(library_entry_public_id, minutes)` — heuristic fit score
 
@@ -555,78 +555,78 @@ This is the genuinely agentic case: multi-turn, stateful (conversation threads v
 ### Definition of Done
 
 - Power-user can chat multi-turn and get a grounded recommendation that exists in their library
-- One-tap Loadout remains the default and is untouched
+- One-tap Pick remains the default and is untouched
 - Tool calls only read existing data; no new tables
 - Agent never recommends a non-existent entry (guard enforced)
 
 ### Technical highlight
 
-> **Tool-calling agent on a local model, with the product's guard rails intact.** The Concierge uses `ChatOllama.bind_tools` over read-only library tools, but the recommendation is still validated against the real library before it reaches the user (same UUID-existence guard as Epic 7). The harder decision is restraint: keeping it an opt-in mode so it complements, rather than fights, the zero-friction Loadout.
+> **Tool-calling agent on a local model, with the product's guard rails intact.** The Concierge uses `ChatOllama.bind_tools` over read-only library tools, but the recommendation is still validated against the real library before it reaches the user (same UUID-existence guard as Epic 7). The harder decision is restraint: keeping it an opt-in mode so it complements, rather than fights, the zero-friction Pick.
 
 ---
 
-## Epic 12 — Unified Mission Pipeline (v1.1+)
+## Epic 12 — Unified PlaySession Pipeline (v1.1+)
 
-**Goal:** make **Mission the single spine** of the play loop and turn "deciding what to play" and "getting a briefing" into independent, **skippable** stages that all converge on one `start_mission` orchestrator. Today the same end state — an active mission — is reachable through three divergent, inconsistent code paths; this epic consolidates them and reframes Loadout and Concierge as *entrances* to the mission flow rather than separate destinations.
+**Goal:** make **PlaySession the single spine** of the play loop and turn "deciding what to play" and "getting a recap" into independent, **skippable** stages that all converge on one `start_play_session` orchestrator. Today the same end state — an active play session — is reachable through three divergent, inconsistent code paths; this epic consolidates them and reframes Pick and Concierge as *entrances* to the play session flow rather than separate destinations.
 
 ### The problem (what the code shows today)
 
-A mission gets created three different ways, and they disagree:
+A play session gets created three different ways, and they disagree:
 
-| Path | Game chosen by | Briefing |
+| Path | Game chosen by | Recap |
 | --- | --- | --- |
-| `LoadoutService.accept_loadout` (`/v1/loadouts/{id}/accept`) | AI (3-question form) | **none** — creates an *empty* mission |
-| `MissionService.start_mission` (`POST /v1/missions`) | user (already knows) | optional `quick` / `deep` / skip |
-| `submit_retroactive_debrief` (`/v1/missions/retroactive-debrief`) | user | n/a (pre-ended "I played offline") |
+| `PickService.accept_pick` (`/v1/picks/{id}/accept`) | AI (3-question form) | **none** — creates an *empty* play session |
+| `PlaySessionService.start_play_session` (`POST /v1/play-sessions`) | user (already knows) | optional `quick` / `deep` / skip |
+| `submit_retroactive_wrap_up` (`/v1/play-sessions/retroactive-wrap-up`) | user | n/a (pre-ended "I played offline") |
 
-Accepting a Loadout yields a briefing-less mission; starting one directly yields a briefing — same outcome, two behaviours, duplicated active-mission guards. And the **Concierge dead-ends**: it recommends a game but cannot start it, brief it, or log a session, so it only *overlaps* Loadout without doing any real work.
+Accepting a Pick yields a recap-less play session; starting one directly yields a recap — same outcome, two behaviours, duplicated active-play session guards. And the **Concierge dead-ends**: it recommends a game but cannot start it, recap it, or log a session, so it only *overlaps* Pick without doing any real work.
 
 ### The model
 
 Every existing and desired flow is one point in a small cube:
 
 ```text
-START A MISSION = DECIDE (self | AI one-tap loadout | conversational concierge)
-                × BRIEF  (none | quick | deep)
+START A PLAY_SESSION = DECIDE (self | AI one-tap pick | conversational concierge)
+                × RECAP  (none | quick | deep)
                 × MODE   (live | retroactive)
 ```
 
-`Mission` is the aggregate root. `Loadout` stays a **decision record** (keep its accept-rate history + 24h auto-ignore), but its acceptance routes through the same orchestrator. The Concierge becomes the **conversational operator** of the whole pipeline, not a second recommender.
+`PlaySession` is the aggregate root. `Pick` stays a **decision record** (keep its accept-rate history + 24h auto-ignore), but its acceptance routes through the same orchestrator. The Concierge becomes the **conversational operator** of the whole pipeline, not a second recommender.
 
 ### Tasks
 
-- [x] Extract a single `start_mission` orchestrator (`core/mission/start.py::create_mission_for_entry`, free function over repos, mirroring `briefing.py`'s pattern); it owns the one-active-mission guard (409 backstop) and `last_played_at` update.
-- [x] Refactor `MissionService.start_mission` to delegate to it (no behaviour change — existing tests stay green).
-- [x] Refactor `LoadoutService.accept_loadout` to delegate to it, gaining an **optional briefing stage** (`briefing_text` on `LoadoutAcceptRequest`; backward-compatible default).
-- [x] Add a "let the AI pick" path (`LoadoutService.create_and_start` → `POST /v1/loadouts/start`): AI-pick a game and start a mission in one step, so DECIDE=AI and BRIEF are independent.
-- [x] Give the Concierge **write tools** — `start_mission`, `generate_briefing`, `submit_retroactive_debrief`, `set_status` (`infrastructure/agent/concierge/tools_write.py`); gated by `concierge_write_tools_enabled`. Each is UUID-validated and respects the one-active-mission guard.
-- [x] Client nav restructure: collapsed Loadout + Concierge into one **Play** hub (active mission front-and-centre; three doors: "What's the move?" one-tap, "I'll choose", "Ask") on both the web sidebar (`pages/PlayPage.tsx`, `App.tsx`) and Flutter shell (`features/play/view/play_page.dart`, `shell_page.dart`, `routes.dart`). Nav is **Play / Library / History / Stats** — the mission log is its own **History** tab (`/history`); start doors disable while a mission is active; the loadout flow offers an optional briefing before starting. Old paths redirect to `/play/*` / `/history`.
-- [x] Tests: orchestrator unit tests (`test_mission_start.py`); loadout-accept-with-briefing and `/start` (`test_loadout.py`); concierge write-tool guards (`test_concierge_tools_write.py`).
+- [x] Extract a single `start_play_session` orchestrator (`core/play-session/start.py::create_play_session_for_entry`, free function over repos, mirroring `recap.py`'s pattern); it owns the one-active-play session guard (409 backstop) and `last_played_at` update.
+- [x] Refactor `PlaySessionService.start_play_session` to delegate to it (no behaviour change — existing tests stay green).
+- [x] Refactor `PickService.accept_pick` to delegate to it, gaining an **optional recap stage** (`recap_text` on `PickAcceptRequest`; backward-compatible default).
+- [x] Add a "let the AI pick" path (`PickService.create_and_start` → `POST /v1/picks/start`): AI-pick a game and start a play session in one step, so DECIDE=AI and RECAP are independent.
+- [x] Give the Concierge **write tools** — `start_play_session`, `generate_recap`, `submit_retroactive_wrap_up`, `set_status` (`infrastructure/agent/concierge/tools_write.py`); gated by `concierge_write_tools_enabled`. Each is UUID-validated and respects the one-active-play session guard.
+- [x] Client nav restructure: collapsed Pick + Concierge into one **Play** hub (active play session front-and-centre; three doors: "What's the move?" one-tap, "I'll choose", "Ask") on both the web sidebar (`pages/PlayPage.tsx`, `App.tsx`) and Flutter shell (`features/play/view/play_page.dart`, `shell_page.dart`, `routes.dart`). Nav is **Play / Library / History / Stats** — the play session log is its own **History** tab (`/history`); start doors disable while a play session is active; the pick flow offers an optional recap before starting. Old paths redirect to `/play/*` / `/history`.
+- [x] Tests: orchestrator unit tests (`test_play_session_start.py`); pick-accept-with-recap and `/start` (`test_pick.py`); concierge write-tool guards (`test_concierge_tools_write.py`).
 
 ### Definition of Done
 
-- One `start_mission` orchestrator; `accept_loadout`, direct start, and the Concierge all funnel through it.
-- Briefing is a genuinely optional stage regardless of how the game was chosen.
-- The Concierge can start/brief/log a session, not just recommend.
+- One `start_play_session` orchestrator; `accept_pick`, direct start, and the Concierge all funnel through it.
+- Recap is a genuinely optional stage regardless of how the game was chosen.
+- The Concierge can start/recap/log a session, not just recommend.
 - Nav presents ~3 areas (Play / Library / Stats) instead of 5–6 tabs.
-- **The zero-friction default is preserved:** "What's the move?" is still one tap → AI picks → quick briefing → playing. Stages are skippable with smart defaults, never a forced wizard.
+- **The zero-friction default is preserved:** "What's the move?" is still one tap → AI picks → quick recap → playing. Stages are skippable with smart defaults, never a forced wizard.
 
 ### Why this is a separate epic
 
-It's a cross-cutting refactor (service consolidation + new write surface + nav on both clients) touching api, web, and app. Sequenced in phases — **(1) API orchestrator consolidation, (2) Concierge write tools, (3) client nav** — so each phase ships independently without breaking the others. The guard rails (one active mission per user; UUID-existence on every pick) and the product thesis ("you don't choose, the app picks") are invariants, not things this epic relaxes.
+It's a cross-cutting refactor (service consolidation + new write surface + nav on both clients) touching api, web, and app. Sequenced in phases — **(1) API orchestrator consolidation, (2) Concierge write tools, (3) client nav** — so each phase ships independently without breaking the others. The guard rails (one active play session per user; UUID-existence on every pick) and the product thesis ("you don't choose, the app picks") are invariants, not things this epic relaxes.
 
 ### Risks
 
 - **Wizardisation.** Turning a one-tap action into a multi-step flow would betray the core promise. Mitigation: defaults collapse the common path to one action; steps are opt-in.
-- **Losing Loadout's analytics/auto-ignore.** Keep the `Loadout` row as a decision record; only its *acceptance path* changes.
+- **Losing Pick's analytics/auto-ignore.** Keep the `Pick` row as a decision record; only its *acceptance path* changes.
 
 ---
 
 ## Epic 13 — Firecrawl research provider (evaluate, v1.1+)
 
-**Goal:** evaluate [Firecrawl](https://www.firecrawl.dev/) as a research source for the Deep Research Briefing (Epic 10) — as a reliability fallback for SearXNG, a page-scrape enrichment step, or the **primary** search/scrape in the hosted build — without disturbing the self-host default.
+**Goal:** evaluate [Firecrawl](https://www.firecrawl.dev/) as a research source for the Deep Research Recap (Epic 10) — as a reliability fallback for SearXNG, a page-scrape enrichment step, or the **primary** search/scrape in the hosted build — without disturbing the self-host default.
 
-**Status:** not committed. This is a *spike-then-decide* epic — build a small adapter behind the existing port, A/B the briefing quality, then keep or drop it. Its ranking depends on the deployment target (see Epic 13).
+**Status:** not committed. This is a *spike-then-decide* epic — build a small adapter behind the existing port, A/B the recap quality, then keep or drop it. Its ranking depends on the deployment target (see Epic 13).
 
 ### Context
 
@@ -645,11 +645,11 @@ So the local-first objection that keeps Firecrawl optional only holds for the se
 
 ### Option A — reliability fallback
 
-A composite `FallbackResearchClient` wrapping primary (SearXNG) + secondary (Firecrawl) behind the same port — no graph changes. Decide the trigger policy: fall back on hard failure (HTTP error/timeout) **and/or empty results**, immediately or after N retries-with-backoff (the "after K attempts" knob). Note this sits *above* the existing degrade-to-quick fallback: it keeps the **deep** path alive when SearXNG flakes instead of dropping to the quick briefing.
+A composite `FallbackResearchClient` wrapping primary (SearXNG) + secondary (Firecrawl) behind the same port — no graph changes. Decide the trigger policy: fall back on hard failure (HTTP error/timeout) **and/or empty results**, immediately or after N retries-with-backoff (the "after K attempts" knob). Note this sits *above* the existing degrade-to-quick fallback: it keeps the **deep** path alive when SearXNG flakes instead of dropping to the quick recap.
 
 ### Option B — scrape enrichment (higher value)
 
-SearXNG finds URLs → Firecrawl `/scrape` turns the top 1–2 into markdown → richer `synthesize` grounding. This is where briefing quality actually jumps (snippets are thin). **Risk to measure:** scraping full walkthrough pages increases spoiler surface (boss names, plot beats) — exactly what `spoiler_filter` + the overlap guard must catch. Gate behind a flag and add a spoiler-leak regression test before adopting.
+SearXNG finds URLs → Firecrawl `/scrape` turns the top 1–2 into markdown → richer `synthesize` grounding. This is where recap quality actually jumps (snippets are thin). **Risk to measure:** scraping full walkthrough pages increases spoiler surface (boss names, plot beats) — exactly what `spoiler_filter` + the overlap guard must catch. Gate behind a flag and add a spoiler-leak regression test before adopting.
 
 ### Tasks (spike)
 
@@ -657,7 +657,7 @@ SearXNG finds URLs → Firecrawl `/scrape` turns the top 1–2 into markdown →
 - [ ] `FirecrawlResearchClient(AbstractResearchClient)` + `DummyFirecrawlResearchClient`; wire into the research factory
 - [ ] (Option A) `FallbackResearchClient` composite with a configurable trigger policy (failure and/or empty; immediate vs N-retries)
 - [ ] (Option B) optional `scrape()` step in the `search`/`synthesize` path, flag-gated, with a **spoiler-leak regression test** on scraped content
-- [ ] A/B: compare deep-briefing quality (snippets-only vs scrape-enriched) on a handful of real games; record the verdict in this epic
+- [ ] A/B: compare deep-recap quality (snippets-only vs scrape-enriched) on a handful of real games; record the verdict in this epic
 - [ ] Decide: adopt as opt-in provider, adopt scrape step, or drop — keep SearXNG the default either way
 
 ### Definition of Done
@@ -669,7 +669,7 @@ SearXNG finds URLs → Firecrawl `/scrape` turns the top 1–2 into markdown →
 
 ### Technical highlight
 
-> **A provider you can adopt without a rewrite — or walk away from.** Because web search and scraping live behind one port with a dummy default, evaluating a cloud/self-hosted scraper is a contained spike: add an adapter, A/B the briefing quality, keep or delete. The interesting tension is product, not plumbing — richer scraped content improves grounding but enlarges the spoiler surface the deterministic guards have to defend.
+> **A provider you can adopt without a rewrite — or walk away from.** Because web search and scraping live behind one port with a dummy default, evaluating a cloud/self-hosted scraper is a contained spike: add an adapter, A/B the recap quality, keep or delete. The interesting tension is product, not plumbing — richer scraped content improves grounding but enlarges the spoiler surface the deterministic guards have to defend.
 
 ---
 
@@ -698,7 +698,7 @@ The principle: the goal is not "remove Redis" but "never depend on a single comp
 
 This mirrors the rate-limiting call in PR #34: keep the solved commodity (`pyrate_limiter`), build the bespoke differentiated piece. The per-minute per-user limits already shipped (#34) bound bursts; this epic adds the **monthly + global $ caps** that bound *sustained* cost — a hard prerequisite before opening the app to the public (without them a scripted account can run up cost via the per-minute ceiling).
 
-**Cheap-tier-first:** default the `fast`/`smart` roles to cheap models (Claude Haiku / Amazon Nova), escalate only where output quality is user-visible; prompt-cache the repeated deep-briefing context. **Document the build-vs-buy reasoning in an ADR** — the decision itself is a portfolio signal.
+**Cheap-tier-first:** default the `fast`/`smart` roles to cheap models (Claude Haiku / Amazon Nova), escalate only where output quality is user-visible; prompt-cache the repeated deep-recap context. **Document the build-vs-buy reasoning in an ADR** — the decision itself is a portfolio signal.
 
 ### Context
 
@@ -710,15 +710,15 @@ Our two model roles map cleanly onto cloud tiers — a cheap tier for the freque
 
 | Role | Used by | Bedrock-Claude model |
 | --- | --- | --- |
-| `fast` | `grade`, `refine`, debrief extraction, captures | `anthropic.claude-haiku-4-5` |
-| `smart` | `synthesize`, `spoiler_filter`, quick briefing, loadout pick | `anthropic.claude-sonnet-4-6` |
-| (optional max-quality `smart`) | briefings only, if quality demands | `anthropic.claude-opus-4-8` |
+| `fast` | `grade`, `refine`, wrap-up extraction, captures | `anthropic.claude-haiku-4-5` |
+| `smart` | `synthesize`, `spoiler_filter`, quick recap, pick selection | `anthropic.claude-sonnet-4-6` |
+| (optional max-quality `smart`) | recaps only, if quality demands | `anthropic.claude-opus-4-8` |
 
 Vertex/Gemini has an equivalent Flash (cheap) / Pro (premium) split.
 
 ### Hosted vs. self-host — the actual decision
 
-A deep briefing fires up to ~4 LLM calls (`grade` → `refine`×0–2 → `synthesize` → `spoiler_filter`); a quick briefing is one `smart` call. The build decision turns on volume and operational appetite, not on any single number:
+A deep recap fires up to ~4 LLM calls (`grade` → `refine`×0–2 → `synthesize` → `spoiler_filter`); a quick recap is one `smart` call. The build decision turns on volume and operational appetite, not on any single number:
 
 - **At personal / low volume:** a cloud provider is pay-per-use with **zero infra/ops/GPU burden** — typically the lower total cost. A self-hosted open-source model only comes out ahead once a dedicated GPU's fixed running cost is justified by sustained volume.
 - **At scale / multi-tenant:** a self-hosted OSS model on owned/rented GPU can win on marginal cost and keeps data local — at the cost of ops, capacity planning, and quality tuning.
@@ -730,7 +730,7 @@ A deep briefing fires up to ~4 LLM calls (`grade` → `refine`×0–2 → `synth
 - **No `temperature`/`top_p`/`top_k`** on current Claude (Opus 4.7/4.8, Fable) — adaptive thinking only. Don't port Ollama's sampling knobs.
 - **JSON mode differs:** Ollama uses `format: "json"`; Claude uses `output_config.format` (json_schema) or a `strict` tool. Our `complete(json=True)` abstraction holds — the adapter implements JSON-mode its own way.
 - Bedrock-Claude lacks server-side tools, Managed Agents, and the Files API — **irrelevant here**, since our LangGraph agent only uses plain `messages`.
-- **Prompt caching** to amortize the repeated system/context across the ~4 calls per deep briefing — a real cost lever on cloud.
+- **Prompt caching** to amortize the repeated system/context across the ~4 calls per deep recap — a real cost lever on cloud.
 
 ### Tasks (spike)
 
@@ -741,11 +741,11 @@ A deep briefing fires up to ~4 LLM calls (`grade` → `refine`×0–2 → `synth
 - [x] **Tier 2 — degraded fallback:** cost guard drops to a conservative in-process counter when Redis is unreachable (no longer hard-503s every cost route on a Redis blip). *Shipped ahead of the epic.*
 - [ ] **Tier 3 — AWS Budgets backstop (deploy-time):** monthly budget on the AWS account with a budget action that disables Bedrock / revokes the inference role on breach — provider-side, app-independent. Document the setup in `docs/DEPLOYMENT.md`. **Prerequisite before any public launch.**
 - [ ] Tests with a mocked cloud client (no real cloud calls in CI; `dummy` stays the CI default)
-- [ ] ADR: the build-vs-buy write-up (Bedrock-direct + in-house cost governance vs. an LLM gateway like LiteLLM; why we own the cost layer given the existing port) + measured per-briefing cost on cheap-tier Bedrock
+- [ ] ADR: the build-vs-buy write-up (Bedrock-direct + in-house cost governance vs. an LLM gateway like LiteLLM; why we own the cost layer given the existing port) + measured per-recap cost on cheap-tier Bedrock
 
 ### Definition of Done
 
-- `LLM_PROVIDER=bedrock` (or `vertex`) works end-to-end for captures, briefings (quick + deep), loadout, and debrief extraction; Ollama remains the OSS default; `dummy` still used in tests
+- `LLM_PROVIDER=bedrock` (or `vertex`) works end-to-end for captures, recaps (quick + deep), pick, and wrap-up extraction; Ollama remains the OSS default; `dummy` still used in tests
 - All `AbstractLLMClient` methods implemented on the new provider, including `complete()` with JSON mode and adaptive thinking
 - A documented cost comparison and a provider recommendation tied to expected volume
 - No regression to the local-first default path; test coverage at parity with the Ollama client
@@ -764,7 +764,7 @@ A deep briefing fires up to ~4 LLM calls (`grade` → `refine`×0–2 → `synth
 
 ### Context
 
-The single biggest onboarding cliff is the empty library. Epic 5 added multimodal photo capture (covers + shelves, limit 12), but bulk import has a different shape: dozens of titles in one frame, and the **expensive, one-time** moment in a user's lifecycle. Library *additions* are free and unlimited across all tiers (only `deep briefing` is gated to Pro, and free tier is one briefing + one loadout/day), so the import path is pure CAC, not COGS — but only if it stays cheap. The cost spike here is OCR/vision, **not Whisper**: nobody dictates 100 games by voice, so STT (Epic 4) never enters this path. The thing that quietly turns cents into dollars is **retry from low accuracy** — bad extraction → user re-shoots and re-runs → multiplies both cost and friction. So accuracy is simultaneously the cost control and the friction control; they are the same problem.
+The single biggest onboarding cliff is the empty library. Epic 5 added multimodal photo capture (covers + shelves, limit 12), but bulk import has a different shape: dozens of titles in one frame, and the **expensive, one-time** moment in a user's lifecycle. Library *additions* are free and unlimited across all tiers (only `deep recap` is gated to Pro, and free tier is one recap + one pick/day), so the import path is pure CAC, not COGS — but only if it stays cheap. The cost spike here is OCR/vision, **not Whisper**: nobody dictates 100 games by voice, so STT (Epic 4) never enters this path. The thing that quietly turns cents into dollars is **retry from low accuracy** — bad extraction → user re-shoots and re-runs → multiplies both cost and friction. So accuracy is simultaneously the cost control and the friction control; they are the same problem.
 
 ### The decisive insight: text source beats image recognition
 
@@ -858,7 +858,7 @@ It adds a new hexagonal port (`ocr/`), a catalog-matching layer, a batch capture
 
 **Goal:** upgrade the Backlog Concierge (Epic 11) from "buffer → validate → stream the guarded answer in chunks" to **true token-level streaming** — the chat types out live as the model generates — while keeping the Epic 7 UUID-existence guard intact.
 
-> Builds on the **operator Concierge from Epic 12**: once the Concierge can start/brief/log missions (not just recommend), live streaming also means surfacing those write actions as they happen ("▶ starting your mission…"), not just text and read-only tool calls.
+> Builds on the **operator Concierge from Epic 12**: once the Concierge can start/recap/log play sessions (not just recommend), live streaming also means surfacing those write actions as they happen ("▶ starting your play session…"), not just text and read-only tool calls.
 
 ### Context
 
@@ -934,25 +934,25 @@ IGDB is opt-in via `IGDB_CLIENT_ID` / `IGDB_CLIENT_SECRET` — graceful `IGDBNot
 
 ### Why this deserves its own epic
 
-The app has several genuinely expensive, repeat-heavy operations — a **deep research briefing** fires ~4 LLM calls plus web research; **stats** aggregate every mission on each dashboard load; **IGDB/SearXNG** are rate-limited network hops. Today each is recomputed from scratch every time. Caching these is the single biggest lever on both **perceived latency** and **inference/API cost** (the same cost thesis behind Epics 13–15). But naive caching is dangerous here: briefings depend on *mutable* session state, and stats are *per-user* — cache the wrong key or skip an invalidation and you serve stale or, worse, another user's data. So the value is high and the failure modes are real: it warrants a designed layer, not ad-hoc `redis.get` calls sprinkled per feature.
+The app has several genuinely expensive, repeat-heavy operations — a **deep research recap** fires ~4 LLM calls plus web research; **stats** aggregate every play session on each dashboard load; **IGDB/SearXNG** are rate-limited network hops. Today each is recomputed from scratch every time. Caching these is the single biggest lever on both **perceived latency** and **inference/API cost** (the same cost thesis behind Epics 13–15). But naive caching is dangerous here: recaps depend on *mutable* session state, and stats are *per-user* — cache the wrong key or skip an invalidation and you serve stale or, worse, another user's data. So the value is high and the failure modes are real: it warrants a designed layer, not ad-hoc `redis.get` calls sprinkled per feature.
 
 ### Scope — what to cache (highest value first)
 
 | Target | Key | TTL / invalidation | Why |
 |---|---|---|---|
-| **Deep research briefing** (Epic 10) | `(game_id, normalized session-state hash, mode)` | TTL (days) + **bust on new debrief** for that entry | The most expensive op (multi-LLM + web). Biggest single win. |
-| **LLM completions** (capture parse, loadout pick) | content-addressed `(model, prompt hash, json-mode)` | short TTL | De-dupes identical prompts; cheap correctness (idempotent inputs). |
-| **Web research / SearXNG** (Epic 10) | `normalized query` | TTL (hours) | Network hop; queries repeat across briefings. |
-| **Stats / analytics** (Epic 9) | `(user_id, window)` per overview/genre/platform | short TTL + **bust on mission start/end + debrief** | Recomputed on every dashboard load; per-user. |
+| **Deep research recap** (Epic 10) | `(game_id, normalized session-state hash, mode)` | TTL (days) + **bust on new wrap-up** for that entry | The most expensive op (multi-LLM + web). Biggest single win. |
+| **LLM completions** (capture parse, pick selection) | content-addressed `(model, prompt hash, json-mode)` | short TTL | De-dupes identical prompts; cheap correctness (idempotent inputs). |
+| **Web research / SearXNG** (Epic 10) | `normalized query` | TTL (hours) | Network hop; queries repeat across recaps. |
+| **Stats / analytics** (Epic 9) | `(user_id, window)` per overview/genre/platform | short TTL + **bust on play session start/end + wrap-up** | Recomputed on every dashboard load; per-user. |
 | **IGDB search** (Epic 17) | done | — | Already shipped as the seed. |
 | **Twitch/IGDB token** | `igdb:token` in Redis | `expires_in` | Cross-process sharing beyond the per-process singleton. |
 | **Reference data** (platforms, genres) | static keys | long TTL + in-process LRU | Tiny, hot, read on most pages. |
 
 ### Cross-cutting mechanics
 
-- [ ] **Key + namespace convention** — a typed key-builder and per-namespace prefixes (`igdb:`, `briefing:`, `llm:`, `stats:<user_id>:`); **never** mix users into a shared key.
-- [ ] **Invalidation model** — a documented map from domain events → busted keys (new debrief ⇒ that game's briefing + that user's stats; mission start/end ⇒ stats). Event hooks live at the service layer, not scattered.
-- [ ] **Single-flight / stampede protection** — a per-key in-flight guard so N concurrent identical requests (e.g. two tabs opening the same deep briefing) trigger **one** computation and the rest await it. Critical for the LLM/briefing paths.
+- [ ] **Key + namespace convention** — a typed key-builder and per-namespace prefixes (`igdb:`, `recap:`, `llm:`, `stats:<user_id>:`); **never** mix users into a shared key.
+- [ ] **Invalidation model** — a documented map from domain events → busted keys (new wrap-up ⇒ that game's recap + that user's stats; play session start/end ⇒ stats). Event hooks live at the service layer, not scattered.
+- [ ] **Single-flight / stampede protection** — a per-key in-flight guard so N concurrent identical requests (e.g. two tabs opening the same deep recap) trigger **one** computation and the rest await it. Critical for the LLM/recap paths.
 - [ ] **Tiered cache** — optional in-process LRU in front of Redis for small, hot, shared data (platforms/genres) to skip a network round-trip; Redis for everything user- or size-significant.
 - [ ] **Observability** — per-namespace hit/miss counters (structured logs + optional metrics) so TTLs can be tuned against real hit rates, plus a `make cache-stats`-style readout.
 - [ ] **Safety & degradation** — every cache read is best-effort (outage ⇒ live); a global `cache_enabled` kill-switch; explicit opt-out per call where freshness must be guaranteed.
@@ -961,14 +961,14 @@ The app has several genuinely expensive, repeat-heavy operations — a **deep re
 
 ### Definition of Done
 
-- Deep briefings, stats, LLM completions, and web research are cached through **one** mechanism with explicit, tested invalidation — no stale-data or cross-user leaks.
+- Deep recaps, stats, LLM completions, and web research are cached through **one** mechanism with explicit, tested invalidation — no stale-data or cross-user leaks.
 - A concurrent burst of identical expensive requests computes once (single-flight), not N times.
 - Cache hit/miss is observable per namespace; TTLs are config-driven.
 - Everything degrades to live on a cache outage; a single flag disables all caching; `dummy`/test paths are unaffected.
 
 ### Why this is a separate epic (not folded into Epic 17)
 
-Epic 17 is a tactical fix for one adapter. This is a **cross-cutting architectural concern** touching the briefing graph, the LLM port, stats, and research — with a real correctness surface (invalidation, per-user isolation, stampede control) that deserves its own design and review rather than being smuggled in feature-by-feature.
+Epic 17 is a tactical fix for one adapter. This is a **cross-cutting architectural concern** touching the recap graph, the LLM port, stats, and research — with a real correctness surface (invalidation, per-user isolation, stampede control) that deserves its own design and review rather than being smuggled in feature-by-feature.
 
 ---
 
@@ -982,7 +982,7 @@ Epic 17 is a tactical fix for one adapter. This is a **cross-cutting architectur
 
 ### Context
 
-- There's already an `oauth_identities` table/provider scaffold and `GOOGLE_OAUTH_CLIENT_ID/SECRET` slots in settings — extend that, don't rebuild auth. The OAuth callback resolves/creates a `User` (linking by verified email when safe) and then issues our own JWT access + refresh tokens (cookie-mode for web, body-mode for app), so missions/library/concierge are untouched.
+- There's already an `oauth_identities` table/provider scaffold and `GOOGLE_OAUTH_CLIENT_ID/SECRET` slots in settings — extend that, don't rebuild auth. The OAuth callback resolves/creates a `User` (linking by verified email when safe) and then issues our own JWT access + refresh tokens (cookie-mode for web, body-mode for app), so play sessions/library/concierge are untouched.
 - **Twitch is a strategic fit** — it's the gaming identity, and the app already uses Twitch OAuth for IGDB (client-credentials), so the integration/ops surface is familiar (different grant: user Authorization Code vs the existing app-token).
 
 ### Tasks
@@ -1060,9 +1060,9 @@ Two kinds of config, two mechanisms (do **not** put everything in one place):
 
 **Backoffice web UI + domain expansion (in progress):**
 
-- [x] **Phase 4 — Backoffice web foundation + ready domains** (#47): a distinct admin shell (separate `/backoffice` area reusing the existing auth/session, visually marked as a backoffice) + admin guard; **Dashboard** (`GET /internal/v1/dashboard` aggregate endpoint: user/ban/verify/admin counts, active missions, catalogue size, config overrides, recent admin actions); **Users**, **Config**, and **Audit** management screens over the existing APIs.
+- [x] **Phase 4 — Backoffice web foundation + ready domains** (#47): a distinct admin shell (separate `/backoffice` area reusing the existing auth/session, visually marked as a backoffice) + admin guard; **Dashboard** (`GET /internal/v1/dashboard` aggregate endpoint: user/ban/verify/admin counts, active play sessions, catalogue size, config overrides, recent admin actions); **Users**, **Config**, and **Audit** management screens over the existing APIs.
 - [x] **Phase 5 — Games / catalogue admin** (this PR): `/internal/v1/games` (list/search with owner counts + provenance filters, detail, demote/promote — surfacing `demote_game.py` as a panel action — and metadata edit, all audited) + a **Catalogue** screen in the backoffice (table, source filters, demote/promote/edit, catalogue tallies). Catalogue *merge* (library-entry reassignment) deferred to a follow-up.
-- [ ] **Phase 6 — Other domains (moderation & data browse)**: missions (browse/force-clamp), captures (browse/reprocess/purge), loadouts, and basic read-only data browse across domains — each behind the same audited admin boundary.
+- [ ] **Phase 6 — Other domains (moderation & data browse)**: play sessions (browse/force-clamp), captures (browse/reprocess/purge), picks, and basic read-only data browse across domains — each behind the same audited admin boundary.
 
 ### Definition of Done
 
@@ -1079,16 +1079,16 @@ Two kinds of config, two mechanisms (do **not** put everything in one place):
 If at some point you feel you're pushing, these are the epics to defer to **v1.1** without destroying the vitrine:
 
 1. **Epic 5 (photo capture).** Keeping text + voice is already strong. Photo goes to v1.1.
-2. **Epic 7 (loadout).** Briefing alone is already the anchor AI feature. Loadout can wait.
+2. **Epic 7 (pick).** Recap alone is already the anchor AI feature. Pick can wait.
 3. **Epic 8 (stats).** Web can ship with just the library data table for v1; stats moves to v1.1.
 
-**Don't skip:** Foundation, Auth, Library, Capture Text (Epic 3), Mission + Briefing (Epic 6), Polish (Epic 9). These are the **core of the vitrine**.
+**Don't skip:** Foundation, Auth, Library, Capture Text (Epic 3), PlaySession + Recap (Epic 6), Polish (Epic 9). These are the **core of the vitrine**.
 
 ---
 
 ## Optional decisions you can still make
 
-1. **Weekly LinkedIn updates?** Could become a "Building DailyLoadout in public" series — visibility for each epic. More work, but valuable if you want growth.
+1. **Weekly LinkedIn updates?** Could become a "Building Slate in public" series — visibility for each epic. More work, but valuable if you want growth.
 
 2. **Private beta with friends during Epic 9?** Not required for the vitrine, but generates real feedback and testimonials for the README.
 

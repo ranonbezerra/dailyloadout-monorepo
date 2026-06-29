@@ -1,4 +1,4 @@
-import 'package:app/core/theme/dailyloadout_theme.dart';
+import 'package:app/core/theme/slate_theme.dart';
 import 'package:app/features/auth/bloc/auth_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -9,7 +9,7 @@ abstract final class VerifyEmailStrings {
   static const String title = 'Verify your email';
   static const String body =
       'Check your inbox and tap the verification link to unlock '
-      'AI features like loadouts, briefings and the concierge.';
+      'AI features like picks, recaps and the concierge.';
   static const String resend = 'Resend email';
   static const String refresh = "I've verified — refresh";
   static const String resentFallback =
@@ -93,7 +93,7 @@ class _Banner extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Material(
-      color: DLColors.surface2,
+      color: SlateColors.surface2,
       child: SafeArea(
         bottom: false,
         child: Padding(
@@ -105,7 +105,7 @@ class _Banner extends StatelessWidget {
                 children: [
                   const Icon(
                     Icons.mark_email_unread_outlined,
-                    color: DLColors.coral,
+                    color: SlateColors.coral,
                     size: 20,
                   ),
                   const SizedBox(width: 8),

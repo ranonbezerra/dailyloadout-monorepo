@@ -57,7 +57,7 @@ describe("VerifyEmailPage", () => {
 		expect(verify).toHaveBeenCalledWith("good-token");
 		expect(refetchUser).toHaveBeenCalled();
 		// Success offers a way back into the app; no Resend.
-		expect(screen.getByRole("link", { name: /continue to dailyloadout/i })).toBeInTheDocument();
+		expect(screen.getByRole("link", { name: /continue to slate/i })).toBeInTheDocument();
 		expect(
 			screen.queryByRole("button", { name: /resend verification email/i }),
 		).not.toBeInTheDocument();

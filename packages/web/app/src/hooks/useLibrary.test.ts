@@ -6,7 +6,7 @@ import { createWrapper } from "../test/wrapper";
 // Mocks
 // ---------------------------------------------------------------------------
 
-vi.mock("@dl/shared/api", () => ({
+vi.mock("@slate/shared/api", () => ({
 	BASE_URL: "http://localhost:8100",
 	apiFetch: vi.fn(() => Promise.resolve(null)),
 	getAccessToken: vi.fn(() => null),
@@ -43,7 +43,7 @@ const mockPlatformState = {
 	status: "playing" as const,
 	acquiredAt: null,
 	lastPlayedAt: "2024-06-01T00:00:00Z",
-	missionNextAction: null,
+	playSessionNextAction: null,
 	notes: null,
 	createdAt: "2024-01-01T00:00:00Z",
 	updatedAt: "2024-06-01T00:00:00Z",

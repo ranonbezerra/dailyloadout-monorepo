@@ -72,4 +72,4 @@ jobs:
           # origin/main (staging); a tag is passed for production.
           ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes \
             "$VPS_USER@$VPS_HOST" \
-            "/opt/dailyloadout/infra/deploy/deploy.sh ${DEPLOY_REF}"
+            "/opt/slate/infra/deploy/deploy.sh ${DEPLOY_REF}"

@@ -5,9 +5,9 @@ class StatsOverview extends Equatable {
   const StatsOverview({
     required this.totalGames,
     required this.statusCounts,
-    required this.missionsLast30d,
+    required this.playSessionsLast30d,
     required this.userCreatedAt,
-    this.avgMissionDurationMinutes,
+    this.avgPlaySessionDurationMinutes,
   });
 
   factory StatsOverview.fromJson(Map<String, dynamic> json) {
@@ -16,25 +16,25 @@ class StatsOverview extends Equatable {
       statusCounts: (json['status_counts'] as Map<String, dynamic>).map(
         (key, value) => MapEntry(key, value as int),
       ),
-      missionsLast30d: json['missions_last_30d'] as int,
-      avgMissionDurationMinutes: (json['avg_mission_duration_minutes'] as num?)
-          ?.toDouble(),
+      playSessionsLast30d: json['play_sessions_last_30d'] as int,
+      avgPlaySessionDurationMinutes:
+          (json['avg_play_session_duration_minutes'] as num?)?.toDouble(),
       userCreatedAt: DateTime.parse(json['user_created_at'] as String),
     );
   }
 
   final int totalGames;
   final Map<String, int> statusCounts;
-  final int missionsLast30d;
-  final double? avgMissionDurationMinutes;
+  final int playSessionsLast30d;
+  final double? avgPlaySessionDurationMinutes;
   final DateTime userCreatedAt;
 
   @override
   List<Object?> get props => [
     totalGames,
     statusCounts,
-    missionsLast30d,
-    avgMissionDurationMinutes,
+    playSessionsLast30d,
+    avgPlaySessionDurationMinutes,
     userCreatedAt,
   ];
 }
@@ -87,23 +87,23 @@ class GenreStat extends Equatable {
   const GenreStat({
     required this.genre,
     required this.totalMinutes,
-    required this.missionCount,
+    required this.playSessionCount,
   });
 
   factory GenreStat.fromJson(Map<String, dynamic> json) {
     return GenreStat(
       genre: json['genre'] as String,
       totalMinutes: json['total_minutes'] as int,
-      missionCount: json['mission_count'] as int,
+      playSessionCount: json['play_session_count'] as int,
     );
   }
 
   final String genre;
   final int totalMinutes;
-  final int missionCount;
+  final int playSessionCount;
 
   @override
-  List<Object?> get props => [genre, totalMinutes, missionCount];
+  List<Object?> get props => [genre, totalMinutes, playSessionCount];
 }
 
 /// Collection of genre-level statistics.
@@ -130,7 +130,7 @@ class PlatformStat extends Equatable {
     required this.platformSlug,
     required this.platformLabel,
     required this.gameCount,
-    required this.missionCount,
+    required this.playSessionCount,
     required this.totalMinutes,
   });
 
@@ -139,7 +139,7 @@ class PlatformStat extends Equatable {
       platformSlug: json['platform_slug'] as String,
       platformLabel: json['platform_label'] as String,
       gameCount: json['game_count'] as int,
-      missionCount: json['mission_count'] as int,
+      playSessionCount: json['play_session_count'] as int,
       totalMinutes: json['total_minutes'] as int,
     );
   }
@@ -147,7 +147,7 @@ class PlatformStat extends Equatable {
   final String platformSlug;
   final String platformLabel;
   final int gameCount;
-  final int missionCount;
+  final int playSessionCount;
   final int totalMinutes;
 
   @override
@@ -155,7 +155,7 @@ class PlatformStat extends Equatable {
     platformSlug,
     platformLabel,
     gameCount,
-    missionCount,
+    playSessionCount,
     totalMinutes,
   ];
 }
@@ -178,16 +178,16 @@ class PlatformStats extends Equatable {
   List<Object?> get props => [platforms];
 }
 
-/// A single mission entry in the timeline view.
+/// A single playSession entry in the timeline view.
 class TimelineEntry extends Equatable {
   const TimelineEntry({
     required this.publicId,
     required this.gameTitle,
     required this.platformLabel,
-    required this.missionType,
+    required this.playSessionType,
     required this.startedAt,
-    this.briefingText,
-    this.debriefText,
+    this.recapText,
+    this.wrapUpText,
     this.endedVia,
     this.endedAt,
     this.durationMinutes,
@@ -198,9 +198,9 @@ class TimelineEntry extends Equatable {
       publicId: json['public_id'] as String,
       gameTitle: json['game_title'] as String,
       platformLabel: json['platform_label'] as String,
-      missionType: json['mission_type'] as String,
-      briefingText: json['briefing_text'] as String?,
-      debriefText: json['debrief_text'] as String?,
+      playSessionType: json['play_session_type'] as String,
+      recapText: json['recap_text'] as String?,
+      wrapUpText: json['wrap_up_text'] as String?,
       endedVia: json['ended_via'] as String?,
       startedAt: DateTime.parse(json['started_at'] as String),
       endedAt: json['ended_at'] != null
@@ -213,9 +213,9 @@ class TimelineEntry extends Equatable {
   final String publicId;
   final String gameTitle;
   final String platformLabel;
-  final String missionType;
-  final String? briefingText;
-  final String? debriefText;
+  final String playSessionType;
+  final String? recapText;
+  final String? wrapUpText;
   final String? endedVia;
   final DateTime startedAt;
   final DateTime? endedAt;
@@ -226,9 +226,9 @@ class TimelineEntry extends Equatable {
     publicId,
     gameTitle,
     platformLabel,
-    missionType,
-    briefingText,
-    debriefText,
+    playSessionType,
+    recapText,
+    wrapUpText,
     endedVia,
     startedAt,
     endedAt,
@@ -236,7 +236,7 @@ class TimelineEntry extends Equatable {
   ];
 }
 
-/// Paginated response for mission timeline.
+/// Paginated response for playSession timeline.
 class TimelineResponse extends Equatable {
   const TimelineResponse({required this.items, required this.total});
 

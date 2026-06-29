@@ -14,10 +14,10 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy import func, select
 
-from dailyloadout.config import settings
-from dailyloadout.infrastructure.config.dynamic import dynamic_config
-from dailyloadout.infrastructure.db.models import AdminAuditLog, AppConfig, User
-from dailyloadout.infrastructure.db.repositories.admin import AdminRepository
+from slate.config import settings
+from slate.infrastructure.config.dynamic import dynamic_config
+from slate.infrastructure.db.models import AdminAuditLog, AppConfig, User
+from slate.infrastructure.db.repositories.admin import AdminRepository
 from tests.conftest import _TestSessionFactory
 
 

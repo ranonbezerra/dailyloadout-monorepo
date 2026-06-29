@@ -1,6 +1,6 @@
 # Agents Reference
 
-These are **reference/learning materials** for studying advanced agent architecture patterns. They are **NOT** active Claude agents and are not executed by DailyLoadout. They originate from Tier 3 CleanMarket agent definitions and have been preserved here for theoretical study and design inspiration.
+These are **reference/learning materials** for studying advanced agent architecture patterns. They are **NOT** active Claude agents and are not executed by Slate. They originate from Tier 3 CleanMarket agent definitions and have been preserved here for theoretical study and design inspiration.
 
 ## Categories
 

@@ -1,8 +1,8 @@
 export interface StatsOverview {
 	totalGames: number;
 	statusCounts: Record<string, number>;
-	missionsLast30d: number;
-	avgMissionDurationMinutes: number | null;
+	playSessionsLast30d: number;
+	avgPlaySessionDurationMinutes: number | null;
 	userCreatedAt: string;
 }
 
@@ -19,7 +19,7 @@ export interface PlayHeatmap {
 export interface GenreStat {
 	genre: string;
 	totalMinutes: number;
-	missionCount: number;
+	playSessionCount: number;
 }
 
 export interface GenreStats {
@@ -30,7 +30,7 @@ export interface PlatformStat {
 	platformSlug: string;
 	platformLabel: string;
 	gameCount: number;
-	missionCount: number;
+	playSessionCount: number;
 	totalMinutes: number;
 }
 
@@ -42,9 +42,9 @@ export interface TimelineEntry {
 	publicId: string;
 	gameTitle: string;
 	platformLabel: string;
-	missionType: string;
-	briefingText: string | null;
-	debriefText: string | null;
+	playSessionType: string;
+	recapText: string | null;
+	wrapUpText: string | null;
 	endedVia: string | null;
 	startedAt: string;
 	endedAt: string | null;

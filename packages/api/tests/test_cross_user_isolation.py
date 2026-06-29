@@ -99,14 +99,14 @@ async def _create_capture(
     return resp.json()
 
 
-async def _start_mission(
+async def _start_play_session(
     client: AsyncClient,
     headers: dict[str, str],
     entry_public_id: str,
 ) -> dict[str, Any]:
-    """Start a mission and return the response body."""
+    """Start a play_session and return the response body."""
     resp = await client.post(
-        "/v1/missions",
+        "/v1/play-sessions",
         json={"library_entry_public_id": entry_public_id},
         headers=headers,
     )
@@ -365,161 +365,161 @@ class TestCaptureIsolation:
 
 
 # =====================================================================
-# Mission isolation
+# PlaySession isolation
 # =====================================================================
 
 
-class TestMissionIsolation:
-    """User A's missions must be invisible to User B."""
+class TestPlaySessionIsolation:
+    """User A's play_sessions must be invisible to User B."""
 
-    async def test_user_b_cannot_get_user_a_mission(
+    async def test_user_b_cannot_get_user_a_play_session(
         self,
         async_client: AsyncClient,
         seed_platforms: list[dict[str, Any]],
     ) -> None:
-        """GET on User A's mission should return 404 for User B."""
+        """GET on User A's play_session should return 404 for User B."""
         headers_a = await _register_and_get_headers(async_client, _USER_A)
         headers_b = await _register_and_get_headers(async_client, _USER_B)
 
         entry = await _create_library_entry_via_capture(async_client, headers_a, seed_platforms)
-        mission = await _start_mission(async_client, headers_a, entry["public_id"])
+        play_session = await _start_play_session(async_client, headers_a, entry["public_id"])
 
         resp = await async_client.get(
-            f"/v1/missions/{mission['public_id']}",
+            f"/v1/play-sessions/{play_session['public_id']}",
             headers=headers_b,
         )
         assert resp.status_code == 404
 
-    async def test_user_b_cannot_debrief_user_a_mission(
+    async def test_user_b_cannot_wrap_up_user_a_play_session(
         self,
         async_client: AsyncClient,
         seed_platforms: list[dict[str, Any]],
     ) -> None:
-        """Submitting a debrief on User A's mission should return 404 for User B."""
+        """Submitting a wrap_up on User A's play_session should return 404 for User B."""
         headers_a = await _register_and_get_headers(async_client, _USER_A)
         headers_b = await _register_and_get_headers(async_client, _USER_B)
 
         entry = await _create_library_entry_via_capture(async_client, headers_a, seed_platforms)
-        mission = await _start_mission(async_client, headers_a, entry["public_id"])
+        play_session = await _start_play_session(async_client, headers_a, entry["public_id"])
 
         resp = await async_client.patch(
-            f"/v1/missions/{mission['public_id']}/debrief",
-            json={"debrief_text": "Attempted cross-user debrief."},
+            f"/v1/play-sessions/{play_session['public_id']}/wrap-up",
+            json={"wrap_up_text": "Attempted cross-user wrap_up."},
             headers=headers_b,
         )
         assert resp.status_code == 404
 
-    async def test_user_b_cannot_end_user_a_mission(
+    async def test_user_b_cannot_end_user_a_play_session(
         self,
         async_client: AsyncClient,
         seed_platforms: list[dict[str, Any]],
     ) -> None:
-        """Ending User A's mission should return 404 for User B."""
+        """Ending User A's play_session should return 404 for User B."""
         headers_a = await _register_and_get_headers(async_client, _USER_A)
         headers_b = await _register_and_get_headers(async_client, _USER_B)
 
         entry = await _create_library_entry_via_capture(async_client, headers_a, seed_platforms)
-        mission = await _start_mission(async_client, headers_a, entry["public_id"])
+        play_session = await _start_play_session(async_client, headers_a, entry["public_id"])
 
         resp = await async_client.post(
-            f"/v1/missions/{mission['public_id']}/end",
+            f"/v1/play-sessions/{play_session['public_id']}/end",
             json={"ended_via": "paused_app"},
             headers=headers_b,
         )
         assert resp.status_code == 404
 
-    async def test_user_a_active_mission_not_visible_to_user_b(
+    async def test_user_a_active_play_session_not_visible_to_user_b(
         self,
         async_client: AsyncClient,
         seed_platforms: list[dict[str, Any]],
     ) -> None:
-        """User B's active-mission endpoint must not return User A's mission."""
+        """User B's active-play_session endpoint must not return User A's play_session."""
         headers_a = await _register_and_get_headers(async_client, _USER_A)
         headers_b = await _register_and_get_headers(async_client, _USER_B)
 
         entry = await _create_library_entry_via_capture(async_client, headers_a, seed_platforms)
-        await _start_mission(async_client, headers_a, entry["public_id"])
+        await _start_play_session(async_client, headers_a, entry["public_id"])
 
-        # User B should have no active mission.
-        resp = await async_client.get("/v1/missions/active", headers=headers_b)
+        # User B should have no active play_session.
+        resp = await async_client.get("/v1/play-sessions/active", headers=headers_b)
         assert resp.status_code == 200
         assert resp.json() is None
 
-    async def test_user_a_missions_not_in_user_b_list(
+    async def test_user_a_play_sessions_not_in_user_b_list(
         self,
         async_client: AsyncClient,
         seed_platforms: list[dict[str, Any]],
     ) -> None:
-        """User A's missions must not appear in User B's mission list."""
+        """User A's play_sessions must not appear in User B's play_session list."""
         headers_a = await _register_and_get_headers(async_client, _USER_A)
         headers_b = await _register_and_get_headers(async_client, _USER_B)
 
         entry = await _create_library_entry_via_capture(async_client, headers_a, seed_platforms)
-        await _start_mission(async_client, headers_a, entry["public_id"])
+        await _start_play_session(async_client, headers_a, entry["public_id"])
 
-        # User A should see 1 mission.
-        resp_a = await async_client.get("/v1/missions", headers=headers_a)
+        # User A should see 1 play_session.
+        resp_a = await async_client.get("/v1/play-sessions", headers=headers_a)
         assert resp_a.status_code == 200
         assert resp_a.json()["total"] == 1
 
-        # User B should see 0 missions.
-        resp_b = await async_client.get("/v1/missions", headers=headers_b)
+        # User B should see 0 play_sessions.
+        resp_b = await async_client.get("/v1/play-sessions", headers=headers_b)
         assert resp_b.status_code == 200
         assert resp_b.json()["total"] == 0
 
-    async def test_user_b_cannot_regenerate_user_a_briefing(
+    async def test_user_b_cannot_regenerate_user_a_recap(
         self,
         async_client: AsyncClient,
         seed_platforms: list[dict[str, Any]],
     ) -> None:
-        """Regenerating User A's briefing should return 404 for User B."""
+        """Regenerating User A's recap should return 404 for User B."""
         headers_a = await _register_and_get_headers(async_client, _USER_A)
         headers_b = await _register_and_get_headers(async_client, _USER_B)
 
         entry = await _create_library_entry_via_capture(async_client, headers_a, seed_platforms)
-        mission = await _start_mission(async_client, headers_a, entry["public_id"])
+        play_session = await _start_play_session(async_client, headers_a, entry["public_id"])
 
         resp = await async_client.post(
-            f"/v1/missions/{mission['public_id']}/briefing/regenerate",
+            f"/v1/play-sessions/{play_session['public_id']}/recap/regenerate",
             headers=headers_b,
         )
         assert resp.status_code == 404
 
-    async def test_cross_user_mission_ops_leave_original_intact(
+    async def test_cross_user_play_session_ops_leave_original_intact(
         self,
         async_client: AsyncClient,
         seed_platforms: list[dict[str, Any]],
     ) -> None:
-        """Failed cross-user operations must not modify User A's mission."""
+        """Failed cross-user operations must not modify User A's play_session."""
         headers_a = await _register_and_get_headers(async_client, _USER_A)
         headers_b = await _register_and_get_headers(async_client, _USER_B)
 
         entry = await _create_library_entry_via_capture(async_client, headers_a, seed_platforms)
-        mission = await _start_mission(async_client, headers_a, entry["public_id"])
+        play_session = await _start_play_session(async_client, headers_a, entry["public_id"])
 
-        # User B tries debrief, end, and regenerate -- all should fail.
+        # User B tries wrap_up, end, and regenerate -- all should fail.
         await async_client.patch(
-            f"/v1/missions/{mission['public_id']}/debrief",
-            json={"debrief_text": "cross-user debrief attempt"},
+            f"/v1/play-sessions/{play_session['public_id']}/wrap-up",
+            json={"wrap_up_text": "cross-user wrap_up attempt"},
             headers=headers_b,
         )
         await async_client.post(
-            f"/v1/missions/{mission['public_id']}/end",
+            f"/v1/play-sessions/{play_session['public_id']}/end",
             json={"ended_via": "paused_app"},
             headers=headers_b,
         )
         await async_client.post(
-            f"/v1/missions/{mission['public_id']}/briefing/regenerate",
+            f"/v1/play-sessions/{play_session['public_id']}/recap/regenerate",
             headers=headers_b,
         )
 
-        # User A's mission should still be active and unmodified.
+        # User A's play_session should still be active and unmodified.
         resp = await async_client.get(
-            f"/v1/missions/{mission['public_id']}",
+            f"/v1/play-sessions/{play_session['public_id']}",
             headers=headers_a,
         )
         assert resp.status_code == 200
         data = resp.json()
         assert data["ended_at"] is None
-        assert data["debrief_text"] is None
+        assert data["wrap_up_text"] is None
         assert data["ended_via"] is None

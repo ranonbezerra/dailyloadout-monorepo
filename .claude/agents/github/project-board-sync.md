@@ -38,11 +38,11 @@ hooks:
 # Project Board Sync - GitHub Projects Integration
 
 ## Overview
-Synchronize AI swarms with GitHub Projects for visual task management, progress tracking, and team coordination for the DailyLoadout monorepo.
+Synchronize AI swarms with GitHub Projects for visual task management, progress tracking, and team coordination for the Slate monorepo.
 
-## DailyLoadout Context
-- **Monorepo**: packages/api, packages/web, packages/app
-- **EPIC tracking**: EPICs organized by feature area (Library, Missions, Loadouts, Captures)
+## Slate Context
+- **Monorepo**: packages/api, packages/web, packages/mobile
+- **EPIC tracking**: EPICs organized by feature area (Library, PlaySessions, Picks, Captures)
 - **Stack**: FastAPI (Python 3.14, uv), React+Mantine (Bun, Biome), Flutter
 - **Coverage target**: 90% minimum
 
@@ -53,7 +53,7 @@ Synchronize AI swarms with GitHub Projects for visual task management, progress 
 # Connect swarm to GitHub Project using gh CLI
 # Get project details
 PROJECT_ID=$(gh project list --owner @me --format json | \
-  jq -r '.projects[] | select(.title == "DailyLoadout Development") | .id')
+  jq -r '.projects[] | select(.title == "Slate Development") | .id')
 
 # Initialize swarm with project
 npx claude-flow@v3alpha github board-init \
@@ -65,7 +65,7 @@ npx claude-flow@v3alpha github board-init \
 gh project field-create $PROJECT_ID --owner @me \
   --name "Package" \
   --data-type "SINGLE_SELECT" \
-  --single-select-options "packages/api,packages/web,packages/app"
+  --single-select-options "packages/api,packages/web,packages/mobile"
 ```
 
 ### 2. Task Synchronization
@@ -89,7 +89,7 @@ npx claude-flow@v3alpha github board-sync \
 # .github/board-sync.yml
 version: 1
 project:
-  name: "DailyLoadout Development"
+  name: "Slate Development"
   number: 1
 
 mapping:
@@ -117,11 +117,11 @@ mapping:
     medium: "Medium"
     low: "Low"
 
-  # DailyLoadout-specific fields
+  # Slate-specific fields
   fields:
     - name: "Package"
       type: select
-      options: ["packages/api", "packages/web", "packages/app"]
+      options: ["packages/api", "packages/web", "packages/mobile"]
     - name: "EPIC"
       type: select
       source: task.epic
@@ -203,7 +203,7 @@ ISSUES=$(gh issue list --label "epic" --json number,title,body)
 
 # Add issues to project
 echo "$ISSUES" | jq -r '.[].number' | while read -r issue; do
-  gh project item-add $PROJECT_ID --owner @me --url "https://github.com/ranonbezerra/dailyloadout-monorepo/issues/$issue"
+  gh project item-add $PROJECT_ID --owner @me --url "https://github.com/ranonbezerra/slate-monorepo/issues/$issue"
 done
 
 # Process with swarm
@@ -255,8 +255,8 @@ npx claude-flow@v3alpha github sprint-manage \
 ```bash
 # Track EPIC progress across packages
 npx claude-flow@v3alpha github epic-track \
-  --epic "Mission Briefing" \
-  --packages "packages/api,packages/web,packages/app" \
+  --epic "PlaySession Recap" \
+  --packages "packages/api,packages/web,packages/mobile" \
   --update-board \
   --show-dependencies \
   --predict-completion
@@ -265,7 +265,7 @@ npx claude-flow@v3alpha github epic-track \
 ## Best Practices
 
 ### 1. Board Organization
-- Organize by EPICs (Library, Missions, Loadouts, Captures)
+- Organize by EPICs (Library, PlaySessions, Picks, Captures)
 - Track package-level progress (api, web, app)
 - Monitor coverage compliance (90% target)
 - Regular board grooming
@@ -276,10 +276,10 @@ npx claude-flow@v3alpha github epic-track \
 - Audit trails
 - Regular backups
 
-### 3. DailyLoadout-Specific Labels
-- `packages/api`, `packages/web`, `packages/app` for package tracking
+### 3. Slate-Specific Labels
+- `packages/api`, `packages/web`, `packages/mobile` for package tracking
 - `epic/N` for EPIC association
-- `mission`, `loadout`, `capture`, `library` for domain areas
+- `play session`, `pick`, `capture`, `library` for domain areas
 - `coverage-pass`, `coverage-fail` for test compliance
 
 ## Metrics & KPIs

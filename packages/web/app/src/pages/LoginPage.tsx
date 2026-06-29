@@ -75,7 +75,7 @@ export function LoginPage() {
 					Welcome back
 				</Title>
 				<Text c="dimmed" size="sm" ta="center" mb="lg">
-					Sign in to DailyLoadout
+					Sign in to Slate
 				</Text>
 
 				<form onSubmit={form.onSubmit(handleSubmit)}>

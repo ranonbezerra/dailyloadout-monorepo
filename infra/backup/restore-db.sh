@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 #
-# DailyLoadout — restore a gzipped pg_dump into the running Postgres container.
+# Slate — restore a gzipped pg_dump into the running Postgres container.
 #
 # A backup you've never restored is not a backup. Test this against a scratch DB
 # periodically. Usage:
-#   ./restore-db.sh /var/backups/dailyloadout/dl-dailyloadout-20260627T033000Z.sql.gz
+#   ./restore-db.sh /var/backups/slate/slate-slate-20260627T033000Z.sql.gz
 #
 # Config via environment (same as backup-db.sh):
-#   PG_CONTAINER (default dl-postgres), POSTGRES_USER, POSTGRES_DB
+#   PG_CONTAINER (default slate-postgres), POSTGRES_USER, POSTGRES_DB
 #
 set -euo pipefail
 
-PG_CONTAINER="${PG_CONTAINER:-dl-postgres}"
+PG_CONTAINER="${PG_CONTAINER:-slate-postgres}"
 : "${POSTGRES_USER:?set POSTGRES_USER}"
 : "${POSTGRES_DB:?set POSTGRES_DB}"
 

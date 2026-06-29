@@ -6,18 +6,18 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
-from dailyloadout.core.stats.service import StatsService
-from dailyloadout.infrastructure.agent.concierge.tools import (
+from slate.core.stats.service import StatsService
+from slate.infrastructure.agent.concierge.tools import (
     build_concierge_tools,
     estimate_session_fit,
-    get_mission_history,
+    get_play_session_history,
     get_play_stats,
     search_library,
     validate_recommendation,
 )
-from dailyloadout.infrastructure.db.repositories.library import LibraryRepository
-from dailyloadout.infrastructure.db.repositories.mission import MissionRepository
-from dailyloadout.infrastructure.db.repositories.stats import StatsRepository
+from slate.infrastructure.db.repositories.library import LibraryRepository
+from slate.infrastructure.db.repositories.play_session import PlaySessionRepository
+from slate.infrastructure.db.repositories.stats import StatsRepository
 from tests.conftest import _TestSessionFactory
 
 
@@ -25,7 +25,7 @@ async def _seed(
     session: Any, *, status: str = "playing", next_action: str | None = None
 ) -> tuple[int, str, int]:
     """Create user + game + platform + entry. Returns (user_id, entry_public_id, entry_id)."""
-    from dailyloadout.infrastructure.db.models import Game, LibraryEntry, Platform, User
+    from slate.infrastructure.db.models import Game, LibraryEntry, Platform, User
 
     user = User(email=f"{uuid4().hex}@test.com", password_hash="h", display_name="T")
     session.add(user)
@@ -49,7 +49,7 @@ async def _seed(
         game_id=game.id,
         platform_id=platform.id,
         status=status,
-        mission_next_action=next_action,
+        play_session_next_action=next_action,
     )
     session.add(entry)
     await session.flush()
@@ -80,15 +80,15 @@ async def test_search_library_filters() -> None:
         assert "No games match" in await search_library(repo, user_id, platform="switch")
 
 
-async def test_get_mission_history_no_sessions() -> None:
+async def test_get_play_session_history_no_sessions() -> None:
     async with _TestSessionFactory() as session:
         user_id, public_id, _ = await _seed(session, next_action="Beat the boss")
         await session.commit()
 
     async with _TestSessionFactory() as session:
-        out = await get_mission_history(
+        out = await get_play_session_history(
             LibraryRepository(session),
-            MissionRepository(session),
+            PlaySessionRepository(session),
             user_id,
             library_entry_public_id=public_id,
         )
@@ -96,17 +96,17 @@ async def test_get_mission_history_no_sessions() -> None:
         assert "No recorded sessions yet" in out
 
 
-async def test_get_mission_history_with_session() -> None:
-    from dailyloadout.infrastructure.db.models import Mission
+async def test_get_play_session_history_with_session() -> None:
+    from slate.infrastructure.db.models import PlaySession
 
     async with _TestSessionFactory() as session:
         user_id, public_id, entry_id = await _seed(session)
         now = datetime.now(UTC)
         session.add(
-            Mission(
+            PlaySession(
                 user_id=user_id,
                 library_entry_id=entry_id,
-                mission_type="quick",
+                play_session_type="quick",
                 started_at=now - timedelta(hours=2),
                 ended_at=now - timedelta(hours=1),
                 extracted_state={
@@ -118,24 +118,24 @@ async def test_get_mission_history_with_session() -> None:
         await session.commit()
 
     async with _TestSessionFactory() as session:
-        out = await get_mission_history(
+        out = await get_play_session_history(
             LibraryRepository(session),
-            MissionRepository(session),
+            PlaySessionRepository(session),
             user_id,
             library_entry_public_id=public_id,
         )
         assert "City of Tears" in out
 
 
-async def test_get_mission_history_unknown_game() -> None:
+async def test_get_play_session_history_unknown_game() -> None:
     async with _TestSessionFactory() as session:
         user_id, _, _ = await _seed(session)
         await session.commit()
 
     async with _TestSessionFactory() as session:
-        out = await get_mission_history(
+        out = await get_play_session_history(
             LibraryRepository(session),
-            MissionRepository(session),
+            PlaySessionRepository(session),
             user_id,
             library_entry_public_id=str(uuid4()),
         )
@@ -206,13 +206,13 @@ async def test_build_concierge_tools_shapes() -> None:
             user_id=user_id,
             user_created_at=datetime.now(UTC),
             library_repo=LibraryRepository(session),
-            mission_repo=MissionRepository(session),
+            play_session_repo=PlaySessionRepository(session),
             stats_service=StatsService(StatsRepository(session)),
         )
         names = {t.name for t in tools}
         assert names == {
             "search_library",
-            "get_mission_history",
+            "get_play_session_history",
             "get_play_stats",
             "estimate_session_fit",
         }

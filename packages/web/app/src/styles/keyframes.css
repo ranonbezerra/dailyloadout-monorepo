@@ -6,7 +6,7 @@
  * 'unsafe-inline' style/script allowances.
  */
 
-/* AiBriefingOverlay — shimmer progress bar */
+/* AiRecapOverlay — shimmer progress bar */
 @keyframes shimmer {
 	0% {
 		transform: translateX(-100%);

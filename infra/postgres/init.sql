@@ -1,4 +1,4 @@
--- DailyLoadout — PostgreSQL extensions bootstrap
+-- Slate — PostgreSQL extensions bootstrap
 -- Runs once on first container start (docker-entrypoint-initdb.d)
 
 CREATE EXTENSION IF NOT EXISTS citext;       -- case-insensitive emails

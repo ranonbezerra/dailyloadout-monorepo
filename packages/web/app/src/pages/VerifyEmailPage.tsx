@@ -97,7 +97,7 @@ export function VerifyEmailPage() {
 
 					{status === "success" ? (
 						<Button component={Link} to="/play" fullWidth>
-							Continue to DailyLoadout
+							Continue to Slate
 						</Button>
 					) : (
 						status !== "verifying" && (

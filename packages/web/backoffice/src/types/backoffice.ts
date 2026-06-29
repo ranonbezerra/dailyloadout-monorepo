@@ -32,7 +32,7 @@ export interface DashboardSummary {
 	usersBanned: number;
 	usersUnverified: number;
 	admins: number;
-	missionsActive: number;
+	playSessionsActive: number;
 	catalogueSize: number;
 	configOverrides: number;
 	recentActions: AuditEntry[];
@@ -189,86 +189,86 @@ export interface CaptureListParams {
 	offset?: number;
 }
 
-// ── Missions (moderation) ──────────────────────────────────────────────
+// ── PlaySessions (moderation) ──────────────────────────────────────────────
 
-export type MissionStatus = "active" | "ended";
+export type PlaySessionStatus = "active" | "ended";
 
-export interface AdminMissionSummary {
+export interface AdminPlaySessionSummary {
 	publicId: string;
 	userEmail: string | null;
 	gameTitle: string | null;
-	status: MissionStatus;
-	missionType: string;
+	status: PlaySessionStatus;
+	playSessionType: string;
 	endedVia: string | null;
 	startedAt: string;
 	endedAt: string | null;
 }
 
-export interface MissionStatusCount {
+export interface PlaySessionStatusCount {
 	status: string;
 	count: number;
 }
 
-export interface AdminMissionList {
-	items: AdminMissionSummary[];
+export interface AdminPlaySessionList {
+	items: AdminPlaySessionSummary[];
 	total: number;
 	limit: number;
 	offset: number;
-	statusCounts: MissionStatusCount[];
+	statusCounts: PlaySessionStatusCount[];
 }
 
-export interface AdminMissionDetail extends AdminMissionSummary {
+export interface AdminPlaySessionDetail extends AdminPlaySessionSummary {
 	platformLabel: string | null;
-	briefingText: string | null;
-	debriefText: string | null;
+	recapText: string | null;
+	wrapUpText: string | null;
 	hasExtractedState: boolean;
 }
 
-export interface MissionListParams {
+export interface PlaySessionListParams {
 	q?: string;
-	status?: MissionStatus;
+	status?: PlaySessionStatus;
 	limit?: number;
 	offset?: number;
 }
 
-// ── Loadouts (read-only) ───────────────────────────────────────────────
+// ── Picks (read-only) ───────────────────────────────────────────────
 
-export type LoadoutAction = "pending" | "accepted" | "rejected" | "ignored";
+export type PickAction = "pending" | "accepted" | "rejected" | "ignored";
 
-export interface AdminLoadoutSummary {
+export interface AdminPickSummary {
 	publicId: string;
 	userEmail: string | null;
 	gameTitle: string | null;
-	action: LoadoutAction;
+	action: PickAction;
 	mood: string;
 	availableMinutes: number;
 	mentalEnergy: string;
 	createdAt: string;
 }
 
-export interface LoadoutActionCount {
+export interface PickActionCount {
 	action: string;
 	count: number;
 }
 
-export interface AdminLoadoutList {
-	items: AdminLoadoutSummary[];
+export interface AdminPickList {
+	items: AdminPickSummary[];
 	total: number;
 	limit: number;
 	offset: number;
-	actionCounts: LoadoutActionCount[];
+	actionCounts: PickActionCount[];
 }
 
-export interface AdminLoadoutDetail extends AdminLoadoutSummary {
+export interface AdminPickDetail extends AdminPickSummary {
 	platformLabel: string | null;
 	context: string | null;
 	reasoning: string | null;
-	ledToMission: boolean;
+	ledToPlaySession: boolean;
 }
 
-export interface LoadoutListParams {
+export interface PickListParams {
 	q?: string;
-	action?: LoadoutAction;
+	action?: PickAction;
 	limit?: number;
 	offset?: number;
 }

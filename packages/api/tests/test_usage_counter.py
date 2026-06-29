@@ -12,8 +12,8 @@ import asyncio
 from datetime import date
 from uuid import uuid4
 
-from dailyloadout.infrastructure.db.models import User
-from dailyloadout.infrastructure.db.repositories.usage import UsageCounterRepository
+from slate.infrastructure.db.models import User
+from slate.infrastructure.db.repositories.usage import UsageCounterRepository
 
 from .conftest import _TestSessionFactory
 

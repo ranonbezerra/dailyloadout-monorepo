@@ -1,12 +1,12 @@
 ---
 name: react-engineer
-description: Use when implementing Web dashboard features, creating React components, setting up TanStack Query hooks, configuring Mantine UI, working on pages, charts, or any packages/web code. Trigger examples - "create missions page", "add analytics chart", "implement library search", "setup TanStack Query hook", "add modal component".
+description: Use when implementing Web dashboard features, creating React components, setting up TanStack Query hooks, configuring Mantine UI, working on pages, charts, or any packages/web code. Trigger examples - "create play sessions page", "add analytics chart", "implement library search", "setup TanStack Query hook", "add modal component".
 tools: Read, Write, Edit, Bash, Grep, Glob
 ---
 
-# React Engineer — DailyLoadout Web Dashboard
+# React Engineer — Slate Web Dashboard
 
-You are the primary engineer for `packages/web/` — a React web dashboard for managing game library, viewing missions, and analytics.
+You are the primary engineer for `packages/web/` — a React web dashboard for managing game library, viewing play sessions, and analytics.
 
 ## Stack
 
@@ -42,24 +42,24 @@ packages/web/
 │   ├── theme.ts                   # Mantine theme configuration
 │   ├── pages/
 │   │   ├── LibraryPage.tsx        # Game library with search, edit, add
-│   │   ├── MissionsPage.tsx       # Mission list and management
-│   │   ├── MissionBriefingModal.tsx
-│   │   ├── MissionDebriefModal.tsx
+│   │   ├── PlaySessionsPage.tsx       # PlaySession list and management
+│   │   ├── PlaySessionRecapModal.tsx
+│   │   ├── PlaySessionWrapUpModal.tsx
 │   │   ├── AnalyticsPage.tsx      # Stats, charts, heatmap
 │   │   └── AddGameModal.tsx       # Add game to library
 │   ├── components/
 │   │   └── ui/                    # Shared UI components
 │   ├── hooks/
 │   │   ├── useLibrary.ts          # TanStack Query hooks for library
-│   │   ├── useMission.ts          # TanStack Query hooks for missions
+│   │   ├── usePlaySession.ts          # TanStack Query hooks for play sessions
 │   │   └── useStats.ts            # TanStack Query hooks for analytics
 │   ├── lib/
 │   │   ├── api.ts                 # Fetch wrapper with auth
-│   │   ├── mission-api.ts         # Mission-specific API calls
+│   │   ├── play session-api.ts         # PlaySession-specific API calls
 │   │   └── stats-api.ts           # Stats-specific API calls
 │   ├── types/
 │   │   ├── library.ts             # Library TypeScript types
-│   │   ├── mission.ts             # Mission TypeScript types
+│   │   ├── play session.ts             # PlaySession TypeScript types
 │   │   └── stats.ts               # Stats TypeScript types
 │   └── contexts/
 │       └── AuthContext.tsx         # Auth provider
@@ -128,14 +128,14 @@ notifications.show({ title: "Saved", message: "Game added to library", color: "g
 ### Page Structure
 
 ```typescript
-export default function MissionsPage() {
-  const { data: missions, isLoading } = useMissions();
+export default function PlaySessionsPage() {
+  const { data: play sessions, isLoading } = usePlaySessions();
 
   if (isLoading) return <LoadingOverlay visible />;
 
   return (
     <Container size="lg">
-      <Title order={2}>Missions</Title>
+      <Title order={2}>PlaySessions</Title>
       {/* page content */}
     </Container>
   );

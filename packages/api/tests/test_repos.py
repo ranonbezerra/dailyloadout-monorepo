@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from dailyloadout.infrastructure.db.repositories.capture import (
+from slate.infrastructure.db.repositories.capture import (
     CaptureCandidateRepository,
     CaptureRepository,
 )
-from dailyloadout.infrastructure.db.repositories.game import GameRepository
+from slate.infrastructure.db.repositories.game import GameRepository
 from tests.conftest import _TestSessionFactory
 
 
@@ -77,7 +77,7 @@ class TestCaptureRepository:
 
 class TestCaptureCandidateRepository:
     async def test_create_bulk(self) -> None:
-        from dailyloadout.infrastructure.db.models import Capture, User
+        from slate.infrastructure.db.models import Capture, User
 
         async with _TestSessionFactory() as session:
             user = User(email="test@x.com", password_hash="h", display_name="T")

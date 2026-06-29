@@ -1,4 +1,4 @@
-# Contributing to DailyLoadout
+# Contributing to Slate
 
 ## Commit Convention
 
@@ -33,7 +33,7 @@ This project follows [Conventional Commits v1.0.0](https://www.conventionalcommi
 | Scope | Package |
 | ------- | --------- |
 | `api` | `packages/api/` |
-| `app` | `packages/app/` |
+| `app` | `packages/mobile/` |
 | `web` | `packages/web/` |
 | `infra` | `infra/`, `docker-compose.*` |
 

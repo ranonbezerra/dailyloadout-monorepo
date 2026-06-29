@@ -9,12 +9,12 @@ import 'package:logger/logger.dart';
 typedef OnForceLogout = void Function();
 
 /// Extended receive timeout for LLM-backed endpoints
-/// (loadout creation, briefing generation, etc.).
+/// (pick creation, recap generation, etc.).
 const llmReceiveTimeout = Duration(seconds: 45);
 
-/// Longer receive timeout for the deep web-researched briefing, which runs a
+/// Longer receive timeout for the deep web-researched recap, which runs a
 /// multi-step research graph (server deadline ~60s plus a small margin).
-const deepBriefingReceiveTimeout = Duration(seconds: 75);
+const deepRecapReceiveTimeout = Duration(seconds: 75);
 
 /// Singleton-style Dio HTTP client with auth interceptor.
 ///

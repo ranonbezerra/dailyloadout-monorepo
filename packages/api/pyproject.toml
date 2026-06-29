@@ -1,10 +1,10 @@
 [tool.poetry]
-name = "dailyloadout"
+name = "slate"
 version = "0.1.0"
-description = "DailyLoadout API — gaming session planner powered by local LLMs"
+description = "Slate API — gaming session planner powered by local LLMs"
 authors = ["Ranon Bezerra"]
 license = "AGPL-3.0-or-later"
-packages = [{ include = "dailyloadout", from = "src" }]
+packages = [{ include = "slate", from = "src" }]
 
 [tool.poetry.dependencies]
 python = ">=3.14,<4.0"
@@ -76,7 +76,7 @@ select = ["E", "F", "I", "UP", "B", "SIM", "S", "C90", "N", "ASYNC", "RUF"]
 ignore = ["S104", "B008", "S101", "S105"]
 
 [tool.ruff.lint.per-file-ignores]
-"src/dailyloadout/api/v1/capture.py" = ["ASYNC240"]
+"src/slate/api/v1/capture.py" = ["ASYNC240"]
 "tests/**" = ["S106"]
 
 [tool.ruff.lint.mccabe]
@@ -118,22 +118,22 @@ env = [
 
 [tool.coverage.run]
 branch = true
-source = ["src/dailyloadout"]
+source = ["src/slate"]
 omit = [
-    "src/dailyloadout/main.py",
+    "src/slate/main.py",
     # External service adapters — tested via integration tests, not unit tests.
-    "src/dailyloadout/infrastructure/llm/ollama.py",
-    "src/dailyloadout/infrastructure/igdb/client.py",
-    "src/dailyloadout/infrastructure/stt/whisper.py",
+    "src/slate/infrastructure/llm/ollama.py",
+    "src/slate/infrastructure/igdb/client.py",
+    "src/slate/infrastructure/stt/whisper.py",
     # OCR adapters: local Tesseract needs the binary; the vision fallback wraps
     # the LLM vision API. Both are external-service adapters, integration-tested
     # only — the escalation/cap business logic is tested in the import processor.
-    "src/dailyloadout/infrastructure/ocr/tesseract.py",
-    "src/dailyloadout/infrastructure/ocr/vision.py",
+    "src/slate/infrastructure/ocr/tesseract.py",
+    "src/slate/infrastructure/ocr/vision.py",
     # Redis cache adapter — needs a live Redis, integration-tested only.
-    "src/dailyloadout/infrastructure/cache/redis_cache.py",
+    "src/slate/infrastructure/cache/redis_cache.py",
     # ChatOllama tool-calling path — exercised only with a real model, not in CI.
-    "src/dailyloadout/infrastructure/agent/concierge/langgraph_agent.py",
+    "src/slate/infrastructure/agent/concierge/langgraph_agent.py",
 ]
 
 [tool.coverage.report]
@@ -147,13 +147,6 @@ exclude_lines = [
 [tool.bandit]
 exclude_dirs = ["tests", "alembic"]
 skips = ["B101"]
-
-[tool.typos.default.extend-words]
-# Game-domain words that typos may flag
-loadout = "loadout"
-loadouts = "loadouts"
-debrief = "debrief"
-debriefs = "debriefs"
 
 [tool.typos.files]
 extend-exclude = ["*.lock", "alembic/versions/*"]
