@@ -5,6 +5,7 @@ import {
 	Card,
 	Divider,
 	Group,
+	Image,
 	MultiSelect,
 	Select,
 	Skeleton,
@@ -31,6 +32,7 @@ import {
 	useUpdateEntry,
 } from "../hooks/useLibrary";
 import { useActivePlaySession } from "../hooks/usePlaySession";
+import { safeImageUrl } from "../lib/safe-image";
 import type {
 	Game,
 	LibraryEntry,
@@ -194,7 +196,16 @@ export function LibraryPage() {
 			{activePlaySession && (
 				<Card withBorder p="sm" radius="md">
 					<Group justify="space-between">
-						<Group gap="sm">
+						<Group gap="sm" wrap="nowrap">
+							{safeImageUrl(activePlaySession.libraryEntry.game.coverUrl) && (
+								<Image
+									src={safeImageUrl(activePlaySession.libraryEntry.game.coverUrl)}
+									alt={activePlaySession.libraryEntry.game.title}
+									w={32}
+									h={44}
+									radius="sm"
+								/>
+							)}
 							<Badge color="teal" variant="dot" size="lg">
 								Session active
 							</Badge>

@@ -3,6 +3,7 @@ import {
 	Button,
 	Card,
 	Group,
+	Image,
 	SimpleGrid,
 	Stack,
 	Text,
@@ -21,6 +22,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useActivePlaySession } from "../hooks/usePlaySession";
 import { FEATURES } from "../lib/features";
+import { safeImageUrl } from "../lib/safe-image";
 import { PlaySessionRecapModal } from "./PlaySessionRecapModal";
 import { PlaySessionWrapUpModal } from "./PlaySessionWrapUpModal";
 
@@ -100,11 +102,22 @@ export function PlayPage() {
 			{activePlaySession ? (
 				<Card withBorder p="lg" radius="md">
 					<Stack gap="md">
-						<Group gap="sm">
-							<Badge color="teal" variant="dot" size="lg">
-								Session active
-							</Badge>
-							<Title order={3}>{activePlaySession.libraryEntry.game.title}</Title>
+						<Group gap="md" wrap="nowrap" align="flex-start">
+							{safeImageUrl(activePlaySession.libraryEntry.game.coverUrl) && (
+								<Image
+									src={safeImageUrl(activePlaySession.libraryEntry.game.coverUrl)}
+									alt={activePlaySession.libraryEntry.game.title}
+									w={56}
+									h={76}
+									radius="sm"
+								/>
+							)}
+							<Stack gap={6}>
+								<Badge color="teal" variant="dot" size="lg" w="fit-content">
+									Session active
+								</Badge>
+								<Title order={3}>{activePlaySession.libraryEntry.game.title}</Title>
+							</Stack>
 						</Group>
 
 						{activePlaySession.recapText && (
