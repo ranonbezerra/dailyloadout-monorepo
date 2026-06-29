@@ -159,16 +159,12 @@ async def anti_hallucination(
 
     draft = state["draft"]
     result = validate_recap(draft, grounding, threshold=threshold)
-    text = draft
-    if result.is_suspicious:
-        text += (
-            "\n\n_(Heads up: this recap drifted from your notes and the sources — "
-            "take it loosely.)_"
-        )
+    # The recap text stays clean — the caller surfaces *suspicious* as a discreet
+    # note rather than baking a disclaimer into the body.
     return {
         "overlap": result.overlap_ratio,
         "suspicious": result.is_suspicious,
-        "recap": text,
+        "recap": draft,
         "source": "deep_research",
     }
 

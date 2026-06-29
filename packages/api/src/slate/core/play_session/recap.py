@@ -93,7 +93,7 @@ async def build_preview(
         last_context = recent_play_sessions[0].extracted_state
 
     if mode == "deep" and agent is not None:
-        recap_text = await generate_recap_for_mode(
+        recap_text, suspicious = await generate_recap_for_mode(
             play_session_repo,
             library_repo,
             llm_client,
@@ -103,7 +103,7 @@ async def build_preview(
             "deep",
         )
     else:
-        recap_text = await generate_recap(
+        recap_text, suspicious = await generate_recap(
             play_session_repo,
             library_repo,
             llm_client,
@@ -117,6 +117,7 @@ async def build_preview(
         "library_entry": entry,
         "recap_text": recap_text or None,
         "last_session_context": last_context,
+        "suspicious": suspicious if recap_text else False,
     }
 
 
@@ -170,15 +171,15 @@ async def generate_recap_for_mode(
     settings: Settings,
     entry: LibraryEntry,
     mode: RecapMode,
-) -> str:
-    """Produce a recap for *mode*, degrading deep -> quick on any failure.
+) -> tuple[str, bool]:
+    """Produce ``(recap_text, suspicious)`` for *mode*, degrading deep -> quick.
 
     The deep path runs the research agent under a hard wall-clock ceiling; any
     timeout, research outage, or unexpected error falls back to the quick
     single-shot recap, as does an empty deep result.
     """
 
-    async def _quick() -> str:
+    async def _quick() -> tuple[str, bool]:
         return await generate_recap(
             play_session_repo,
             library_repo,
@@ -209,7 +210,7 @@ async def generate_recap_for_mode(
         logger.warning("deep_recap_failed", library_entry_id=entry.id, exc_info=True)
         return await _quick()
 
-    return result.text or await _quick()
+    return (result.text, result.suspicious) if result.text else await _quick()
 
 
 async def generate_recap(
@@ -220,14 +221,15 @@ async def generate_recap(
     game_title: str,
     current_next_action: str | None,
     position_override: str | None = None,
-) -> str:
+) -> tuple[str, bool]:
     """Generate a recap from the last 3 wrap_ups.
 
     If *position_override* is provided, it's passed to the LLM as the
     player's corrected current position.
 
-    Runs anti-hallucination validation on the output. If suspicious,
-    appends a disclaimer.
+    Returns ``(recap_text, suspicious)`` — *suspicious* is the anti-hallucination
+    verdict (low token overlap with the player's notes). The caller surfaces it as
+    a discreet note; it is no longer baked into the text.
     """
     await ensure_extractions_complete(
         play_session_repo, library_repo, llm_client, library_entry_id
@@ -245,12 +247,13 @@ async def generate_recap(
         )
     except Exception:
         logger.warning("recap_generation_failed", exc_info=True)
-        return ""
+        return "", False
 
     if not recap:
-        return ""
+        return "", False
 
-    # Anti-hallucination check.
+    # Anti-hallucination check (only meaningful when there are notes to verify against).
+    suspicious = False
     if previous_wrap_ups:
         context_parts = [game_title]
         for d in previous_wrap_ups:
@@ -260,12 +263,6 @@ async def generate_recap(
         if position_override:
             context_parts.append(position_override)
         context_text = " ".join(context_parts)
+        suspicious = validate_recap(recap, context_text).is_suspicious
 
-        result = validate_recap(recap, context_text)
-        if result.is_suspicious:
-            recap += (
-                "\n\n\u26a0\ufe0f Note: This recap may contain inaccuracies. "
-                "Some details could not be verified against your session notes."
-            )
-
-    return recap
+    return recap, suspicious
