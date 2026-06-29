@@ -227,6 +227,10 @@ class Settings(BaseSettings):
     # Allowlist of hosts an IGDB cover_url may point at (https only); else nulled.
     igdb_cdn_allowed_hosts: list[str] = ["images.igdb.com"]
 
+    # Echo every SQL statement to the logs. Off by default — it's debug-only
+    # noise; enable with DB_ECHO=true when investigating a specific query.
+    db_echo: bool = False
+
     # ── DB connection pool (sized for a small multi-worker deploy) ───────
     db_pool_size: int = 10
     db_max_overflow: int = 5

@@ -7,7 +7,11 @@ from slate.config import settings
 
 # SQLite (used by the test suite) uses StaticPool and rejects QueuePool tuning
 # kwargs, so only pass pool sizing to a real server-backed engine.
-_engine_kwargs: dict[str, Any] = {"echo": settings.app_env == "development"}
+#
+# SQL echo is opt-in via DB_ECHO (default off). It used to be on for the whole
+# development env, which floods the logs with every statement — more noise than
+# signal. Flip DB_ECHO=true only when actively debugging a query.
+_engine_kwargs: dict[str, Any] = {"echo": settings.db_echo}
 if not settings.database_url.startswith("sqlite"):
     _engine_kwargs.update(
         pool_size=settings.db_pool_size,
