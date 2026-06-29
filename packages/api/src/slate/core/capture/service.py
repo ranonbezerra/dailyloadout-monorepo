@@ -22,7 +22,7 @@ from slate.core.capture.ports import (
     LibraryImportProcessor,
 )
 from slate.core.library.igdb_budget import igdb_budget_allows
-from slate.infrastructure.catalog.base import AbstractCatalogMatcher, CatalogMatch
+from slate.infrastructure.catalog.base import AbstractCatalogMatcher
 from slate.infrastructure.db.models import Capture, CaptureCandidate, LibraryEntry
 from slate.infrastructure.db.repositories.capture import (
     CaptureCandidateRepository,
@@ -79,10 +79,6 @@ class CaptureService:
         self._process_library_import = process_library_import
         self._settings = settings or default_settings
 
-    # ------------------------------------------------------------------
-    # Submission
-    # ------------------------------------------------------------------
-
     async def submit_text(self, user_id: int, raw_text: str, input_type: str = "text") -> Capture:
         """Create a new capture with status ``queued``."""
         return await self._capture_repo.create(
@@ -99,15 +95,8 @@ class CaptureService:
             image_path=image_path,
         )
 
-    # ------------------------------------------------------------------
-    # Submission + processing (orchestration moved out of the routers)
-    # ------------------------------------------------------------------
-
     async def _igdb_for(self, user_id: int) -> IGDBSearchClient | None:
-        """Return the IGDB client, or ``None`` when the user's daily budget is spent.
-
-        Shares the per-user/day outbound-IGDB budget with ``create_game``. Fail-open.
-        """
+        """The IGDB client, or None when the user's per-day budget is spent (fail-open)."""
         if self._igdb_client is None or not await igdb_budget_allows(user_id):
             return None
         return self._igdb_client
@@ -162,11 +151,9 @@ class CaptureService:
         user_id: int,
         files: list[tuple[str | None, bytes]],
     ) -> Capture:
-        """Validate and meter a bulk import, run the pipeline, and return it loaded.
-
-        *files* is a list of ``(content_type, contents)`` tuples. Raises
-        ``InvalidUploadError`` for bad uploads and ``ImportQuotaExceededError``
-        when the per-day image cap is exceeded.
+        """Validate and meter a bulk import (a list of ``(content_type, contents)``),
+        run the pipeline, and return it loaded. Raises ``InvalidUploadError`` /
+        ``ImportQuotaExceededError`` on bad uploads / the per-day cap.
         """
         assert self._process_library_import is not None
         assert self._usage_repo is not None
@@ -200,10 +187,6 @@ class CaptureService:
         )
         return await self.get_capture(user_id, capture.public_id)
 
-    # ------------------------------------------------------------------
-    # Query
-    # ------------------------------------------------------------------
-
     async def get_capture(self, user_id: int, capture_public_id: UUID) -> Capture:
         """Return a capture scoped to *user_id*, or raise 404."""
         capture = await self._capture_repo.get_by_public_id(capture_public_id, user_id=user_id)
@@ -221,33 +204,17 @@ class CaptureService:
         candidate_public_id: UUID,
         title: str,
     ) -> CaptureCandidate:
-        """Re-search IGDB for one candidate using a user-corrected *title*.
-
-        Lets the import-review UI fix a wrong title and pull fresh IGDB metadata
-        (cover/summary/genres) before committing, instead of saving the stale
-        match. Respects the per-user IGDB budget the import path enforces: once
-        spent, the candidate resolves local-only (kept as the typed title, no
-        enrichment) rather than firing another outbound search.
-        """
+        """Re-search IGDB for one candidate with a user-corrected title."""
         assert self._catalog_matcher is not None
         capture = await self.get_capture(user_id, capture_public_id)
-        candidate = await self._candidate_repo.get_by_public_id(candidate_public_id)
-        if candidate is None or candidate.capture_id != capture.id:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Candidate not found",
-            )
-
-        cleaned = title.strip()
-        if await igdb_budget_allows(user_id):
-            match = await self._catalog_matcher.match(cleaned)
-        else:
-            match = CatalogMatch(line_text=cleaned, matched=False, confidence=0.0, title=cleaned)
-
-        await self._candidate_repo.apply_match(candidate.id, match)
-        refreshed = await self._candidate_repo.get_by_public_id(candidate_public_id)
-        assert refreshed is not None
-        return refreshed
+        return await candidates.rematch_candidate(
+            user_id=user_id,
+            capture=capture,
+            candidate_public_id=candidate_public_id,
+            title=title,
+            candidate_repo=self._candidate_repo,
+            catalog_matcher=self._catalog_matcher,
+        )
 
     async def list_captures(
         self,
@@ -265,10 +232,6 @@ class CaptureService:
         )
         total = await self._capture_repo.count_for_user(user_id, status=status_filter)
         return captures, total
-
-    # ------------------------------------------------------------------
-    # Candidate actions (delegated to ``candidates`` to keep this file lean)
-    # ------------------------------------------------------------------
 
     async def confirm_candidate(
         self,

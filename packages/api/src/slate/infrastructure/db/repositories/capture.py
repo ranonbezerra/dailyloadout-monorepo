@@ -254,11 +254,7 @@ class CaptureCandidateRepository:
             await self._session.flush()
 
     async def set_title(self, candidate_id: int, title: str) -> None:
-        """Override a candidate's title, dropping its stale catalog enrichment.
-
-        A user-corrected title no longer corresponds to the matched IGDB game,
-        so the igdb_* fields are cleared and the entry becomes user-authored.
-        """
+        """Override a candidate's title, clearing its stale igdb_* enrichment."""
         candidate = await self._session.get(CaptureCandidate, candidate_id)
         if candidate is not None:
             candidate.title = title
@@ -271,12 +267,8 @@ class CaptureCandidateRepository:
             await self._session.flush()
 
     async def apply_match(self, candidate_id: int, match: CatalogMatch) -> None:
-        """Re-apply a fresh catalog match to a candidate after a title edit.
-
-        Overwrites the title and igdb_* enrichment with *match* (mirrors the
-        field mapping the import worker uses). ``status``/``matched_game_id`` are
-        left untouched so the candidate stays confirmable.
-        """
+        """Re-apply a fresh catalog *match* (title + igdb_* fields) after a title
+        edit; ``status``/``matched_game_id`` stay untouched so it's still confirmable."""
         candidate = await self._session.get(CaptureCandidate, candidate_id)
         if candidate is not None:
             candidate.title = match.title

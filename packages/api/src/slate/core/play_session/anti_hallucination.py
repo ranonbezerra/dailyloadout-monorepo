@@ -35,13 +35,18 @@ class ValidationResult:
     missing_tokens: list[str]
 
 
-def validate_recap(recap_text: str, context_text: str) -> ValidationResult:
+def validate_recap(
+    recap_text: str, context_text: str, *, threshold: float | None = None
+) -> ValidationResult:
     """Check whether *recap_text* is grounded in *context_text*.
 
     Returns a ``ValidationResult`` indicating whether the recap is
     suspicious and which tokens from the output are not present in the
-    input context.
+    input context. *threshold* overrides the default overlap floor — the deep
+    recap passes a more tolerant value since it grounds on research text the
+    verbatim token match can't fully cover.
     """
+    floor = _OVERLAP_THRESHOLD if threshold is None else threshold
     output_tokens = set(_INTERESTING_RE.findall(recap_text))
     if not output_tokens:
         # Nothing to validate — the recap has no proper nouns or numbers.
@@ -60,7 +65,7 @@ def validate_recap(recap_text: str, context_text: str) -> ValidationResult:
     overlap_count = len(output_tokens) - len(missing)
     overlap_ratio = overlap_count / len(output_tokens) if output_tokens else 1.0
 
-    is_suspicious = overlap_ratio < _OVERLAP_THRESHOLD
+    is_suspicious = overlap_ratio < floor
 
     if is_suspicious:
         logger.warning(

@@ -14,7 +14,9 @@ from fastapi import HTTPException, status
 
 from slate.core.cache.invalidation import invalidate_user_stats
 from slate.core.capture.games import get_or_create_game
-from slate.infrastructure.db.models import Capture, LibraryEntry
+from slate.core.library.igdb_budget import igdb_budget_allows
+from slate.infrastructure.catalog.base import AbstractCatalogMatcher, CatalogMatch
+from slate.infrastructure.db.models import Capture, CaptureCandidate, LibraryEntry
 from slate.infrastructure.db.repositories.capture import (
     CaptureCandidateRepository,
     CaptureRepository,
@@ -184,3 +186,34 @@ async def resolve_capture_status(
         new_status = "partially_committed"
 
     await capture_repo.update_status(capture_id, new_status)
+
+
+async def rematch_candidate(
+    *,
+    user_id: int,
+    capture: Capture,
+    candidate_public_id: UUID,
+    title: str,
+    candidate_repo: CaptureCandidateRepository,
+    catalog_matcher: AbstractCatalogMatcher,
+) -> CaptureCandidate:
+    """Re-search IGDB for one candidate using a user-corrected *title*.
+
+    Pulls fresh IGDB metadata for the corrected title before committing, instead
+    of saving the stale match. Respects the per-user IGDB budget: once spent, the
+    candidate resolves local-only (the typed title, no enrichment).
+    """
+    candidate = await candidate_repo.get_by_public_id(candidate_public_id)
+    if candidate is None or candidate.capture_id != capture.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidate not found")
+
+    cleaned = title.strip()
+    if await igdb_budget_allows(user_id):
+        match = await catalog_matcher.match(cleaned)
+    else:
+        match = CatalogMatch(line_text=cleaned, matched=False, confidence=0.0, title=cleaned)
+
+    await candidate_repo.apply_match(candidate.id, match)
+    refreshed = await candidate_repo.get_by_public_id(candidate_public_id)
+    assert refreshed is not None
+    return refreshed

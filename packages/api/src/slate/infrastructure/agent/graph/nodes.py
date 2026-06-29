@@ -38,11 +38,17 @@ def _context_text(ctx: PlaySessionContext) -> str:
 
 
 async def build_query(state: ResearchRecapState) -> dict[str, object]:
-    """Build the initial search query from the play_session context. Deterministic."""
+    """Build the initial search query from the play_session context. Deterministic.
+
+    Targets area/geography pages ("where to go next", "area guide", "wiki")
+    rather than full "walkthrough" pages — the latter are spoiler-dense and
+    SEO-noisy, which pollutes the scraped grounding. The synthesis prompt mines
+    these for area names and directions only.
+    """
     ctx = state["context"]
     base = (
-        f"{ctx.get('game_title', '')} after {ctx.get('location') or ''} "
-        f"{ctx.get('current_quest') or ''} next steps walkthrough spoiler-free"
+        f"{ctx.get('game_title', '')} {ctx.get('location') or ''} "
+        f"{ctx.get('current_quest') or ''} where to go next area guide wiki"
     )
     return {"query": " ".join(base.split()), "refine_count": 0}
 
@@ -135,33 +141,25 @@ async def synthesize(
     return {"draft": draft, "scraped_text": " ".join(p["content"] for p in pages)}
 
 
-async def spoiler_filter(
-    state: ResearchRecapState,
-    *,
-    llm: AbstractLLMClient,
+async def anti_hallucination(
+    state: ResearchRecapState, *, threshold: float = 0.4
 ) -> dict[str, object]:
-    """Rewrite the draft to directions/areas only — strip spoilers (smart model)."""
-    prompt = render(
-        "spoiler_filter.j2",
-        draft=state["draft"],
-        context=state["context"],
-    )
-    return {"filtered": (await llm.complete(prompt, role="smart")).strip()}
-
-
-async def anti_hallucination(state: ResearchRecapState) -> dict[str, object]:
-    """Terminal gate: validate the filtered recap against the grounding text.
+    """Terminal gate: validate the synthesized recap against the grounding text.
 
     Reuses the Epic 6 token-overlap validator. The grounding text is the
-    player's own context plus the retrieved snippets.
+    player's own context plus the retrieved snippets and any scraped page text.
+    *threshold* is more tolerant than the quick path: the deep recap legitimately
+    surfaces real area/ability names grounded in research the verbatim overlap
+    can't fully capture.
     """
     ctx = state["context"]
     snippets = " ".join(r["snippet"] for r in state.get("results", []))
     scraped = state.get("scraped_text", "")
     grounding = f"{_context_text(ctx)} {snippets} {scraped}".strip()
 
-    result = validate_recap(state["filtered"], grounding)
-    text = state["filtered"]
+    draft = state["draft"]
+    result = validate_recap(draft, grounding, threshold=threshold)
+    text = draft
     if result.is_suspicious:
         text += (
             "\n\n_(Heads up: this recap drifted from your notes and the sources — "

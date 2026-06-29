@@ -173,16 +173,10 @@ class TestNodes:
         assert "SNIPPET-XYZ" in captured["prompt"]
         assert "locked door past the fountain" not in captured["prompt"]
 
-    async def test_spoiler_filter_returns_filtered(self) -> None:
-        out = await nodes.spoiler_filter(
-            {"context": _ctx(), "draft": "raw"}, llm=ScriptedLLM(filtered="SAFE TEXT")
-        )
-        assert out["filtered"] == "SAFE TEXT"
-
     async def test_anti_hallucination_grounded_not_suspicious(self) -> None:
         state = {
             "context": _ctx(),
-            "filtered": "Explore Greenpath",
+            "draft": "Explore Greenpath",
             "results": [{"title": "t", "url": "u", "snippet": "Greenpath area"}],
         }
         out = await nodes.anti_hallucination(state)
@@ -193,12 +187,22 @@ class TestNodes:
     async def test_anti_hallucination_ungrounded_appends_disclaimer(self) -> None:
         state = {
             "context": _ctx(location=None, previous_wrap_ups=[]),
-            "filtered": "Defeat Radahn in Caelid then visit Sellia",
+            "draft": "Defeat Radahn in Caelid then visit Sellia",
             "results": [{"title": "t", "url": "u", "snippet": "nothing relevant"}],
         }
         out = await nodes.anti_hallucination(state)
         assert out["suspicious"] is True
         assert "Heads up" in out["recap"]
+
+    async def test_anti_hallucination_tolerant_threshold_passes(self) -> None:
+        """A more tolerant threshold accepts thinner overlap (the deep path)."""
+        state = {
+            "context": _ctx(location=None, previous_wrap_ups=[]),
+            "draft": "Greenpath and the City have a few connected paths",
+            "results": [{"title": "t", "url": "u", "snippet": "Greenpath City area map"}],
+        }
+        out = await nodes.anti_hallucination(state, threshold=0.1)
+        assert out["suspicious"] is False
 
     async def test_fallback_quick_uses_generate_recap(self) -> None:
         llm = ScriptedLLM()
@@ -286,15 +290,13 @@ class TestGraphIntegration:
         )
         assert final["source"] == "quick_fallback"
 
-    async def test_spoiler_filter_output_is_used_not_draft(self) -> None:
-        """The final recap comes from the filtered text, never the raw draft."""
-        llm = ScriptedLLM(
-            draft="Defeat the Hollow Knight boss in the Black Egg Temple",
-            filtered="Head to the temple area and continue exploring Greenpath",
-        )
+    async def test_synthesis_output_is_the_final_recap(self) -> None:
+        """Single-pass synthesis: the synthesized draft flows straight through to
+        the recap — there is no separate spoiler-filter pass to swap it out."""
+        llm = ScriptedLLM(draft="Head to the temple area and continue exploring Greenpath")
         final = await _run(llm, DummyResearchClient(), _settings())
-        assert "boss" not in final["recap"]
         assert "Head to the temple" in final["recap"]
+        assert final["source"] == "deep_research"
 
 
 # ---------------------------------------------------------------------------

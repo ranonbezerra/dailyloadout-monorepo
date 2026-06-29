@@ -42,8 +42,7 @@ class Settings(BaseSettings):
     ollama_smart_model: str = "gemma3:12b"
     ollama_vision_model: str = "qwen3-vl:4b"
     llm_timeout_seconds: int = 60
-    # Background-preload these Ollama models on startup (avoid cold first call).
-    # Empty = disabled. JSON list. Only on LLM_PROVIDER=ollama.
+    # Background-preload Ollama models on startup. Empty = off (LLM_PROVIDER=ollama).
     ollama_warmup_models: list[str] = []
     # How long warmed models stay resident after idle ('-1' pins them forever).
     ollama_warmup_keep_alive: str = "30m"
@@ -57,19 +56,19 @@ class Settings(BaseSettings):
     deep_recap_deadline_seconds: int = 60
     deep_recap_max_refines: int = 2
     deep_recap_max_results: int = 6
-    # Scrape the top-N result URLs into full text for grounding (0 = snippets
-    # only). More specific, but adds latency/tokens + spoiler surface.
+    # Scrape the top-N result URLs into full text for grounding (0 = snippets only).
     deep_recap_scrape_top_n: int = 2
+    # Overlap floor for the DEEP recap (more tolerant than quick's 0.40 — it
+    # grounds on research text the verbatim token match can't fully cover).
+    deep_recap_overlap_threshold: float = 0.25
 
     # ── Backlog Concierge (Epic 11) ──────────────────────────────────────
     concierge_provider: str = "dummy"  # langgraph | dummy
-    # Tool-calling model — qwen2.5-instruct does fast, coherent tool use (Gemma is
-    # weak at it; qwen3 reasoning is slow). Reasoning off for fast ReAct steps.
+    # Tool-calling model — qwen2.5-instruct: fast, coherent tool use (Gemma weak; qwen3 slow).
     ollama_agent_model: str = "qwen2.5:7b-instruct"
     concierge_agent_reasoning: bool = False
     concierge_max_tool_loops: int = 6
-    # Thread checkpoint store (Epic 16): 'postgres' survives restarts, 'memory'
-    # is in-process. Falls back to memory if Postgres init fails. Langgraph only.
+    # Checkpoint store (Epic 16): 'postgres' survives restarts, else in-process 'memory'.
     concierge_checkpointer: str = "postgres"
     # Concierge write tools (start_play_session/set_status/…) so it drives the play_session
     # pipeline, not just recommends (Epic 12).
@@ -227,8 +226,7 @@ class Settings(BaseSettings):
     # Allowlist of hosts an IGDB cover_url may point at (https only); else nulled.
     igdb_cdn_allowed_hosts: list[str] = ["images.igdb.com"]
 
-    # Echo every SQL statement to the logs. Off by default — it's debug-only
-    # noise; enable with DB_ECHO=true when investigating a specific query.
+    # Echo SQL to the logs (debug-only noise) — opt in with DB_ECHO=true.
     db_echo: bool = False
 
     # ── DB connection pool (sized for a small multi-worker deploy) ───────

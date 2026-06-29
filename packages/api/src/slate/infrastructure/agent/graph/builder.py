@@ -59,8 +59,10 @@ def build_graph(
             scrape_top_n=settings.deep_recap_scrape_top_n,
         ),
     )
-    graph.add_node("spoiler_filter", partial(nodes.spoiler_filter, llm=llm))
-    graph.add_node("anti_hallucination", nodes.anti_hallucination)
+    graph.add_node(
+        "anti_hallucination",
+        partial(nodes.anti_hallucination, threshold=settings.deep_recap_overlap_threshold),
+    )
     graph.add_node("fallback_quick", partial(nodes.fallback_quick, llm=llm))
 
     graph.add_edge(START, "build_query")
@@ -76,8 +78,9 @@ def build_graph(
         },
     )
     graph.add_edge("refine_query", "search")  # the bounded loop
-    graph.add_edge("synthesize", "spoiler_filter")
-    graph.add_edge("spoiler_filter", "anti_hallucination")
+    # Single spoiler-aware synthesis pass (the prompt bakes in the spoiler rules),
+    # then the terminal anti-hallucination gate — no separate filter pass to dilute.
+    graph.add_edge("synthesize", "anti_hallucination")
     graph.add_edge("anti_hallucination", END)
     graph.add_edge("fallback_quick", END)
 

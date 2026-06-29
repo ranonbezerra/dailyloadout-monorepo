@@ -43,9 +43,8 @@ class ResearchRecapState(TypedDict, total=False):
     grade: Grade
 
     # --- synthesis + guards ---
-    draft: str
+    draft: str  # the single spoiler-aware synthesis output (becomes the recap)
     scraped_text: str  # full page text fed to synthesis; also grounds the guard
-    filtered: str
     overlap: float
     suspicious: bool
 
