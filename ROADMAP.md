@@ -1074,6 +1074,96 @@ Two kinds of config, two mechanisms (do **not** put everything in one place):
 
 ---
 
+## Epic 22 — Native iOS + Android apps with on-device LLM (v1.1+)
+
+**Goal:** rebuild the mobile client as **two native apps** — **SwiftUI (iOS)** and **Kotlin / Jetpack Compose (Android)** — so each can run a **local, on-device LLM** for the fast, private, free inference path, falling back to the existing backend LLM (Ollama self-host / Bedrock hosted, [Epic 14](#epic-14--cloud-llm-adapters-bedrock--vertex-evaluate-v11)) for the heavy, multi-step work. This is the mobile counterpart to the server-side `fast`/`smart` split: **on-device = fast**, **backend = smart**.
+
+**Status:** not started. The largest client undertaking in the roadmap — phased, and only sensible once the v1.0 feature set is stable. The native apps must reach **parity** with today's Flutter app before it is retired.
+
+### Why native (the forcing function)
+
+Today `packages/mobile` is a single Flutter codebase — efficient for shipping one app to both stores. But the on-device LLM frameworks that make free/private/offline inference possible are **platform-native and not reachable from Flutter**:
+
+- **iOS — Apple Foundation Models** (the on-device ~3B model behind Apple Intelligence, iOS 26+) is a **Swift-only framework** (`import FoundationModels`) with guided generation (`@Generable`) and tool-calling. There is no first-party Flutter binding; a plugin would be a brittle method-channel wrapper around a fast-moving API.
+- **Android — Gemini Nano / on-device GenAI** via **ML Kit GenAI APIs** + AICore (device-gated: Pixel 8+/Galaxy S24+…), plus the more portable **MediaPipe LLM Inference API** (bring-your-own small model, e.g. Gemma 3 1B) — both native Kotlin paths.
+
+A thin Flutter wrapper *could* be built, but the platform AI surfaces are exactly where native pays off (model lifecycle, streaming, guided generation, tool-calling, on-device privacy guarantees). So the decision is to **go native** and treat each platform's on-device model as a first-class capability. This is the [ReadUp](https://apps.apple.com/br/app/readup-track-your-reading/id6753879837) insight ("Apple Foundation Models on-device, Llama backend fallback") applied to a gaming companion — and it reinforces the brand's **local-first / privacy** stance.
+
+### The hybrid model — on-device first, backend fallback
+
+Mirror the server `fast`/`smart` roles on the client. A small **on-device** model handles the high-frequency, low-context, latency- and privacy-sensitive tasks; the **backend** keeps the multi-step, large-context, tool-using work it already owns.
+
+| Task | On-device (fast / private / free) | Backend (Ollama / Bedrock) |
+| --- | --- | --- |
+| Capture text → game candidates | ✅ primary | fallback when device unsupported |
+| Wrap-up state extraction | ✅ primary | fallback |
+| Quick pick reasoning (already-shortlisted) | ✅ where supported | fallback |
+| Deep research recap ([Epic 10](#epic-10--deep-research-recap-v11), web + ~4 calls) | ❌ | ✅ stays backend |
+| Concierge tool-calling agent ([Epic 11](#epic-11--backlog-concierge-v11)/[16](#epic-16--live-token-streaming-concierge-v11), LangGraph) | ❌ (Nano/MediaPipe tool-calling too weak) | ✅ stays backend |
+| Vision capture (photo → titles) | △ where on-device vision exists | ✅ backend default |
+
+The **UUID-existence guard** and the token-overlap anti-hallucination check stay authoritative on the **backend** for anything that commits data — the on-device model *proposes*, the server still *validates*. Graceful degradation is mandatory: devices without Apple Intelligence / Gemini Nano fall back to the backend path transparently, so no user is blocked.
+
+### Monorepo shape
+
+```text
+packages/
+├── ios/         # SwiftUI app — @Observable, async/await, Keychain, FoundationModels
+├── android/     # Kotlin + Jetpack Compose — ML Kit GenAI / MediaPipe LLM
+└── mobile/      # Flutter (retired once parity is reached; kept shipping until then)
+```
+
+Both native apps speak the **same API contract** (the FastAPI `/v1/*` surface) — no backend changes required for the apps themselves. A small **client-side LLM abstraction per app** (`OnDeviceLLM` protocol/interface with a `BackendLLM` fallback impl) mirrors the server's `AbstractLLMClient` philosophy, so the on-device/fallback choice is one switch, not scattered conditionals.
+
+### Tasks (phased — parity before retirement)
+
+**Phase 1 — iOS native MVP**
+
+- [ ] Scaffold `packages/ios` (SwiftUI, `@Observable`, async/await, Keychain for the refresh token, the existing dual-mode JWT exchange)
+- [ ] Port core flows to parity: auth, library, capture, play session + recap, Play hub (Pick/Concierge), history, stats
+- [ ] `OnDeviceLLM` Swift protocol + `FoundationModelsLLM` impl (guided generation for capture-parse + wrap-up extraction) with a `BackendLLM` fallback; a capability check (Apple Intelligence available?) routes per task
+- [ ] Native **Sign in with Apple** (synergy with [Epic 20](#epic-20--apple-sign-in--native-app-oauth-v11))
+
+**Phase 2 — Android native MVP**
+
+- [ ] Scaffold `packages/android` (Kotlin, Jetpack Compose, DataStore/Keystore for tokens)
+- [ ] Same parity port of core flows
+- [ ] `OnDeviceLLM` Kotlin interface + impls: ML Kit GenAI / Gemini Nano where available, **MediaPipe LLM Inference** (bundled Gemma 3 1B) as the portable fallback, `BackendLLM` below that
+- [ ] Native Google Sign-In ([Epic 20](#epic-20--apple-sign-in--native-app-oauth-v11))
+
+**Phase 3 — On-device polish & rollout**
+
+- [ ] Token-level streaming of on-device generation in the UI where the framework supports it
+- [ ] Telemetry (opt-in, privacy-safe): on-device vs backend hit rate per task, latency, fallback reasons
+- [ ] Store submissions; deprecate `packages/mobile` only once both native apps reach parity and pass store review
+- [ ] `docs/ONDEVICE_LLM.md`: device-support matrix, model choices, fallback policy
+
+### Definition of Done
+
+- Native iOS and Android apps reach **feature parity** with today's Flutter app and are accepted on their stores.
+- On a supported device, capture-parse and wrap-up extraction run **fully on-device** (no network LLM call, works offline); on an unsupported device the same flows fall back to the backend transparently.
+- Deep recap and the Concierge agent continue to run on the backend (unchanged), still gated by the UUID-existence guard.
+- `packages/mobile` is retired only after parity is verified; until then `main` always has a working mobile client.
+
+### Technical highlight
+
+> **Same fast/smart split, now spanning device and cloud.** The server already routes cheap, frequent calls to a `fast` model and reserves `smart` for quality-critical work; this epic extends that dial onto the client — an on-device model (Apple Foundation Models / Gemini Nano / MediaPipe) handles capture-parse and wrap-up extraction with near-zero latency, zero cost, and full privacy, while the backend keeps the multi-step agentic work. The product's guard rails don't move: the device proposes, the server's UUID-existence and anti-hallucination checks still decide.
+
+In interviews: *"run an on-device LLM for the hot path with a graceful cloud fallback, keep the correctness guards server-authoritative, and ship two native apps because the platform AI frameworks aren't reachable from a cross-platform toolkit"* — a concrete architecture trade-off, not a framework preference.
+
+### Why this is a separate epic
+
+It's the biggest client investment in the roadmap: two new native codebases, a per-platform on-device-LLM integration, a capability/fallback policy, and the careful retirement of the Flutter app — none of which can be smuggled into a feature epic. It depends on the OAuth core ([Epics 19](#epic-19--social-login--oauth-google-apple-twitch-v11)–[20](#epic-20--apple-sign-in--native-app-oauth-v11)) and pairs with the hosted-LLM work ([Epic 14](#epic-14--cloud-llm-adapters-bedrock--vertex-evaluate-v11)) as the backend fallback.
+
+### Risks
+
+- **2× client maintenance.** Trading one Flutter codebase for two native apps multiplies ongoing work; justified by the on-device-LLM payoff, at the cost of slower cross-platform feature velocity. Mitigation: keep business logic thin and server-driven; consider Kotlin Multiplatform / shared client generation later if duplication hurts.
+- **Device fragmentation.** Apple Foundation Models need Apple-Intelligence-capable devices (iOS 26+); Gemini Nano is gated to a handful of Androids. The backend fallback is **not optional** — it's the path for most devices on day one.
+- **Parity regression.** Retiring Flutter before the native apps truly match would break the "never broken on `main`" rule. Mitigation: keep `packages/mobile` shipping until both native apps pass parity + store review.
+- **On-device tool-calling is weak.** Don't push the Concierge agent on-device — Nano/MediaPipe function-calling isn't reliable; it stays a backend LangGraph capability.
+
+---
+
 ## Descope guide if time runs short
 
 If at some point you feel you're pushing, these are the epics to defer to **v1.1** without destroying the vitrine:
