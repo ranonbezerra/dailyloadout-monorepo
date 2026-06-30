@@ -102,7 +102,7 @@ def calibration_cases() -> list[CalibrationCase]:
                 "You beat Margit and entered Stormveil at level 27. Next: refill your "
                 "flasks and explore the courtyard."
             ),
-            human_score=0.85,
+            human_score=0.80,
         ),
         CalibrationCase(
             id="cp_faithful_clean",
@@ -124,7 +124,7 @@ def calibration_cases() -> list[CalibrationCase]:
                 "with your longsword. You'd been low on flasks in the courtyard — rest at "
                 "a grace to refill, then push into the castle proper."
             ),
-            human_score=0.80,
+            human_score=0.85,
         ),
         # --- ok: grounded but padded, vague, or one small slip -----------------
         CalibrationCase(
@@ -156,7 +156,7 @@ def calibration_cases() -> list[CalibrationCase]:
                 "You're in Watson after the heist, taking it easy with V. Plenty still "
                 "ahead in Night City whenever you're ready to jump back in."
             ),
-            human_score=0.65,
+            human_score=0.55,
         ),
         CalibrationCase(
             id="hd_invents_detail",
@@ -166,7 +166,7 @@ def calibration_cases() -> list[CalibrationCase]:
                 "You've been grinding Hard bug missions with the Breaker and saving for "
                 "the railgun. Last run you cleared the Erata Prime outpost."
             ),
-            human_score=0.45,
+            human_score=0.40,
         ),
         # --- poor: hallucination, spoiler, blaming tone, off-topic -------------
         CalibrationCase(
@@ -178,7 +178,7 @@ def calibration_cases() -> list[CalibrationCase]:
                 "your streak slip. Anyway, you were running bug missions with the Breaker, "
                 "saving for the railgun."
             ),
-            human_score=0.35,
+            human_score=0.25,
         ),
         CalibrationCase(
             id="cp_invents_entity",
@@ -188,7 +188,7 @@ def calibration_cases() -> list[CalibrationCase]:
                 "V is recovering in Watson after the heist. You've already started working "
                 "with the Voodoo Boys in Pacifica and picked up the Skippy smart pistol."
             ),
-            human_score=0.20,
+            human_score=0.15,
         ),
         CalibrationCase(
             id="er_contradicts_notes",
@@ -198,7 +198,7 @@ def calibration_cases() -> list[CalibrationCase]:
                 "You're at level 27 but last time you died to Margit at the Stormveil gate "
                 "and got knocked back to the open field. Try summoning help to beat him."
             ),
-            human_score=0.15,
+            human_score=0.10,
         ),
         CalibrationCase(
             id="er_spoiler_leak",
