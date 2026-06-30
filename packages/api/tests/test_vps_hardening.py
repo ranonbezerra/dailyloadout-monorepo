@@ -63,7 +63,7 @@ def test_install_access_log_redaction_is_idempotent() -> None:
 
 
 def test_init_sentry_noop_without_dsn(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(observability.settings, "sentry_dsn", "")
+    monkeypatch.setattr(observability.sentry.settings, "sentry_dsn", "")
     observability.init_sentry()  # must not raise / must not import sentry_sdk
 
 
@@ -79,7 +79,7 @@ def test_scrub_redacts_headers_body_and_query() -> None:
             "url": "https://api/v1/auth/oauth/google/callback?code=SECRET",
         }
     }
-    out = observability._scrub(event, {})
+    out = observability.sentry._scrub(event, {})
     req = out["request"]
     assert req["headers"]["Authorization"] == "[redacted]"
     assert req["headers"]["Cookie"] == "[redacted]"

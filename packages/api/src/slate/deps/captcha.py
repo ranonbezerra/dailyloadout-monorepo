@@ -63,15 +63,19 @@ async def verify_turnstile(request: Request) -> None:
     if not settings.turnstile_secret:
         return
 
+    remote_ip = request.client.host if request.client else None
+    path = str(request.scope.get("path", ""))
+
     token = await _extract_token(request)
     if not token:
+        logger.warning("turnstile_token_missing", path=path, client_ip=remote_ip)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="CAPTCHA verification required",
         )
 
-    remote_ip = request.client.host if request.client else None
     if not await _siteverify(token, remote_ip):
+        logger.warning("turnstile_verify_failed", path=path, client_ip=remote_ip)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="CAPTCHA verification failed",

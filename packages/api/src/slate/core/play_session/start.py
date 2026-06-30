@@ -12,6 +12,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 
 from slate.core.cache.invalidation import invalidate_user_stats
+from slate.core.play_session.logging import log_play_session_started
 from slate.infrastructure.db.models import LibraryEntry, PlaySession
 from slate.infrastructure.db.repositories.library import LibraryRepository
 from slate.infrastructure.db.repositories.play_session import (
@@ -54,4 +55,7 @@ async def create_play_session_for_entry(
     play_session.library_entry = entry
     await library_repo.update(entry, last_played_at=play_session.started_at)
     await invalidate_user_stats(user_id)
+    log_play_session_started(
+        user_id=user_id, play_session=play_session, entry=entry, has_recap=recap_text is not None
+    )
     return play_session

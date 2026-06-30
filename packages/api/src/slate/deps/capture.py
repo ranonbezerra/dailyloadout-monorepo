@@ -44,8 +44,13 @@ CaptureCandidateRepoDep = Annotated[CaptureCandidateRepository, Depends(get_cand
 
 
 def get_llm_client_dep() -> AbstractLLMClient:
-    """Provide the LLM client for the current environment."""
-    return get_llm_client(settings)
+    """Provide the LLM client for the current environment (traced when enabled)."""
+    client = get_llm_client(settings)
+    if settings.tracing_enabled:
+        from slate.infrastructure.llm.traced import TracedLLMClient
+
+        return TracedLLMClient(client)
+    return client
 
 
 # Singleton: built once so the Twitch OAuth token is reused across requests

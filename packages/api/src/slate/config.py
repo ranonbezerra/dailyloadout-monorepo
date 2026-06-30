@@ -137,15 +137,11 @@ class Settings(BaseSettings):
     # Public base URL the verification link points at (deep link appends token).
     email_verification_base_url: str = "http://localhost:5173/verify-email"
 
-    # ── Password reset (account recovery) ────────────────────────────────
-    # Signed, purpose-scoped JWTs (no new table); short TTL — a reset link is
-    # more sensitive than verification. Consuming it bumps token_version.
+    # ── Password reset — signed purpose-scoped JWTs, short TTL, bumps tv ──
     password_reset_ttl_hours: int = 1
     password_reset_base_url: str = "http://localhost:5173/reset-password"
 
-    # ── MFA / TOTP (Phase 2) ─────────────────────────────────────────────
-    # Issuer shown in the authenticator app; challenge token bridges the two
-    # login steps (password → second factor) and is intentionally short-lived.
+    # ── MFA / TOTP (Phase 2) — issuer + short-lived 2-step challenge token ──
     mfa_issuer: str = "Slate"
     mfa_challenge_ttl_minutes: int = 5
 
@@ -239,6 +235,10 @@ class Settings(BaseSettings):
     # ── Observability (optional) ─────────────────────────────────────────
     sentry_dsn: str = ""
     otel_exporter_otlp_endpoint: str = ""
+    # LLM/graph tracing (Epic 23): spans per model call + graph node; capture
+    # adds redacted prompt/completion previews (off by default — PII).
+    tracing_enabled: bool = True
+    trace_capture_enabled: bool = False
 
     @property
     def is_production(self) -> bool:

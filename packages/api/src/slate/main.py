@@ -16,6 +16,7 @@ from slate.api.middleware import (
     MaxBodySizeMiddleware,
     SecurityHeadersMiddleware,
 )
+from slate.api.request_logging import RequestLoggingMiddleware
 from slate.api.v1.admin import router as admin_router
 from slate.api.v1.admin_captures import router as admin_captures_router
 from slate.api.v1.admin_picks import router as admin_picks_router
@@ -33,7 +34,9 @@ from slate.api.v1.pick import router as pick_router
 from slate.api.v1.play_session import router as play_session_router
 from slate.api.v1.stats import router as stats_router
 from slate.config import settings
+from slate.infrastructure.observability import configure_logging
 
+configure_logging(app_env=settings.app_env)
 logger = structlog.get_logger()
 
 AUTO_CLAMP_INTERVAL_SECONDS = 3600  # 1 hour
@@ -208,6 +211,9 @@ def create_app() -> FastAPI:
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", "X-Auth-Mode"],
     )
+
+    # Request-scoped structured logs: request_id, route, status, duration, user.
+    application.add_middleware(RequestLoggingMiddleware)
 
     # Routers
     application.include_router(admin_router)

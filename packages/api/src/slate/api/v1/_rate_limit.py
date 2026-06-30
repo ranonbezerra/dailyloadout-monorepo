@@ -100,6 +100,13 @@ async def _enforce(
         return
 
     if not acquired:
+        logger.warning(
+            "rate_limit_exceeded",
+            scope=scope,
+            identity=identity,
+            limit=times,
+            window_seconds=seconds,
+        )
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Rate limit exceeded. Please slow down.",

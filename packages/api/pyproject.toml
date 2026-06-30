@@ -80,6 +80,8 @@ ignore = ["S104", "B008", "S101", "S105"]
 [tool.ruff.lint.per-file-ignores]
 "src/slate/api/v1/capture.py" = ["ASYNC240"]
 "tests/**" = ["S106"]
+# Eval dataset: long natural-language player notes are data, not code.
+"evals/golden.py" = ["E501"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 12
@@ -152,3 +154,7 @@ skips = ["B101"]
 
 [tool.typos.files]
 extend-exclude = ["*.lock", "alembic/versions/*"]
+
+[tool.typos.default.extend-words]
+# Real game title ("Clair Obscur: Expedition 33"), not a typo of "obscure".
+obscur = "obscur"

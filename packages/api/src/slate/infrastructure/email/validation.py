@@ -45,11 +45,14 @@ async def assert_email_acceptable(email: str) -> None:
     a definitive "no mail records" rejects. Both checks are domain-based, so
     neither is an account-existence oracle.
     """
+    domain = _extract_domain(email)
     if await dynamic_config.get_bool("block_disposable_emails") and is_disposable_email(email):
+        logger.warning("email_rejected", reason="disposable_domain", domain=domain)
         raise EmailRejectedError("Disposable email addresses are not allowed.")
 
     mx_enabled = settings.check_email_mx and settings.is_production
     if mx_enabled and not await domain_has_mail_records(email):
+        logger.warning("email_rejected", reason="undeliverable_domain", domain=domain)
         raise EmailRejectedError("Email domain cannot receive mail.")
 
 

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from slate.core.admin.logging import log_admin_event
 from slate.core.admin.schemas import (
     AdminCaptureCandidate,
     AdminCaptureDetail,
@@ -111,6 +112,15 @@ class AdminCaptureService:
             target_user_id=capture.user_id,
             detail=str(public_id),
         )
+        log_admin_event(
+            "admin_capture_reprocessed",
+            actor=actor,
+            action=ACTION_REPROCESS,
+            target_user_id=capture.user_id,
+            resource_type="capture",
+            resource_public_id=public_id,
+            capture_id=capture.id,
+        )
         # Re-fetch: the pipeline's flushes expire server-default columns (e.g.
         # ``updated_at``) on the in-memory row, so a fresh SELECT repopulates
         # them; candidates are likewise read fresh after the clear + re-insert.
@@ -128,6 +138,15 @@ class AdminCaptureService:
             action=ACTION_PURGE,
             target_user_id=target_user_id,
             detail=str(public_id),
+        )
+        log_admin_event(
+            "admin_capture_purged",
+            actor=actor,
+            action=ACTION_PURGE,
+            target_user_id=target_user_id,
+            resource_type="capture",
+            resource_public_id=public_id,
+            capture_id=capture.id,
         )
 
     # ── Internals ──

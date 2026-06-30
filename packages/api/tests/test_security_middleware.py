@@ -6,6 +6,18 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from slate.api.middleware import MaxBodySizeMiddleware, SecurityHeadersMiddleware
+from slate.api.request_logging import RequestLoggingMiddleware
+
+
+class _LogSpy:
+    def __init__(self) -> None:
+        self.events: list[tuple[str, dict[str, object]]] = []
+
+    def info(self, event: str, **fields: object) -> None:
+        self.events.append((event, fields))
+
+    def exception(self, event: str, **fields: object) -> None:
+        self.events.append((event, fields))
 
 
 async def test_security_headers_present(async_client: AsyncClient) -> None:
@@ -71,6 +83,71 @@ async def test_security_headers_passthrough_for_non_http_scope() -> None:
     body_mw = MaxBodySizeMiddleware(_app, max_body_bytes=10)
     await body_mw({"type": "lifespan"}, None, None)  # type: ignore[arg-type]
     assert calls == ["lifespan", "lifespan"]
+
+
+async def test_request_logging_adds_request_id_and_logs_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    spy = _LogSpy()
+    monkeypatch.setattr("slate.api.request_logging.logger", spy)
+
+    async def _app(scope: dict, receive: object, send: object) -> None:
+        await send({"type": "http.response.start", "status": 204, "headers": []})
+        await send({"type": "http.response.body", "body": b""})
+
+    wrapped = RequestLoggingMiddleware(_app, skip_successful_health=False)
+    transport = ASGITransport(app=wrapped)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.get("/anything?token=SECRET", headers={"X-Request-ID": "rid-123"})
+
+    assert resp.status_code == 204
+    assert resp.headers["x-request-id"] == "rid-123"
+    assert len(spy.events) == 1
+    event, fields = spy.events[0]
+    assert event == "http_request_completed"
+    assert fields["request_id"] == "rid-123"
+    assert fields["method"] == "GET"
+    assert fields["path"] == "/anything"
+    assert fields["status_code"] == 204
+    assert "SECRET" not in str(fields)
+
+
+async def test_request_logging_skips_successful_health(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    spy = _LogSpy()
+    monkeypatch.setattr("slate.api.request_logging.logger", spy)
+
+    async def _app(scope: dict, receive: object, send: object) -> None:
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": b""})
+
+    transport = ASGITransport(app=RequestLoggingMiddleware(_app))
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.get("/health")
+
+    assert resp.status_code == 200
+    assert resp.headers["x-request-id"]
+    assert spy.events == []
+
+
+async def test_request_logging_logs_failures_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    spy = _LogSpy()
+    monkeypatch.setattr("slate.api.request_logging.logger", spy)
+
+    async def _app(scope: dict, receive: object, send: object) -> None:
+        raise RuntimeError("boom")
+
+    transport = ASGITransport(app=RequestLoggingMiddleware(_app))
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        with pytest.raises(RuntimeError, match="boom"):
+            await ac.get("/broken")
+
+    assert len(spy.events) == 1
+    event, fields = spy.events[0]
+    assert event == "http_request_failed"
+    assert fields["path"] == "/broken"
+    assert fields["status_code"] == 500
 
 
 def test_docs_gated_off_in_production(monkeypatch: pytest.MonkeyPatch) -> None:

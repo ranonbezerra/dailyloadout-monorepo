@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from slate.core.admin.logging import log_admin_event
 from slate.core.admin.schemas import (
     AdminPlaySessionDetail,
     AdminPlaySessionList,
@@ -91,6 +92,15 @@ class AdminPlaySessionService:
             action=ACTION_CLAMP,
             target_user_id=play_session.user_id,
             detail=str(public_id),
+        )
+        log_admin_event(
+            "admin_play_session_clamped",
+            actor=actor,
+            action=ACTION_CLAMP,
+            target_user_id=play_session.user_id,
+            resource_type="play_session",
+            resource_public_id=public_id,
+            play_session_id=play_session.id,
         )
         refreshed = await self._require_play_session(public_id)
         return await self._detail(refreshed)

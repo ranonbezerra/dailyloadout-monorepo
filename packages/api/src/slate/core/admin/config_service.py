@@ -10,6 +10,7 @@ Layer discipline: orchestrates the repos + overlay; never touches a Session.
 from __future__ import annotations
 
 from slate.config import settings
+from slate.core.admin.logging import log_admin_event
 from slate.core.admin.schemas import ConfigEntry, ConfigListResponse
 from slate.infrastructure.config.dynamic import DynamicConfig
 from slate.infrastructure.config.registry import (
@@ -102,6 +103,13 @@ class AdminConfigService:
             action=ACTION_CONFIG_SET,
             detail=f"{key} = {typed}",
         )
+        log_admin_event(
+            "admin_config_set",
+            actor=actor,
+            action=ACTION_CONFIG_SET,
+            config_key=key,
+            config_value=typed,
+        )
         return await self.list_config()
 
     async def clear_override(self, actor: User, key: str) -> ConfigListResponse:
@@ -113,6 +121,12 @@ class AdminConfigService:
             admin_user_id=actor.id,
             action=ACTION_CONFIG_CLEAR,
             detail=key,
+        )
+        log_admin_event(
+            "admin_config_cleared",
+            actor=actor,
+            action=ACTION_CONFIG_CLEAR,
+            config_key=key,
         )
         return await self.list_config()
 

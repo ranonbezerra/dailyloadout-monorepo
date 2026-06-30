@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from slate.core.admin.logging import log_admin_event
 from slate.core.admin.schemas import (
     AdminAuditEntry,
     AdminAuditListResponse,
@@ -104,6 +105,13 @@ class AdminUserService:
             target_user_id=user.id,
             detail=reason,
         )
+        log_admin_event(
+            "admin_user_banned",
+            actor=actor,
+            action=ACTION_BAN,
+            target_user=user,
+            reason_present=reason is not None,
+        )
         return await self._build_detail(user)
 
     async def unban_user(self, actor: User, public_id: UUID) -> AdminUserDetail:
@@ -116,6 +124,7 @@ class AdminUserService:
             action=ACTION_UNBAN,
             target_user_id=user.id,
         )
+        log_admin_event("admin_user_unbanned", actor=actor, action=ACTION_UNBAN, target_user=user)
         return await self._build_detail(user)
 
     async def verify_user(self, actor: User, public_id: UUID) -> AdminUserDetail:
@@ -128,6 +137,7 @@ class AdminUserService:
             action=ACTION_VERIFY,
             target_user_id=user.id,
         )
+        log_admin_event("admin_user_verified", actor=actor, action=ACTION_VERIFY, target_user=user)
         return await self._build_detail(user)
 
     # ── Audit ──

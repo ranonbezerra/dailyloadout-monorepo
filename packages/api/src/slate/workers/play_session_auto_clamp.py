@@ -13,6 +13,7 @@ import structlog
 
 from slate.core.cache.invalidation import invalidate_user_stats
 from slate.infrastructure.db.repositories.play_session import PlaySessionRepository
+from slate.infrastructure.observability import job_context
 
 logger = structlog.get_logger()
 
@@ -26,23 +27,24 @@ async def auto_clamp_stale_play_sessions(
     A clamp ends a play_session, so each affected user's stats are invalidated —
     this is the background counterpart to the REST end/wrap_up hooks.
     """
-    stale = await play_session_repo.get_stale_play_sessions(max_hours=max_hours)
+    with job_context("play_session_auto_clamp", max_hours=max_hours):
+        stale = await play_session_repo.get_stale_play_sessions(max_hours=max_hours)
 
-    if not stale:
-        return 0
+        if not stale:
+            return 0
 
-    clamped_user_ids: set[int] = set()
-    for play_session in stale:
-        await play_session_repo.auto_clamp(play_session.id, max_hours=max_hours)
-        clamped_user_ids.add(play_session.user_id)
-        logger.info(
-            "play_session_auto_clamped",
-            play_session_id=play_session.id,
-            user_id=play_session.user_id,
-            started_at=str(play_session.started_at),
-        )
+        clamped_user_ids: set[int] = set()
+        for play_session in stale:
+            await play_session_repo.auto_clamp(play_session.id, max_hours=max_hours)
+            clamped_user_ids.add(play_session.user_id)
+            logger.info(
+                "play_session_auto_clamped",
+                play_session_id=play_session.id,
+                user_id=play_session.user_id,
+                started_at=str(play_session.started_at),
+            )
 
-    for user_id in clamped_user_ids:
-        await invalidate_user_stats(user_id)
+        for user_id in clamped_user_ids:
+            await invalidate_user_stats(user_id)
 
-    return len(stale)
+        return len(stale)

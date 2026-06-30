@@ -13,16 +13,15 @@ from jinja2.sandbox import SandboxedEnvironment
 from slate.config import Settings
 from slate.config import settings as _settings
 from slate.core.sanitization import wrap_user_data
+from slate.infrastructure.observability.tracing import add_span_attrs
 
 from .base import AbstractLLMClient, ExtractedGame, ExtractedState, LLMRole, PickSelection
 from .parsers import _extract_json, _parse_game_list
 
 logger = structlog.get_logger()
 
-# Process-shared ceiling on concurrent outbound model calls to the host Ollama
-# server. Created lazily on first use so it binds to the running event loop (a
-# module-import-time Semaphore would attach to the wrong/no loop). Only the real
-# OllamaClient acquires it; the Dummy client (tests) never touches it.
+# Process-shared ceiling on concurrent outbound model calls. Created lazily so it
+# binds to the running event loop; only the real OllamaClient acquires it.
 _ollama_semaphore: asyncio.Semaphore | None = None
 
 
@@ -84,12 +83,7 @@ class OllamaClient(AbstractLLMClient):
         payload: dict[str, object],
         log_key: str,
     ) -> httpx.Response | None:
-        """POST to Ollama ``/api/generate``. Returns *None* on HTTP error.
-
-        The outbound model call is gated by the process-wide concurrency
-        semaphore (held ONLY around the HTTP round-trip) so a burst can't
-        oversubscribe the host.
-        """
+        """POST to Ollama ``/api/generate`` (gated by the concurrency semaphore); None on error."""
         client = await self._get_client()
         try:
             async with _get_ollama_semaphore():
@@ -98,6 +92,12 @@ class OllamaClient(AbstractLLMClient):
                     json=self._payload(payload),
                 )
             resp.raise_for_status()
+            body = resp.json()  # enrich the active LLM span with Ollama usage counts
+            add_span_attrs(
+                model=payload.get("model"),
+                prompt_tokens=body.get("prompt_eval_count"),
+                completion_tokens=body.get("eval_count"),
+            )
             return resp
         except httpx.HTTPError as exc:
             logger.warning(log_key, error=str(exc))

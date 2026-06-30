@@ -5,8 +5,8 @@
 > *Less deciding. More playing.* A self-hosted gaming companion and production-AI systems showcase. Voice/photo/text capture, structured play session state, "previously on..." recaps before each session, and a 3-question daily Pick that selects one game for you.
 
 [![CI – API](https://img.shields.io/badge/CI-API-blue)](https://github.com/ranonbezerra/slate-monorepo/actions/workflows/ci-api.yml)
-[![CI – App](https://img.shields.io/badge/CI-App-blue)](https://github.com/ranonbezerra/slate-monorepo/actions/workflows/ci-app.yml)
-[![CI – Web](https://img.shields.io/badge/CI-Web-blue)](https://github.com/ranonbezerra/slate-monorepo/actions/workflows/ci-web.yml)
+[![CI – Mobile](https://img.shields.io/badge/CI-Mobile-blue)](https://github.com/ranonbezerra/slate-monorepo/actions/workflows/ci-mobile.yml)
+[![CI – Web](https://img.shields.io/badge/CI-Web-blue)](https://github.com/ranonbezerra/slate-monorepo/actions/workflows/ci-web-app.yml)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 
 ---
@@ -39,11 +39,15 @@ This is not a prompt demo. The interesting parts are the reliability boundaries 
 
 The repo also includes versioned AI-engineering workflow files (`CLAUDE.md`, `.claude/`, `.mcp.json`) that document how agents, project conventions, review flows, and MCP tools are expected to work against this codebase.
 
-### Agentic Roadmap
+### Agentic AI — shipped, and what's next
 
-The next implementation track is a LangGraph-based **Deep Research Recap**: a local SearXNG + Ollama graph that searches, grades, refines, synthesizes, spoiler-filters, and then reuses the existing anti-hallucination validator before returning a recap. The current single-shot recap remains the fast path and fallback.
+The LangGraph **Deep Research Recap** (a local SearXNG + Ollama graph that searches, grades, refines, synthesizes, spoiler-filters, and then reuses the anti-hallucination validator) and the tool-using **Backlog Concierge** (now an operator of the play-session pipeline, not just a recommender) are **shipped**. The single-shot recap remains the fast path and fallback. Those designs live in [docs/DEEP_RESEARCH_RECAP.md](./docs/DEEP_RESEARCH_RECAP.md) and [ROADMAP.md](./ROADMAP.md).
 
-That design is documented in [docs/DEEP_RESEARCH_RECAP.md](./docs/DEEP_RESEARCH_RECAP.md) and tracked in [ROADMAP.md](./ROADMAP.md). It is intentionally documented separately because the shipped v1 path is already useful and the LangGraph path adds long-running orchestration, bounded loops, cancellation, and graceful degradation.
+The current track is **LLM Platform Hardening** ([ROADMAP.md](./ROADMAP.md), Epics 23–28) — the engineering *around* the models rather than more features:
+
+- **Evaluation harness + observability/tracing (Epic 23)** — a golden-dataset eval with deterministic checks plus a **model-agnostic, kappa-calibrated** LLM-as-judge, gating prompt/model changes via `make quality` (`--real --gate` against a committed baseline), with per-call and per-graph-node spans (tokens / latency / cost / cache-hit) and redacted prompt/completion capture. Answers *"how do you know a prompt change didn't regress quality?"* with a number. **(shipped)**
+- **RAG over PlaySession history** — embed the player's own wrap-ups (Ollama + pgvector) and retrieve semantically to ground recaps, instead of the last 3 by SQL.
+- **Reranking** in the deep-research pipeline; **prompt-injection guardrails** on the agent's untrusted surfaces (chat + capture, with a tool-arg allowlist); a **semantic completion cache**; and **resumable batch re-inference** for embedding/prompt changes.
 
 ---
 
@@ -115,11 +119,27 @@ Detailed architecture in [ARCHITECTURE.md](./ARCHITECTURE.md).
 - [x] Single-user mode for personal self-hosting
 - [x] Mobile: iOS, Android
 
+### Shipped beyond v1.0
+
+- [x] **Deep Research Recap** — LangGraph graph over local SearXNG + Ollama: bounded search/refine loops, reranked grounding (planned, Epic 25), spoiler filtering, the anti-hallucination validator as the terminal gate, and quick-recap fallback.
+- [x] **Backlog Concierge** — tool-using conversational agent over the real library; an operator of the play-session pipeline (start / recap / log), with write tools gated and UUID-validated.
+- [x] **Unified PlaySession pipeline** — one `start_play_session` spine; Pick, direct start, and the Concierge all funnel through it (recap is an optional stage).
+- [x] **Bulk library import** — local-first OCR (Tesseract) of platform list-view/purchase-history screenshots, fuzzy-matched to a canonical catalog, with a capped cloud-vision fallback.
+- [x] **Cost governance** — per-call token→$ metering, per-user/global spend kill-switch with a degraded in-process fallback (Redis-outage safe).
+- [x] **Application caching layer** — `AbstractCache` port (Redis/null) with IGDB result + token caching; broader strategy in progress.
+- [x] **Backoffice / admin panel** — users (ban/verify/sessions), catalogue moderation, and runtime operational config (Postgres overlay over env), every change audited.
+- [x] **Social login** — Google & Twitch (Authorization Code + PKCE) on web, behind the existing auth core.
+- [x] **Account recovery** — forgot / reset / change password with single-use, session-invalidating reset tokens.
+- [x] **Two-factor auth (TOTP)** — authenticator-app MFA with encrypted-at-rest secrets and single-use recovery codes, behind the existing auth core.
+- [x] **LLM evaluation harness** — a golden dataset with deterministic checks (grounding / spoiler-safety / mentions / JSON-validity) and a **model-agnostic LLM-as-judge calibrated against human labels** (quadratic-weighted kappa ≈ 0.83). Gates prompt/model changes via `make quality` against a committed score baseline.
+- [x] **LLM observability / tracing** — a span per LLM call and per LangGraph node (tokens / latency / cost / cache-hit) with redacted prompt+completion capture for offline debugging.
+- [x] **Structured operational logging** — JSON structured logs with request/trace correlation across the API and worker.
+
 ### In Design / Next
 
-- [ ] **Deep Research Recap** — LangGraph graph over local SearXNG + Ollama, with bounded search/refine loops, spoiler filtering, anti-hallucination validation, and quick-recap fallback.
-- [ ] **Backlog Concierge** — optional tool-using conversational agent over the user's real library, preserving the same UUID validation guard as Daily Pick.
-- [ ] **Cloud provider adapters** — the runtime is provider-shaped today; cloud LLM providers such as Bedrock belong behind the existing LLM port, not in product code.
+- [ ] **LLM Platform Hardening** (Epics 24–28) — eval harness + tracing **shipped** (Epic 23); next: RAG over play-session history (pgvector), research reranking, prompt-injection guardrails, semantic cache, and resumable batch re-inference.
+- [ ] **Cloud LLM adapters** — Bedrock/Vertex behind the existing LLM port for a hosted distribution; Ollama stays the local default.
+- [ ] **Apple Sign In + native iOS/Android apps** — with on-device LLMs for the fast path, backend fallback for the heavy work.
 
 ### Out of scope (deliberate)
 

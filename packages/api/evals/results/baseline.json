@@ -1,0 +1,9 @@
+{
+  "overall": 0.9148,
+  "task:recap": 0.9131,
+  "task:deep_recap": 0.925,
+  "check:non_empty": 1.0,
+  "check:grounding": 0.9052,
+  "check:spoiler_free": 1.0,
+  "check:mentions": 1.0
+}
