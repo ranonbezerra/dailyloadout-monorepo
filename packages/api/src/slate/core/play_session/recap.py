@@ -12,6 +12,7 @@ from slate.config import Settings
 from slate.config import settings as _settings
 from slate.core.play_session.anti_hallucination import validate_recap
 from slate.core.play_session.embedding import embed_session
+from slate.core.play_session.retrieval import get_grounding_sessions
 from slate.infrastructure.agent.base import AbstractRecapAgent, DeepRecapRequest
 from slate.infrastructure.agent.graph.state import PlaySessionContext
 from slate.infrastructure.db.models import LibraryEntry, PlaySession
@@ -52,7 +53,7 @@ async def build_play_session_context(
     the most recent extracted location/quest/level and the entry's next action.
     """
     await ensure_extractions_complete(play_session_repo, library_repo, llm_client, entry.id)
-    recent_play_sessions = await play_session_repo.get_recent_for_entry(entry.id, limit=3)
+    recent_play_sessions = await get_grounding_sessions(play_session_repo, entry.id, limit=3)
     previous_wrap_ups = _collect_previous_wrap_ups(recent_play_sessions)
 
     latest_state: dict[str, object] = {}
@@ -254,7 +255,9 @@ async def generate_recap(
     await ensure_extractions_complete(
         play_session_repo, library_repo, llm_client, library_entry_id
     )
-    recent_play_sessions = await play_session_repo.get_recent_for_entry(library_entry_id, limit=3)
+    recent_play_sessions = await get_grounding_sessions(
+        play_session_repo, library_entry_id, limit=3
+    )
 
     previous_wrap_ups = _collect_previous_wrap_ups(recent_play_sessions)
 

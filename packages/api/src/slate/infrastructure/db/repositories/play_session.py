@@ -9,7 +9,7 @@ from uuid import UUID
 
 from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, undefer
 
 from slate.infrastructure.db.models import Game, LibraryEntry, PlaySession, User
 
@@ -233,6 +233,36 @@ class PlaySessionRepository:
             play_session.embedding = embedding
             play_session.embedding_model = model
             await self._session.flush()
+
+    async def get_embedded_for_entry(
+        self,
+        library_entry_id: int,
+        model: str,
+        limit: int = 200,
+    ) -> list[tuple[PlaySession, list[float]]]:
+        """Ended sessions for the entry embedded by *model*, newest first.
+
+        Loads the (otherwise deferred) ``embedding`` column and returns each session
+        with its vector as a plain ``list[float]`` (pgvector returns an array on
+        Postgres; SQLite a list — both are coerced). Scoped to one entry and one
+        embedding model, so retrieval never mixes vector spaces across a model swap.
+        """
+        stmt = (
+            select(PlaySession)
+            .options(undefer(PlaySession.embedding))
+            .where(
+                PlaySession.library_entry_id == library_entry_id,
+                PlaySession.ended_at.is_not(None),
+                PlaySession.extracted_state.is_not(None),
+                PlaySession.embedding.is_not(None),
+                PlaySession.embedding_model == model,
+            )
+            .order_by(PlaySession.ended_at.desc())
+            .limit(limit)
+        )
+        result = await self._session.execute(stmt)
+        sessions = list(result.scalars().all())
+        return [(s, [float(x) for x in s.embedding or []]) for s in sessions]
 
     async def end_play_session(
         self,
