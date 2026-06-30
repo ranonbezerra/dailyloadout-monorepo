@@ -1299,7 +1299,7 @@ The Concierge takes free-form chat and decides tool calls, including the **write
 
 ### Tasks
 
-- [x] **Input** — `sanitize_untrusted_text` (NFKC + strip control/bidi/zero-width + length cap) applied at the capture + chat edges; `capture_parse.j2` now fences the input in `<user_data>` (closing the one quality prompt that wasn't delimited).
+- [x] **Input** — `sanitize_untrusted_text` (NFKC + strip control/bidi/zero-width + length cap) applied at every untrusted free-text edge (capture, chat, and the play-session wrap-up — which feeds both extraction and recap); `capture_parse.j2` now fences the input in `<user_data>` (closing the one quality prompt that wasn't delimited).
 - [x] **Injection detection** — a high-precision heuristic detector (`core/safety/injection.py`) that flags override/jailbreak/exfiltration/fence-escape/bulk-tool-abuse and structured-logs every block. (The optional LLM classifier is deferred — the heuristics + the tool boundary carry it.)
 - [x] **Output** — structured outputs stay Pydantic + UUID/candidate validated; a conservative **PII redactor** (`core/safety/pii.py`) masks emails/phones/cards on the Concierge reply echoed back.
 - [x] **Tool layer** — the write-tool **allowlist + per-arg validation** (status ∈ enum, user-scoped UUID-existence, one-active-session, mode clamp, no batch/delete tool) — already present, now **adversarially tested** so a hijacked prompt can't drive an unsafe write.

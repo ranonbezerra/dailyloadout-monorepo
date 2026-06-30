@@ -22,6 +22,7 @@ from slate.config import Settings
 from slate.core.cache.invalidation import invalidate_user_stats
 from slate.core.play_session.recap import RecapMode, generate_recap_for_mode
 from slate.core.play_session.start import create_play_session_for_entry
+from slate.core.safety.guard import sanitize_and_audit
 from slate.infrastructure.agent.base import AbstractRecapAgent
 from slate.infrastructure.agent.concierge.base import ConciergeTool
 from slate.infrastructure.agent.concierge.tools import _resolve_entry
@@ -148,6 +149,7 @@ async def submit_retroactive_wrap_up(
     wrap_up_text: str,
 ) -> str:
     """Log a past, untracked play session as a pre-ended retroactive play_session."""
+    wrap_up_text = sanitize_and_audit(wrap_up_text, surface="wrap_up", user_id=user_id)
     entry = await _resolve_entry(library_repo, user_id, library_entry_public_id)
     if entry is None:
         return "That game is not in the library, so I can't log a session for it."
