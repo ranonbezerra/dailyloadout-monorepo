@@ -202,8 +202,6 @@ class PlaySessionService:
         total = await self._play_session_repo.count_for_user(user_id)
         return play_sessions, total
 
-    # -- WrapUp ---------------------------------------------------------
-
     async def submit_wrap_up(
         self,
         user_id: int,
@@ -234,7 +232,11 @@ class PlaySessionService:
             )
 
             await extract_wrap_up_state_task.kiq(play_session.id, game_title, wrap_up_text)
-            logger.info("wrap_up_extraction_dispatched", play_session_id=play_session.id)
+            logger.info(
+                "wrap_up_extraction_dispatched",
+                user_id=user_id,
+                play_session_id=play_session.id,
+            )
         except Exception:
             logger.warning(
                 "wrap_up_extraction_dispatch_failed",
@@ -243,8 +245,6 @@ class PlaySessionService:
             )
 
         return await self.get_play_session(user_id, play_session_public_id)
-
-    # -- End play_session (no wrap_up) ----------------------------------------
 
     async def end_play_session(
         self,
@@ -262,8 +262,6 @@ class PlaySessionService:
         await self._play_session_repo.end_play_session(play_session.id, ended_via=ended_via)
         await invalidate_user_stats(user_id)
         return await self.get_play_session(user_id, play_session_public_id)
-
-    # -- Regenerate recap ---------------------------------------------
 
     async def regenerate_recap(
         self,

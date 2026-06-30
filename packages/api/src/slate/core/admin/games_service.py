@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from slate.core.admin.logging import log_admin_event
 from slate.core.admin.schemas import (
     AdminGameDetail,
     AdminGameList,
@@ -81,6 +82,15 @@ class AdminGameService:
         game = await self._require_game(public_id)
         await self._games.update(game, is_shared=False)
         await self._audit.record(admin_user_id=actor.id, action=ACTION_DEMOTE, detail=game.slug)
+        log_admin_event(
+            "admin_game_demoted",
+            actor=actor,
+            action=ACTION_DEMOTE,
+            resource_type="game",
+            resource_public_id=game.public_id,
+            game_id=game.id,
+            source=_source(game),
+        )
         await self._games.refresh(game)
         return await self._detail(game)
 
@@ -89,6 +99,15 @@ class AdminGameService:
         game = await self._require_game(public_id)
         await self._games.update(game, is_shared=True)
         await self._audit.record(admin_user_id=actor.id, action=ACTION_PROMOTE, detail=game.slug)
+        log_admin_event(
+            "admin_game_promoted",
+            actor=actor,
+            action=ACTION_PROMOTE,
+            resource_type="game",
+            resource_public_id=game.public_id,
+            game_id=game.id,
+            source=_source(game),
+        )
         await self._games.refresh(game)
         return await self._detail(game)
 
@@ -104,6 +123,15 @@ class AdminGameService:
                 admin_user_id=actor.id,
                 action=ACTION_EDIT,
                 detail=f"{game.slug}: {', '.join(sorted(fields))}",
+            )
+            log_admin_event(
+                "admin_game_edited",
+                actor=actor,
+                action=ACTION_EDIT,
+                resource_type="game",
+                resource_public_id=game.public_id,
+                game_id=game.id,
+                edited_fields=sorted(fields),
             )
             await self._games.refresh(game)
         return await self._detail(game)

@@ -5,9 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-import structlog
-
 from slate.config import settings
+from slate.core.auth import logging as auth_log
 from slate.core.auth.oauth_login import resolve_oauth_login
 from slate.core.auth.security import (
     REFRESH_TOKEN_EXPIRE_DAYS,
@@ -31,8 +30,6 @@ from slate.infrastructure.email.validation import (
 )
 from slate.infrastructure.oauth import OAuthError, OAuthUserInfo
 
-logger = structlog.get_logger()
-
 __all__ = ["AuthService", "EmailRejectedError"]
 
 
@@ -51,7 +48,6 @@ class AuthService:
         self._mailer = mailer or get_mailer()
         self._oauth_repo = oauth_repo
 
-    # ── Registration ──
     async def register(
         self,
         email: str,
@@ -69,9 +65,14 @@ class AuthService:
         """
         # Identity-hygiene gates run FIRST and are purely domain/content-based,
         # so they reveal nothing about whether the account already exists.
-        await assert_email_acceptable(email)
+        try:
+            await assert_email_acceptable(email)
+        except EmailRejectedError:
+            auth_log.register_rejected(email, reason="email_rejected")
+            raise
 
         if await self._user_repo.email_exists(email):
+            auth_log.register_rejected(email, reason="email_exists")
             raise ValueError("Email already registered")
 
         pw_hash = hash_password(password)
@@ -90,10 +91,10 @@ class AuthService:
         access_token = create_access_token(str(user.public_id), user.token_version)
         raw_refresh = generate_refresh_token()
         await self._store_refresh_token(user.id, raw_refresh)
+        auth_log.register_succeeded(user, auto_verified=auto_verify)
 
         return user, access_token, raw_refresh
 
-    # ── Email verification ──
     async def verify_email(self, token: str) -> None:
         """Validate a verification *token* and mark the email verified.
 
@@ -129,7 +130,6 @@ class AuthService:
         token = create_email_verification_token(str(user.public_id))
         send_verification_email(self._mailer, to=user.email, token=token)
 
-    # ── Login ──
     async def login(
         self,
         email: str,
@@ -143,8 +143,13 @@ class AuthService:
         credentials and issue tokens separately (see ``verify_credentials`` /
         ``issue_tokens``) so they can interpose the second-factor challenge.
         """
-        user = await self.verify_credentials(email, password)
+        try:
+            user = await self.verify_credentials(email, password)
+        except ValueError:
+            auth_log.login_failed(email)
+            raise
         access_token, raw_refresh = await self.issue_tokens(user, device_label=device_label)
+        auth_log.login_succeeded(user, device_label_present=device_label is not None)
         return user, access_token, raw_refresh
 
     async def verify_credentials(self, email: str, password: str) -> User:
@@ -168,7 +173,6 @@ class AuthService:
         await self._store_refresh_token(user.id, raw_refresh, device_label=device_label)
         return access_token, raw_refresh
 
-    # ── Social login (OAuth) — resolve/link/create, then issue our tokens ──
     async def oauth_resolve_user(
         self, provider: str, info: OAuthUserInfo
     ) -> tuple[User, str, str]:
@@ -187,7 +191,6 @@ class AuthService:
             info=info,
         )
 
-    # ── Token refresh (rotation) ──
     async def refresh(self, raw_refresh_token: str) -> tuple[str, str]:
         """Rotate a refresh token and issue a new access token.
 
@@ -210,9 +213,9 @@ class AuthService:
                 if ra is not None and ra.tzinfo is None:
                     ra = ra.replace(tzinfo=UTC)  # SQLite returns naive datetimes
                 if ra is not None and datetime.now(UTC) - ra <= grace:
-                    logger.info("refresh_token_benign_race", user_id=replayed.user_id)
+                    auth_log.refresh_token_benign_race(replayed.user_id)
                 else:
-                    logger.warning("refresh_token_reuse_detected", user_id=replayed.user_id)
+                    auth_log.refresh_token_reuse_detected(replayed.user_id)
                     await self._revoke_all_sessions_by_internal_id(replayed.user_id)
                     await self._refresh_token_repo.commit()
             raise ValueError("Invalid or expired refresh token")
@@ -232,24 +235,23 @@ class AuthService:
             new_raw_refresh,
             device_label=stored.device_label,
         )
+        auth_log.refresh_rotated(user)
 
         return new_access, new_raw_refresh
 
-    # ── Logout ──
     async def logout(self, raw_refresh_token: str) -> None:
         """Revoke the refresh token identified by *raw_refresh_token*."""
         token_hash = hash_refresh_token(raw_refresh_token)
         stored = await self._refresh_token_repo.get_by_hash(token_hash)
         if stored is not None:
             await self._refresh_token_repo.revoke(stored.id)
+            auth_log.logout(stored.user_id)
 
-    # ------------------------------------------------------------------
-    # Session kill-switch (logout-everywhere) and incident response
-    # ------------------------------------------------------------------
     async def revoke_all_sessions(self, user_id: int) -> None:
         """Cut off every session for *user_id*: bump ``token_version`` (kills all
         access tokens) and revoke all refresh tokens (kills every device)."""
         await self._revoke_all_sessions_by_internal_id(user_id)
+        auth_log.sessions_revoked(user_id)
 
     async def ban_user(self, user_id: int) -> None:
         """Suspend *user_id* (internal id) and fully cut off their access.
@@ -259,13 +261,13 @@ class AuthService:
         """
         await self._user_repo.set_banned(user_id, True)
         await self._revoke_all_sessions_by_internal_id(user_id)
+        auth_log.user_banned(user_id)
 
     async def _revoke_all_sessions_by_internal_id(self, user_id: int) -> None:
         """Bump token_version and revoke all refresh tokens for *user_id*."""
         await self._user_repo.bump_token_version(user_id)
         await self._refresh_token_repo.revoke_all_for_user(user_id)
 
-    # ── Current user lookup ──
     async def get_current_user(self, public_id: UUID) -> User:
         """Return the user with *public_id*.
 
@@ -277,9 +279,6 @@ class AuthService:
             raise ValueError("User not found")
         return user
 
-    # ------------------------------------------------------------------
-    # Internals
-    # ------------------------------------------------------------------
     async def _store_refresh_token(
         self,
         user_id: int,

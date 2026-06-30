@@ -12,10 +12,10 @@ from __future__ import annotations
 
 import asyncio
 import json
-import logging
 from collections.abc import AsyncIterator
 from uuid import uuid4
 
+import structlog
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
@@ -26,7 +26,7 @@ from slate.core.concierge.schemas import ChatRequest
 from slate.deps import RequireVerifiedUserDep
 from slate.deps.concierge import ConciergeServiceDep
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 router = APIRouter(prefix="/v1/concierge", tags=["concierge"])
 
@@ -80,20 +80,20 @@ async def chat(
         except TimeoutError:
             # Bound the turn so a stalled/looping agent can't hang the stream.
             logger.warning(
-                "Concierge reply timed out after %ss (thread %s)",
-                _REPLY_TIMEOUT_SECONDS,
-                thread_id,
+                "concierge_reply_timeout",
+                timeout_seconds=_REPLY_TIMEOUT_SECONDS,
+                thread_id=thread_id,
             )
             yield _sse({"error": _TIMEOUT_MESSAGE})
         except asyncio.CancelledError:
             # Client disconnected mid-turn — let the cancellation propagate so
             # the agent run is torn down rather than left orphaned.
-            logger.info("Concierge stream cancelled (thread %s)", thread_id)
+            logger.info("concierge_stream_cancelled", thread_id=thread_id)
             raise
         except Exception:
             # Never crash the stream — surface a clean error event instead of an
             # ASGI traceback (e.g. the LLM/model is unavailable).
-            logger.exception("Concierge reply failed for thread %s", thread_id)
+            logger.exception("concierge_reply_failed", thread_id=thread_id)
             yield _sse({"error": _ERROR_MESSAGE})
 
         yield _sse({"done": True, "thread_id": thread_id})

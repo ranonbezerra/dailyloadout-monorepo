@@ -210,6 +210,14 @@ async def generate_recap_for_mode(
         logger.warning("deep_recap_failed", library_entry_id=entry.id, exc_info=True)
         return await _quick()
 
+    if result.text:
+        logger.info(
+            "recap_generated",
+            library_entry_id=entry.id,
+            mode="deep",
+            suspicious=result.suspicious,
+            output_chars=len(result.text),
+        )
     return (result.text, result.suspicious) if result.text else await _quick()
 
 
@@ -265,4 +273,12 @@ async def generate_recap(
         context_text = " ".join(context_parts)
         suspicious = validate_recap(recap, context_text).is_suspicious
 
+    logger.info(
+        "recap_generated",
+        library_entry_id=library_entry_id,
+        mode="quick",
+        context_count=len(previous_wrap_ups),
+        suspicious=suspicious,
+        output_chars=len(recap),
+    )
     return recap, suspicious

@@ -77,7 +77,7 @@ def _extract_verdict(raw: str) -> tuple[float, str]:
     bare = re.search(r"score\b[^0-9]*([01](?:\.\d+)?)", raw, re.IGNORECASE)
     if bare:
         return _clamp(bare.group(1)), raw.strip()[:200]
-    return 0.0, f"unparseable judge output: {raw.strip()[:120]}"
+    return 0.0, f"unparsable judge output: {raw.strip()[:120]}"
 
 
 class LLMJudge(AbstractJudge):

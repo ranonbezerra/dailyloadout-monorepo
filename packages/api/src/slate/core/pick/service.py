@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from uuid import UUID
 
-import structlog
 from fastapi import HTTPException, status
 
+from slate.core.pick.logging import log_pick_actioned, log_pick_created, log_pick_requested
 from slate.core.pick.selection import select_one
 from slate.core.play_session.start import create_play_session_for_entry
 from slate.infrastructure.db.models import Pick
@@ -16,8 +16,6 @@ from slate.infrastructure.db.repositories.play_session import (
     PlaySessionRepository,
 )
 from slate.infrastructure.llm.base import AbstractLLMClient
-
-logger = structlog.get_logger()
 
 _ACTIVE_PLAY_SESSION_DETAIL = "You already have an active play session. End it first."
 
@@ -68,13 +66,18 @@ class PickService:
         count: int = 1,
         cooldown_hours: int = 12,
     ) -> list[Pick]:
-        """Create up to *count* Pick suggestions with distinct games.
-
-        Raises:
-            HTTPException 422: If no eligible games or LLM fails.
-        """
+        """Create up to *count* Pick suggestions with distinct games."""
         entries = await self._library_repo.list_eligible_for_pick(
             user_id, cooldown_hours=cooldown_hours
+        )
+        log_pick_requested(
+            user_id=user_id,
+            eligible_count=len(entries),
+            requested_count=count,
+            mood=mood,
+            available_minutes=available_minutes,
+            mental_energy=mental_energy,
+            has_context=context is not None,
         )
 
         if not entries:
@@ -149,6 +152,7 @@ class PickService:
             )
             pick.library_entry = chosen_entry
             results.append(pick)
+            log_pick_created(user_id=user_id, pick=pick)
 
             # Remove picked entry from remaining candidates.
             remaining = [c for c in remaining if str(c["public_id"]) != picked_id]
@@ -234,6 +238,7 @@ class PickService:
 
         await self._pick_repo.set_action(pick.id, "accepted")
         await self._pick_repo.set_play_session(pick.id, play_session.id)
+        log_pick_actioned(user_id=user_id, pick=pick, action="accepted")
 
         return await self._get_pick(user_id, pick_public_id)
 
@@ -262,6 +267,7 @@ class PickService:
             )
 
         await self._pick_repo.set_action(pick.id, "rejected")
+        log_pick_actioned(user_id=user_id, pick=pick, action="rejected")
 
         # Re-fetch for response.
         return await self._get_pick(user_id, pick_public_id)

@@ -46,6 +46,12 @@ async def process_capture(
     """
     try:
         await capture_repo.update_status(capture.id, "processing")
+        logger.info(
+            "capture_processing_started",
+            capture_id=capture.id,
+            user_id=capture.user_id,
+            input_type=capture.input_type,
+        )
 
         # Photo capture: read image, encode to base64, and parse via vision LLM.
         if capture.input_type == "photo":
@@ -82,6 +88,13 @@ async def process_capture(
         if not extracted:
             await capture_repo.update_status(
                 capture.id, "review", error_message="No games found in text"
+            )
+            logger.info(
+                "capture_review_ready",
+                capture_id=capture.id,
+                user_id=capture.user_id,
+                input_type=capture.input_type,
+                candidate_count=0,
             )
             return capture
 
@@ -120,11 +133,21 @@ async def process_capture(
             )
 
         await capture_repo.update_status(capture.id, "review")
+        logger.info(
+            "capture_review_ready",
+            capture_id=capture.id,
+            user_id=capture.user_id,
+            input_type=capture.input_type,
+            candidate_count=len(extracted),
+            igdb_enabled=igdb_client is not None,
+        )
 
     except Exception as exc:
         logger.error(
             "capture_processing_failed",
             capture_id=capture.id,
+            user_id=capture.user_id,
+            input_type=capture.input_type,
             error=str(exc),
             exc_info=True,
         )

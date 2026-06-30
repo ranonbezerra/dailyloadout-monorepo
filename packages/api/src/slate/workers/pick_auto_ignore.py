@@ -12,6 +12,7 @@ from __future__ import annotations
 import structlog
 
 from slate.infrastructure.db.repositories.pick import PickRepository
+from slate.infrastructure.observability import job_context
 
 logger = structlog.get_logger()
 
@@ -21,17 +22,18 @@ async def auto_ignore_stale_picks(
     max_hours: int = 24,
 ) -> int:
     """Mark all stale picks as ignored and return the count."""
-    stale = await pick_repo.get_stale_picks(max_hours=max_hours)
+    with job_context("pick_auto_ignore", max_hours=max_hours):
+        stale = await pick_repo.get_stale_picks(max_hours=max_hours)
 
-    if not stale:
-        return 0
+        if not stale:
+            return 0
 
-    for pick in stale:
-        await pick_repo.mark_ignored(pick.id)
-        logger.info(
-            "pick_auto_ignored",
-            pick_id=pick.id,
-            user_id=pick.user_id,
-        )
+        for pick in stale:
+            await pick_repo.mark_ignored(pick.id)
+            logger.info(
+                "pick_auto_ignored",
+                pick_id=pick.id,
+                user_id=pick.user_id,
+            )
 
-    return len(stale)
+        return len(stale)

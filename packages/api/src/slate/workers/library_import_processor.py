@@ -22,6 +22,7 @@ from slate.infrastructure.db.repositories.capture import (
     CaptureRepository,
 )
 from slate.infrastructure.db.repositories.usage import UsageCounterRepository
+from slate.infrastructure.observability import job_context
 from slate.infrastructure.ocr.base import AbstractOCRClient, OcrLine
 
 logger = structlog.get_logger()
@@ -127,52 +128,60 @@ async def process_library_import(
     settings: Settings,
 ) -> Capture:
     """OCR each image, fall back when needed, match titles, create candidates."""
-    try:
-        await capture_repo.update_status(capture.id, "processing")
+    with job_context(
+        "library_import",
+        capture_id=capture.id,
+        user_id=user_id,
+        image_count=len(image_byte_blobs),
+    ):
+        try:
+            await capture_repo.update_status(capture.id, "processing")
 
-        all_lines: list[OcrLine] = []
-        for blob in image_byte_blobs:
-            result = await ocr_client.extract_lines(blob)
+            all_lines: list[OcrLine] = []
+            for blob in image_byte_blobs:
+                result = await ocr_client.extract_lines(blob)
 
-            # Escalate only low-confidence images, and only within the daily cap.
-            if (
-                result.mean_confidence < settings.ocr_confidence_threshold
-                and ocr_fallback_client is not None
-            ):
-                # Atomically claim a vision-fallback slot: increments only when
-                # the new total stays within the daily cap, so concurrent tasks
-                # for the same user can't both pass the check and overshoot.
-                claimed = await usage_repo.increment_within_cap(
-                    user_id,
-                    VISION_FALLBACK_KEY,
-                    today,
-                    amount=1,
-                    cap=settings.library_import_vision_fallbacks_per_day,
+                # Escalate only low-confidence images, and only within the daily cap.
+                if (
+                    result.mean_confidence < settings.ocr_confidence_threshold
+                    and ocr_fallback_client is not None
+                ):
+                    # Atomically claim a vision-fallback slot: increments only when
+                    # the new total stays within the daily cap, so concurrent tasks
+                    # for the same user can't both pass the check and overshoot.
+                    claimed = await usage_repo.increment_within_cap(
+                        user_id,
+                        VISION_FALLBACK_KEY,
+                        today,
+                        amount=1,
+                        cap=settings.library_import_vision_fallbacks_per_day,
+                    )
+                    if claimed is not None:
+                        logger.info("library_import_vision_fallback")
+                        result = await ocr_fallback_client.extract_lines(blob)
+
+                all_lines.extend(result.lines)
+
+            titles = _dedupe(all_lines, settings.library_import_max_candidates)
+            if not titles:
+                await capture_repo.update_status(
+                    capture.id,
+                    "review",
+                    error_message="No game titles found in the screenshots",
                 )
-                if claimed is not None:
-                    logger.info("library_import_vision_fallback", capture_id=capture.id)
-                    result = await ocr_fallback_client.extract_lines(blob)
+                return capture
 
-            all_lines.extend(result.lines)
-
-        titles = _dedupe(all_lines, settings.library_import_max_candidates)
-        if not titles:
+            matches = await _match_within_igdb_budget(catalog_matcher, titles, user_id)
+            await candidate_repo.create_bulk(capture.id, [_candidate_dict(m) for m in matches])
+            await capture_repo.update_status(capture.id, "review")
+            logger.info("library_import_processed", candidates=len(matches))
+        except Exception:
+            # Persist a generic, user-facing message. The full exception (with its
+            # traceback) is logged server-side; raw internals must never reach the
+            # client via the capture's error_message.
+            logger.error("library_import_failed", exc_info=True)
             await capture_repo.update_status(
-                capture.id, "review", error_message="No game titles found in the screenshots"
+                capture.id, "failed", error_message="Import failed. Please try again."
             )
-            return capture
-
-        matches = await _match_within_igdb_budget(catalog_matcher, titles, user_id)
-        await candidate_repo.create_bulk(capture.id, [_candidate_dict(m) for m in matches])
-        await capture_repo.update_status(capture.id, "review")
-        logger.info("library_import_processed", capture_id=capture.id, candidates=len(matches))
-    except Exception:
-        # Persist a generic, user-facing message. The full exception (with its
-        # traceback) is logged server-side; raw internals must never reach the
-        # client via the capture's error_message.
-        logger.error("library_import_failed", capture_id=capture.id, exc_info=True)
-        await capture_repo.update_status(
-            capture.id, "failed", error_message="Import failed. Please try again."
-        )
 
     return capture
