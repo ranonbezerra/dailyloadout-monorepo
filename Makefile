@@ -82,8 +82,12 @@ api-test-cov: ## Run API tests with coverage (parallel; fail under 90%)
 	cd $(API_DIR) && poetry run pytest -n auto --cov=src/slate --cov-report=term-missing --cov-fail-under=90
 
 .PHONY: api-eval
-api-eval: ## Run the LLM eval harness (dummy+offline; ARGS="--real --strict" for the live model/CI gate)
+api-eval: ## Run the LLM eval harness (dummy+offline; ARGS="--real" for the live model, "--calibrate" for judge kappa)
 	cd $(API_DIR) && poetry run python scripts/run_eval.py $(ARGS)
+
+.PHONY: api-eval-gate
+api-eval-gate: ## Real-model eval regression gate vs baseline (needs Ollama; part of `make quality`)
+	cd $(API_DIR) && poetry run python scripts/run_eval.py --real --gate
 
 .PHONY: igdb-check
 igdb-check: ## Smoke-test the live IGDB client (make igdb-check q="Hollow Knight")
@@ -321,7 +325,7 @@ pre-commit: ## Run pre-commit hooks on all files
 # ─────────────────────────────────────────────
 
 .PHONY: quality
-quality: ## Run ALL quality gates (pre-commit + api + web + mobile)
+quality: ## Run ALL quality gates (pre-commit + api + web + mobile + real LLM eval gate); run before push/PR
 	@echo "\n\033[1;35m╔══════════════════════════════════════╗\033[0m"
 	@echo "\033[1;35m║     Slate — Quality Gate      ║\033[0m"
 	@echo "\033[1;35m╚══════════════════════════════════════╝\033[0m"
@@ -330,6 +334,8 @@ quality: ## Run ALL quality gates (pre-commit + api + web + mobile)
 	@$(MAKE) quality-web
 	@$(MAKE) quality-mobile
 	$(call warn,Code duplication (jscpd ≤5%),  npx jscpd --silent)
+	@echo "\n\033[1;36m══════ LLM Eval Regression Gate (real model) ══════\033[0m"
+	@SLATE_EVAL_STRICT=1 $(MAKE) api-eval-gate
 	@echo "\033[1;32m╔══════════════════════════════════════╗\033[0m"
 	@echo "\033[1;32m║     All quality gates passed ✓       ║\033[0m"
 	@echo "\033[1;32m╚══════════════════════════════════════╝\033[0m"

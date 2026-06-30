@@ -5,6 +5,13 @@ Defaults to the deterministic ``DummyLLMClient`` + ``DummyJudge`` + ``DummyRecap
 (``LLM_PROVIDER`` / ``AGENT_PROVIDER``) with the model-graded ``LLMJudge`` and the
 real deep-recap agent.
 
+The real quality gate is ``--real --gate`` (wired into ``make quality`` as
+``make api-eval-gate``): the heavy, meaningful regression check runs **locally**
+before push/PR because the judge needs Ollama and is non-deterministic. Hosted CI
+keeps only the cheap deterministic redundancy — the dummy golden-pipeline test and
+harness unit tests in ``api-test`` — so a structural break still fails the PR
+without spending real-model CI minutes.
+
 The judge defaults to ``qwen2.5:14b-instruct`` — a different, instruction-tuned
 model at least as large as the generator, so it can't grade itself leniently. An
 A/B vs ``qwen3:8b`` picked it: the thinking model's reasoning overruns the output
@@ -112,6 +119,43 @@ def _judge_model() -> str:
     return os.getenv("JUDGE_MODEL", "qwen2.5:14b-instruct")
 
 
+def _required_models() -> set[str]:
+    """Ollama models a --real / --calibrate run must be able to load."""
+    from slate.config import settings
+
+    return {settings.ollama_fast_model, settings.ollama_smart_model, _judge_model()}
+
+
+def _available_models() -> set[str] | None:
+    """Model names Ollama can serve now, or None if the daemon can't be reached.
+
+    The models live on an external SSD; when it's disconnected Ollama's blobs
+    vanish and ``/api/tags`` stops listing them — so a 'missing' required model
+    here is really the SSD-not-connected signal, not a config error.
+    """
+    import httpx
+
+    from slate.config import settings
+
+    try:
+        resp = httpx.get(f"{settings.ollama_base_url.rstrip('/')}/api/tags", timeout=5.0)
+        resp.raise_for_status()
+        return {m.get("name", "") for m in resp.json().get("models", [])}
+    except Exception:
+        return None
+
+
+def _models_status() -> tuple[bool, str]:
+    """(ok, detail): whether the required Ollama models are loadable right now."""
+    available = _available_models()
+    if available is None:
+        return False, "Ollama is unreachable — daemon down or external model SSD not connected?"
+    missing = sorted(m for m in _required_models() if m and m not in available)
+    if missing:
+        return False, f"Ollama is missing models {missing} — external model SSD not connected?"
+    return True, ""
+
+
 async def _calibrate() -> int:
     """Grade the frozen, human-labelled set with the judge and report agreement.
 
@@ -181,6 +225,19 @@ def _promote() -> int:
 async def _main() -> int:
     if "--promote" in sys.argv:
         return _promote()
+
+    # --real / --calibrate need the Ollama models (kept on an external SSD). If
+    # they're gone, fail hard in the push gate (SLATE_EVAL_STRICT, set by
+    # `make quality`) but only warn-and-skip for a manual terminal run — a
+    # disconnected SSD must not masquerade as a quality regression.
+    if "--real" in sys.argv or "--calibrate" in sys.argv:
+        ok, detail = _models_status()
+        if not ok:
+            if os.getenv("SLATE_EVAL_STRICT"):
+                print(f"\033[31m✗ Eval gate FAILED\033[0m — {detail}")
+                return 1
+            print(f"\033[33m⚠  Eval skipped\033[0m — {detail}")
+            return 0
 
     if "--calibrate" in sys.argv:
         return await _calibrate()
