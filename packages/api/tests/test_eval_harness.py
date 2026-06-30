@@ -242,11 +242,11 @@ class TestJudge:
         score, _ = await judge.score(golden_cases()[0], "out")
         assert score == 1.0
 
-    async def test_llm_judge_survives_unparseable_output(self) -> None:
+    async def test_llm_judge_survives_unparsable_output(self) -> None:
         judge = LLMJudge(_JudgeLLM("not json at all"))
         score, reason = await judge.score(golden_cases()[0], "out")
         assert score == 0.0
-        assert "unparseable" in reason
+        assert "unparsable" in reason
 
     async def test_llm_judge_extracts_verdict_from_reasoning(self) -> None:
         # Thinking models emit reasoning (and maybe a fenced block) around the JSON;
