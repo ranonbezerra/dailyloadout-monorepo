@@ -4,6 +4,31 @@ export interface AuthTokens {
 	token_type: string;
 }
 
+/** Login result — tokens, or an MFA challenge when a second factor is required. */
+export interface LoginResponse {
+	access_token: string;
+	refresh_token: string;
+	token_type: string;
+	mfa_required: boolean;
+	mfa_token: string;
+}
+
+export interface MfaStatus {
+	enabled: boolean;
+	recovery_codes_remaining: number;
+}
+
+export interface MfaEnroll {
+	/** Base32 secret for manual entry. */
+	secret: string;
+	/** otpauth:// URI rendered as a QR code. */
+	otpauth_uri: string;
+}
+
+export interface MfaRecoveryCodes {
+	recovery_codes: string[];
+}
+
 export interface User {
 	public_id: string;
 	email: string;

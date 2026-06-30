@@ -23,8 +23,12 @@ interface LoginFormValues {
 }
 
 export function LoginPage() {
-	const { login, isAuthenticated, isLoading } = useAuthContext();
+	const { login, completeMfaLogin, isMfaLoginPending, isAuthenticated, isLoading } =
+		useAuthContext();
 	const [submitting, setSubmitting] = useState(false);
+	// Holds the short-lived challenge token once the password step reports that a
+	// second factor is required; presence of it switches the card to the code step.
+	const [mfaToken, setMfaToken] = useState<string | null>(null);
 	const [searchParams, setSearchParams] = useSearchParams();
 
 	// A failed social-login flow redirects the browser back here with an
@@ -49,6 +53,11 @@ export function LoginPage() {
 		},
 	});
 
+	const mfaForm = useForm<{ code: string }>({
+		initialValues: { code: "" },
+		validate: { code: (v) => (v.trim().length >= 6 ? null : "Enter your 6-digit code") },
+	});
+
 	if (!isLoading && isAuthenticated) {
 		return <Navigate to="/library" replace />;
 	}
@@ -56,7 +65,10 @@ export function LoginPage() {
 	const handleSubmit = async (values: LoginFormValues) => {
 		setSubmitting(true);
 		try {
-			await login(values.email, values.password);
+			const result = await login(values.email, values.password);
+			if (result?.mfaRequired) {
+				setMfaToken(result.mfaToken);
+			}
 		} catch (err) {
 			notifications.show({
 				title: "Login failed",
@@ -68,6 +80,19 @@ export function LoginPage() {
 		}
 	};
 
+	const handleMfaSubmit = async (values: { code: string }) => {
+		if (!mfaToken) return;
+		try {
+			await completeMfaLogin(mfaToken, values.code.trim());
+		} catch (err) {
+			notifications.show({
+				title: "Verification failed",
+				message: err instanceof Error ? err.message : "Invalid or expired code",
+				color: "red",
+			});
+		}
+	};
+
 	return (
 		<Center h="100vh">
 			<Card shadow="md" padding="xl" radius="md" w={420}>
@@ -75,39 +100,67 @@ export function LoginPage() {
 					Welcome back
 				</Title>
 				<Text c="dimmed" size="sm" ta="center" mb="lg">
-					Sign in to Slate
+					{mfaToken ? "Enter your two-factor code" : "Sign in to Slate"}
 				</Text>
 
-				<form onSubmit={form.onSubmit(handleSubmit)}>
-					<Stack>
-						<TextInput
-							label="Email"
-							placeholder="you@example.com"
-							required
-							{...form.getInputProps("email")}
-						/>
-						<PasswordInput
-							label="Password"
-							placeholder="Your password"
-							required
-							{...form.getInputProps("password")}
-						/>
-						<Anchor component={Link} to="/forgot-password" size="sm" ta="right">
-							Forgot password?
-						</Anchor>
-						<Button type="submit" fullWidth loading={submitting}>
-							Sign in
-						</Button>
-						<SocialLoginButtons />
-					</Stack>
-				</form>
+				{mfaToken ? (
+					<form onSubmit={mfaForm.onSubmit(handleMfaSubmit)}>
+						<Stack>
+							<TextInput
+								label="Authentication code"
+								placeholder="123456 or a recovery code"
+								autoFocus
+								required
+								{...mfaForm.getInputProps("code")}
+							/>
+							<Button type="submit" fullWidth loading={isMfaLoginPending}>
+								Verify
+							</Button>
+							<Anchor
+								component="button"
+								type="button"
+								size="sm"
+								ta="center"
+								onClick={() => setMfaToken(null)}
+							>
+								Back to sign in
+							</Anchor>
+						</Stack>
+					</form>
+				) : (
+					<>
+						<form onSubmit={form.onSubmit(handleSubmit)}>
+							<Stack>
+								<TextInput
+									label="Email"
+									placeholder="you@example.com"
+									required
+									{...form.getInputProps("email")}
+								/>
+								<PasswordInput
+									label="Password"
+									placeholder="Your password"
+									required
+									{...form.getInputProps("password")}
+								/>
+								<Anchor component={Link} to="/forgot-password" size="sm" ta="right">
+									Forgot password?
+								</Anchor>
+								<Button type="submit" fullWidth loading={submitting}>
+									Sign in
+								</Button>
+								<SocialLoginButtons />
+							</Stack>
+						</form>
 
-				<Text ta="center" mt="md" size="sm">
-					Don&apos;t have an account?{" "}
-					<Anchor component={Link} to="/register">
-						Register
-					</Anchor>
-				</Text>
+						<Text ta="center" mt="md" size="sm">
+							Don&apos;t have an account?{" "}
+							<Anchor component={Link} to="/register">
+								Register
+							</Anchor>
+						</Text>
+					</>
+				)}
 			</Card>
 		</Center>
 	);

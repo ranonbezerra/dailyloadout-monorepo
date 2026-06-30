@@ -25,12 +25,14 @@ const defaultAuth = {
 	user: null,
 	isLoading: false,
 	isAuthenticated: false,
-	login: vi.fn(),
+	login: vi.fn().mockResolvedValue({ mfaRequired: false, mfaToken: "" }),
+	completeMfaLogin: vi.fn(),
 	logout: vi.fn(),
 	register: vi.fn(),
 	loginError: null,
 	registerError: null,
 	isLoginPending: false,
+	isMfaLoginPending: false,
 	isRegisterPending: false,
 };
 
@@ -228,6 +230,65 @@ describe("LoginPage", () => {
 					color: "red",
 				}),
 			);
+		});
+	});
+
+	async function submitCredentials() {
+		fireEvent.change(screen.getByRole("textbox", { name: /email/i }), {
+			target: { value: "test@test.com" },
+		});
+		fireEvent.change(screen.getByPlaceholderText("Your password"), {
+			target: { value: "password123" },
+		});
+		const form = screen.getByRole("button", { name: /sign in/i }).closest("form");
+		if (!form) throw new Error("form not found");
+		fireEvent.submit(form);
+	}
+
+	it("switches to the MFA code step when login reports mfa_required", async () => {
+		const loginFn = vi.fn().mockResolvedValue({ mfaRequired: true, mfaToken: "ch-1" });
+		mockUseAuthContext.mockReturnValue({ ...defaultAuth, login: loginFn });
+
+		renderLoginPage();
+		await submitCredentials();
+
+		await waitFor(() => {
+			expect(screen.getByRole("button", { name: /verify/i })).toBeInTheDocument();
+		});
+		expect(screen.getByText("Enter your two-factor code")).toBeInTheDocument();
+	});
+
+	it("completes the second factor via completeMfaLogin", async () => {
+		const loginFn = vi.fn().mockResolvedValue({ mfaRequired: true, mfaToken: "ch-1" });
+		const completeMfaLogin = vi.fn().mockResolvedValueOnce(undefined);
+		mockUseAuthContext.mockReturnValue({ ...defaultAuth, login: loginFn, completeMfaLogin });
+
+		renderLoginPage();
+		await submitCredentials();
+
+		const codeInput = await screen.findByPlaceholderText("123456 or a recovery code");
+		fireEvent.change(codeInput, { target: { value: "123456" } });
+		const verifyForm = screen.getByRole("button", { name: /verify/i }).closest("form");
+		if (!verifyForm) throw new Error("verify form not found");
+		fireEvent.submit(verifyForm);
+
+		await waitFor(() => {
+			expect(completeMfaLogin).toHaveBeenCalledWith("ch-1", "123456");
+		});
+	});
+
+	it("can go back to the credentials form from the MFA step", async () => {
+		const loginFn = vi.fn().mockResolvedValue({ mfaRequired: true, mfaToken: "ch-1" });
+		mockUseAuthContext.mockReturnValue({ ...defaultAuth, login: loginFn });
+
+		renderLoginPage();
+		await submitCredentials();
+
+		const back = await screen.findByRole("button", { name: /back to sign in/i });
+		fireEvent.click(back);
+
+		await waitFor(() => {
+			expect(screen.getByRole("button", { name: /sign in/i })).toBeInTheDocument();
 		});
 	});
 });

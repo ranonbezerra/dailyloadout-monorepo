@@ -53,8 +53,8 @@ const PlaySessionsPage = lazy(() =>
 	import("./pages/PlaySessionsPage").then((m) => ({ default: m.PlaySessionsPage })),
 );
 const PlayPage = lazy(() => import("./pages/PlayPage").then((m) => ({ default: m.PlayPage })));
-const ChangePasswordPage = lazy(() =>
-	import("./pages/ChangePasswordPage").then((m) => ({ default: m.ChangePasswordPage })),
+const AccountPage = lazy(() =>
+	import("./pages/AccountPage").then((m) => ({ default: m.AccountPage })),
 );
 
 function RouteFallback() {
@@ -172,7 +172,7 @@ function AppLayout() {
 						<Route path="/history" element={<PlaySessionsPage />} />
 						<Route path="/captures" element={<CapturesPage />} />
 						<Route path="/analytics" element={<AnalyticsPage />} />
-						<Route path="/account" element={<ChangePasswordPage />} />
+						<Route path="/account" element={<AccountPage />} />
 						{/* Backward-compatible redirects from the old flat / nested routes. */}
 						<Route path="/pick" element={<Navigate to="/play/pick" replace />} />
 						<Route path="/play-sessions" element={<Navigate to="/history" replace />} />
