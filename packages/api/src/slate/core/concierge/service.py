@@ -12,8 +12,11 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from datetime import datetime
 
+import structlog
+
 from slate.config import Settings
 from slate.config import settings as default_settings
+from slate.core.safety.injection import detect_injection
 from slate.core.sanitization import sanitize_untrusted_text
 from slate.core.stats.service import StatsService
 from slate.infrastructure.agent.base import AbstractRecapAgent
@@ -107,6 +110,12 @@ _DEGRADE_NOTE = (
     "or narrow it down by platform or mood?"
 )
 
+logger = structlog.get_logger()
+
+# Returned (and logged) when a turn trips injection detection. Neutral on purpose —
+# the tool allowlist is the real backstop; this just refuses the suspicious turn.
+_INJECTION_REFUSAL = "Sorry, I can't help with that request."
+
 
 def _namespace_thread_id(user_id: int, thread_id: str) -> str:
     """Bind a client-supplied thread id to its owner.
@@ -175,6 +184,10 @@ class ConciergeService:
         with a single reroll, else degrades. ``reply_stream`` is the live path.
         """
         message = sanitize_untrusted_text(message)  # untrusted chat turn (Epic 26)
+        verdict = detect_injection(message)
+        if verdict.flagged:
+            logger.warning("concierge_injection_blocked", matches=list(verdict.matches))
+            return _INJECTION_REFUSAL
         write_tools_enabled = await dynamic_config.get_bool("concierge_write_tools_enabled")
         tools = self._build_tools(
             user_id, user_created_at, write_tools_enabled=write_tools_enabled
@@ -223,6 +236,11 @@ class ConciergeService:
         is preserved.
         """
         message = sanitize_untrusted_text(message)  # untrusted chat turn (Epic 26)
+        verdict = detect_injection(message)
+        if verdict.flagged:
+            logger.warning("concierge_injection_blocked", matches=list(verdict.matches))
+            yield {"token": _INJECTION_REFUSAL}
+            return
         write_tools_enabled = await dynamic_config.get_bool("concierge_write_tools_enabled")
         tools = self._build_tools(
             user_id, user_created_at, write_tools_enabled=write_tools_enabled
