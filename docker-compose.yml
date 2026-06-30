@@ -30,7 +30,7 @@ name: slate-monorepo
 
 services:
   postgres:
-    image: postgres:18-alpine
+    image: pgvector/pgvector:pg18  # Postgres 18 + pgvector (Epic 24); contrib exts included
     container_name: slate-postgres
     # No `ports:` here — internal-only. Reachable as `postgres:5432`.
     environment:

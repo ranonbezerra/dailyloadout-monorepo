@@ -27,6 +27,7 @@ you actually inspected, instead of re-rolling a fresh one:
     --tolerance N   allowed drop before --gate fails (default 0.05)
     --strict   exit 1 if any case fails its deterministic checks (total-failure guard)
     --calibrate     grade the frozen human-labelled set and report judge↔human kappa
+    --retrieval     A/B recall@k of recent vs semantic recap retrieval (Epic 24)
     --no-cache      force the gate even if no eval-relevant file changed since last pass
 
 The gate is content-cached: if nothing that can move a recap score changed since it
@@ -61,6 +62,7 @@ from evals.calibration import (
 )
 from evals.gate import baseline_from_report, diff_baseline
 from evals.gate_cache import is_cached_pass, record_pass
+from evals.retrieval import RetrievalReport, evaluate_retrieval
 from slate.infrastructure.agent.dummy import DummyRecapAgent
 from slate.infrastructure.llm.dummy import DummyLLMClient
 
@@ -214,6 +216,38 @@ def _print_calibration(rows: list[tuple[object, float, str]], model: str) -> Non
     print(f"quadratic-weighted kappa: {kappa:.3f}  — {interpret_kappa(kappa)}\n")
 
 
+async def _retrieval_ab() -> int:
+    """Retrieval A/B: recall@k of recent vs semantic over the buried-context cases.
+
+    Deterministic on the DummyEmbeddingClient by default (offline/CI-safe); --real
+    uses the configured embedding provider (needs the embedding model in Ollama).
+    """
+    if "--real" in sys.argv:
+        from slate.config import settings
+        from slate.infrastructure.embedding.factory import get_embedding_client
+
+        client = get_embedding_client(settings)
+    else:
+        from slate.infrastructure.embedding.dummy import DummyEmbeddingClient
+
+        client = DummyEmbeddingClient()
+    _print_retrieval(await evaluate_retrieval(client))
+    return 0
+
+
+def _print_retrieval(report: RetrievalReport) -> None:
+    print("\nRetrieval A/B  (recall@k: recent vs semantic)")
+    print("=" * 60)
+    for row in report.rows:
+        recent, semantic = float(row["recent"]), float(row["semantic"])
+        mark = "win" if semantic > recent else ("--" if semantic == recent else "REGRESS")
+        print(f"  {row['id']!s:<22} recent={recent:.2f}  semantic={semantic:.2f}  {mark}")
+    print("-" * 60)
+    print(f"  mean recent   recall = {report.recent_recall:.3f}")
+    print(f"  mean semantic recall = {report.semantic_recall:.3f}")
+    print(f"  delta (semantic - recent) = {report.delta:+.3f}\n")
+
+
 def _rel(path: Path) -> str:
     return str(path.relative_to(path.parents[2]))
 
@@ -267,6 +301,9 @@ def _gate(report: EvalReport) -> int:
 async def _main() -> int:
     if "--promote" in sys.argv:
         return _promote()
+
+    if "--retrieval" in sys.argv:
+        return await _retrieval_ab()
 
     # Cache: skip the slow real gate when nothing that can change a recap score has
     # changed since it last passed. A push touching only web/auth/docs can't regress

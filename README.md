@@ -134,10 +134,11 @@ Detailed architecture in [ARCHITECTURE.md](./ARCHITECTURE.md).
 - [x] **LLM evaluation harness** — a golden dataset with deterministic checks (grounding / spoiler-safety / mentions / JSON-validity) and a **model-agnostic LLM-as-judge calibrated against human labels** (quadratic-weighted kappa ≈ 0.83). Gates prompt/model changes via `make quality` against a committed score baseline.
 - [x] **LLM observability / tracing** — a span per LLM call and per LangGraph node (tokens / latency / cost / cache-hit) with redacted prompt+completion capture for offline debugging.
 - [x] **Structured operational logging** — JSON structured logs with request/trace correlation across the API and worker.
+- [x] **RAG over PlaySession history** — embed each wrap-up (Ollama + pgvector) and ground the recap on the *semantically* most relevant prior sessions, scoped per `(user, game)`, behind a `recap_retrieval` flag. A recall@k A/B shows semantic surfaces buried-but-relevant context the chronological last-N misses.
 
 ### In Design / Next
 
-- [ ] **LLM Platform Hardening** (Epics 24–28) — eval harness + tracing **shipped** (Epic 23); next: RAG over play-session history (pgvector), research reranking, prompt-injection guardrails, semantic cache, and resumable batch re-inference.
+- [ ] **LLM Platform Hardening** (Epics 25–28) — eval harness + tracing + RAG over play-session history **shipped** (Epics 23–24); next: research reranking, prompt-injection guardrails, semantic cache, and resumable batch re-inference.
 - [ ] **Cloud LLM adapters** — Bedrock/Vertex behind the existing LLM port for a hosted distribution; Ollama stays the local default.
 - [ ] **Apple Sign In + native iOS/Android apps** — with on-device LLMs for the fast path, backend fallback for the heavy work.
 

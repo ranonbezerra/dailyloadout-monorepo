@@ -20,6 +20,11 @@ class PlaySessionRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
+    @property
+    def session(self) -> AsyncSession:
+        """The underlying session, so sibling repos can share this unit of work."""
+        return self._session
+
     async def create(
         self,
         user_id: int,

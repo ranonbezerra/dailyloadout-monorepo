@@ -42,12 +42,15 @@ class Settings(BaseSettings):
     ollama_smart_model: str = "gemma3:12b"
     ollama_vision_model: str = "qwen3-vl:4b"
     llm_timeout_seconds: int = 60
-    # Background-preload Ollama models on startup. Empty = off (LLM_PROVIDER=ollama).
-    ollama_warmup_models: list[str] = []
-    # How long warmed models stay resident after idle ('-1' pins them forever).
-    ollama_warmup_keep_alive: str = "30m"
-    # Per-process cap on concurrent host-Ollama calls (avoids GPU thrash).
-    ollama_max_concurrency: int = 2
+    ollama_warmup_models: list[str] = []  # background-preload on startup; empty = off
+    ollama_warmup_keep_alive: str = "30m"  # how long warmed models stay resident ('-1' = pinned)
+    ollama_max_concurrency: int = 2  # cap concurrent host-Ollama calls (avoids GPU thrash)
+
+    # ── Embeddings / RAG over PlaySession history (Epic 24) ───────────────
+    embedding_provider: str = "dummy"  # ollama | dummy
+    ollama_embedding_model: str = "nomic-embed-text"
+    embedding_dimensions: int = 768  # must match the model; a change = migration + re-embed
+    recap_retrieval: str = "recent"  # recent | semantic — the A/B grounding source
 
     # ── Agent / Deep Research Recap (Epic 10) ─────────────────────────
     agent_provider: str = "dummy"  # langgraph | dummy
@@ -56,10 +59,9 @@ class Settings(BaseSettings):
     deep_recap_deadline_seconds: int = 60
     deep_recap_max_refines: int = 2
     deep_recap_max_results: int = 6
-    # Scrape the top-N result URLs into full text for grounding (0 = snippets only).
-    deep_recap_scrape_top_n: int = 2
-    # Overlap floor for the DEEP recap (more tolerant than quick's 0.40 — it
-    # grounds on research text the verbatim token match can't fully cover).
+    deep_recap_scrape_top_n: int = 2  # scrape top-N result URLs into full text (0 = snippets only)
+    # Overlap floor for the DEEP recap — more tolerant than quick's 0.40 (grounds on
+    # research text the verbatim token match can't fully cover).
     deep_recap_overlap_threshold: float = 0.25
 
     # ── Backlog Concierge (Epic 11) ──────────────────────────────────────
@@ -68,10 +70,8 @@ class Settings(BaseSettings):
     ollama_agent_model: str = "qwen2.5:7b-instruct"
     concierge_agent_reasoning: bool = False
     concierge_max_tool_loops: int = 6
-    # Checkpoint store (Epic 16): 'postgres' survives restarts, else 'memory'.
-    concierge_checkpointer: str = "postgres"
-    # Write tools (start_play_session/set_status/…) so it drives the pipeline (Epic 12).
-    concierge_write_tools_enabled: bool = True
+    concierge_checkpointer: str = "postgres"  # postgres survives restarts, else memory (Epic 16)
+    concierge_write_tools_enabled: bool = True  # write tools drive the pipeline (Epic 12)
 
     # ── STT ──────────────────────────────────────────────────────────────
     stt_provider: str = "dummy"

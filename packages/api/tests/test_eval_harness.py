@@ -23,8 +23,10 @@ from evals.calibration import (
 from evals.checks import run_checks
 from evals.gate import baseline_from_report, diff_baseline
 from evals.gate_cache import fingerprint, is_cached_pass, record_pass
+from evals.retrieval import evaluate_retrieval, retrieval_cases
 from evals.schema import CaseResult, CheckResult, EvalReport
 from slate.infrastructure.agent.dummy import DummyRecapAgent
+from slate.infrastructure.embedding import DummyEmbeddingClient
 from slate.infrastructure.llm.dummy import DummyLLMClient
 
 
@@ -510,3 +512,33 @@ class TestGateCache:
         # A change to a relevant file invalidates the cached pass.
         (tmp_path / "src/slate/config.py").write_text("ollama_smart_model = 'gemma3:27b'")
         assert not is_cached_pass(tmp_path, cache)
+
+
+# =====================================================================
+# Retrieval A/B (semantic vs recent recall@k — Epic 24)
+# =====================================================================
+
+
+class TestRetrievalEval:
+    async def test_semantic_beats_recent_on_buried_context(self) -> None:
+        report = await evaluate_retrieval(DummyEmbeddingClient(dimensions=256))
+        assert report.semantic_recall > report.recent_recall
+        assert report.delta > 0.0
+        assert 0.0 <= report.recent_recall <= 1.0
+        assert 0.0 <= report.semantic_recall <= 1.0
+
+    async def test_control_case_semantic_does_not_regress(self) -> None:
+        # When the relevant context is already recent, semantic must not lose recall.
+        report = await evaluate_retrieval(DummyEmbeddingClient(dimensions=256))
+        control = next(r for r in report.rows if r["id"] == "recency_sufficient")
+        assert float(control["semantic"]) >= float(control["recent"])
+
+    def test_cases_have_buried_relevant_sessions(self) -> None:
+        # Each non-control case's gold must sit OUTSIDE the chronological top_k,
+        # or the A/B would prove nothing.
+        for case in retrieval_cases():
+            if case.id == "recency_sufficient":
+                continue
+            recent_by_age = sorted(range(len(case.pool)), key=lambda i: case.pool[i][1])
+            recent_top_k = set(recent_by_age[: case.top_k])
+            assert case.gold - recent_top_k, f"{case.id}: gold is not buried"

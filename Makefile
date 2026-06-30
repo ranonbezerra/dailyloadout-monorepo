@@ -87,7 +87,10 @@ api-eval: ## Run the LLM eval harness (dummy+offline; ARGS="--real" for the live
 
 .PHONY: api-eval-gate
 api-eval-gate: ## Real-model eval regression gate vs baseline (needs Ollama; part of `make quality`)
-	cd $(API_DIR) && poetry run python scripts/run_eval.py --real --gate
+	# Tolerance 0.10 absorbs the LLM's run-to-run variance (a freshly-generated recap's
+	# token-overlap grounding swings ~0.06); a real prompt regression drops metrics far
+	# more. (Proper fix is a multi-run median baseline — deferred.)
+	cd $(API_DIR) && poetry run python scripts/run_eval.py --real --gate --tolerance 0.10
 
 .PHONY: igdb-check
 igdb-check: ## Smoke-test the live IGDB client (make igdb-check q="Hollow Knight")

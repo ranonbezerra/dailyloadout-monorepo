@@ -78,7 +78,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:18-alpine
+        image: pgvector/pgvector:pg18  # Postgres 18 + pgvector (Epic 24); contrib exts included
         env:
           POSTGRES_USER: slate
           POSTGRES_PASSWORD: slate
@@ -120,7 +120,7 @@ jobs:
           import asyncio, asyncpg
           async def main():
               c = await asyncpg.connect("postgresql://slate:slate@localhost:5433/slate_test")
-              for ext in ("citext", "pg_trgm", "pgcrypto"):
+              for ext in ("citext", "pg_trgm", "pgcrypto", "vector"):
                   await c.execute(f"CREATE EXTENSION IF NOT EXISTS {ext}")
               await c.close()
           asyncio.run(main())
