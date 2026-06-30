@@ -1395,6 +1395,44 @@ It's an operational capability (batch reprocessing at scale) that only becomes m
 
 ---
 
+## Epic 29 — Corrective / Adaptive RAG: relevance-gated recap routing (v1.1+)
+
+**Goal:** make the recap **adaptive** — after retrieving the player's own session history (Epic 24), evaluate whether that local context is actually sufficient to ground a faithful recap, and route accordingly: stay on the cheap local path when it is, escalate to the deep web-research path (Epic 10) when it isn't, or combine both when it's borderline. The CRAG (Corrective RAG) pattern, mapped onto Slate's two existing recap modes.
+
+**Status:** not started. Depends on Epic 24 (local RAG retrieval), Epic 23 (the eval that must *prove* the corrective loop helps), and the entitlement gate below.
+
+### Context
+
+CRAG (Yan et al., 2401.15884) adds a **retrieval evaluator** + **action trigger** (correct / incorrect / ambiguous) to plain RAG: grade the retrieved knowledge, then refine it, fall back to web search, or blend the two. **Slate already has most of this machinery** — in the deep-recap graph (Epic 10): `grade_results` is the retrieval evaluator, `refine` is query rewriting, `search` is the web fallback, and `anti_hallucination` is the terminal correctness gate. What's missing is the **action trigger**: today the quick (local RAG) vs deep (web) choice is a **manual** `mode` flag. CRAG makes it an **automatic, quality-driven router**.
+
+The corrective signal is cheap to source: reuse the existing token-overlap grounding score (Epic 6) and/or a small LLM relevance grade over the retrieved sessions to decide correct/incorrect/ambiguous.
+
+### Tasks
+
+- [ ] A **relevance evaluator** over the Epic 24 retrieved sessions: score how well the player's own history covers the "where did I leave off" question (reuse grounding/anti-hallucination, or a small LLM grader).
+- [ ] An **action router**: `correct` → quick recap grounded on local history; `incorrect` → deep web-research recap (Epic 10); `ambiguous` → combine local context + web research.
+- [ ] **Entitlement-aware routing** (hard constraint): a free-tier user is **never** silently escalated to the paid deep path. Their `incorrect`/`ambiguous` case stays quick (or surfaces an upgrade nudge). Requires a tier/entitlement gate on deep recap (its own concern — see note).
+- [ ] Keep the bounded deep-recap deadline + quick fallback unchanged; the router only *chooses* the path, it doesn't loosen the guards.
+- [ ] **Measure with the Epic 23 eval**: prove the adaptive router beats both always-quick and always-deep on faithfulness/grounding (and at what latency/cost). Make the router a flag for the A/B.
+
+### Definition of Done
+
+- The recap path is chosen **automatically** by retrieval relevance, not a manual flag — and the Epic 23 eval shows a faithfulness/grounding gain over always-quick and a cost/latency win over always-deep.
+- A free-tier user is provably never auto-routed to the paid deep path (entitlement test).
+- The existing spoiler + anti-hallucination + deadline guards are untouched.
+
+### Technical highlight
+
+> **CRAG, but the corrective machinery already shipped.** Slate's deep-recap graph is already grade → refine → web-search → anti-hallucinate; this epic adds only the missing *action trigger* — a relevance evaluator that routes between the cheap local-RAG recap and the expensive web-research recap, blending when borderline. The router is entitlement-aware (deep is a paid path) and its win is *proven by the eval*, not asserted.
+
+### Why this is a separate epic
+
+It's an orchestration layer *over* Epics 10/24/25, gated by a product/monetization boundary (deep = paid). It only makes sense once local RAG exists (Epic 24) and the eval can measure whether the corrective loop earns its complexity (Epic 23).
+
+> **Note — prerequisite (Tiers & Entitlements):** "deep = paying user" needs a `user.tier` + an entitlement gate on the deep-recap entry point (reusing the per-user cost-metering from Epic 14). That's a distinct monetization concern, not RAG work; it's the hard dependency the router's entitlement-awareness rests on. Capture it as its own epic when monetization is on the table.
+
+---
+
 ## Descope guide if time runs short
 
 If at some point you feel you're pushing, these are the epics to defer to **v1.1** without destroying the vitrine:
