@@ -49,6 +49,18 @@ class Settings(BaseSettings):
     # Per-process cap on concurrent host-Ollama calls (avoids GPU thrash).
     ollama_max_concurrency: int = 2
 
+    # ── Embeddings / RAG over PlaySession history (Epic 24) ───────────────
+    embedding_provider: str = "dummy"  # ollama | dummy
+    ollama_embedding_model: str = "nomic-embed-text"
+    # Vector width of the stored embedding column. MUST match the embedding model
+    # (nomic-embed-text = 768); changing the model means a migration + re-embed.
+    embedding_dimensions: int = 768
+    # Recap grounding source — the A/B switch. 'recent' keeps the last-N-by-SQL
+    # context (Epic 6); 'semantic' retrieves the most relevant prior sessions by
+    # cosine similarity over their wrap-up embeddings.
+    recap_retrieval: str = "recent"  # recent | semantic
+    recap_retrieval_top_k: int = 3
+
     # ── Agent / Deep Research Recap (Epic 10) ─────────────────────────
     agent_provider: str = "dummy"  # langgraph | dummy
     research_provider: str = "dummy"  # searxng | dummy
