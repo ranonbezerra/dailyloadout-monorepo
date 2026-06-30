@@ -81,6 +81,10 @@ api-test: ## Run API tests (parallel; ARGS="-n0" to force serial for debugging)
 api-test-cov: ## Run API tests with coverage (parallel; fail under 90%)
 	cd $(API_DIR) && poetry run pytest -n auto --cov=src/slate --cov-report=term-missing --cov-fail-under=90
 
+.PHONY: api-eval
+api-eval: ## Run the LLM eval harness (dummy+offline; ARGS="--real --strict" for the live model/CI gate)
+	cd $(API_DIR) && poetry run python scripts/run_eval.py $(ARGS)
+
 .PHONY: igdb-check
 igdb-check: ## Smoke-test the live IGDB client (make igdb-check q="Hollow Knight")
 	cd $(API_DIR) && poetry run python scripts/check_igdb.py "$(or $(q),Hollow Knight)"
