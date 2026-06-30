@@ -221,6 +221,19 @@ class PlaySessionRepository:
             play_session.extracted_state = dict(extracted_state)
             await self._session.flush()
 
+    async def set_embedding(
+        self,
+        play_session_id: int,
+        embedding: list[float],
+        model: str,
+    ) -> None:
+        """Store the wrap-up embedding and the model that produced it (Epic 24)."""
+        play_session = await self._session.get(PlaySession, play_session_id)
+        if play_session is not None:
+            play_session.embedding = embedding
+            play_session.embedding_model = model
+            await self._session.flush()
+
     async def end_play_session(
         self,
         play_session_id: int,

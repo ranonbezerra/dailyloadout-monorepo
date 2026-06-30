@@ -23,9 +23,11 @@ async def extract_wrap_up_state_task(
     will handle it when the next play_session starts.
     """
     from slate.config import settings as app_settings
+    from slate.core.play_session.embedding import embed_session
     from slate.infrastructure.db.repositories.library import LibraryRepository
     from slate.infrastructure.db.repositories.play_session import PlaySessionRepository
     from slate.infrastructure.db.session import async_session_factory
+    from slate.infrastructure.embedding.factory import get_embedding_client
     from slate.infrastructure.llm.factory import get_llm_client
 
     with job_context("wrap_up_extraction", play_session_id=play_session_id):
@@ -48,6 +50,16 @@ async def extract_wrap_up_state_task(
                 "current_quest": extracted.current_quest,
             }
             await play_session_repo.set_extracted_state(play_session_id, state_dict)
+
+            # Embed the wrap-up + extracted state for semantic recap retrieval
+            # (Epic 24). Best-effort: a failure here never fails the extraction.
+            await embed_session(
+                get_embedding_client(app_settings),
+                play_session_repo,
+                play_session_id,
+                wrap_up_text,
+                state_dict,
+            )
 
             # Update the denormalised next action on the library entry.
             if extracted.next_action:

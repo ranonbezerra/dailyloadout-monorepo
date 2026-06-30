@@ -11,11 +11,13 @@ import structlog
 from slate.config import Settings
 from slate.config import settings as _settings
 from slate.core.play_session.anti_hallucination import validate_recap
+from slate.core.play_session.embedding import embed_session
 from slate.infrastructure.agent.base import AbstractRecapAgent, DeepRecapRequest
 from slate.infrastructure.agent.graph.state import PlaySessionContext
 from slate.infrastructure.db.models import LibraryEntry, PlaySession
 from slate.infrastructure.db.repositories.library import LibraryRepository
 from slate.infrastructure.db.repositories.play_session import PlaySessionRepository
+from slate.infrastructure.embedding.factory import get_embedding_client
 from slate.infrastructure.llm.base import AbstractLLMClient
 from slate.infrastructure.research.base import ResearchUnavailableError
 
@@ -134,6 +136,7 @@ async def ensure_extractions_complete(
     available.
     """
     pending = await play_session_repo.get_pending_extractions(library_entry_id)
+    embedding_client = get_embedding_client(_settings)
     for play_session in pending:
         logger.info(
             "wrap_up_extraction_sync_fallback",
@@ -151,6 +154,15 @@ async def ensure_extractions_complete(
                 "current_quest": extracted.current_quest,
             }
             await play_session_repo.set_extracted_state(play_session.id, state_dict)
+            # Embed here too, so a worker-failed session is still semantically
+            # indexed before its recap (Epic 24). Best-effort.
+            await embed_session(
+                embedding_client,
+                play_session_repo,
+                play_session.id,
+                play_session.wrap_up_text,
+                state_dict,
+            )
             if extracted.next_action:
                 await library_repo.update(
                     play_session.library_entry, play_session_next_action=extracted.next_action
