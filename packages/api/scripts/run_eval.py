@@ -8,7 +8,7 @@ real deep-recap agent.
 The judge defaults to ``qwen2.5:14b-instruct`` — a different, instruction-tuned
 model at least as large as the generator, so it can't grade itself leniently. An
 A/B vs ``qwen3:8b`` picked it: the thinking model's reasoning overruns the output
-budget before it emits the verdict JSON (empty, unparseable scores), while the
+budget before it emits the verdict JSON (empty, unparsable scores), while the
 instruct model returns a calibrated 0.5-1.0 range. Override with ``JUDGE_MODEL``.
 
 Every run writes its scores to results/latest.json. Use that to commit the run
