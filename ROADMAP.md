@@ -1176,7 +1176,7 @@ A focused track that turns the LLM layer from "it runs" into "it's measured, gro
 
 **Goal:** make LLM output **quality measurable** and the agent **debuggable**. A golden-dataset eval harness with LLM-as-judge (faithfulness, spoiler-safety, structured-output validity) that **gates prompt/model changes in CI**, plus per-call and per-graph-node **tracing** (tokens / latency / cost / cache-hit, redacted prompt+completion capture). This is the substrate every later LLM epic builds on.
 
-**Status:** in progress — this epic is the current track's first deliverable.
+**Status:** done — shipped on `feat/llm-eval-observability` (golden set, deterministic checks, calibrated LLM-as-judge, local quality gate, per-call + per-node tracing).
 
 ### Context
 
@@ -1186,24 +1186,26 @@ The two halves are one epic because they're symbiotic: **traces are the data the
 
 ### Tasks
 
-- [ ] **Golden dataset** — versioned fixtures (`tests/eval/` or `evals/`) of `(input → reference/expected)` cases for the quality-sensitive tasks: quick & deep recap, capture-parse, pick selection, wrap-up extraction. Curated, small, reviewed.
-- [ ] **Judge module** — deterministic checks first (JSON-schema validity, UUID-existence, token-overlap), then **LLM-as-judge** via the existing `AbstractLLMClient` with a per-task rubric (faithfulness/groundedness, spoiler-safety, helpfulness). A `DummyJudge` for CI.
-- [ ] **Eval runner** — `make api-eval`: runs the golden set, scores per task, writes a report, and diffs against a committed score **baseline**.
-- [ ] **CI gate** — a job that runs the eval when prompts/models change and **fails on a regression beyond a threshold** (and is informational elsewhere). `dummy` judge/model in CI; no real model calls.
-- [ ] **Tracing** — a span per LLM call (model, role, tokens in/out, latency, `$` from the Epic 14 metering, cache-hit from Epic 18) and per **LangGraph node** (`grade`/`refine`/`synthesize`/`spoiler_filter`/…), via the existing OTel endpoint or a minimal local trace sink.
-- [ ] **Structured capture** — redacted prompt+completion persisted per call for offline inspection (PII-aware; opt-in verbosity), keyed so a trace links to its eval verdict.
-- [ ] **Tests** — judge determinism, runner scoring, a seeded regression that the CI gate catches; all on dummies.
+- [x] **Golden dataset** — versioned fixtures in `packages/api/evals/golden.py` of `(input → reference/expected)` cases for the quality-sensitive tasks (quick recap + deep recap; 14 curated cases). Small, reviewed, English-only.
+- [x] **Judge module** — deterministic checks first (JSON-schema validity, UUID-existence, word-boundary token-overlap grounding, spoiler/mentions), then **LLM-as-judge** via the existing `AbstractLLMClient` with a per-task rubric (faithfulness/groundedness, spoiler-safety). Runs **free-text** (model-agnostic verdict extraction) so any judge model works; `DummyJudge` for CI.
+- [x] **Judge calibration** — a frozen, human-labelled set (`evals/calibration.py`) + `--calibrate` reporting **Cohen's quadratic-weighted kappa** vs the human gold labels, so the judge's verdicts are *proven* trustworthy, not assumed (κ≈0.83, almost perfect, with `qwen2.5:14b-instruct`).
+- [x] **Eval runner** — `make api-eval`: runs the golden set, scores per task, writes a report, persists each run (`latest.json`), and diffs against a committed score **baseline** (`--gate`/`--promote`/`--strict`/`--tolerance`).
+- [x] **Quality gate (local)** — `make api-eval ARGS="--real --gate"` re-runs the golden set with the live model + judge and **fails on a per-task regression past the tolerance** vs the committed baseline. The judge needs Ollama and is non-deterministic, so this is a **pre-merge/nightly local** step, *not* a hosted-CI job. Hosted CI guards the harness **structurally** instead (the dummy golden-pipeline test + harness unit tests in `api-test`); no real-model calls in CI.
+- [x] **Tracing** — a span per LLM call (model, role, tokens in/out, latency) and per **LangGraph node** (`build_query`/`search`/`grade`/`refine`/`synthesize`/`anti_hallucination`), via the existing OTel endpoint or a local trace sink.
+- [x] **Structured capture** — redacted prompt+completion persisted per call for offline inspection (PII-aware; opt-in verbosity).
+- [x] **Tests** — judge determinism + free-text extraction, kappa math, runner scoring, baseline-gate regression detection; all on dummies (45 tests).
 
 ### Definition of Done
 
-- A prompt change runs the eval in CI and surfaces a **per-task score delta** vs the baseline; a regression past threshold **fails the build**.
+- A prompt/model change is gated **before push/PR** by `make quality`, which runs `make api-eval-gate` (`--real --gate`): it surfaces a **per-task score delta** vs the committed baseline and **fails on a regression past the tolerance**. This is local because the judge needs Ollama and is non-deterministic — the heavy, meaningful gate runs on local compute, not paid CI minutes.
+- **Hosted CI (GitHub Actions) is the cheap redundancy**: the dummy golden-pipeline test + harness unit tests run in `api-test` (deterministic, no model, no flakiness), so a structural break still fails the PR without any real-model cost.
+- The judge is **calibrated against human labels** via quadratic-weighted kappa (`--calibrate`), so its verdicts are proven trustworthy, not assumed (κ≈0.83, almost perfect).
 - Every LLM call **and** every LangGraph node emits a span with tokens / latency / cost / cache-hit.
-- Prompt+completion are captured (redacted) for offline debugging and linked to eval verdicts.
-- Eval + tracing run on the dummy LLM in CI (no real model, no flakiness).
+- Prompt+completion are captured (redacted) for offline debugging.
 
 ### Technical highlight
 
-> **"How do you know a prompt change didn't regress quality?" — with a number, in CI.** A golden-set eval with deterministic checks first (schema / overlap / UUID, free) and an LLM-as-judge rubric only for what determinism can't score, gating merges on a regression threshold — fed by per-node traces that make a failure debuggable. The evaluator and the observability that explains its verdicts ship together.
+> **"How do you know a prompt change didn't regress quality?" — with a number, before every push.** A golden-set eval with deterministic checks first (schema / overlap / UUID, free) and a calibrated LLM-as-judge rubric (kappa-validated against human labels) only for what determinism can't score, gating `make quality` on a regression threshold — fed by per-node traces that make a failure debuggable. The judge runs free-text so it's model-agnostic; the real gate runs on local compute (Ollama) while hosted CI keeps a cheap deterministic redundancy. The evaluator and the observability that explains its verdicts ship together.
 
 ### Why this is a separate epic
 
