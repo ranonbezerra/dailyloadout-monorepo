@@ -19,6 +19,7 @@ you actually inspected, instead of re-rolling a fresh one:
     --gate     re-run and FAIL (exit 1) if any metric dropped vs the baseline
     --tolerance N   allowed drop before --gate fails (default 0.05)
     --strict   exit 1 if any case fails its deterministic checks (total-failure guard)
+    --calibrate     grade the frozen human-labelled set and report judge↔human kappa
 
 Usage:
     poetry run python scripts/run_eval.py --real            # run + inspect
@@ -38,6 +39,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from evals import DummyJudge, EvalReport, LLMJudge, golden_cases, run_eval
+from evals.calibration import (
+    BUCKET_NAMES,
+    N_CLASSES,
+    bucket,
+    calibration_cases,
+    interpret_kappa,
+    quadratic_weighted_kappa,
+)
 from evals.gate import baseline_from_report, diff_baseline
 from slate.infrastructure.agent.dummy import DummyRecapAgent
 from slate.infrastructure.llm.dummy import DummyLLMClient
@@ -92,11 +101,67 @@ async def _run() -> EvalReport:
         # the judge can't favour its own output. Defaults to the A/B-winning instruct
         # model (qwen2.5:14b-instruct); JUDGE_MODEL overrides. Instruct > thinking
         # here: a thinking judge truncates its verdict before emitting the score.
-        judge_model = os.getenv("JUDGE_MODEL", "qwen2.5:14b-instruct")
-        judge_llm = get_llm_client(settings.model_copy(update={"ollama_smart_model": judge_model}))
-        return await run_eval(llm, golden_cases(), LLMJudge(judge_llm), agent)
+        judge_settings = settings.model_copy(update={"ollama_smart_model": _judge_model()})
+        return await run_eval(llm, golden_cases(), LLMJudge(get_llm_client(judge_settings)), agent)
 
     return await run_eval(DummyLLMClient(), golden_cases(), DummyJudge(), DummyRecapAgent())
+
+
+def _judge_model() -> str:
+    """The judge model: JUDGE_MODEL if set, else the A/B-winning instruct default."""
+    return os.getenv("JUDGE_MODEL", "qwen2.5:14b-instruct")
+
+
+async def _calibrate() -> int:
+    """Grade the frozen, human-labelled set with the judge and report agreement.
+
+    Calibration always needs a real judge (a dummy verdict has nothing to agree
+    with), so this ignores --real and builds the LLM judge directly.
+    """
+    from slate.config import settings
+    from slate.infrastructure.llm.factory import get_llm_client
+
+    model = _judge_model()
+    judge_settings = settings.model_copy(update={"ollama_smart_model": model})
+    judge = LLMJudge(get_llm_client(judge_settings))
+    rows = []
+    for case in calibration_cases():
+        score, reason = await judge.score(case.to_eval_case(), case.output)
+        rows.append((case, score, reason))
+    _print_calibration(rows, model)
+    return 0
+
+
+def _print_calibration(rows: list[tuple[object, float, str]], model: str) -> None:
+    human_b = [bucket(c.human_score) for c, _, _ in rows]  # type: ignore[attr-defined]
+    judge_b = [bucket(s) for _, s, _ in rows]
+    kappa = quadratic_weighted_kappa(human_b, judge_b, N_CLASSES)
+    exact = sum(1 for h, j in zip(human_b, judge_b, strict=True) if h == j)
+
+    print(f"\nJudge calibration  (judge model: {model})")
+    print("=" * 72)
+    print(f"{'case':<28}{'human':>13}{'judge':>13}  agree")
+    print("-" * 72)
+    for (case, score, reason), h, j in zip(rows, human_b, judge_b, strict=True):
+        mark = "ok" if h == j else ("~" if abs(h - j) == 1 else "XX")
+        human = f"{case.human_score:.2f} {BUCKET_NAMES[h]}"  # type: ignore[attr-defined]
+        judge = f"{score:.2f} {BUCKET_NAMES[j]}"
+        print(f"{case.id:<28}{human:>13}{judge:>13}  {mark}")  # type: ignore[attr-defined]
+        if h != j:
+            print(f"        ↳ judge: {reason}")
+    print("-" * 72)
+    # Confusion matrix: rows = human bucket, cols = judge bucket.
+    matrix = [[0] * N_CLASSES for _ in range(N_CLASSES)]
+    for h, j in zip(human_b, judge_b, strict=True):
+        matrix[h][j] += 1
+    print("confusion (row=human, col=judge):  " + "  ".join(f"{n:>4}" for n in BUCKET_NAMES))
+    for i, name in enumerate(BUCKET_NAMES):
+        cells = "  ".join(f"{matrix[i][k]:>4}" for k in range(N_CLASSES))
+        print(f"  {name:<6}                          {cells}")
+    print("-" * 72)
+    n = len(rows)
+    print(f"exact-bucket agreement: {exact}/{n} ({exact / n:.0%})")
+    print(f"quadratic-weighted kappa: {kappa:.3f}  — {interpret_kappa(kappa)}\n")
 
 
 def _rel(path: Path) -> str:
@@ -116,6 +181,9 @@ def _promote() -> int:
 async def _main() -> int:
     if "--promote" in sys.argv:
         return _promote()
+
+    if "--calibrate" in sys.argv:
+        return await _calibrate()
 
     report = await _run()
     _print_report(report)

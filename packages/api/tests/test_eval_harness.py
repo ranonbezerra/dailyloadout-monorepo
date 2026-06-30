@@ -12,6 +12,12 @@ from evals import (
     produce_output,
     run_eval,
 )
+from evals.calibration import (
+    bucket,
+    calibration_cases,
+    interpret_kappa,
+    quadratic_weighted_kappa,
+)
 from evals.checks import run_checks
 from evals.gate import baseline_from_report, diff_baseline
 from evals.schema import CaseResult, CheckResult, EvalReport
@@ -393,3 +399,62 @@ class TestGate:
         # overall regresses, but the new check:grounding key is ignored.
         regressions = diff_baseline(current, baseline, 0.05)
         assert all("check:" not in r for r in regressions)
+
+
+# =====================================================================
+# Judge calibration (kappa vs human labels)
+# =====================================================================
+
+
+class TestCalibration:
+    def test_bucket_edges(self) -> None:
+        assert bucket(0.0) == 0
+        assert bucket(0.39) == 0
+        assert bucket(0.40) == 1  # ok floor is inclusive
+        assert bucket(0.74) == 1
+        assert bucket(0.75) == 2  # good floor is inclusive
+        assert bucket(1.0) == 2
+
+    def test_calibration_set_is_well_formed(self) -> None:
+        cases = calibration_cases()
+        assert len(cases) == 14
+        assert len({c.id for c in cases}) == 14  # unique ids
+        assert all(0.0 <= c.human_score <= 1.0 for c in cases)
+        # The set must span all three buckets, or the kappa has nothing to separate.
+        assert {bucket(c.human_score) for c in cases} == {0, 1, 2}
+
+    def test_to_eval_case_carries_context_and_behavior(self) -> None:
+        case = calibration_cases()[0]
+        ec = case.to_eval_case()
+        assert ec.reference["context"] == case.context
+        assert ec.reference["behavior"] == case.behavior
+
+    def test_kappa_perfect_agreement_is_one(self) -> None:
+        labels = [0, 1, 2, 0, 1, 2]
+        assert quadratic_weighted_kappa(labels, labels, 3) == pytest.approx(1.0)
+
+    def test_kappa_systematic_disagreement_is_zero(self) -> None:
+        # Human all 'poor', judge all 'good' → no better than chance once the
+        # marginals are accounted for.
+        assert quadratic_weighted_kappa([0, 0, 0], [2, 2, 2], 3) == pytest.approx(0.0)
+
+    def test_kappa_constant_equal_raters_is_one(self) -> None:
+        # No expected disagreement (both raters constant + equal) → 1.0 by convention.
+        assert quadratic_weighted_kappa([1, 1, 1], [1, 1, 1], 3) == pytest.approx(1.0)
+
+    def test_kappa_adjacent_miss_beats_two_bucket_miss(self) -> None:
+        # Quadratic weighting: an off-by-one disagreement scores higher than off-by-two.
+        adjacent = quadratic_weighted_kappa([0, 1, 2, 0], [0, 1, 2, 1], 3)
+        far = quadratic_weighted_kappa([0, 1, 2, 0], [0, 1, 2, 2], 3)
+        assert adjacent > far
+
+    def test_kappa_rejects_empty_or_mismatched(self) -> None:
+        with pytest.raises(ValueError):
+            quadratic_weighted_kappa([], [], 3)
+        with pytest.raises(ValueError):
+            quadratic_weighted_kappa([0, 1], [0], 3)
+
+    def test_interpret_kappa_bands(self) -> None:
+        assert "almost perfect" in interpret_kappa(0.9)
+        assert "substantial" in interpret_kappa(0.7)
+        assert interpret_kappa(-0.1).startswith("poor")
