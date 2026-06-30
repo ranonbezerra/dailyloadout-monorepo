@@ -79,6 +79,13 @@ def _recap_case(
         inputs["current_quest"] = latest.get("current_quest")
         inputs["level"] = latest.get("level")
 
+    # Quick recaps must ground on the notes; deep recaps ground on web research,
+    # so grounding-vs-notes is the wrong baseline for them (their in-graph
+    # anti_hallucination node already guards grounding) — drop it there.
+    checks = ["non_empty", "grounding", "spoiler_free", "mentions"]
+    if task == "deep_recap":
+        checks = ["non_empty", "spoiler_free", "mentions"]
+
     return EvalCase(
         id=case_id,
         task=task,
@@ -89,7 +96,7 @@ def _recap_case(
             "forbidden": forbidden,
             "behavior": behavior,
         },
-        checks=["non_empty", "grounding", "spoiler_free", "mentions"],
+        checks=checks,
     )
 
 
@@ -152,7 +159,10 @@ def golden_cases() -> list[EvalCase]:
             [],
             None,
             mentions=[],
-            forbidden=["Moonrise", "Elder Brain", "Baldur's Gate", "Act 2", "Act 3"],
+            # NB: "Baldur's Gate" (the Act-3 city) is omitted — it collides with the
+            # game's own title, which a recap will legitimately say. Keep the
+            # unambiguous later-content spoilers only.
+            forbidden=["Moonrise", "Elder Brain", "Act 2", "Act 3"],
             behavior="Signal it is the first session / no prior recap; invent no progress, place, or boss.",
         ),
         # 4) obscure to the model, vague notes — opposite failure mode (inventing specificity).

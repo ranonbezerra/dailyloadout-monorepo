@@ -5,6 +5,9 @@ Defaults to the deterministic ``DummyLLMClient`` + ``DummyJudge`` + ``DummyRecap
 (``LLM_PROVIDER`` / ``AGENT_PROVIDER``) with the model-graded ``LLMJudge`` and the
 real deep-recap agent.
 
+Set ``JUDGE_MODEL`` (e.g. ``qwen3:8b``) to judge on a different model than the one
+being graded — avoids the self-evaluation leniency of a model scoring itself.
+
 Quality gate (against a committed baseline):
     --save     write the current aggregate scores to results/baseline.json
     --gate     re-run and FAIL (exit 1) if any metric dropped vs the baseline
@@ -20,6 +23,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -67,7 +71,17 @@ async def _run() -> EvalReport:
         base = get_llm_client(settings)
         llm = TracedLLMClient(base) if settings.tracing_enabled else base
         agent = get_recap_agent(settings, base)
-        return await run_eval(llm, golden_cases(), LLMJudge(llm), agent)
+
+        # Self-eval guard: judge on a DIFFERENT model than the one being graded
+        # (set JUDGE_MODEL, e.g. qwen3:8b) so the judge can't favour its own output.
+        judge_model = os.getenv("JUDGE_MODEL")
+        if judge_model:
+            judge_llm = get_llm_client(
+                settings.model_copy(update={"ollama_smart_model": judge_model})
+            )
+        else:
+            judge_llm = base
+        return await run_eval(llm, golden_cases(), LLMJudge(judge_llm), agent)
 
     return await run_eval(DummyLLMClient(), golden_cases(), DummyJudge(), DummyRecapAgent())
 

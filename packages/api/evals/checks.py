@@ -1,9 +1,9 @@
 """Deterministic eval checks — run first, free, and not model-graded.
 
 These encode the correctness properties we can verify without a judge: output is
-non-empty, grounded in its context (reusing the Epic 6 anti-hallucination
-validator), spoiler-free, valid JSON, and (for picks) references a real
-candidate. The LLM-as-judge only scores what determinism can't.
+non-empty, grounded in its context (stopword-aware token overlap), spoiler-free,
+valid JSON, and (for picks) references a real candidate. The LLM-as-judge only
+scores what determinism can't.
 """
 
 from __future__ import annotations
@@ -13,7 +13,67 @@ import re
 from collections.abc import Callable
 
 from evals.schema import CheckResult, EvalCase
-from slate.core.play_session.anti_hallucination import validate_recap
+
+# "Interesting" tokens for grounding: capitalised words or numbers — the things a
+# recap can hallucinate. Same idea as the Epic 6 anti-hallucination guard, but as
+# an *eval metric* it must be cleaner than that binary runtime guard.
+_INTERESTING_RE = re.compile(r"\b(?:[A-Z][a-z]{2,}|[A-Z]{2,}|\d+)\b")
+
+# Capitalised COMMON words that are not proper nouns — they fire on the regex when
+# they start a sentence ("Welcome", "You", "Head", "Previously") and silently sink
+# the overlap ratio even when nothing was invented. Excluded so grounding reflects
+# real entities, not boilerplate. (The production guard keeps its simpler heuristic;
+# this divergence is intentional and eval-only.)
+_GROUNDING_STOPWORDS = frozenset(
+    {
+        "the",
+        "you",
+        "your",
+        "yours",
+        "this",
+        "that",
+        "these",
+        "those",
+        "what",
+        "when",
+        "where",
+        "while",
+        "with",
+        "from",
+        "into",
+        "then",
+        "there",
+        "here",
+        "now",
+        "next",
+        "also",
+        "still",
+        "welcome",
+        "head",
+        "begin",
+        "continue",
+        "focus",
+        "last",
+        "get",
+        "consider",
+        "keep",
+        "try",
+        "note",
+        "explore",
+        "previously",
+        "look",
+        "find",
+        "return",
+        "make",
+        "take",
+        "check",
+        "remember",
+        "and",
+        "but",
+        "for",
+        "back",
+    }
+)
 
 
 def _ref_str(case: EvalCase, key: str) -> str:
@@ -31,6 +91,13 @@ def _mentioned(term: str, text_lower: str) -> bool:
     return re.search(rf"\b{re.escape(term.lower())}\b", text_lower) is not None
 
 
+def _interesting(text: str) -> set[str]:
+    """Lowercased proper-noun-ish tokens in *text*, minus boilerplate stopwords."""
+    return {
+        t.lower() for t in _INTERESTING_RE.findall(text) if t.lower() not in _GROUNDING_STOPWORDS
+    }
+
+
 def check_non_empty(output: str, case: EvalCase) -> CheckResult:
     """The output must be non-empty after stripping."""
     ok = bool(output.strip())
@@ -38,21 +105,27 @@ def check_non_empty(output: str, case: EvalCase) -> CheckResult:
 
 
 def check_grounding(output: str, case: EvalCase) -> CheckResult:
-    """Output is grounded in ``reference['context']`` (token-overlap validator).
+    """Fraction of the output's proper-noun-ish tokens present in the context.
 
-    Score is the overlap ratio; the check passes when the recap is *not* flagged
-    suspicious. ``reference['overlap_threshold']`` overrides the floor (deep
-    recaps ground on research text and use a more tolerant value).
+    Low overlap = the recap brought in names/numbers absent from the notes — a
+    hallucination signal. ``reference['overlap_threshold']`` overrides the pass
+    floor (default 0.40). Only meaningful for the quick path, where the recap
+    must ground on the notes; deep recaps ground on web research, so they omit
+    this check (the in-graph anti_hallucination node guards them instead).
     """
-    context = _ref_str(case, "context")
+    out_tokens = _interesting(output)
+    if not out_tokens:
+        return CheckResult(name="grounding", passed=True, score=1.0)
+    ctx_tokens = _interesting(_ref_str(case, "context"))
+    missing = [t for t in out_tokens if t not in ctx_tokens]
+    ratio = (len(out_tokens) - len(missing)) / len(out_tokens)
     threshold = case.reference.get("overlap_threshold")
-    floor = threshold if isinstance(threshold, (int, float)) else None
-    result = validate_recap(output, context, threshold=floor)
+    floor = float(threshold) if isinstance(threshold, (int, float)) else 0.40
     return CheckResult(
         name="grounding",
-        passed=not result.is_suspicious,
-        score=result.overlap_ratio,
-        detail=f"overlap={result.overlap_ratio}, missing={result.missing_tokens[:5]}",
+        passed=ratio >= floor,
+        score=round(ratio, 4),
+        detail=f"overlap={ratio:.2f}, missing={missing[:5]}",
     )
 
 

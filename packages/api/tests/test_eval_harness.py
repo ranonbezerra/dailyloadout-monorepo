@@ -43,7 +43,10 @@ class TestGoldenDataset:
         assert len({c.id for c in cases}) == 14  # unique ids
         for c in cases:
             assert "context" in c.reference
-            assert c.checks == ["non_empty", "grounding", "spoiler_free", "mentions"]
+            if c.task == "recap":
+                assert c.checks == ["non_empty", "grounding", "spoiler_free", "mentions"]
+            else:  # deep_recap grounds on web research, so it omits grounding-vs-notes
+                assert c.checks == ["non_empty", "spoiler_free", "mentions"]
             # previous_wrap_ups carry extracted_state alongside raw_text (prod fidelity).
             for wu in c.inputs["previous_wrap_ups"]:  # type: ignore[union-attr]
                 assert "raw_text" in wu
@@ -85,6 +88,15 @@ class TestChecks:
         [result] = run_checks("Completely Different Imaginary Zelda Castle Dragon", case)
         assert result.name == "grounding"
         assert not result.passed
+
+    def test_grounding_ignores_boilerplate_capitalized_words(self) -> None:
+        # "Welcome", "You", "Head", "Now" are sentence-initial common words, not
+        # proper nouns — they must NOT drag the overlap down. Only "Watson" counts.
+        case = EvalCase(
+            id="x", task="recap", inputs={}, reference={"context": "Watson"}, checks=["grounding"]
+        )
+        [result] = run_checks("Welcome back! You head to Watson now.", case)
+        assert result.passed and result.score == pytest.approx(1.0)
 
     def test_spoiler_free_catches_forbidden_term(self) -> None:
         case = EvalCase(
