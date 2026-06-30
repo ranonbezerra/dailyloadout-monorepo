@@ -1327,20 +1327,20 @@ It's real safety engineering across two untrusted surfaces with its own threat m
 
 **Goal:** a **semantic** completion cache — embed the prompt, return a cached completion when cosine similarity passes a threshold — layered **above** the exact-match cache (Epic 18), measured for hit-rate gain and gated for correctness.
 
-**Status:** not started. Depends on the embedding + pgvector infra from Epic 24.
+**Status:** done — shipped on `feat/semantic-llm-cache`. Applied to **capture-parse** (the safe target: public game names, no user data) rather than the personalized recap prompts, so the cache lands where it actually pays off.
 
 ### Context
 
-Epic 18 caches LLM completions content-addressed by `(model, prompt hash, json-mode)` — **exact match only**. A semantic cache catches near-duplicate prompts the hash misses. **Honest caveat:** recap prompts are highly personalized (per-session state), so semantic hit-rate may be low and the staleness/correctness risk (returning a "similar but wrong" completion) is real. This epic treats it as a **measured experiment**, not a blanket cache — the interview value is the trade-off analysis as much as the lookup.
+Epic 18 caches LLM completions content-addressed by `(model, prompt hash, json-mode)` — **exact match only**. A semantic cache catches near-duplicate prompts the hash misses. **Honest caveat:** recap prompts are highly personalized (per-session state), so semantic hit-rate may be low and the staleness/correctness risk (returning a "similar but wrong" completion) is real. This epic treats it as a **measured experiment**, not a blanket cache — the value is the trade-off analysis as much as the lookup. (Capture-parse — public game names with near-duplicate spellings — is where that trade-off is favourable; the personalized recap prompts are deliberately left out.)
 
 ### Tasks
 
-- [ ] Embed the prompt (reuse the Epic 24 embedding port); store `(embedding, completion, model, params)` in pgvector.
-- [ ] On request: nearest-neighbor lookup; return the cached completion **only** above a tunable cosine threshold **and** with matching model/params.
-- [ ] **Namespace isolation** — never share a cached completion across users when the prompt embeds user data.
-- [ ] Restrict to **safe targets first** (idempotent, low-personalization: capture-parse, research queries); **exclude personalized recaps** unless the Epic 23 eval shows reuse is safe.
-- [ ] Measure: semantic-hit vs exact-hit vs miss counters; hit-rate **gain over exact**; an eval pass on cached-vs-fresh to set the threshold honestly.
-- [ ] Degrade to live/exact on outage; a flag to disable; tests with dummy embeddings.
+- [x] Embed the prompt (reuse the Epic 24 embedding port); store `(embedding, completion, model, params)` in pgvector (`llm_semantic_cache`).
+- [x] On request: nearest-neighbour lookup (pgvector `<=>` on Postgres, Python cosine under SQLite tests); return the cached value **only** above a tunable cosine threshold **and** with matching model/params + TTL.
+- [x] **Namespace isolation** — scoped by namespace; capture-parse uses a single global namespace because nothing it embeds is user-private (game names).
+- [x] Restrict to **safe targets first** — applied to **capture-parse** (`parse_capture_text`), with a two-layer exact (Redis) → semantic (pgvector) cache; the personalized recap prompts are excluded.
+- [x] Measure: exact-hit / semantic-hit / miss counters (`CaptureCacheStats`, `semantic_gain`); a `--cache` threshold-sweep eval reporting hit-rate gain vs **false-hit-rate** on a confusable corpus.
+- [x] Degrade to live on any embedding/cache/DB failure; a `semantic_cache_enabled` flag (off by default); tests with the dummy embedding client.
 
 ### Definition of Done
 
