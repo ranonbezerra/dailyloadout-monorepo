@@ -46,6 +46,13 @@ def _print_report(report: EvalReport) -> None:
         judge = "-" if r.judge_score is None else f"{r.judge_score:.2f}"
         checks = ", ".join(f"{c.name}={c.score:.2f}" for c in r.checks) or "(none)"
         print(f"[{flag}] {r.case_id:<34} score={r.score:.3f} judge={judge}  {checks}")
+        # Diagnostics: the judge's reason (why that score) + the detail of any
+        # deterministic check that did NOT pass (missing tokens / leaked spoilers).
+        if r.judge_reason and r.judge_reason != "dummy":
+            print(f"        ↳ judge: {r.judge_reason}")
+        for c in r.checks:
+            if not c.passed and c.detail:
+                print(f"        ↳ {c.name}: {c.detail}")
     print("-" * 60)
     for task, score in sorted(report.scores_by_task().items()):
         print(f"  {task:<12} mean={score:.3f}")
