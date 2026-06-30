@@ -130,6 +130,29 @@ class TestChecks:
         [result] = run_checks("you joined the campaign", case)
         assert not result.passed and result.score == 0.0
 
+    def test_mentions_tolerates_singular_plural(self) -> None:
+        # 'Terminids' (the expected term) should match a recap that wrote 'Terminid'.
+        case = EvalCase(
+            id="x",
+            task="recap",
+            inputs={},
+            reference={"mentions": ["Terminids"]},
+            checks=["mentions"],
+        )
+        [result] = run_checks("you fought a Terminid in the swamp", case)
+        assert result.passed and result.score == pytest.approx(1.0)
+
+    def test_grounding_tolerates_singular_plural(self) -> None:
+        case = EvalCase(
+            id="x",
+            task="recap",
+            inputs={},
+            reference={"context": "fighting Terminids on hard"},
+            checks=["grounding"],
+        )
+        [result] = run_checks("You fought a Terminid.", case)
+        assert result.passed and result.score == pytest.approx(1.0)
+
     def test_mentions_scores_recall(self) -> None:
         case = EvalCase(
             id="x",

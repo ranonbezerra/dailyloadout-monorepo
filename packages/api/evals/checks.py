@@ -81,21 +81,36 @@ def _ref_str(case: EvalCase, key: str) -> str:
     return value if isinstance(value, str) else str(value)
 
 
-def _mentioned(term: str, text_lower: str) -> bool:
-    """True if *term* appears in *text_lower* on word boundaries.
+def _singular(word: str) -> str:
+    """Naive plural→singular: drop a trailing 's' so 'Terminids' == 'Terminid'.
 
-    Word-boundary match (not substring) so a short term never matches inside a
-    longer word: 'ending' must not fire on 'depending', 'story' not on 'history',
-    'camp' not on 'campaign'.
+    Guards keep 'ss' words (boss, grass) and very short words intact. Just enough
+    to stop morphological variants from being false negatives — not a real stemmer.
     """
-    return re.search(rf"\b{re.escape(term.lower())}\b", text_lower) is not None
+    w = word.lower()
+    if len(w) > 3 and w.endswith("s") and not w.endswith("ss"):
+        return w[:-1]
+    return w
+
+
+def _mentioned(term: str, text_lower: str) -> bool:
+    """True if *term* appears in *text_lower* on word boundaries (plural-tolerant).
+
+    Word-boundary match (not substring) so a short term never fires inside a longer
+    word ('ending' not on 'depending', 'camp' not on 'campaign'), but the singular
+    stem + an optional trailing 's' is allowed so 'Terminids' matches 'Terminid'.
+    """
+    return re.search(rf"\b{re.escape(_singular(term))}s?\b", text_lower) is not None
 
 
 def _interesting(text: str) -> set[str]:
-    """Lowercased proper-noun-ish tokens in *text*, minus boilerplate stopwords."""
-    return {
-        t.lower() for t in _INTERESTING_RE.findall(text) if t.lower() not in _GROUNDING_STOPWORDS
-    }
+    """Singularised proper-noun-ish tokens in *text*, minus boilerplate stopwords."""
+    out: set[str] = set()
+    for token in _INTERESTING_RE.findall(text):
+        low = token.lower()
+        if low not in _GROUNDING_STOPWORDS:
+            out.add(_singular(low))
+    return out
 
 
 def check_non_empty(output: str, case: EvalCase) -> CheckResult:
