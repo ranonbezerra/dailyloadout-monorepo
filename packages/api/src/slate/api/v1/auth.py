@@ -12,6 +12,7 @@ from slate.api.v1.auth_cookies import (
 from slate.config import settings
 from slate.core.auth.schemas import (
     LoginRequest,
+    LoginResponse,
     MessageResponse,
     RefreshRequest,
     RegisterRequest,
@@ -20,8 +21,9 @@ from slate.core.auth.schemas import (
     UserResponse,
     VerifyEmailRequest,
 )
+from slate.core.auth.security import create_mfa_challenge_token
 from slate.core.auth.service import EmailRejectedError
-from slate.deps import AuthServiceDep, CurrentUserDep
+from slate.deps import AuthServiceDep, CurrentUserDep, MfaServiceDep
 from slate.deps.captcha import verify_turnstile
 
 # Per-IP limiters, now Redis-backed (shared across worker processes) and
@@ -104,36 +106,42 @@ async def register(
 
 @router.post(
     "/login",
-    response_model=TokenResponse,
+    response_model=LoginResponse,
     dependencies=[Depends(_check_login_rate)],
 )
 async def login(
     body: LoginRequest,
     auth_service: AuthServiceDep,
+    mfa_service: MfaServiceDep,
     request: Request,
     response: Response,
-) -> TokenResponse:
-    """Authenticate with email/password and receive tokens.
+) -> LoginResponse:
+    """Authenticate with email/password.
 
-    Cookie mode sets the refresh token as an httpOnly cookie (empty in body);
-    body mode (the default, used by the app) returns both tokens in the body.
+    When the account has MFA enabled, no session is issued: the response carries
+    ``mfa_required`` and a short-lived ``mfa_token`` to be exchanged (with a
+    code) at ``/v1/auth/mfa/login``. Otherwise tokens are issued as usual —
+    cookie mode sets the httpOnly refresh cookie (empty in body), body mode
+    returns both tokens.
     """
     try:
-        _user, access_token, refresh_token = await auth_service.login(
-            email=body.email,
-            password=body.password,
-        )
+        user = await auth_service.verify_credentials(body.email, body.password)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(exc),
         ) from exc
 
+    if await mfa_service.is_enabled(user.id):
+        challenge = create_mfa_challenge_token(str(user.public_id), user.token_version)
+        return LoginResponse(mfa_required=True, mfa_token=challenge)
+
+    access_token, refresh_token = await auth_service.issue_tokens(user)
     if is_cookie_mode(request):
         set_refresh_cookie(response, refresh_token)
-        return TokenResponse(access_token=access_token, refresh_token="")
+        return LoginResponse(access_token=access_token)
 
-    return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+    return LoginResponse(access_token=access_token, refresh_token=refresh_token)
 
 
 @router.post("/verify", response_model=MessageResponse)

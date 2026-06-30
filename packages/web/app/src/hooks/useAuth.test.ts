@@ -15,6 +15,7 @@ import {
 	resetPassword,
 	verifyEmail,
 } from "../lib/auth-api";
+import { mfaLogin } from "../lib/mfa-api";
 import { createWrapper } from "../test/wrapper";
 import { useAuth } from "./useAuth";
 
@@ -38,6 +39,10 @@ vi.mock("../lib/auth-api", () => ({
 	forgotPassword: vi.fn(),
 	resetPassword: vi.fn(),
 	changePassword: vi.fn(),
+}));
+
+vi.mock("../lib/mfa-api", () => ({
+	mfaLogin: vi.fn(),
 }));
 
 // AuthProvider inside createWrapper uses useAuth internally -- we need to
@@ -148,6 +153,45 @@ describe("useAuth", () => {
 			password: "secret123", // pragma: allowlist secret
 		});
 		expect(mockedSaveTokens).toHaveBeenCalledWith("acc-123");
+	});
+
+	it("login with MFA enabled returns a challenge and saves no tokens", async () => {
+		mockedAuthFetch.mockResolvedValueOnce({
+			access_token: "",
+			refresh_token: "",
+			token_type: "bearer",
+			mfa_required: true,
+			mfa_token: "challenge-123",
+		});
+
+		const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
+
+		let outcome: { mfaRequired: boolean; mfaToken: string } | undefined;
+		await act(async () => {
+			outcome = await result.current.login("player@test.com", "secret123");
+		});
+
+		expect(outcome).toEqual({ mfaRequired: true, mfaToken: "challenge-123" });
+		expect(mockedSaveTokens).not.toHaveBeenCalled();
+	});
+
+	it("completeMfaLogin exchanges the challenge and saves the access token", async () => {
+		vi.mocked(mfaLogin).mockResolvedValueOnce({
+			access_token: "acc-mfa",
+			refresh_token: "",
+			token_type: "bearer",
+			mfa_required: false,
+			mfa_token: "",
+		});
+
+		const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
+
+		await act(async () => {
+			await result.current.completeMfaLogin("challenge-123", "123456");
+		});
+
+		expect(mfaLogin).toHaveBeenCalledWith("challenge-123", "123456");
+		expect(mockedSaveTokens).toHaveBeenCalledWith("acc-mfa");
 	});
 
 	it("register calls authFetch /v1/auth/register (no token header) and saves only the access token", async () => {

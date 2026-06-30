@@ -16,7 +16,8 @@ import {
 	resetPassword as resetPasswordApi,
 	verifyEmail,
 } from "../lib/auth-api";
-import type { AuthTokens, User } from "../types/auth";
+import { mfaLogin as mfaLoginApi } from "../lib/mfa-api";
+import type { AuthTokens, LoginResponse, User } from "../types/auth";
 
 /**
  * Normalize the API's `UserResponse` so UI code can read a camel-case
@@ -66,12 +67,30 @@ export function useAuth() {
 	const isLoading = isBootstrapping || (bootstrapped && !!getAccessToken() && isUserLoading);
 
 	// ---- Login mutation -----------------------------------------------------
+	// When the account has MFA enabled the server returns `mfa_required` with a
+	// short-lived challenge token instead of session tokens — we hold off on
+	// saving anything and let the caller drive the second step.
 	const loginMutation = useMutation({
 		mutationFn: async (vars: { email: string; password: string }) => {
-			const data = await authFetch<AuthTokens>("/v1/auth/login", {
+			const data = await authFetch<LoginResponse>("/v1/auth/login", {
 				email: vars.email,
 				password: vars.password,
 			});
+			if (!data.mfa_required) saveTokens(data.access_token);
+			return data;
+		},
+		onSuccess: (data) => {
+			if (!data.mfa_required) {
+				queryClient.setQueryData(BOOTSTRAP_QUERY_KEY, true);
+				queryClient.invalidateQueries({ queryKey: USER_QUERY_KEY });
+			}
+		},
+	});
+
+	// ---- MFA login (second factor) -----------------------------------------
+	const mfaLoginMutation = useMutation({
+		mutationFn: async (vars: { mfaToken: string; code: string }) => {
+			const data = await mfaLoginApi(vars.mfaToken, vars.code);
 			saveTokens(data.access_token);
 		},
 		onSuccess: () => {
@@ -178,8 +197,16 @@ export function useAuth() {
 	}, [queryClient]);
 
 	// ---- Public API ---------------------------------------------------------
-	const login = async (email: string, password: string) => {
-		await loginMutation.mutateAsync({ email, password });
+	const login = async (
+		email: string,
+		password: string,
+	): Promise<{ mfaRequired: boolean; mfaToken: string }> => {
+		const data = await loginMutation.mutateAsync({ email, password });
+		return { mfaRequired: data.mfa_required, mfaToken: data.mfa_token };
+	};
+
+	const completeMfaLogin = async (mfaToken: string, code: string): Promise<void> => {
+		await mfaLoginMutation.mutateAsync({ mfaToken, code });
 	};
 
 	const register = async (
@@ -224,6 +251,7 @@ export function useAuth() {
 		isAuthenticated: !!user,
 		emailVerified: user?.emailVerified ?? false,
 		login,
+		completeMfaLogin,
 		register,
 		logout,
 		completeOAuth,
@@ -238,6 +266,7 @@ export function useAuth() {
 		verifyError: verifyEmailMutation.error,
 		changePasswordError: changePasswordMutation.error,
 		isLoginPending: loginMutation.isPending,
+		isMfaLoginPending: mfaLoginMutation.isPending,
 		isRegisterPending: registerMutation.isPending,
 		isVerifyPending: verifyEmailMutation.isPending,
 		isResendPending: resendVerificationMutation.isPending,

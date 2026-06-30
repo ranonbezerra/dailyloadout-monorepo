@@ -64,14 +64,13 @@ class Settings(BaseSettings):
 
     # ── Backlog Concierge (Epic 11) ──────────────────────────────────────
     concierge_provider: str = "dummy"  # langgraph | dummy
-    # Tool-calling model — qwen2.5-instruct: fast, coherent tool use (Gemma weak; qwen3 slow).
+    # Tool-calling model — qwen2.5-instruct: fast, coherent tool use.
     ollama_agent_model: str = "qwen2.5:7b-instruct"
     concierge_agent_reasoning: bool = False
     concierge_max_tool_loops: int = 6
-    # Checkpoint store (Epic 16): 'postgres' survives restarts, else in-process 'memory'.
+    # Checkpoint store (Epic 16): 'postgres' survives restarts, else 'memory'.
     concierge_checkpointer: str = "postgres"
-    # Concierge write tools (start_play_session/set_status/…) so it drives the play_session
-    # pipeline, not just recommends (Epic 12).
+    # Write tools (start_play_session/set_status/…) so it drives the pipeline (Epic 12).
     concierge_write_tools_enabled: bool = True
 
     # ── STT ──────────────────────────────────────────────────────────────
@@ -89,15 +88,14 @@ class Settings(BaseSettings):
     # Fuzzy-match cutoff for accepting an OCR line as a canonical game.
     catalog_match_min_score: float = 0.6
     # Anti-abuse (Block C): distinct owners that promote a private manual row to
-    # globally shared/discoverable (spam stays hidden until enough users own it).
+    # globally shared/discoverable (spam hidden until enough users own it).
     catalog_share_threshold: int = 5
     # Bulk-import cap (each candidate fans out to an IGDB lookup → DoS guard).
     library_import_max_candidates: int = 40
     # Free-tier abuse/cost guards (per user, per UTC day).
     library_import_images_per_day: int = 10
     library_import_vision_fallbacks_per_day: int = 20
-    # Hard cap on files accepted in a single bulk-import request, checked BEFORE
-    # any file is read into memory (DoS backstop on top of the per-day quota).
+    # Hard cap on files per bulk-import request, checked before any file is read.
     library_import_max_files: int = 20
 
     # ── Storage ──────────────────────────────────────────────────────────
@@ -111,8 +109,7 @@ class Settings(BaseSettings):
     # Cache IGDB search results this long (game metadata is stable). 7 days.
     igdb_cache_ttl_seconds: int = 7 * 24 * 3600
 
-    # ── Social login / OAuth (optional, Auth Code + PKCE) — provider available
-    # only when its client id is set; Twitch user auth ≠ the IGDB app token. ──
+    # ── Social login / OAuth (Auth Code + PKCE) — provider on when client id set ──
     google_oauth_client_id: str = ""
     google_oauth_client_secret: str = ""
     twitch_oauth_client_id: str = ""
@@ -135,8 +132,7 @@ class Settings(BaseSettings):
     check_email_mx: bool = True
     email_mx_timeout_seconds: float = 3.0
 
-    # ── Email verification (account integrity) ───────────────────────────
-    # Signed, purpose-scoped JWTs (no new table); expired/invalid → 400.
+    # ── Email verification (account integrity) — signed purpose-scoped JWTs ──
     email_verification_ttl_hours: int = 24
     # Public base URL the verification link points at (deep link appends token).
     email_verification_base_url: str = "http://localhost:5173/verify-email"
@@ -147,6 +143,12 @@ class Settings(BaseSettings):
     password_reset_ttl_hours: int = 1
     password_reset_base_url: str = "http://localhost:5173/reset-password"
 
+    # ── MFA / TOTP (Phase 2) ─────────────────────────────────────────────
+    # Issuer shown in the authenticator app; challenge token bridges the two
+    # login steps (password → second factor) and is intentionally short-lived.
+    mfa_issuer: str = "Slate"
+    mfa_challenge_ttl_minutes: int = 5
+
     # ── CAPTCHA (Cloudflare Turnstile) ───────────────────────────────────
     # Empty => Turnstile dependency is a no-op; set => register needs a token.
     turnstile_secret: str = ""
@@ -156,8 +158,7 @@ class Settings(BaseSettings):
     bcrypt_rounds: int = 12
 
     # ── Auth refresh cookie (web cookie-mode, X-Auth-Mode: cookie) ───────
-    # App uses BODY mode (no cookie); web only. PROD: auth_cookie_secure=True,
-    # and samesite="none" (requires Secure) if web/api are on different domains.
+    # App uses BODY mode; web only. PROD: secure=True, samesite="none" cross-domain.
     auth_cookie_name: str = "slate_refresh_token"
     # Secure by default; dev may set False for http://localhost (prod refuses False).
     auth_cookie_secure: bool = True
@@ -195,8 +196,7 @@ class Settings(BaseSettings):
     rate_limit_read_per_minute: int = 120
 
     # ── Cost kill-switch (aggregate $ guard, provider-agnostic) ──────────
-    # Spend proxy: 503s over global+per-user budgets (False => no-op). On Redis
-    # error, degrade to per-process counters (÷ workers) or fail closed.
+    # Spend proxy: 503s over budgets (False => no-op); degrades on Redis error.
     cost_guard_enabled: bool = True
     cost_global_per_minute: int = 120
     cost_global_per_day: int = 5000

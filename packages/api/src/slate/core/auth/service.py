@@ -136,29 +136,37 @@ class AuthService:
         password: str,
         device_label: str | None = None,
     ) -> tuple[User, str, str]:
-        """Authenticate a user and issue tokens.
+        """Authenticate a user and issue tokens (single-factor path).
 
-        Returns:
-            ``(user, access_token, raw_refresh_token)``
+        Returns ``(user, access_token, raw_refresh_token)``; raises ``ValueError``
+        on invalid credentials. When MFA may be enabled, callers verify
+        credentials and issue tokens separately (see ``verify_credentials`` /
+        ``issue_tokens``) so they can interpose the second-factor challenge.
+        """
+        user = await self.verify_credentials(email, password)
+        access_token, raw_refresh = await self.issue_tokens(user, device_label=device_label)
+        return user, access_token, raw_refresh
 
-        Raises:
-            ValueError: If credentials are invalid.
+    async def verify_credentials(self, email: str, password: str) -> User:
+        """Return the user iff *password* matches; raise ``ValueError`` otherwise.
+
+        Issues no tokens. Constant-time on the no-such-user / passwordless branch
+        so response time never reveals account existence.
         """
         user = await self._user_repo.get_by_email(email)
         if user is None or user.password_hash is None:
-            # Constant-time: still run a bcrypt verification against a fixed
-            # dummy hash so response time does not reveal account existence.
             verify_password_dummy(password)
             raise ValueError("Invalid credentials")
-
         if not verify_password(password, user.password_hash):
             raise ValueError("Invalid credentials")
+        return user
 
+    async def issue_tokens(self, user: User, device_label: str | None = None) -> tuple[str, str]:
+        """Mint an access token and a stored refresh token for *user*."""
         access_token = create_access_token(str(user.public_id), user.token_version)
         raw_refresh = generate_refresh_token()
         await self._store_refresh_token(user.id, raw_refresh, device_label=device_label)
-
-        return user, access_token, raw_refresh
+        return access_token, raw_refresh
 
     # ── Social login (OAuth) — resolve/link/create, then issue our tokens ──
     async def oauth_resolve_user(
@@ -192,11 +200,9 @@ class AuthService:
         token_hash = hash_refresh_token(raw_refresh_token)
         stored = await self._refresh_token_repo.get_by_hash(token_hash)
         if stored is None:
-            # A replayed already-rotated token is normally theft → cut off the whole
-            # family. But a client firing two refreshes at once (multi-tab / reload
-            # race) replays the just-rotated token a moment later; within a short
-            # grace window that's a benign race — reject only this request (the
-            # rotation's sibling token stays valid), don't nuke every session.
+            # A replayed rotated token is normally theft → cut the whole family.
+            # But a benign multi-tab refresh race replays within a short grace
+            # window — then reject only this request, don't nuke every session.
             replayed = await self._refresh_token_repo.get_any_by_hash(token_hash)
             if replayed is not None:
                 grace = timedelta(seconds=settings.auth_refresh_reuse_grace_seconds)
@@ -241,12 +247,8 @@ class AuthService:
     # Session kill-switch (logout-everywhere) and incident response
     # ------------------------------------------------------------------
     async def revoke_all_sessions(self, user_id: int) -> None:
-        """Cut off every session for *user_id* (internal id).
-
-        Bumps ``token_version`` (instantly invalidating all outstanding access
-        tokens) AND revokes all refresh tokens (killing every device). Used by
-        logout-everywhere and as the building block for ban / theft response.
-        """
+        """Cut off every session for *user_id*: bump ``token_version`` (kills all
+        access tokens) and revoke all refresh tokens (kills every device)."""
         await self._revoke_all_sessions_by_internal_id(user_id)
 
     async def ban_user(self, user_id: int) -> None:

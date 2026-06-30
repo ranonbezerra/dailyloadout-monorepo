@@ -86,6 +86,17 @@ class ChangePasswordRequest(BaseModel):
         return _validate_password_complexity(v)
 
 
+# ── MFA / TOTP (Phase 2) ──
+class MfaCodeRequest(BaseModel):
+    # A 6-digit TOTP code or a recovery code (the service accepts either).
+    code: str = Field(min_length=1, max_length=64)
+
+
+class MfaLoginRequest(BaseModel):
+    mfa_token: str = Field(min_length=1)
+    code: str = Field(min_length=1, max_length=64)
+
+
 # ---------------------------------------------------------------------------
 # Response schemas
 # ---------------------------------------------------------------------------
@@ -93,6 +104,35 @@ class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+
+
+class LoginResponse(BaseModel):
+    """Login result: tokens, or an MFA challenge when a second factor is required.
+
+    When ``mfa_required`` is True the token fields are empty and ``mfa_token`` is
+    a short-lived challenge to be exchanged (with a code) at ``/v1/auth/mfa/login``.
+    """
+
+    access_token: str = ""
+    refresh_token: str = ""
+    token_type: str = "bearer"
+    mfa_required: bool = False
+    mfa_token: str = ""
+
+
+class MfaEnrollResponse(BaseModel):
+    # The base32 secret (manual entry) and the otpauth:// URI (rendered as a QR).
+    secret: str
+    otpauth_uri: str
+
+
+class MfaRecoveryCodesResponse(BaseModel):
+    recovery_codes: list[str]
+
+
+class MfaStatusResponse(BaseModel):
+    enabled: bool
+    recovery_codes_remaining: int
 
 
 class UserResponse(BaseModel):
@@ -116,7 +156,13 @@ __all__ = [
     "ChangePasswordRequest",
     "ForgotPasswordRequest",
     "LoginRequest",
+    "LoginResponse",
     "MessageResponse",
+    "MfaCodeRequest",
+    "MfaEnrollResponse",
+    "MfaLoginRequest",
+    "MfaRecoveryCodesResponse",
+    "MfaStatusResponse",
     "RefreshRequest",
     "RegisterRequest",
     "ResendVerificationRequest",

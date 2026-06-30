@@ -25,6 +25,7 @@ from .library import (
     LibraryServiceDep,
     PlatformRepoDep,
 )
+from .mfa import MfaServiceDep
 from .ocr import CaptureServiceDep
 from .pick import (
     PickRepoDep,
@@ -48,6 +49,7 @@ __all__ = [
     "LLMClientDep",
     "LibraryRepoDep",
     "LibraryServiceDep",
+    "MfaServiceDep",
     "PasswordRecoveryServiceDep",
     "PickRepoDep",
     "PickServiceDep",

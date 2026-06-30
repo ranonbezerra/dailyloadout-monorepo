@@ -222,6 +222,7 @@ async def async_client() -> AsyncIterator[AsyncClient]:
     database dependency overridden to use the in-memory SQLite engine.
     """
     from slate.api.v1.auth import _check_login_rate, _check_register_rate
+    from slate.api.v1.auth_mfa import _check_mfa_login_rate, _check_mfa_verify_rate
     from slate.api.v1.auth_password import (
         _check_change_rate,
         _check_forgot_rate,
@@ -256,6 +257,8 @@ async def async_client() -> AsyncIterator[AsyncClient]:
     app.dependency_overrides[_check_forgot_rate] = _noop
     app.dependency_overrides[_check_reset_rate] = _noop
     app.dependency_overrides[_check_change_rate] = _noop
+    app.dependency_overrides[_check_mfa_login_rate] = _noop
+    app.dependency_overrides[_check_mfa_verify_rate] = _noop
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:

@@ -35,7 +35,7 @@ async def _get_user(email: str) -> User:
 
 async def _reset_token_for(email: str) -> str:
     user = await _get_user(email)
-    return create_password_reset_token(str(user.public_id))
+    return create_password_reset_token(str(user.public_id), user.token_version)
 
 
 # =====================================================================
@@ -45,8 +45,8 @@ async def _reset_token_for(email: str) -> str:
 
 class TestResetTokenHelpers:
     def test_token_roundtrip(self) -> None:
-        token = create_password_reset_token("the-subject")
-        assert decode_password_reset_token(token) == "the-subject"
+        token = create_password_reset_token("the-subject", 7)
+        assert decode_password_reset_token(token) == ("the-subject", 7)
 
     def test_decode_rejects_garbage(self) -> None:
         with pytest.raises(ValueError, match="Invalid or expired reset token"):
@@ -142,6 +142,44 @@ class TestResetPassword:
         )
         assert refreshed.status_code == 401
 
+    async def test_reset_token_is_single_use(
+        self, async_client: AsyncClient, register_user: dict[str, str]
+    ) -> None:
+        """The same reset link cannot be replayed: applying it bumps token_version,
+        so the token's bound ``tv`` no longer matches on a second attempt."""
+        token = await _reset_token_for("test@example.com")
+
+        first = await async_client.post(
+            "/v1/auth/reset-password",
+            json={"token": token, "new_password": _NEW_PASSWORD},
+        )
+        assert first.status_code == 200
+
+        replay = await async_client.post(
+            "/v1/auth/reset-password",
+            json={"token": token, "new_password": "EvenNewer789"},  # pragma: allowlist secret
+        )
+        assert replay.status_code == 400
+
+    async def test_reset_token_superseded_by_session_kill(
+        self,
+        async_client: AsyncClient,
+        register_user: dict[str, str],
+        auth_headers: dict[str, str],
+    ) -> None:
+        """A pending reset link is invalidated by any later token_version bump
+        (e.g. logout-everywhere), even if it was never used."""
+        token = await _reset_token_for("test@example.com")
+
+        # Bump token_version out from under the pending reset link.
+        await async_client.post("/v1/auth/logout-all", headers=auth_headers)
+
+        resp = await async_client.post(
+            "/v1/auth/reset-password",
+            json={"token": token, "new_password": _NEW_PASSWORD},
+        )
+        assert resp.status_code == 400
+
     async def test_invalid_token_400(self, async_client: AsyncClient) -> None:
         resp = await async_client.post(
             "/v1/auth/reset-password",
@@ -150,7 +188,7 @@ class TestResetPassword:
         assert resp.status_code == 400
 
     async def test_unknown_user_400(self, async_client: AsyncClient) -> None:
-        token = create_password_reset_token(str(uuid.uuid4()))
+        token = create_password_reset_token(str(uuid.uuid4()), 0)
         resp = await async_client.post(
             "/v1/auth/reset-password",
             json={"token": token, "new_password": _NEW_PASSWORD},
@@ -158,7 +196,7 @@ class TestResetPassword:
         assert resp.status_code == 400
 
     async def test_bad_uuid_subject_400(self, async_client: AsyncClient) -> None:
-        token = create_password_reset_token("not-a-uuid")
+        token = create_password_reset_token("not-a-uuid", 0)
         resp = await async_client.post(
             "/v1/auth/reset-password",
             json={"token": token, "new_password": _NEW_PASSWORD},

@@ -21,6 +21,7 @@ from slate.api.v1.admin_captures import router as admin_captures_router
 from slate.api.v1.admin_picks import router as admin_picks_router
 from slate.api.v1.admin_play_sessions import router as admin_play_sessions_router
 from slate.api.v1.auth import router as auth_router
+from slate.api.v1.auth_mfa import router as auth_mfa_router
 from slate.api.v1.auth_oauth import router as auth_oauth_router
 from slate.api.v1.auth_password import router as auth_password_router
 from slate.api.v1.cache import router as cache_router
@@ -216,6 +217,7 @@ def create_app() -> FastAPI:
     application.include_router(auth_router)
     application.include_router(auth_oauth_router)
     application.include_router(auth_password_router)
+    application.include_router(auth_mfa_router)
     application.include_router(cache_router)
     application.include_router(capture_router)
     application.include_router(library_import_router)

@@ -7,9 +7,11 @@ All models are re-exported here so existing imports stay unchanged:
 from slate.infrastructure.db.models.auth import (
     AdminAuditLog,
     AdminUser,
+    MfaRecoveryCode,
     OAuthIdentity,
     RefreshToken,
     User,
+    UserMfa,
 )
 from slate.infrastructure.db.models.capture import Capture, CaptureCandidate
 from slate.infrastructure.db.models.config import AppConfig
@@ -26,6 +28,7 @@ __all__ = [
     "CaptureCandidate",
     "Game",
     "LibraryEntry",
+    "MfaRecoveryCode",
     "OAuthIdentity",
     "Pick",
     "Platform",
@@ -33,4 +36,5 @@ __all__ = [
     "RefreshToken",
     "UsageCounter",
     "User",
+    "UserMfa",
 ]

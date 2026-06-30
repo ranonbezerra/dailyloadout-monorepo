@@ -72,6 +72,49 @@ class User(SoftDeleteMixin, TimestampMixin, Base):
     )
 
 
+class UserMfa(TimestampMixin, Base):
+    """A user's TOTP multi-factor credential (1:1 with ``users``).
+
+    ``confirmed_at`` is NULL while enrollment is pending (the secret has been
+    generated but the user has not yet proven possession by entering a valid
+    code); once confirmed it carries the activation time and MFA is enforced at
+    login. ``totp_secret`` is **Fernet-encrypted at rest** (never the base32
+    plaintext), so a DB-only leak does not expose a usable second factor.
+    """
+
+    __tablename__ = "user_mfa"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    totp_secret: Mapped[str] = mapped_column(String, nullable=False)
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class MfaRecoveryCode(Base):
+    """A single-use backup code for when the authenticator device is lost.
+
+    Only the SHA-256 ``code_hash`` is stored (the plaintext is shown to the user
+    exactly once, at confirmation). ``used_at`` is stamped when a code is spent,
+    so each code works only once.
+    """
+
+    __tablename__ = "mfa_recovery_codes"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    code_hash: Mapped[str] = mapped_column(String, nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (Index("idx_mfa_recovery_user", "user_id"),)
+
+
 class AdminUser(Base):
     """Admin grant: a row here means the referenced user is a backoffice admin.
 
