@@ -17,6 +17,7 @@ import structlog
 from slate.config import Settings
 from slate.config import settings as default_settings
 from slate.core.safety.injection import detect_injection
+from slate.core.safety.pii import redact_pii
 from slate.core.sanitization import sanitize_untrusted_text
 from slate.core.stats.service import StatsService
 from slate.infrastructure.agent.base import AbstractRecapAgent
@@ -214,9 +215,10 @@ class ConciergeService:
             prose, rec_id = split_recommendation(reply.text)
             if rec_id is not None and not await self._is_valid(user_id, rec_id):
                 # Degrade rather than surface a game that isn't in the library.
-                return f"{prose}\n\n{_DEGRADE_NOTE}".strip() if prose else _DEGRADE_NOTE
+                prose = f"{prose}\n\n{_DEGRADE_NOTE}".strip() if prose else _DEGRADE_NOTE
+                return redact_pii(prose)
 
-        return prose
+        return redact_pii(prose)  # PII scrub on anything echoed back (Epic 26)
 
     async def reply_stream(
         self,
@@ -258,11 +260,11 @@ class ConciergeService:
             elif isinstance(event, TokenEvent):
                 safe = gate.feed(event.text)
                 if safe:
-                    yield {"token": safe}
+                    yield {"token": redact_pii(safe)}  # best-effort per-chunk scrub
 
         tail, rec_id = gate.finish()
         if tail:
-            yield {"token": tail}
+            yield {"token": redact_pii(tail)}
 
         if rec_id is not None:
             entry = await _resolve_entry(self._library_repo, user_id, rec_id)
