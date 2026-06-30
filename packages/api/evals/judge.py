@@ -4,11 +4,18 @@ The judge scores qualities the deterministic checks can't — faithfulness,
 helpfulness, tone — on a ``[0, 1]`` scale. ``LLMJudge`` renders a rubric and
 calls the existing ``AbstractLLMClient`` (the ``smart`` role); ``DummyJudge``
 returns a fixed score so CI is deterministic and model-free.
+
+The judge runs in **free-text** mode (no forced JSON) so reasoning models can
+think before answering — forcing ``format=json`` cuts their reasoning short and
+yields snap, unreliable verdicts. The ``{score, reason}`` object is then extracted
+from the reply (tolerating ``<think>`` blocks, fences, and surrounding prose), so
+any judge model works: thinking (qwen3) or instruction-tuned (qwen2.5).
 """
 
 from __future__ import annotations
 
 import json
+import re
 from abc import ABC, abstractmethod
 
 from evals.schema import EvalCase
@@ -48,6 +55,31 @@ def _clamp(value: object) -> float:
         return 0.0
 
 
+# A flat JSON object that carries a "score" key (the verdict). Tolerates anything
+# around it — reasoning, <think> blocks, markdown fences.
+_VERDICT_RE = re.compile(r'\{[^{}]*"score"[^{}]*\}', re.DOTALL)
+
+
+def _extract_verdict(raw: str) -> tuple[float, str]:
+    """Pull ``(score, reason)`` from a free-text judge reply.
+
+    Scans for the LAST JSON object containing a ``score`` key — the verdict usually
+    follows any reasoning. Falls back to a bare ``score: <0..1>`` number, then to a
+    clearly-labelled failure (so a parse miss is never silently a 0.0 verdict).
+    """
+    for block in reversed(_VERDICT_RE.findall(raw)):
+        try:
+            data = json.loads(block)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(data, dict) and "score" in data:
+            return _clamp(data.get("score")), str(data.get("reason", ""))
+    bare = re.search(r"score\b[^0-9]*([01](?:\.\d+)?)", raw, re.IGNORECASE)
+    if bare:
+        return _clamp(bare.group(1)), raw.strip()[:200]
+    return 0.0, f"unparseable judge output: {raw.strip()[:120]}"
+
+
 class LLMJudge(AbstractJudge):
     """Model-graded judge backed by the project's LLM port."""
 
@@ -68,16 +100,17 @@ class LLMJudge(AbstractJudge):
             f"Player's notes (the ONLY source of truth): {notes}\n"
             f"Expected behavior for this case: {behavior}\n"
             f"Output to grade:\n{output}\n\n"
-            'Respond with ONLY JSON: {"score": <float 0..1>, "reason": "<one sentence>"}.'
+            "Reason briefly if you need to, then END with a single JSON object on "
+            'its own line: {"score": <float 0..1>, "reason": "<one sentence>"}.'
         )
 
     async def score(self, case: EvalCase, output: str) -> tuple[float, str]:
+        # Free-text (no json=True): let reasoning models think, then extract the
+        # verdict from the reply. Forcing JSON suppresses the reasoning that makes
+        # a judge accurate.
         try:
-            raw = await self._llm.complete(
-                self._build_prompt(case, output), role="smart", json=True
-            )
-            parsed = json.loads(raw)
-            return _clamp(parsed.get("score")), str(parsed.get("reason", ""))
+            raw = await self._llm.complete(self._build_prompt(case, output), role="smart")
+            return _extract_verdict(raw)
         except Exception as exc:
             return 0.0, f"judge error: {exc}"
 

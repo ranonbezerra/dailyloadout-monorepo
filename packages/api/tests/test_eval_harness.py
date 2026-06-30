@@ -242,11 +242,35 @@ class TestJudge:
         score, _ = await judge.score(golden_cases()[0], "out")
         assert score == 1.0
 
-    async def test_llm_judge_survives_bad_json(self) -> None:
+    async def test_llm_judge_survives_unparseable_output(self) -> None:
         judge = LLMJudge(_JudgeLLM("not json at all"))
         score, reason = await judge.score(golden_cases()[0], "out")
         assert score == 0.0
-        assert reason.startswith("judge error")
+        assert "unparseable" in reason
+
+    async def test_llm_judge_extracts_verdict_from_reasoning(self) -> None:
+        # Thinking models emit reasoning (and maybe a fenced block) around the JSON;
+        # the judge runs free-text now, so the verdict must still be recovered.
+        payload = (
+            "<think>The recap stays grounded in the notes and suggests a "
+            "concrete next step.</think>\nVerdict:\n```json\n"
+            '{"score": 0.9, "reason": "faithful and grounded"}\n```'
+        )
+        judge = LLMJudge(_JudgeLLM(payload))
+        score, reason = await judge.score(golden_cases()[0], "out")
+        assert score == pytest.approx(0.9)
+        assert reason == "faithful and grounded"
+
+    async def test_llm_judge_takes_final_verdict(self) -> None:
+        # If the reasoning floats a draft score, the LAST {score} block wins.
+        payload = (
+            'A first impression might be {"score": 0.2, "reason": "draft"}, but '
+            'my final answer is {"score": 0.85, "reason": "final"}.'
+        )
+        judge = LLMJudge(_JudgeLLM(payload))
+        score, reason = await judge.score(golden_cases()[0], "out")
+        assert score == pytest.approx(0.85)
+        assert reason == "final"
 
     async def test_dummy_judge_is_fixed(self) -> None:
         score, reason = await DummyJudge(0.7).score(golden_cases()[0], "out")
