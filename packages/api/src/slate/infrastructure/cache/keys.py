@@ -20,6 +20,7 @@ NS_RECAP = "recap"
 NS_LLM = "llm"
 NS_RESEARCH = "research"
 NS_REF = "ref"
+NS_CAPTURE = "capture"  # exact-match cache for capture-parse (semantic layer above, Epic 27)
 
 
 def _part(value: Any) -> str:
@@ -82,3 +83,8 @@ def llm_key(method: str, role: str, json_mode: bool, payload: Any) -> str:
 def reference_key(name: str) -> str:
     """Key for a global, rarely-changing reference list (genres, ...)."""
     return f"{NS_REF}:{name}"
+
+
+def capture_key(model: str, normalized_text: str) -> str:
+    """Content-addressed key for a normalized capture-parse input (global, public)."""
+    return f"{NS_CAPTURE}:{model}:{digest(normalized_text)}"

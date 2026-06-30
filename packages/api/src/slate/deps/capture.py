@@ -44,12 +44,31 @@ CaptureCandidateRepoDep = Annotated[CaptureCandidateRepository, Depends(get_cand
 
 
 def get_llm_client_dep() -> AbstractLLMClient:
-    """Provide the LLM client for the current environment (traced when enabled)."""
+    """Provide the LLM client for the current environment.
+
+    Layered outer→inner: semantic capture-parse cache (Epic 27, opt-in) → tracing →
+    real client. The cache is outermost so a hit skips both the span and the model.
+    """
     client = get_llm_client(settings)
     if settings.tracing_enabled:
         from slate.infrastructure.llm.traced import TracedLLMClient
 
-        return TracedLLMClient(client)
+        client = TracedLLMClient(client)
+    if settings.semantic_cache_enabled:
+        from slate.infrastructure.cache.factory import get_cache
+        from slate.infrastructure.db.session import async_session_factory
+        from slate.infrastructure.embedding.factory import get_embedding_client
+        from slate.infrastructure.llm.capture_cache import SemanticCaptureCache
+
+        client = SemanticCaptureCache(
+            client,
+            get_embedding_client(settings),
+            get_cache(settings),
+            async_session_factory,
+            model=settings.ollama_fast_model,
+            ttl_seconds=settings.llm_cache_ttl_seconds,
+            threshold=settings.semantic_cache_threshold,
+        )
     return client
 
 

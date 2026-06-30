@@ -16,6 +16,7 @@ from slate.infrastructure.db.models.auth import (
 from slate.infrastructure.db.models.capture import Capture, CaptureCandidate
 from slate.infrastructure.db.models.config import AppConfig
 from slate.infrastructure.db.models.library import Game, LibraryEntry, Platform
+from slate.infrastructure.db.models.llm_cache import LlmSemanticCacheEntry
 from slate.infrastructure.db.models.pick import Pick
 from slate.infrastructure.db.models.play_session import PlaySession
 from slate.infrastructure.db.models.usage import UsageCounter
@@ -28,6 +29,7 @@ __all__ = [
     "CaptureCandidate",
     "Game",
     "LibraryEntry",
+    "LlmSemanticCacheEntry",
     "MfaRecoveryCode",
     "OAuthIdentity",
     "Pick",

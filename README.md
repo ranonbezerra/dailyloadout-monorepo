@@ -135,10 +135,11 @@ Detailed architecture in [ARCHITECTURE.md](./ARCHITECTURE.md).
 - [x] **LLM observability / tracing** — a span per LLM call and per LangGraph node (tokens / latency / cost / cache-hit) with redacted prompt+completion capture for offline debugging.
 - [x] **Structured operational logging** — JSON structured logs with request/trace correlation across the API and worker.
 - [x] **RAG over PlaySession history** — embed each wrap-up (Ollama + pgvector) and ground the recap on the *semantically* most relevant prior sessions, scoped per `(user, game)`, behind a `recap_retrieval` flag. A recall@k A/B shows semantic surfaces buried-but-relevant context the chronological last-N misses.
+- [x] **Semantic LLM cache** — a two-layer cache on capture-parse (exact Redis → semantic pgvector): near-duplicate game-name spellings the hash misses reuse the parse above a cosine threshold. A `--cache` threshold sweep reports the honest trade-off — hit-rate gain vs the false-hit rate on confusable inputs.
 
 ### In Design / Next
 
-- [ ] **LLM Platform Hardening** (Epics 25–28) — eval harness + tracing + RAG over play-session history **shipped** (Epics 23–24); next: research reranking, prompt-injection guardrails, semantic cache, and resumable batch re-inference.
+- [ ] **LLM Platform Hardening** (Epics 25, 26, 28) — eval + tracing + RAG + semantic cache **shipped** (Epics 23–24, 27); next: research reranking, prompt-injection guardrails, and resumable batch re-inference.
 - [ ] **Cloud LLM adapters** — Bedrock/Vertex behind the existing LLM port for a hosted distribution; Ollama stays the local default.
 - [ ] **Apple Sign In + native iOS/Android apps** — with on-device LLMs for the fast path, backend fallback for the heavy work.
 

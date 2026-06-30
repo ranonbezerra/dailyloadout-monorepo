@@ -28,6 +28,7 @@ you actually inspected, instead of re-rolling a fresh one:
     --strict   exit 1 if any case fails its deterministic checks (total-failure guard)
     --calibrate     grade the frozen human-labelled set and report judge↔human kappa
     --retrieval     A/B recall@k of recent vs semantic recap retrieval (Epic 24)
+    --cache         semantic capture-cache threshold sweep: hit-rate gain vs false-hits (Epic 27)
     --no-cache      force the gate even if no eval-relevant file changed since last pass
 
 The gate is content-cached: if nothing that can move a recap score changed since it
@@ -52,6 +53,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from evals import DummyJudge, EvalReport, LLMJudge, golden_cases, run_eval
+from evals.cache import ThresholdResult, evaluate_cache
 from evals.calibration import (
     BUCKET_NAMES,
     N_CLASSES,
@@ -248,6 +250,40 @@ def _print_retrieval(report: RetrievalReport) -> None:
     print(f"  delta (semantic - recent) = {report.delta:+.3f}\n")
 
 
+async def _cache_experiment() -> int:
+    """Semantic capture-cache: sweep the threshold, report hit-rate gain vs false-hits.
+
+    Deterministic on the DummyEmbeddingClient; --real uses the configured embedding
+    model for a faithful threshold calibration.
+    """
+    if "--real" in sys.argv:
+        from slate.config import settings
+        from slate.infrastructure.embedding.factory import get_embedding_client
+
+        client = get_embedding_client(settings)
+    else:
+        from slate.infrastructure.embedding.dummy import DummyEmbeddingClient
+
+        client = DummyEmbeddingClient()
+    _print_cache(await evaluate_cache(client))
+    return 0
+
+
+def _print_cache(results: list[ThresholdResult]) -> None:
+    print("\nSemantic capture-cache  (threshold sweep)")
+    print("=" * 64)
+    print(f"  {'threshold':>9}  {'hit-rate':>8}  {'sem-gain':>8}  {'false-hit':>9}")
+    print("-" * 64)
+    for r in results:
+        print(
+            f"  {r.threshold:>9.2f}  {r.hit_rate:>8.0%}  {r.semantic_gain:>8.0%}  "
+            f"{r.false_hit_rate:>9.0%}"
+        )
+    print("-" * 64)
+    print("  Lower threshold lifts hit-rate but starts serving wrong parses; pick the")
+    print("  knee where sem-gain is real and false-hit is still 0.\n")
+
+
 def _rel(path: Path) -> str:
     return str(path.relative_to(path.parents[2]))
 
@@ -304,6 +340,9 @@ async def _main() -> int:
 
     if "--retrieval" in sys.argv:
         return await _retrieval_ab()
+
+    if "--cache" in sys.argv:
+        return await _cache_experiment()
 
     # Cache: skip the slow real gate when nothing that can change a recap score has
     # changed since it last passed. A push touching only web/auth/docs can't regress

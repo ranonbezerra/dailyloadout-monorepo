@@ -14,6 +14,7 @@ from evals import (
     produce_output,
     run_eval,
 )
+from evals.cache import cache_corpus, evaluate_cache
 from evals.calibration import (
     bucket,
     calibration_cases,
@@ -542,3 +543,28 @@ class TestRetrievalEval:
             recent_by_age = sorted(range(len(case.pool)), key=lambda i: case.pool[i][1])
             recent_top_k = set(recent_by_age[: case.top_k])
             assert case.gold - recent_top_k, f"{case.id}: gold is not buried"
+
+
+# =====================================================================
+# Semantic capture-cache experiment (Epic 27)
+# =====================================================================
+
+
+class TestCacheExperiment:
+    async def test_lower_threshold_lifts_hit_rate(self) -> None:
+        results = {r.threshold: r for r in await evaluate_cache(DummyEmbeddingClient())}
+        assert results[0.60].hit_rate >= results[0.95].hit_rate
+        assert all(0.0 <= r.hit_rate <= 1.0 for r in results.values())
+
+    async def test_false_hits_only_at_low_threshold(self) -> None:
+        # The confusable ("Final Fantasy XVI" ~ "VII") is served wrong only when the
+        # threshold is loose; a strict threshold never serves a wrong parse.
+        results = {r.threshold: r for r in await evaluate_cache(DummyEmbeddingClient())}
+        assert results[0.60].false_hits > 0
+        assert results[0.95].false_hits == 0
+
+    def test_corpus_has_near_dups_and_a_confusable(self) -> None:
+        corpus = cache_corpus()
+        titles = [c.true_title for c in corpus]
+        assert "Final Fantasy VII" in titles and "Final Fantasy XVI" in titles
+        assert titles.count("Elden Ring") >= 2  # near-duplicate spellings
