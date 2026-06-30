@@ -1217,7 +1217,7 @@ It's cross-cutting infrastructure (touches every LLM path, the graphs, and CI) a
 
 **Goal:** replace the recap's "last 3 ended sessions, by SQL" context with **semantic retrieval** over the user's own wrap-up corpus — embed wrap-ups / `extracted_state`, retrieve the most *relevant* prior sessions to ground the recap. Local-first: **Ollama embeddings + pgvector**, no cloud, no new external data.
 
-**Status:** not started. Depends on the Epic 23 eval to prove the grounding delta.
+**Status:** done — shipped on `feat/rag-playsession-pgvector` (embedding port, pgvector storage, embed-on-extraction, semantic retrieval behind the `recap_retrieval` flag, per-user isolation, and the recall@k A/B).
 
 ### Context
 
@@ -1225,13 +1225,13 @@ Epic 6 pulls the last 3 sessions **chronologically**. For a game played across m
 
 ### Tasks
 
-- [ ] Enable `pgvector` (extension + Alembic migration) on PostgreSQL 18.
-- [ ] **Embedding port** (hexagonal, same shape as `llm/`): `AbstractEmbeddingClient.embed(texts) -> vectors`, `OllamaEmbeddingClient`, `DummyEmbeddingClient`, factory by `EMBEDDING_PROVIDER`.
-- [ ] Embed wrap-up text + `extracted_state` on the **existing Taskiq extraction path** (Epic 7B) — store vectors on `play_sessions` or a `session_embeddings` table, versioned by embedding model.
-- [ ] **Retrieval**: top-k by cosine similarity **scoped to `(user_id, library_entry_id)`** (never cross-user), feeding the recap prompt in place of / alongside the last-3 SQL.
-- [ ] Keep the Epic 6 anti-hallucination + Epic 10 spoiler guards **unchanged** (retrieval changes *what* grounds the recap, not the guards).
-- [ ] Measure recap quality with the Epic 23 eval (semantic retrieval vs last-3 baseline); make the retrieval source a flag for the A/B.
-- [ ] Tests with `DummyEmbeddingClient` (deterministic vectors); per-user isolation test.
+- [x] Enable `pgvector` (extension + Alembic migration) on PostgreSQL 18 (image → `pgvector/pgvector:pg18`; `Vector(768)` with a JSON variant under SQLite tests).
+- [x] **Embedding port** (hexagonal, same shape as `llm/`): `AbstractEmbeddingClient.embed(texts) -> vectors`, `OllamaEmbeddingClient`, `DummyEmbeddingClient`, factory by `EMBEDDING_PROVIDER`.
+- [x] Embed wrap-up text + `extracted_state` on the **existing Taskiq extraction path** (Epic 7B) + sync fallback — vector + `embedding_model` on `play_sessions` (deferred), best-effort.
+- [x] **Retrieval**: scoped to one `(user, entry)` + embedding model, ranked by cosine in Python (small per-game set), behind the `recap_retrieval` flag (`recent` | `semantic`); recent fallback when unembedded.
+- [x] Keep the Epic 6 anti-hallucination + Epic 10 spoiler guards **unchanged** (retrieval changes *what* grounds the recap, not the guards).
+- [x] Measure with the Epic 23 eval: a recall@k A/B (`--retrieval`) over buried-context cases — semantic 1.00 vs recent 0.25 (control ties, no regression).
+- [x] Tests with `DummyEmbeddingClient` (deterministic, similarity-bearing); per-user isolation test (identical vectors, scope is the only guard).
 
 ### Definition of Done
 

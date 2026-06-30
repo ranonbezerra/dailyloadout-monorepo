@@ -25,10 +25,11 @@ _DEFAULT_CACHE = _API_ROOT / "evals" / "results" / ".gate-cache"
 _RELEVANT = (
     "src/slate/prompts",  # the Jinja2 templates behind every LLM output
     "src/slate/infrastructure/llm",  # client params (temperature, format, model wiring)
+    "src/slate/infrastructure/embedding",  # embeddings drive semantic recap retrieval
     "src/slate/infrastructure/agent",  # the deep-recap LangGraph graph + nodes
-    "src/slate/core/play_session",  # the quick-recap service + prompt context
-    "src/slate/config.py",  # model selection (ollama_*_model)
-    "evals",  # golden set, checks, judge, calibration, and baseline.json
+    "src/slate/core/play_session",  # the quick-recap service + retrieval + prompt context
+    "src/slate/config.py",  # model selection (ollama_*_model) + recap_retrieval
+    "evals",  # golden set, checks, judge, calibration, retrieval A/B, and baseline.json
 )
 _EXCLUDE_DIR_PARTS = {"__pycache__"}
 # Transient / self-referential files inside `evals` that must NOT enter the hash,
