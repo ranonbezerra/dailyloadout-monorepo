@@ -1291,7 +1291,7 @@ It's a self-contained node with its own measurement, small but distinct from Epi
 
 **Goal:** defend every path where **untrusted content reaches a prompt or a tool** — the Concierge (free chat + write tools) and captures (text/photo) — with input sanitization, prompt-injection detection, output schema/PII validation, and a **tool-arg allowlist**.
 
-**Status:** not started.
+**Status:** done — shipped on `feat/guardrails` (edge sanitization, heuristic injection detection + block, PII redaction, and an adversarially-tested tool-arg allowlist).
 
 ### Context
 
@@ -1299,12 +1299,12 @@ The Concierge takes free-form chat and decides tool calls, including the **write
 
 ### Tasks
 
-- [ ] **Input** — sanitize/normalize untrusted capture + chat text (strip control/bidi/zero-width, delimit untrusted spans in the prompt, length caps).
-- [ ] **Injection detection** — heuristics + an optional LLM classifier (via the port) that flags/blocks suspicious turns; structured-log every block.
-- [ ] **Output** — strict schema validation on structured outputs (extend the existing Pydantic parsing) and a **PII scan/redaction** pass on anything echoed back to the user.
-- [ ] **Tool layer** — an **allowlist + per-tool argument validation** on the Concierge write tools (status ∈ enum, UUID-existence, no destructive batch), so a hijacked prompt physically cannot drive an unsafe tool call.
-- [ ] Feed blocked-attempt logs into the Epic 23 observability sink.
-- [ ] **Tests** — an injection corpus (does it block?), tool-arg abuse, PII redaction, schema rejection; dummy models.
+- [x] **Input** — `sanitize_untrusted_text` (NFKC + strip control/bidi/zero-width + length cap) applied at the capture + chat edges; `capture_parse.j2` now fences the input in `<user_data>` (closing the one quality prompt that wasn't delimited).
+- [x] **Injection detection** — a high-precision heuristic detector (`core/safety/injection.py`) that flags override/jailbreak/exfiltration/fence-escape/bulk-tool-abuse and structured-logs every block. (The optional LLM classifier is deferred — the heuristics + the tool boundary carry it.)
+- [x] **Output** — structured outputs stay Pydantic + UUID/candidate validated; a conservative **PII redactor** (`core/safety/pii.py`) masks emails/phones/cards on the Concierge reply echoed back.
+- [x] **Tool layer** — the write-tool **allowlist + per-arg validation** (status ∈ enum, user-scoped UUID-existence, one-active-session, mode clamp, no batch/delete tool) — already present, now **adversarially tested** so a hijacked prompt can't drive an unsafe write.
+- [x] Blocked/flagged attempts are structured-logged (`concierge_injection_blocked`, `capture_injection_flagged`) into the Epic 23 / structured-logging sink.
+- [x] **Tests** — an injection corpus (every attack blocks, benign gaming chat doesn't), tool-arg abuse (off-enum/cross-user/garbage-id), PII redaction (gaming numbers untouched); all on dummies.
 
 ### Definition of Done
 

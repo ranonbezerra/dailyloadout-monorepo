@@ -112,6 +112,33 @@ def strip_control_chars(value: str) -> str:
     return "".join(ch for ch in value if ord(ch) not in _CONTROL_CHARS)
 
 
+# Cap on untrusted free text before it reaches a prompt — long enough for a real
+# multi-line capture / chat turn, short enough to bound prompt size and cost.
+_MAX_UNTRUSTED_TEXT_LEN = 2000
+
+
+def _is_safe_free_text_char(ch: str) -> bool:
+    """Keep newline/CR/tab (legitimate in free text); drop other control + bidi/zero-width."""
+    if ch in "\n\r\t":
+        return True
+    code = ord(ch)
+    return code not in _CONTROL_CHARS and code not in _INVISIBLE_FORMAT_CHARS
+
+
+def sanitize_untrusted_text(value: str, *, max_length: int = _MAX_UNTRUSTED_TEXT_LEN) -> str:
+    """Clean untrusted free text (capture input, chat turns) before it reaches a prompt.
+
+    NFKC-normalises, drops the invisible/format characters an injection hides behind
+    (zero-width, bidi-override, BOM) and the C0/C1 control characters, then length-caps.
+    Newline/CR/tab are KEPT — legitimate in multi-line free text; the newline-injection
+    risk is handled by delimiting (``wrap_user_data``) + detection, not by mangling
+    valid input. Non-raising: cleans rather than rejects, so a borderline turn still flows.
+    """
+    normalized = unicodedata.normalize("NFKC", value)
+    cleaned = "".join(ch for ch in normalized if _is_safe_free_text_char(ch))
+    return cleaned.strip()[:max_length]
+
+
 def validate_cdn_url(value: str | None, allowed_hosts: list[str]) -> str | None:
     """Return *value* only if it is an ``https://`` URL on an allowed host.
 

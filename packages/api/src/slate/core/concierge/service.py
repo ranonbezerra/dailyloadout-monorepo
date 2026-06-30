@@ -12,8 +12,13 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from datetime import datetime
 
+import structlog
+
 from slate.config import Settings
 from slate.config import settings as default_settings
+from slate.core.safety.injection import detect_injection
+from slate.core.safety.pii import redact_pii
+from slate.core.sanitization import sanitize_untrusted_text
 from slate.core.stats.service import StatsService
 from slate.infrastructure.agent.base import AbstractRecapAgent
 from slate.infrastructure.agent.concierge.base import (
@@ -106,6 +111,12 @@ _DEGRADE_NOTE = (
     "or narrow it down by platform or mood?"
 )
 
+logger = structlog.get_logger()
+
+# Returned (and logged) when a turn trips injection detection. Neutral on purpose —
+# the tool allowlist is the real backstop; this just refuses the suspicious turn.
+_INJECTION_REFUSAL = "Sorry, I can't help with that request."
+
 
 def _namespace_thread_id(user_id: int, thread_id: str) -> str:
     """Bind a client-supplied thread id to its owner.
@@ -173,6 +184,11 @@ class ConciergeService:
         Buffered path (non-streaming): runs to completion, validates the pick
         with a single reroll, else degrades. ``reply_stream`` is the live path.
         """
+        message = sanitize_untrusted_text(message)  # untrusted chat turn (Epic 26)
+        verdict = detect_injection(message)
+        if verdict.flagged:
+            logger.warning("concierge_injection_blocked", matches=list(verdict.matches))
+            return _INJECTION_REFUSAL
         write_tools_enabled = await dynamic_config.get_bool("concierge_write_tools_enabled")
         tools = self._build_tools(
             user_id, user_created_at, write_tools_enabled=write_tools_enabled
@@ -199,9 +215,10 @@ class ConciergeService:
             prose, rec_id = split_recommendation(reply.text)
             if rec_id is not None and not await self._is_valid(user_id, rec_id):
                 # Degrade rather than surface a game that isn't in the library.
-                return f"{prose}\n\n{_DEGRADE_NOTE}".strip() if prose else _DEGRADE_NOTE
+                prose = f"{prose}\n\n{_DEGRADE_NOTE}".strip() if prose else _DEGRADE_NOTE
+                return redact_pii(prose)
 
-        return prose
+        return redact_pii(prose)  # PII scrub on anything echoed back (Epic 26)
 
     async def reply_stream(
         self,
@@ -220,6 +237,12 @@ class ConciergeService:
         degrade-in-stream; the guard guarantee (no invalid pick shown as valid)
         is preserved.
         """
+        message = sanitize_untrusted_text(message)  # untrusted chat turn (Epic 26)
+        verdict = detect_injection(message)
+        if verdict.flagged:
+            logger.warning("concierge_injection_blocked", matches=list(verdict.matches))
+            yield {"token": _INJECTION_REFUSAL}
+            return
         write_tools_enabled = await dynamic_config.get_bool("concierge_write_tools_enabled")
         tools = self._build_tools(
             user_id, user_created_at, write_tools_enabled=write_tools_enabled
@@ -237,11 +260,11 @@ class ConciergeService:
             elif isinstance(event, TokenEvent):
                 safe = gate.feed(event.text)
                 if safe:
-                    yield {"token": safe}
+                    yield {"token": redact_pii(safe)}  # best-effort per-chunk scrub
 
         tail, rec_id = gate.finish()
         if tail:
-            yield {"token": tail}
+            yield {"token": redact_pii(tail)}
 
         if rec_id is not None:
             entry = await _resolve_entry(self._library_repo, user_id, rec_id)

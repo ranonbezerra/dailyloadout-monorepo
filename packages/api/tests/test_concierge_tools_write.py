@@ -310,6 +310,77 @@ async def test_set_status_updates_entry() -> None:
         assert entry.status == "completed"
 
 
+# -- Tool-arg abuse (Epic 26): a hijacked prompt can't drive an unsafe write --------
+
+
+async def test_set_status_rejects_status_outside_the_enum() -> None:
+    """An off-enum status (a hijacked arg) is refused and nothing is mutated."""
+    async with _TestSessionFactory() as session:
+        user_id, public_id, entry_id = await _seed(session, status="backlog")
+        await session.commit()
+
+    async with _TestSessionFactory() as session:
+        out = await set_status(
+            LibraryRepository(session),
+            user_id,
+            library_entry_public_id=public_id,
+            status="pwned",
+        )
+        assert "isn't a valid status" in out
+
+    async with _TestSessionFactory() as session:
+        from slate.infrastructure.db.models import LibraryEntry
+
+        entry = await session.get(LibraryEntry, entry_id)
+        assert entry is not None and entry.status == "backlog"  # untouched
+
+
+async def test_set_status_cannot_touch_another_users_entry() -> None:
+    """A valid public_id from ANOTHER user resolves to nothing — no cross-user write."""
+    async with _TestSessionFactory() as session:
+        from uuid import uuid4
+
+        from slate.infrastructure.db.models import User
+
+        _owner_id, public_id, entry_id = await _seed(session, status="backlog")
+        attacker = User(email=f"{uuid4().hex}@x.com", password_hash="h", display_name="A")
+        session.add(attacker)
+        await session.flush()
+        attacker_id = attacker.id
+        await session.commit()
+
+    async with _TestSessionFactory() as session:
+        out = await set_status(
+            LibraryRepository(session),
+            attacker_id,
+            library_entry_public_id=public_id,
+            status="completed",
+        )
+        assert "not in the library" in out
+
+    async with _TestSessionFactory() as session:
+        from slate.infrastructure.db.models import LibraryEntry
+
+        entry = await session.get(LibraryEntry, entry_id)
+        assert entry is not None and entry.status == "backlog"  # owner's entry untouched
+
+
+async def test_set_status_safe_on_garbage_id() -> None:
+    """A malformed (non-UUID) id is handled, not crashed."""
+    async with _TestSessionFactory() as session:
+        user_id, _, _ = await _seed(session)
+        await session.commit()
+
+    async with _TestSessionFactory() as session:
+        out = await set_status(
+            LibraryRepository(session),
+            user_id,
+            library_entry_public_id="'; DROP TABLE library_entries; --",
+            status="completed",
+        )
+        assert "not in the library" in out
+
+
 async def test_set_status_rejects_invalid_status() -> None:
     async with _TestSessionFactory() as session:
         user_id, public_id, _ = await _seed(session)

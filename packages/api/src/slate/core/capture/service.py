@@ -22,6 +22,7 @@ from slate.core.capture.ports import (
     LibraryImportProcessor,
 )
 from slate.core.library.igdb_budget import igdb_budget_allows
+from slate.core.safety.guard import sanitize_and_audit
 from slate.infrastructure.catalog.base import AbstractCatalogMatcher
 from slate.infrastructure.db.models import Capture, CaptureCandidate, LibraryEntry
 from slate.infrastructure.db.repositories.capture import (
@@ -80,11 +81,11 @@ class CaptureService:
         self._settings = settings or default_settings
 
     async def submit_text(self, user_id: int, raw_text: str, input_type: str = "text") -> Capture:
-        """Create a new capture with status ``queued``."""
+        """Create a new capture with status ``queued`` (untrusted text sanitized + audited)."""
         return await self._capture_repo.create(
             user_id=user_id,
             input_type=input_type,
-            raw_text=raw_text,
+            raw_text=sanitize_and_audit(raw_text, surface="capture", user_id=user_id),
         )
 
     async def submit_photo(self, user_id: int, image_path: str) -> Capture:
