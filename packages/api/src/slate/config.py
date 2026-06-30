@@ -21,15 +21,15 @@ class Settings(BaseSettings):
 
     # ── Redis ────────────────────────────────────────────────────────────
     redis_url: str = "redis://localhost:6380/0"
-    # Best-effort caching (IGDB lookups, etc.); off => NullCache (Epic 17).
-    cache_enabled: bool = True
-    # Per-user stats cached for a short time, bust on play_session start/end/wrap_up (Epic 18).
-    stats_cache_ttl_seconds: int = 300
-    # Deep recaps are content-addressed on the session context (Epic 18). 7d.
-    recap_cache_ttl_seconds: int = 7 * 24 * 3600
+    cache_enabled: bool = True  # off => NullCache (Epic 17)
+    stats_cache_ttl_seconds: int = 300  # per-user stats; bust on session events (Epic 18)
+    recap_cache_ttl_seconds: int = 7 * 24 * 3600  # deep recaps, content-addressed (Epic 18)
     research_cache_ttl_seconds: int = 6 * 3600  # web-research network-hop cache
     llm_cache_ttl_seconds: int = 24 * 3600  # idempotent LLM completions, by content
     reference_cache_ttl_seconds: int = 3600  # genre list etc. — tiny, hot
+    # Semantic capture-parse cache (Epic 27): off by default — a measured experiment.
+    semantic_cache_enabled: bool = False
+    semantic_cache_threshold: float = 0.95  # cosine floor to reuse a near-duplicate parse
 
     # ── Single-user mode ─────────────────────────────────────────────────
     single_user_mode: bool = False
