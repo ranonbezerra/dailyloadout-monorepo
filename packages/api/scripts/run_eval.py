@@ -8,15 +8,19 @@ real deep-recap agent.
 Set ``JUDGE_MODEL`` (e.g. ``qwen3:8b``) to judge on a different model than the one
 being graded — avoids the self-evaluation leniency of a model scoring itself.
 
-Quality gate (against a committed baseline):
-    --save     write the current aggregate scores to results/baseline.json
+Every run writes its scores to results/latest.json. Use that to commit the run
+you actually inspected, instead of re-rolling a fresh one:
+
+    --promote  copy results/latest.json → baseline.json (NO eval, NO model)
+    --save     run, then write the current run's scores to baseline.json
     --gate     re-run and FAIL (exit 1) if any metric dropped vs the baseline
     --tolerance N   allowed drop before --gate fails (default 0.05)
     --strict   exit 1 if any case fails its deterministic checks (total-failure guard)
 
 Usage:
-    poetry run python scripts/run_eval.py --real --save      # snapshot a baseline
-    poetry run python scripts/run_eval.py --real --gate      # block a regression
+    poetry run python scripts/run_eval.py --real            # run + inspect
+    poetry run python scripts/run_eval.py --promote         # commit THAT run as baseline
+    poetry run python scripts/run_eval.py --real --gate     # block a regression
 """
 
 from __future__ import annotations
@@ -35,7 +39,9 @@ from evals.gate import baseline_from_report, diff_baseline
 from slate.infrastructure.agent.dummy import DummyRecapAgent
 from slate.infrastructure.llm.dummy import DummyLLMClient
 
-_BASELINE = Path(__file__).resolve().parent.parent / "evals" / "results" / "baseline.json"
+_RESULTS = Path(__file__).resolve().parent.parent / "evals" / "results"
+_BASELINE = _RESULTS / "baseline.json"  # committed contract the gate defends
+_LATEST = _RESULTS / "latest.json"  # the most recent run (gitignored, transient)
 
 
 def _print_report(report: EvalReport) -> None:
@@ -93,14 +99,36 @@ async def _run() -> EvalReport:
     return await run_eval(DummyLLMClient(), golden_cases(), DummyJudge(), DummyRecapAgent())
 
 
+def _rel(path: Path) -> str:
+    return str(path.relative_to(path.parents[2]))
+
+
+def _promote() -> int:
+    """Copy the last run (results/latest.json) to the baseline — no eval, no model."""
+    if not _LATEST.exists():
+        print("Promote: no run to promote yet — run the eval first.")
+        return 1
+    _BASELINE.write_text(_LATEST.read_text())
+    print(f"Promoted last run → {_rel(_BASELINE)}")
+    return 0
+
+
 async def _main() -> int:
+    if "--promote" in sys.argv:
+        return _promote()
+
     report = await _run()
     _print_report(report)
 
+    # Persist every run so it can be promoted to baseline later WITHOUT re-running
+    # (recaps are regenerated each run, so --save would otherwise snapshot a fresh,
+    # different run than the one you just inspected).
+    _RESULTS.mkdir(parents=True, exist_ok=True)
+    _LATEST.write_text(json.dumps(baseline_from_report(report), indent=2) + "\n")
+
     if "--save" in sys.argv:
-        _BASELINE.parent.mkdir(parents=True, exist_ok=True)
-        _BASELINE.write_text(json.dumps(baseline_from_report(report), indent=2) + "\n")
-        print(f"Saved baseline → {_BASELINE.relative_to(_BASELINE.parents[2])}")
+        _BASELINE.write_text(_LATEST.read_text())
+        print(f"Saved baseline → {_rel(_BASELINE)}")
 
     if "--gate" in sys.argv:
         if not _BASELINE.exists():

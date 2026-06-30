@@ -1,0 +1,3 @@
+# The latest run is a transient, per-run artifact (recaps regenerate each run).
+# Only the promoted/saved baseline.json is committed.
+latest.json
