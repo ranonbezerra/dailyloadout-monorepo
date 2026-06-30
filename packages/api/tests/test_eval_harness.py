@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from evals import (
@@ -20,6 +22,7 @@ from evals.calibration import (
 )
 from evals.checks import run_checks
 from evals.gate import baseline_from_report, diff_baseline
+from evals.gate_cache import fingerprint, is_cached_pass, record_pass
 from evals.schema import CaseResult, CheckResult, EvalReport
 from slate.infrastructure.agent.dummy import DummyRecapAgent
 from slate.infrastructure.llm.dummy import DummyLLMClient
@@ -458,3 +461,52 @@ class TestCalibration:
         assert "almost perfect" in interpret_kappa(0.9)
         assert "substantial" in interpret_kappa(0.7)
         assert interpret_kappa(-0.1).startswith("poor")
+
+
+# =====================================================================
+# Gate cache (skip the real gate when nothing eval-relevant changed)
+# =====================================================================
+
+
+def _seed_tree(root: Path) -> None:
+    """A minimal repo-shaped tree with one file in each relevant area."""
+    (root / "src/slate/prompts").mkdir(parents=True)
+    (root / "src/slate/prompts/recap.j2").write_text("recap {{ notes }}")
+    (root / "src/slate/config.py").write_text("ollama_smart_model = 'gemma3:12b'")
+    (root / "evals/results").mkdir(parents=True)
+    (root / "evals/golden.py").write_text("CASES = 1")
+
+
+class TestGateCache:
+    def test_fingerprint_changes_when_relevant_file_changes(self, tmp_path: Path) -> None:
+        _seed_tree(tmp_path)
+        before = fingerprint(tmp_path)
+        (tmp_path / "src/slate/prompts/recap.j2").write_text("recap CHANGED {{ notes }}")
+        assert fingerprint(tmp_path) != before
+
+    def test_fingerprint_ignores_irrelevant_file(self, tmp_path: Path) -> None:
+        _seed_tree(tmp_path)
+        before = fingerprint(tmp_path)
+        # An auth router is not part of the recap pipeline → must not re-arm the gate.
+        (tmp_path / "src/slate/api/v1").mkdir(parents=True)
+        (tmp_path / "src/slate/api/v1/auth.py").write_text("ROUTES = []")
+        assert fingerprint(tmp_path) == before
+
+    def test_fingerprint_ignores_transient_artifacts(self, tmp_path: Path) -> None:
+        _seed_tree(tmp_path)
+        before = fingerprint(tmp_path)
+        # latest.json + the cache itself live under evals/ but must be excluded,
+        # or the cache could never hit.
+        (tmp_path / "evals/results/latest.json").write_text('{"overall": 0.9}')
+        (tmp_path / "evals/results/.gate-cache").write_text("deadbeef")
+        assert fingerprint(tmp_path) == before
+
+    def test_record_then_cached_pass_roundtrips(self, tmp_path: Path) -> None:
+        _seed_tree(tmp_path)
+        cache = tmp_path / "evals/results/.gate-cache"
+        assert not is_cached_pass(tmp_path, cache)  # nothing recorded yet
+        record_pass(tmp_path, cache)
+        assert is_cached_pass(tmp_path, cache)
+        # A change to a relevant file invalidates the cached pass.
+        (tmp_path / "src/slate/config.py").write_text("ollama_smart_model = 'gemma3:27b'")
+        assert not is_cached_pass(tmp_path, cache)

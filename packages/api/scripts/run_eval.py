@@ -27,6 +27,11 @@ you actually inspected, instead of re-rolling a fresh one:
     --tolerance N   allowed drop before --gate fails (default 0.05)
     --strict   exit 1 if any case fails its deterministic checks (total-failure guard)
     --calibrate     grade the frozen human-labelled set and report judge↔human kappa
+    --no-cache      force the gate even if no eval-relevant file changed since last pass
+
+The gate is content-cached: if nothing that can move a recap score changed since it
+last passed (prompts, LLM client, agent graph, recap service, models, the harness),
+it is skipped — so a web/auth/docs-only push pays no Ollama cost and needs no SSD.
 
 Usage:
     poetry run python scripts/run_eval.py --real            # run + inspect
@@ -55,6 +60,7 @@ from evals.calibration import (
     quadratic_weighted_kappa,
 )
 from evals.gate import baseline_from_report, diff_baseline
+from evals.gate_cache import is_cached_pass, record_pass
 from slate.infrastructure.agent.dummy import DummyRecapAgent
 from slate.infrastructure.llm.dummy import DummyLLMClient
 
@@ -222,22 +228,57 @@ def _promote() -> int:
     return 0
 
 
+def _preflight_or_exit() -> int | None:
+    """Model preflight for --real/--calibrate. Returns an exit code, or None to go on.
+
+    The Ollama models live on an external SSD. When it's gone, fail hard in the push
+    gate (SLATE_EVAL_STRICT, set by `make quality`) but only warn-and-skip for a
+    manual run — a disconnected SSD must not masquerade as a quality regression.
+    """
+    if "--real" not in sys.argv and "--calibrate" not in sys.argv:
+        return None
+    ok, detail = _models_status()
+    if ok:
+        return None
+    if os.getenv("SLATE_EVAL_STRICT"):
+        print(f"\033[31m✗ Eval gate FAILED\033[0m — {detail}")
+        return 1
+    print(f"\033[33m⚠  Eval skipped\033[0m — {detail}")
+    return 0
+
+
+def _gate(report: EvalReport) -> int:
+    """Diff the run against the committed baseline; record a pass for the cache."""
+    if not _BASELINE.exists():
+        print("Gate: no baseline yet — run with --save first.")
+        return 1
+    baseline = json.loads(_BASELINE.read_text())
+    regressions = diff_baseline(report, baseline, _arg_value("--tolerance", 0.05))
+    if regressions:
+        print("Gate FAILED — metrics regressed vs baseline:")
+        for line in regressions:
+            print(f"  ✗ {line}")
+        return 1
+    print("Gate passed — no metric regressed vs baseline.")
+    record_pass()  # remember this content passed, so an unchanged push skips the gate
+    return 0
+
+
 async def _main() -> int:
     if "--promote" in sys.argv:
         return _promote()
 
-    # --real / --calibrate need the Ollama models (kept on an external SSD). If
-    # they're gone, fail hard in the push gate (SLATE_EVAL_STRICT, set by
-    # `make quality`) but only warn-and-skip for a manual terminal run — a
-    # disconnected SSD must not masquerade as a quality regression.
-    if "--real" in sys.argv or "--calibrate" in sys.argv:
-        ok, detail = _models_status()
-        if not ok:
-            if os.getenv("SLATE_EVAL_STRICT"):
-                print(f"\033[31m✗ Eval gate FAILED\033[0m — {detail}")
-                return 1
-            print(f"\033[33m⚠  Eval skipped\033[0m — {detail}")
-            return 0
+    # Cache: skip the slow real gate when nothing that can change a recap score has
+    # changed since it last passed. A push touching only web/auth/docs can't regress
+    # quality, so it shouldn't pay the Ollama cost — or need the model SSD connected.
+    # (--no-cache forces a fresh run.) Runs before the model preflight on purpose.
+    if "--gate" in sys.argv and "--no-cache" not in sys.argv and is_cached_pass():
+        print("Eval gate: no eval-relevant changes since last pass — skipping (cached).")
+        return 0
+
+    preflight = _preflight_or_exit()
+    if preflight is not None:
+        return preflight
 
     if "--calibrate" in sys.argv:
         return await _calibrate()
@@ -256,17 +297,9 @@ async def _main() -> int:
         print(f"Saved baseline → {_rel(_BASELINE)}")
 
     if "--gate" in sys.argv:
-        if not _BASELINE.exists():
-            print("Gate: no baseline yet — run with --save first.")
-            return 1
-        baseline = json.loads(_BASELINE.read_text())
-        regressions = diff_baseline(report, baseline, _arg_value("--tolerance", 0.05))
-        if regressions:
-            print("Gate FAILED — metrics regressed vs baseline:")
-            for line in regressions:
-                print(f"  ✗ {line}")
-            return 1
-        print("Gate passed — no metric regressed vs baseline.")
+        code = _gate(report)
+        if code != 0:
+            return code
 
     if "--strict" in sys.argv and report.pass_rate < 1.0:
         print("Strict mode: one or more cases failed their deterministic checks.")
