@@ -5,8 +5,12 @@ Defaults to the deterministic ``DummyLLMClient`` + ``DummyJudge`` + ``DummyRecap
 (``LLM_PROVIDER`` / ``AGENT_PROVIDER``) with the model-graded ``LLMJudge`` and the
 real deep-recap agent.
 
-Set ``JUDGE_MODEL`` (e.g. ``qwen3:8b``) to judge on a different model than the one
-being graded — avoids the self-evaluation leniency of a model scoring itself.
+Set ``JUDGE_MODEL`` to judge on a different model than the one being graded —
+avoids the self-evaluation leniency of a model scoring itself. Prefer an
+instruction-tuned model at least as large as the generator (e.g.
+``qwen2.5:14b-instruct``): an A/B vs ``qwen3:8b`` showed the thinking model's
+reasoning overruns the output budget before it emits the verdict JSON (empty,
+unparseable scores), while the instruct model returns a calibrated 0.5-1.0 range.
 
 Every run writes its scores to results/latest.json. Use that to commit the run
 you actually inspected, instead of re-rolling a fresh one:
@@ -86,7 +90,8 @@ async def _run() -> EvalReport:
         agent = get_recap_agent(settings, base)
 
         # Self-eval guard: judge on a DIFFERENT model than the one being graded
-        # (set JUDGE_MODEL, e.g. qwen3:8b) so the judge can't favour its own output.
+        # (set JUDGE_MODEL=qwen2.5:14b-instruct) so the judge can't favour its own
+        # output. Instruct > thinking here: a thinking judge truncates its verdict.
         judge_model = os.getenv("JUDGE_MODEL")
         if judge_model:
             judge_llm = get_llm_client(
