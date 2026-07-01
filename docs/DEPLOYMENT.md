@@ -406,6 +406,30 @@ backstop for failures that only surface against real production data.
 > short migrate-before-restart window, and a rollback never needs a lossy
 > `downgrade`.
 
+### 1.11 Redis memory & the cache layer (Epic 18)
+
+Redis holds two kinds of data: **durable counters** (rate limits, cost-guard
+usage) and the **application cache** (deep recaps, stats, LLM completions, web
+research, IGDB, reference data). The cache is content-addressed and TTL-only, so
+keys accumulate orphans by design and must be evictable under memory pressure.
+Bound Redis RAM and let it evict cold cache keys:
+
+```conf
+# redis.conf (or `--maxmemory` flags)
+maxmemory 512mb
+maxmemory-policy allkeys-lru   # evict least-recently-used keys when full
+```
+
+`allkeys-lru` is safe here because every cached value is reconstructible (a miss
+just recomputes) and the durable counters carry their own TTLs. Size `maxmemory`
+to the box; 256–512 MB is ample for a single-VPS deployment.
+
+**Operational knobs** (all env, see `config.py`): `CACHE_ENABLED=false` is a
+global kill-switch (every read degrades to a live compute); per-namespace TTLs
+are `*_CACHE_TTL_SECONDS`; the in-process reference tier is
+`REFERENCE_PROCESS_TTL_SECONDS`. Watch hit-rates via `GET /v1/cache/stats` (or
+`make cache-stats`) and tune the TTLs against real traffic.
+
 ---
 
 ## 2. Fly.io

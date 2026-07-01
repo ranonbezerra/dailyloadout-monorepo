@@ -161,6 +161,19 @@ _schema_created = False
 
 
 @pytest.fixture(autouse=True)
+def _reset_cache_layer() -> None:
+    """Clear the module-level cache counters + in-process tier before each test.
+
+    The in-process reference tier (Epic 18) is a process-wide singleton; without
+    this reset a value cached in one test would leak into the next (they share
+    the same key space but bring their own FakeCache/data).
+    """
+    from slate.infrastructure.cache.layer import reset_cache_stats
+
+    reset_cache_stats()
+
+
+@pytest.fixture(autouse=True)
 def _no_background_dispatch(monkeypatch: pytest.MonkeyPatch) -> None:
     """No-op the wrap_up-extraction Taskiq dispatch in tests.
 

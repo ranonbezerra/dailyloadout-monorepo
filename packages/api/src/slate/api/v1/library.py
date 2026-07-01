@@ -114,8 +114,7 @@ async def list_platforms(
     library_service: LibraryServiceDep,
 ) -> list[PlatformResponse]:
     """List all available platforms."""
-    platforms = await library_service.list_platforms()
-    return [PlatformResponse.model_validate(p) for p in platforms]
+    return await library_service.list_platforms()
 
 
 # ---------------------------------------------------------------------------

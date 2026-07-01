@@ -127,7 +127,7 @@ Detailed architecture in [ARCHITECTURE.md](./ARCHITECTURE.md).
 - [x] **Unified PlaySession pipeline** — one `start_play_session` spine; Pick, direct start, and the Concierge all funnel through it (recap is an optional stage).
 - [x] **Bulk library import** — local-first OCR (Tesseract) of platform list-view/purchase-history screenshots, fuzzy-matched to a canonical catalog, with a capped cloud-vision fallback.
 - [x] **Cost governance** — per-call token→$ metering, per-user/global spend kill-switch with a degraded in-process fallback (Redis-outage safe).
-- [x] **Application caching layer** — `AbstractCache` port (Redis/null) with IGDB result + token caching; broader strategy in progress.
+- [x] **Application caching layer** — an app-wide read-through layer over the `AbstractCache` port (Redis/null): namespaced, user-scoped keys; **single-flight** stampede protection; an in-process LRU tier in front of Redis for hot shared reference data; consumers for deep recap / stats / LLM completions / web research / IGDB; an event-driven invalidation map (ambient stats busts, content-addressed recaps); a global kill-switch + per-call opt-out with best-effort degradation on any Redis outage; and per-namespace hit/miss observability (`GET /v1/cache/stats`).
 - [x] **Backoffice / admin panel** — users (ban/verify/sessions), catalogue moderation, moderation domains (play sessions force-clamp, captures reprocess/purge, picks browse), and runtime operational config (Postgres overlay over env), every change audited.
 - [x] **Social login** — Google & Twitch (Authorization Code + PKCE) on web, behind the existing auth core.
 - [x] **Account recovery** — forgot / reset / change password with single-use, session-invalidating reset tokens.
@@ -144,7 +144,6 @@ Detailed architecture in [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ### In Design / Next
 
-- [ ] **Application caching layer (broadening)** — generalise the `AbstractCache` seed into an app-wide strategy (deep recap, stats, LLM completions, research) with an event-driven invalidation model, single-flight/stampede protection, tiering, and per-namespace observability. The single biggest lever on hosted inference cost.
 - [ ] **Cloud LLM adapters** — Bedrock/Vertex behind the existing LLM port for a hosted distribution; Ollama stays the local default.
 - [ ] **Apple Sign In + native iOS/Android apps** — with on-device LLMs for the fast path, backend fallback for the heavy work.
 

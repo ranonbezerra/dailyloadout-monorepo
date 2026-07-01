@@ -58,6 +58,7 @@ async def get_library_service(
         platform_repo,
         cache=get_cache(settings),
         reference_ttl_seconds=settings.reference_cache_ttl_seconds,
+        reference_process_ttl_seconds=settings.reference_process_ttl_seconds,
         igdb_client=igdb_client,
         match_min_score=settings.catalog_match_min_score,
         share_threshold=await dynamic_config.get_int("catalog_share_threshold"),

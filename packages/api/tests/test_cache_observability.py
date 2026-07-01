@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import Any
 
 from httpx import AsyncClient
@@ -68,3 +69,29 @@ async def test_genres_served_from_cache_on_repeat() -> None:
     assert repo.calls == 1  # second read hit the reference cache
     # The genre cache is namespaced per user (private rows are user-scoped).
     assert reference_key("genres:7") in cache.store
+
+
+# ── Reference tier: list_platforms (global, shared) ──────────────────────
+
+
+class _PlatformRepo:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def list_all(self) -> list[SimpleNamespace]:
+        self.calls += 1
+        return [SimpleNamespace(id=1, slug="pc", label="PC", family="pc")]
+
+
+async def test_platforms_cached_and_tiered_on_repeat() -> None:
+    repo = _PlatformRepo()
+    cache = FakeCache()
+    service = LibraryService(None, None, repo, cache=cache, reference_ttl_seconds=100)  # type: ignore[arg-type]
+
+    first = await service.list_platforms()
+    second = await service.list_platforms()
+
+    assert [p.slug for p in first] == [p.slug for p in second] == ["pc"]
+    assert repo.calls == 1  # second read served from cache (tier/Redis), not the DB
+    # Platforms are global, so the key is un-scoped (one shared entry).
+    assert reference_key("platforms") in cache.store

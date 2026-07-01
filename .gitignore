@@ -42,8 +42,9 @@ htmlcov/
 *.cover
 
 # ─────────────────────────────────────────────
-# Flutter (packages/app)
-# Detailed rules in packages/app/.gitignore
+# Flutter (packages/mobile)
+# Detailed rules in packages/mobile/.gitignore; these repo-wide guards also
+# catch stray artifacts if an old-layout branch (packages/app) is checked out.
 # ─────────────────────────────────────────────
 .fvm/
 .dart_tool/
@@ -51,7 +52,13 @@ htmlcov/
 .flutter-plugins
 .flutter-plugins-dependencies
 *.iml
-packages/app/.metadata
+**/.metadata
+**/ios/Flutter/ephemeral/
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/Runner/GeneratedPluginRegistrant.*
+**/android/local.properties
+**/android/**/GeneratedPluginRegistrant.java
 
 # ─────────────────────────────────────────────
 # Node / Bun (packages/web)
