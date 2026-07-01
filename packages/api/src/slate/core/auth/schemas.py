@@ -8,6 +8,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
+from slate.config import settings
+from slate.core.auth.password_breach import is_common_password
 from slate.core.sanitization import sanitize_display_name
 
 
@@ -26,6 +28,10 @@ def _validate_password_complexity(v: str) -> str:
         raise ValueError("Password must contain at least one lowercase letter")
     if not re.search(r"\d", v):
         raise ValueError("Password must contain at least one digit")
+    # Reject known-common passwords (NIST 800-63B) — the ones that pass the rules
+    # above but are still trivially guessable (Password1, Qwerty123, Welcome2024…).
+    if settings.password_blocklist_enabled and is_common_password(v):
+        raise ValueError("This password is too common — choose a less predictable one")
     return v
 
 
