@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from slate.config import settings
+from slate.core.auth import breach
 from slate.core.auth import logging as auth_log
 from slate.core.auth.oauth_login import resolve_oauth_login
 from slate.core.auth.security import (
@@ -42,11 +43,13 @@ class AuthService:
         refresh_token_repo: RefreshTokenRepository,
         mailer: Mailer | None = None,
         oauth_repo: OAuthIdentityRepository | None = None,
+        breach_checker: breach.AbstractBreachedPasswordChecker | None = None,
     ) -> None:
         self._user_repo = user_repo
         self._refresh_token_repo = refresh_token_repo
         self._mailer = mailer or get_mailer()
         self._oauth_repo = oauth_repo
+        self._breach = breach_checker or breach.get_breach_checker()
 
     async def register(
         self,
@@ -54,32 +57,27 @@ class AuthService:
         password: str,
         display_name: str,
     ) -> tuple[User, str, str]:
-        """Create a new user and issue tokens.
+        """Create a new user and issue tokens → ``(user, access, refresh)``.
 
-        Returns:
-            ``(user, access_token, raw_refresh_token)``
-
-        Raises:
-            EmailRejectedError: If the email is disposable or undeliverable.
-            ValueError: If *email* is already registered.
+        Raises EmailRejectedError / BreachedPasswordError / ValueError on a bad
+        email, a compromised password, or an already-registered email.
         """
-        # Identity-hygiene gates run FIRST and are purely domain/content-based,
-        # so they reveal nothing about whether the account already exists.
+        # Identity-hygiene + breach gates run FIRST (purely content-based, reveal
+        # nothing about whether the account exists).
         try:
             await assert_email_acceptable(email)
         except EmailRejectedError:
             auth_log.register_rejected(email, reason="email_rejected")
             raise
+        await breach.assert_password_not_breached(self._breach, password)
 
         if await self._user_repo.email_exists(email):
             auth_log.register_rejected(email, reason="email_exists")
             raise ValueError("Email already registered")
 
         pw_hash = hash_password(password)
-
-        # Dev/test auto-verify bypass: outside production, accounts are created
-        # already verified and no email is sent, so local dev and the test suite
-        # are never blocked by the verification gate.
+        # Outside production, accounts are auto-verified (no email) so dev/tests
+        # aren't blocked by the verification gate.
         auto_verify = not settings.is_production
         # create() raises ValueError on the unique-email race → same 409 as the dup path.
         user = await self._user_repo.create(

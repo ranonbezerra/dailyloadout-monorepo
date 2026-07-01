@@ -10,6 +10,7 @@ from slate.api.v1.auth_cookies import (
     set_refresh_cookie,
 )
 from slate.config import settings
+from slate.core.auth.breach import BreachedPasswordError
 from slate.core.auth.schemas import (
     LoginRequest,
     LoginResponse,
@@ -109,9 +110,8 @@ async def register(
             password=body.password,
             display_name=body.display_name,
         )
-    except EmailRejectedError as exc:
-        # Disposable / undeliverable email: a domain-based 422 (invalid input),
-        # not a 409 — and not an account-existence oracle.
+    except (EmailRejectedError, BreachedPasswordError) as exc:
+        # Bad email or breached password → 422 (invalid input), never a 409 oracle.
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(exc),

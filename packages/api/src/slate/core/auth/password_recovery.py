@@ -11,6 +11,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
+from slate.core.auth import breach
 from slate.core.auth.security import (
     REFRESH_TOKEN_EXPIRE_DAYS,
     create_access_token,
@@ -42,10 +43,12 @@ class PasswordRecoveryService:
         user_repo: UserRepository,
         refresh_token_repo: RefreshTokenRepository,
         mailer: Mailer | None = None,
+        breach_checker: breach.AbstractBreachedPasswordChecker | None = None,
     ) -> None:
         self._user_repo = user_repo
         self._refresh_token_repo = refresh_token_repo
         self._mailer = mailer or get_mailer()
+        self._breach = breach_checker or breach.get_breach_checker()
 
     async def forgot_password(self, email: str) -> None:
         """Best-effort send of a reset link. Neutral by design.
@@ -74,6 +77,7 @@ class PasswordRecoveryService:
         user = await self._user_repo.get_by_public_id(public_id)
         if user is None:
             raise ValueError("Invalid or expired reset token")
+        await breach.assert_password_not_breached(self._breach, new_password)
         # Atomic single-use: the conditional UPDATE both sets the password and
         # bumps the version only if the version still matches, so a concurrent
         # replay of the same link can't apply twice. Only revoke sessions + email
@@ -104,6 +108,7 @@ class PasswordRecoveryService:
         """
         if user.password_hash is None or not verify_password(current_password, user.password_hash):
             raise ValueError("Current password is incorrect")
+        await breach.assert_password_not_breached(self._breach, new_password)
 
         await self._apply_new_password(user, new_password)
 

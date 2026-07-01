@@ -187,9 +187,9 @@ class Settings(BaseSettings):
 
     # ── Auth ───────────────────────────────────────────────────────
     bcrypt_rounds: int = 12
-    # Reject known-common passwords at register/reset/change (NIST 800-63B). Offline
-    # blocklist; a true HIBP-corpus check would be an async service-layer adapter.
-    password_blocklist_enabled: bool = True
+    # Breached-password check (NIST 800-63B): local (default) | hibp | null — breach.py.
+    password_breach_provider: str = "local"
+    hibp_timeout_seconds: float = 3.0
 
     # ── Auth refresh cookie (web cookie-mode, X-Auth-Mode: cookie) ───────
     # App uses BODY mode; web only. PROD: secure=True, samesite="none" cross-domain.
