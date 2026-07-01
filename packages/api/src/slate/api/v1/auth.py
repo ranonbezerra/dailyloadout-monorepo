@@ -10,6 +10,8 @@ from slate.api.v1.auth_cookies import (
     set_refresh_cookie,
 )
 from slate.config import settings
+from slate.core.auth import login_stepup
+from slate.core.auth.breach import BreachedPasswordError
 from slate.core.auth.schemas import (
     LoginRequest,
     LoginResponse,
@@ -26,9 +28,7 @@ from slate.core.auth.service import EmailRejectedError
 from slate.deps import AuthServiceDep, CurrentUserDep, MfaServiceDep
 from slate.deps.captcha import verify_turnstile
 
-# Per-IP limiters, now Redis-backed (shared across worker processes) and
-# fail-open if Redis is unreachable. Limits come from settings. These names are
-# overridden to no-ops in tests (see conftest), matching the old wiring.
+# Per-IP limiters (Redis-backed, fail-open); no-op'd in tests via conftest.
 _check_login_rate = rate_limit(
     "auth_login", settings.rate_limit_login_per_minute, 60, by="ip", fail_closed=True
 )
@@ -45,8 +45,7 @@ _check_register_rate = rate_limit(
     fail_closed=True,
     times_key="rate_limit_register_per_minute",
 )
-# Resend-verification is per-IP and abuse-prone (email bombing); reuse the
-# register rate as a conservative cap. Fail-open is fine here (no account mint).
+# Resend-verification: per-IP cap (email-bombing), fail-open (no account mint).
 _check_resend_rate = rate_limit(
     "auth_resend_verification",
     settings.rate_limit_register_per_minute,
@@ -109,9 +108,8 @@ async def register(
             password=body.password,
             display_name=body.display_name,
         )
-    except EmailRejectedError as exc:
-        # Disposable / undeliverable email: a domain-based 422 (invalid input),
-        # not a 409 — and not an account-existence oracle.
+    except (EmailRejectedError, BreachedPasswordError) as exc:
+        # Bad email or breached password → 422 (invalid input), never a 409 oracle.
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(exc),
@@ -143,19 +141,21 @@ async def login(
 ) -> LoginResponse:
     """Authenticate with email/password.
 
-    When the account has MFA enabled, no session is issued: the response carries
-    ``mfa_required`` and a short-lived ``mfa_token`` to be exchanged (with a
-    code) at ``/v1/auth/mfa/login``. Otherwise tokens are issued as usual —
-    cookie mode sets the httpOnly refresh cookie (empty in body), body mode
-    returns both tokens.
+    MFA-enabled accounts get ``mfa_required`` + a short-lived ``mfa_token`` (no
+    session) to exchange at ``/mfa/login``. After repeated failures on the account,
+    a Turnstile step-up is required. Cookie mode sets the httpOnly refresh cookie;
+    body mode returns both tokens.
     """
+    # Step-up: once an account has too many recent failures, gate login on a CAPTCHA
+    # (verify_turnstile is a no-op when Turnstile isn't configured — dev/tests).
+    if await login_stepup.login_stepup_required(body.email):
+        await verify_turnstile(request)
     try:
         user = await auth_service.verify_credentials(body.email, body.password)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(exc),
-        ) from exc
+        await login_stepup.record_login_failure(body.email)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
+    await login_stepup.reset_login_failures(body.email)
 
     if await mfa_service.is_enabled(user.id):
         challenge = create_mfa_challenge_token(str(user.public_id), user.token_version)

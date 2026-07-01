@@ -187,9 +187,9 @@ class Settings(BaseSettings):
 
     # ── Auth ───────────────────────────────────────────────────────
     bcrypt_rounds: int = 12
-    # Reject known-common passwords at register/reset/change (NIST 800-63B). Offline
-    # blocklist; a true HIBP-corpus check would be an async service-layer adapter.
-    password_blocklist_enabled: bool = True
+    # Breached-password check (NIST 800-63B): local (default) | hibp | null — breach.py.
+    password_breach_provider: str = "local"
+    hibp_timeout_seconds: float = 3.0
 
     # ── Auth refresh cookie (web cookie-mode, X-Auth-Mode: cookie) ───────
     # App uses BODY mode; web only. PROD: secure=True, samesite="none" cross-domain.
@@ -211,26 +211,26 @@ class Settings(BaseSettings):
     pick_auto_ignore_hours: int = 24
     pick_cooldown_hours: int = 12
 
-    # ── Rate limiting (Redis fixed-window, per-user / per-IP) ────────────
-    # Master switch (False => rate_limit() is a no-op). Also fails open if Redis is down.
+    # ── Rate limiting (Redis fixed-window, per-user / per-IP) — master switch
+    # False => rate_limit() is a no-op; all limiters fail open if Redis is down.
     rate_limit_enabled: bool = True
-    # Auth limiters (per client IP) — Redis-backed, shared across workers.
+    # Auth limiters (per client IP). login_stepup_* = require a Turnstile challenge
+    # after N account failures (not a lockout — see login_stepup.py).
     rate_limit_login_per_minute: int = 10
+    login_stepup_after_failures: int = 5
+    login_stepup_window_seconds: int = 900
     rate_limit_register_per_minute: int = 5
-    # Per-USER limits on expensive (LLM/IGDB/research) routes — tuned for COST.
     rate_limit_concierge_chat_per_minute: int = 6
     rate_limit_play_session_recap_per_minute: int = 4
     rate_limit_pick_create_per_minute: int = 10
     rate_limit_capture_submit_per_minute: int = 15
     rate_limit_library_import_per_minute: int = 5
     rate_limit_candidate_rematch_per_minute: int = 20
-    # POST /v1/games (LLM/IGDB resolve) + generous backstops on writes/reads.
     rate_limit_game_create_per_minute: int = 20
     rate_limit_library_write_per_minute: int = 60
     rate_limit_read_per_minute: int = 120
 
     # ── Cost kill-switch (aggregate $ guard, provider-agnostic) ──────────
-    # Spend proxy: 503s over budgets (False => no-op); degrades on Redis error.
     cost_guard_enabled: bool = True
     cost_global_per_minute: int = 120
     cost_global_per_day: int = 5000
