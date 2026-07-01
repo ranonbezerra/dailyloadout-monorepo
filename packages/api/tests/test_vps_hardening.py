@@ -25,6 +25,8 @@ def _prod(**overrides: object) -> Settings:
         "secret_key": "x" * 48,
         "auth_cookie_secure": True,
         "turnstile_secret": "ts",  # pragma: allowlist secret
+        "trusted_hosts": ["api.slate.app"],
+        "cors_origins": ["https://slate.app"],
     }
     base.update(overrides)
     return Settings(**base)  # type: ignore[arg-type]

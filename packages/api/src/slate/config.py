@@ -251,50 +251,12 @@ class Settings(BaseSettings):
 _DEV_ENVS = ("development", "testing")
 
 
-def _validate_production_settings(s: Settings) -> None:
-    """Fail fast on insecure production configuration.
-
-    Dev/test (``app_env`` in ``development``/``testing``) may relax these so
-    http://localhost keeps working; any other environment is treated as
-    production and must be hardened.
-    """
-    if not s.is_production:
-        return
-
-    if s.secret_key == "change-me-in-prod":
-        raise RuntimeError(
-            "FATAL: secret_key is still the default value. "
-            "Set the SECRET_KEY environment variable before running in production."
-        )
-
-    if len(s.secret_key) < 32:
-        raise RuntimeError(
-            "FATAL: secret_key is too short for production (< 32 chars). "
-            "Use a high-entropy value (e.g. `secrets.token_urlsafe(48)`)."
-        )
-
-    if not s.auth_cookie_secure:
-        raise RuntimeError(
-            "FATAL: auth_cookie_secure must be True in production. "
-            "Refresh-token cookies must only be sent over HTTPS."
-        )
-
-    if s.auth_cookie_samesite == "none" and not s.auth_cookie_secure:
-        raise RuntimeError("FATAL: auth_cookie_samesite='none' requires auth_cookie_secure=True.")
-
-    if s.single_user_mode:
-        raise RuntimeError(
-            "FATAL: single_user_mode must be False in production. "
-            "It bypasses JWT auth and returns a fixed account for every request."
-        )
-
-    if not s.turnstile_secret:
-        raise RuntimeError(
-            "FATAL: turnstile_secret must be set in production. The registration "
-            "CAPTCHA is the primary defence against mass account creation."
-        )
-
-
 settings = Settings()
 
-_validate_production_settings(settings)
+# Fail fast on insecure production config (guard lives in its own module).
+from slate.config_validation import validate_production_settings  # noqa: E402
+
+# Back-compat alias for existing imports of the old private name.
+_validate_production_settings = validate_production_settings
+
+validate_production_settings(settings)

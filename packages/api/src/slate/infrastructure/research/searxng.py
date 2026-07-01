@@ -19,31 +19,33 @@ logger = structlog.get_logger()
 _SCRAPE_MAX_CHARS = 4000
 
 
-def _is_public_host(hostname: str) -> bool:
-    """Return ``True`` only if *hostname* resolves exclusively to public IPs.
+def _resolve_public_ip(hostname: str) -> str | None:
+    """Resolve *hostname*; return ONE validated IP to pin the connection to, else None.
 
     SSRF guard: ``fetch`` follows search-result URLs, which are attacker-influenced
-    (they come from the open web). We resolve the host and reject it if ANY
-    resolved address is loopback, private, link-local, reserved, or otherwise
-    non-global, so a result can't trick us into hitting internal services.
+    (they come from the open web). We resolve the host and reject it if ANY resolved
+    address is loopback, private, link-local, reserved, or otherwise non-global.
+    Returning the validated IP (rather than a bool) lets the caller pin the request
+    to *this* address, closing the TOCTOU window where a fast-flipping DNS record
+    could resolve public here and private again inside ``httpx.get`` (DNS rebinding).
     """
     try:
         infos = socket.getaddrinfo(hostname, None)
     except (socket.gaierror, UnicodeError):
-        return False
+        return None
 
-    addresses = {info[4][0] for info in infos}
+    addresses = [info[4][0] for info in infos]
     if not addresses:
-        return False
+        return None
 
     for addr in addresses:
         try:
             ip = ipaddress.ip_address(addr)
         except ValueError:
-            return False
+            return None
         if not ip.is_global or ip.is_loopback or ip.is_link_local or ip.is_reserved:
-            return False
-    return True
+            return None
+    return addresses[0]
 
 
 class SearxngResearchClient(AbstractResearchClient):
@@ -93,21 +95,29 @@ class SearxngResearchClient(AbstractResearchClient):
         """Fetch *url* and return cleaned page text for recap grounding.
 
         SSRF guard: result URLs come from the open web, so before fetching we
-        validate the target host resolves to a public IP. Redirects are disabled
-        so a public URL can't 30x us into an internal address; on the rare
-        legitimate redirect we simply skip the page rather than chase it blindly.
+        resolve the host, reject any non-public IP, and PIN the connection to the
+        validated address (so a rebinding DNS record can't flip it private inside
+        httpx). SNI + cert stay on the original hostname. Redirects are disabled so
+        a public URL can't 30x us into an internal address.
         """
         if not url.startswith(("http://", "https://")):
             return ""
 
         hostname = urlsplit(url).hostname
-        if not hostname or not _is_public_host(hostname):
+        pinned_ip = _resolve_public_ip(hostname) if hostname else None
+        if pinned_ip is None:
             logger.warning("searxng_scrape_blocked", url=url)
             return ""
 
         client = await self._get_client()
         try:
-            resp = await client.get(url, follow_redirects=False)
+            # Connect to the validated IP, but keep Host + TLS SNI/cert on the real
+            # hostname — the request never re-resolves, closing the TOCTOU.
+            request = client.build_request("GET", url)
+            request.url = request.url.copy_with(host=pinned_ip)
+            request.headers["Host"] = hostname
+            request.extensions["sni_hostname"] = hostname
+            resp = await client.send(request, follow_redirects=False)
             resp.raise_for_status()
         except httpx.HTTPError as exc:
             logger.warning("searxng_scrape_failed", url=url, error=str(exc))
