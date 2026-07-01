@@ -1255,7 +1255,7 @@ It introduces pgvector, an embedding port, and a retrieval layer feeding the anc
 
 **Goal:** add a **rerank** stage between SearXNG retrieval and `synthesize` in the deep-recap graph (Epic 10), so the most *relevant* passages ground the recap — a measurable grounding improvement inside the existing retrieval pipeline.
 
-**Status:** not started.
+**Status:** done — LLM-rerank node (`fast` role) between `grade_results` and `synthesize`, writing a `ranked_results` view that `synthesize` prefers (and scrapes first). Deadline-aware and flag-gated (`deep_recap_rerank_enabled`, `deep_recap_rerank_top_n`); degrades to raw order when disabled, over budget, ≤1 result, or on an unparsable response. Cross-encoder left as a documented future option to keep CI dummy-only. Model-free A/B (`evals/rerank.py`): recall@n **0.33 → 1.00 (+0.67)** on buried-result cases, control case does not regress.
 
 ### Context
 
@@ -1263,12 +1263,12 @@ Epic 10 grounds `synthesize` on SearXNG **snippets** (and optionally the scraped
 
 ### Tasks
 
-- [ ] A `rerank` node in `infrastructure/agent/graph/nodes.py`, between search/scrape and `synthesize`.
-- [ ] **LLM-rerank** via the existing port (`fast` role — score each candidate's relevance to the query) and/or a local **cross-encoder** option behind a flag; keep top-N after reranking.
-- [ ] Feed the reranked context to `synthesize`; `spoiler_filter` + `anti_hallucination` stay unchanged (rerank may *also* down-rank spoiler-heavy passages as a bonus signal).
-- [ ] Bound the node by the deep-recap deadline; **degrade** (skip rerank) gracefully if over budget.
-- [ ] Measure grounding/faithfulness with the Epic 23 eval (rerank vs no-rerank); record the delta.
-- [ ] Tests with `DummyResearchClient` + `DummyLLMClient`.
+- [x] A `rerank` node in `infrastructure/agent/graph/nodes.py`, between search and `synthesize` (the `grade_results` "sufficient" edge now routes through it).
+- [x] **LLM-rerank** via the existing port (`fast` role — returns a relevance-ordered index list); keep top-N (`deep_recap_rerank_top_n`) after reranking. Local **cross-encoder** left as a documented future option (avoids a heavy dep; keeps CI dummy-only).
+- [x] Feed the reranked context to `synthesize` (it prefers `ranked_results`, else raw `results`); `anti_hallucination` stays unchanged and still grounds on the full snippet set.
+- [x] Bound the node by the deep-recap deadline; **degrade** (skip rerank → raw order) gracefully if over budget, disabled, ≤1 result, or on an unparsable response.
+- [x] Measure grounding with a model-free A/B (`evals/rerank.py`, mirroring the Epic 24 retrieval A/B): recall@n **0.33 → 1.00 (+0.67)** on buried-result cases; control case does not regress.
+- [x] Tests with `DummyResearchClient` + `DummyLLMClient` (node reorder/degrade unit tests, graph integration, eval A/B).
 
 ### Definition of Done
 

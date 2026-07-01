@@ -66,6 +66,10 @@ class Settings(BaseSettings):
     # Overlap floor for the DEEP recap — more tolerant than quick's 0.40 (grounds on
     # research text the verbatim token match can't fully cover).
     deep_recap_overlap_threshold: float = 0.25
+    # Rerank the retrieved results by task relevance before synthesis (Epic 25), so
+    # the most on-topic passages ground the recap (and get scraped first).
+    deep_recap_rerank_enabled: bool = True
+    deep_recap_rerank_top_n: int = 4  # keep the top-N after reranking; feeds synthesize
 
     # ── Backlog Concierge (Epic 11) ──────────────────────────────────────
     concierge_provider: str = "dummy"  # langgraph | dummy

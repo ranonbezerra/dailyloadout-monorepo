@@ -75,6 +75,18 @@ def build_graph(
         "refine_query", _traced_node("refine_query", partial(nodes.refine_query, llm=llm))
     )
     graph.add_node(
+        "rerank",
+        _traced_node(
+            "rerank",
+            partial(
+                nodes.rerank,
+                llm=llm,
+                enabled=settings.deep_recap_rerank_enabled,
+                top_n=settings.deep_recap_rerank_top_n,
+            ),
+        ),
+    )
+    graph.add_node(
         "synthesize",
         _traced_node(
             "synthesize",
@@ -104,14 +116,16 @@ def build_graph(
         "grade_results",
         partial(route_after_grade, max_refines=settings.deep_recap_max_refines),
         {
-            "synthesize": "synthesize",
+            "synthesize": "rerank",  # rerank first, then synthesize (Epic 25)
             "refine_query": "refine_query",
             "fallback_quick": "fallback_quick",
         },
     )
     graph.add_edge("refine_query", "search")  # the bounded loop
-    # Single spoiler-aware synthesis pass (the prompt bakes in the spoiler rules),
-    # then the terminal anti-hallucination gate — no separate filter pass to dilute.
+    # Rerank the retrieved results by task relevance, then a single spoiler-aware
+    # synthesis pass (the prompt bakes in the spoiler rules), then the terminal
+    # anti-hallucination gate — no separate filter pass to dilute.
+    graph.add_edge("rerank", "synthesize")
     graph.add_edge("synthesize", "anti_hallucination")
     graph.add_edge("anti_hallucination", END)
     graph.add_edge("fallback_quick", END)
