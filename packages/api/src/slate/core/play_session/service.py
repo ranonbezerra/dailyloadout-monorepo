@@ -17,6 +17,7 @@ from slate.core.play_session.recap import (
     generate_recap_for_mode,
 )
 from slate.core.play_session.start import create_play_session_for_entry
+from slate.core.safety.guard import sanitize_and_audit
 from slate.infrastructure.agent.base import AbstractRecapAgent
 from slate.infrastructure.db.models import LibraryEntry, PlaySession
 from slate.infrastructure.db.repositories.library import LibraryRepository
@@ -132,6 +133,7 @@ class PlaySessionService:
         runs LLM extraction synchronously, and returns a fresh recap
         preview.
         """
+        wrap_up_text = sanitize_and_audit(wrap_up_text, surface="wrap_up", user_id=user_id)
         entry = await self._library_repo.get_by_public_id(library_entry_public_id, user_id)
         if entry is None:
             raise HTTPException(
@@ -213,6 +215,7 @@ class PlaySessionService:
         Saves the wrap_up text, ends the play_session immediately, and dispatches
         the LLM extraction to a background Taskiq worker.
         """
+        wrap_up_text = sanitize_and_audit(wrap_up_text, surface="wrap_up", user_id=user_id)
         play_session = await self.get_play_session(user_id, play_session_public_id)
         if play_session.ended_at is not None:
             raise HTTPException(

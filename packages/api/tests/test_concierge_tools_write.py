@@ -284,6 +284,28 @@ async def test_retroactive_wrap_up_unknown_game() -> None:
         assert "not in the library" in out
 
 
+async def test_retroactive_wrap_up_sanitizes_stored_text() -> None:
+    """Untrusted wrap-up text is char-sanitized before it is stored + extracted + embedded."""
+    async with _TestSessionFactory() as session:
+        user_id, public_id, entry_id = await _seed(session)
+        await session.commit()
+
+    async with _TestSessionFactory() as session:
+        await submit_retroactive_wrap_up(
+            LibraryRepository(session),
+            PlaySessionRepository(session),
+            DummyLLMClient(),
+            user_id,
+            library_entry_public_id=public_id,
+            wrap_up_text="Beat the boss\x00\x07 and got the​ dash",
+        )
+        await session.commit()
+
+    async with _TestSessionFactory() as session:
+        sessions = await PlaySessionRepository(session).get_recent_for_entry(entry_id, limit=5)
+        assert sessions[0].wrap_up_text == "Beat the boss and got the dash"
+
+
 # -- set_status -----------------------------------------------------------------
 
 
