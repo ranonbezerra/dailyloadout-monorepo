@@ -9,6 +9,14 @@ These codify the ad-hoc security scans done during development into repeatable,
 version-controlled checks. They are **advisory** — an LLM auditor, not a
 deterministic gate — so treat findings as leads to verify, not build failures.
 
+Two entry points, same prompt files:
+
+- **`make audit`** (this doc) — headless `claude -p` subprocesses, for CI/cron or
+  a hands-off run outside a session.
+- **`/security-audit` skill** (`.claude/skills/security-audit/`) — the
+  interactive, in-session path: orchestrates the auditors as subagents, verifies
+  findings against the code, and offers to implement fixes.
+
 ## Usage
 
 ```bash
