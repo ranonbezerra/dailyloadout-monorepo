@@ -25,6 +25,7 @@ from slate.core.capture.schemas import (
 from slate.core.library.schemas import LibraryEntryResponse
 from slate.deps import CaptureServiceDep, CurrentUserDep, RequireVerifiedUserDep
 from slate.deps.capture import STTClientDep
+from slate.infrastructure.stt.audio_probe import probe_audio_duration_seconds
 from slate.infrastructure.stt.concurrency import get_stt_semaphore
 
 router = APIRouter(prefix="/v1/captures", tags=["captures"])
@@ -150,12 +151,21 @@ async def transcribe_audio(
         audio_path = tmp.name
 
     try:
+        max_seconds = settings.capture_max_audio_seconds
+        # Reject over-length audio from container metadata BEFORE transcribing: the
+        # 5 MB byte cap isn't a duration bound (compressed audio packs hours into a
+        # few MB), and Whisper's cost scales with decoded duration.
+        probed = probe_audio_duration_seconds(audio_path)
+        if probed is not None and probed > max_seconds:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Audio must be under {max_seconds} seconds.",
+            )
         # Bound concurrent transcriptions (process-wide) so a burst can't thrash
         # the host, mirroring the Ollama concurrency semaphore.
         async with get_stt_semaphore():
             result = await stt_client.transcribe(audio_path)
-        # Enforce the configured audio-length ceiling on the decoded duration.
-        max_seconds = settings.capture_max_audio_seconds
+        # Backstop for files whose container advertised no duration metadata.
         if result.duration_seconds is not None and result.duration_seconds > max_seconds:
             raise HTTPException(
                 status_code=422,

@@ -9,8 +9,11 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
+from slate.api.v1._cost_guard import cost_guard
+from slate.api.v1._rate_limit import rate_limit
+from slate.config import settings
 from slate.core.admin.captures_service import (
     CaptureNotFoundError,
     CaptureNotReprocessableError,
@@ -19,6 +22,21 @@ from slate.core.admin.schemas import AdminCaptureDetail, AdminCaptureList
 from slate.deps.auth import AdminCaptureServiceDep, AdminUserDep
 
 router = APIRouter(prefix="/internal/v1", tags=["internal"])
+
+# Reprocess re-runs the full LLM/IGDB capture pipeline, so meter it like the
+# user-facing submit path — a rogue/leaked admin token shouldn't be able to loop
+# it to drive Ollama/IGDB cost. The generic middleware limiter is only a
+# fail-open backstop.
+_reprocess_rate_limit = Depends(
+    rate_limit(
+        "admin_capture_reprocess",
+        settings.rate_limit_capture_submit_per_minute,
+        60,
+        by="user",
+        fail_closed=True,
+    )
+)
+_reprocess_cost_guard = Depends(cost_guard("capture"))
 
 
 @router.get("/captures", response_model=AdminCaptureList)
@@ -47,7 +65,11 @@ async def get_capture(
         raise _not_found() from None
 
 
-@router.post("/captures/{public_id}/reprocess", response_model=AdminCaptureDetail)
+@router.post(
+    "/captures/{public_id}/reprocess",
+    response_model=AdminCaptureDetail,
+    dependencies=[_reprocess_rate_limit, _reprocess_cost_guard],
+)
 async def reprocess_capture(
     public_id: UUID,
     admin: AdminUserDep,

@@ -19,6 +19,7 @@ from slate.infrastructure.oauth.providers import (
 from slate.infrastructure.oauth.state_store import (
     OAuthState,
     consume_state,
+    hash_oauth_nonce,
     store_state,
 )
 
@@ -34,6 +35,7 @@ __all__ = [
     "consume_state",
     "exchange_code_for_user",
     "generate_pkce_pair",
+    "hash_oauth_nonce",
     "parse_userinfo",
     "store_state",
 ]
