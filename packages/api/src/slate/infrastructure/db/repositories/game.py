@@ -8,6 +8,7 @@ from uuid import UUID
 from sqlalchemy import ColumnElement, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from slate.infrastructure.db.like import LIKE_ESCAPE, escape_like
 from slate.infrastructure.db.models import Game, LibraryEntry
 
 
@@ -67,9 +68,13 @@ class GameRepository:
         """
         conditions: list[ColumnElement[bool]] = []
         if query:
-            escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-            pattern = f"%{escaped}%"
-            conditions.append(or_(Game.title.ilike(pattern), Game.slug.ilike(pattern)))
+            pattern = f"%{escape_like(query)}%"
+            conditions.append(
+                or_(
+                    Game.title.ilike(pattern, escape=LIKE_ESCAPE),
+                    Game.slug.ilike(pattern, escape=LIKE_ESCAPE),
+                )
+            )
         if is_shared is not None:
             conditions.append(Game.is_shared.is_(is_shared))
         if source == "igdb":
@@ -133,11 +138,10 @@ class GameRepository:
         the user's own still-private manual rows); another user's unvalidated
         private manual rows are excluded. Up to *limit* results, by title.
         """
-        escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-        pattern = f"%{escaped}%"
+        pattern = f"%{escape_like(query)}%"
         stmt = (
             select(Game)
-            .where(Game.title.ilike(pattern), _visible_to(user_id))
+            .where(Game.title.ilike(pattern, escape=LIKE_ESCAPE), _visible_to(user_id))
             .order_by(Game.title)
             .limit(limit)
         )
@@ -206,9 +210,15 @@ class GameRepository:
                 genres.update(game_genres)
         return sorted(genres)
 
+    # Identity/ownership columns that a caller-supplied field map must never set,
+    # so a widened/`extra`-allowing schema can't become a mass-assignment hole.
+    _PROTECTED_FIELDS = frozenset({"id", "public_id", "created_by_user_id", "created_at"})
+
     async def update(self, game: Game, **fields: object) -> Game:
         """Update the given *game* with the provided fields and flush."""
         for key, value in fields.items():
+            if key in self._PROTECTED_FIELDS:
+                raise ValueError(f"Field '{key}' cannot be updated")
             setattr(game, key, value)
         await self._session.flush()
         return game

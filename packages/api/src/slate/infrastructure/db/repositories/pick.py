@@ -10,6 +10,7 @@ from sqlalchemy import ColumnElement, CursorResult, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
+from slate.infrastructure.db.like import LIKE_ESCAPE, escape_like
 from slate.infrastructure.db.models import Game, LibraryEntry, Pick, User
 
 
@@ -147,8 +148,7 @@ class PickRepository:
         elif action:
             conditions.append(Pick.action == action)
         if query:
-            escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-            conditions.append(User.email.ilike(f"%{escaped}%"))
+            conditions.append(User.email.ilike(f"%{escape_like(query)}%", escape=LIKE_ESCAPE))
 
         total = (
             await self._session.scalar(

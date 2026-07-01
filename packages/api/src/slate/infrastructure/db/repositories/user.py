@@ -7,6 +7,7 @@ from uuid import UUID
 from sqlalchemy import ColumnElement, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from slate.infrastructure.db.like import LIKE_ESCAPE, escape_like
 from slate.infrastructure.db.models import User
 
 
@@ -135,8 +136,13 @@ class UserRepository:
         """
         conditions: list[ColumnElement[bool]] = [User.deleted_at.is_(None)]
         if query:
-            pattern = f"%{query.strip()}%"
-            conditions.append(or_(User.email.ilike(pattern), User.display_name.ilike(pattern)))
+            pattern = f"%{escape_like(query.strip())}%"
+            conditions.append(
+                or_(
+                    User.email.ilike(pattern, escape=LIKE_ESCAPE),
+                    User.display_name.ilike(pattern, escape=LIKE_ESCAPE),
+                )
+            )
         if is_banned is not None:
             conditions.append(User.is_banned.is_(is_banned))
         if email_verified is not None:
