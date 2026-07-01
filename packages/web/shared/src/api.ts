@@ -17,6 +17,21 @@ const AUTH_MODE_VALUE = "cookie";
 // keep working when no token is available.
 export const TURNSTILE_HEADER = "cf-turnstile-response";
 
+/**
+ * Error carrying the HTTP status alongside the server's `detail` message.
+ * Callers that only read `.message` keep working (it extends `Error`), while
+ * flows that must branch on the status (e.g. login step-up → 403 "CAPTCHA
+ * verification required") can inspect `.status`.
+ */
+export class ApiError extends Error {
+	readonly status: number;
+	constructor(status: number, message: string) {
+		super(message);
+		this.name = "ApiError";
+		this.status = status;
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Token helpers — access token lives in a module-level variable (in memory).
 // ---------------------------------------------------------------------------
@@ -152,7 +167,7 @@ export async function apiFetch<T = unknown>(path: string, options: RequestInit =
 
 	if (!res.ok) {
 		const errBody = await retryParseError(res);
-		throw new Error(errBody);
+		throw new ApiError(res.status, errBody);
 	}
 
 	// Handle 204 No Content (and other responses with no body).
@@ -187,7 +202,7 @@ export async function authFetch<T = unknown>(
 
 	if (!res.ok) {
 		const errBody = await retryParseError(res);
-		throw new Error(errBody);
+		throw new ApiError(res.status, errBody);
 	}
 
 	if (res.status === 204) {

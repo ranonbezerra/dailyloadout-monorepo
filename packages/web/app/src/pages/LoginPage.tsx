@@ -11,11 +11,18 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
-import { useEffect, useState } from "react";
+import { ApiError } from "@slate/shared/api";
+import { useEffect, useRef, useState } from "react";
 import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { SocialLoginButtons } from "../components/SocialLoginButtons";
+import { type TurnstileHandle, TurnstileWidget } from "../components/TurnstileWidget";
 import { useAuthContext } from "../contexts/AuthContext";
 import { oauthErrorMessage } from "../lib/oauth";
+
+/** The server flags step-up with a 403 whose detail mentions CAPTCHA. */
+function isCaptchaRequired(err: unknown): boolean {
+	return err instanceof ApiError && err.status === 403 && /captcha/i.test(err.message);
+}
 
 interface LoginFormValues {
 	email: string;
@@ -29,6 +36,11 @@ export function LoginPage() {
 	// Holds the short-lived challenge token once the password step reports that a
 	// second factor is required; presence of it switches the card to the code step.
 	const [mfaToken, setMfaToken] = useState<string | null>(null);
+	// Flipped once the server demands a CAPTCHA (after repeated failures); it
+	// reveals the Turnstile widget whose solved token is sent on the next submit.
+	const [captchaRequired, setCaptchaRequired] = useState(false);
+	const turnstileTokenRef = useRef<string | null>(null);
+	const turnstileRef = useRef<TurnstileHandle>(null);
 	const [searchParams, setSearchParams] = useSearchParams();
 
 	// A failed social-login flow redirects the browser back here with an
@@ -65,16 +77,33 @@ export function LoginPage() {
 	const handleSubmit = async (values: LoginFormValues) => {
 		setSubmitting(true);
 		try {
-			const result = await login(values.email, values.password);
+			const result = await login(
+				values.email,
+				values.password,
+				turnstileTokenRef.current ?? undefined,
+			);
 			if (result?.mfaRequired) {
 				setMfaToken(result.mfaToken);
 			}
 		} catch (err) {
-			notifications.show({
-				title: "Login failed",
-				message: err instanceof Error ? err.message : "An unexpected error occurred",
-				color: "red",
-			});
+			// Turnstile tokens are single-use — re-arm the widget so a retry sends a
+			// fresh token instead of replaying a consumed one.
+			turnstileTokenRef.current = null;
+			turnstileRef.current?.reset();
+			if (isCaptchaRequired(err)) {
+				setCaptchaRequired(true);
+				notifications.show({
+					title: "Verification required",
+					message: "Please complete the challenge below and sign in again.",
+					color: "yellow",
+				});
+			} else {
+				notifications.show({
+					title: "Login failed",
+					message: err instanceof Error ? err.message : "An unexpected error occurred",
+					color: "red",
+				});
+			}
 		} finally {
 			setSubmitting(false);
 		}
@@ -146,6 +175,14 @@ export function LoginPage() {
 								<Anchor component={Link} to="/forgot-password" size="sm" ta="right">
 									Forgot password?
 								</Anchor>
+								{captchaRequired && (
+									<TurnstileWidget
+										ref={turnstileRef}
+										onToken={(token) => {
+											turnstileTokenRef.current = token;
+										}}
+									/>
+								)}
 								<Button type="submit" fullWidth loading={submitting}>
 									Sign in
 								</Button>

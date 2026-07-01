@@ -1,5 +1,6 @@
 import { MantineProvider } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
+import { ApiError } from "@slate/shared/api";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
@@ -154,7 +155,26 @@ describe("LoginPage", () => {
 		fireEvent.submit(form);
 
 		await waitFor(() => {
-			expect(loginFn).toHaveBeenCalledWith("test@test.com", "password123");
+			expect(loginFn).toHaveBeenCalledWith("test@test.com", "password123", undefined);
+		});
+	});
+
+	it("prompts for a CAPTCHA when the server demands step-up (403)", async () => {
+		const loginFn = vi
+			.fn()
+			.mockRejectedValueOnce(new ApiError(403, "CAPTCHA verification required"));
+		mockUseAuthContext.mockReturnValue({ ...defaultAuth, login: loginFn });
+
+		renderLoginPage();
+		await submitCredentials();
+
+		await waitFor(() => {
+			expect(notifications.show).toHaveBeenCalledWith(
+				expect.objectContaining({
+					title: "Verification required",
+					color: "yellow",
+				}),
+			);
 		});
 	});
 

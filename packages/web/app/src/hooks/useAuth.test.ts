@@ -148,11 +148,31 @@ describe("useAuth", () => {
 			await result.current.login("player@test.com", "secret123");
 		});
 
-		expect(mockedAuthFetch).toHaveBeenCalledWith("/v1/auth/login", {
-			email: "player@test.com",
-			password: "secret123", // pragma: allowlist secret
-		});
+		expect(mockedAuthFetch).toHaveBeenCalledWith(
+			"/v1/auth/login",
+			{
+				email: "player@test.com",
+				password: "secret123", // pragma: allowlist secret
+			},
+			undefined,
+		);
 		expect(mockedSaveTokens).toHaveBeenCalledWith("acc-123");
+	});
+
+	it("login forwards a Turnstile token as the cf-turnstile-response header", async () => {
+		mockedAuthFetch.mockResolvedValueOnce(fakeTokens);
+
+		const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
+
+		await act(async () => {
+			await result.current.login("player@test.com", "secret123", "tok-abc");
+		});
+
+		expect(mockedAuthFetch).toHaveBeenCalledWith(
+			"/v1/auth/login",
+			expect.objectContaining({ email: "player@test.com" }),
+			{ "cf-turnstile-response": "tok-abc" },
+		);
 	});
 
 	it("login with MFA enabled returns a challenge and saves no tokens", async () => {

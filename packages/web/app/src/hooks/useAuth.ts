@@ -71,11 +71,17 @@ export function useAuth() {
 	// short-lived challenge token instead of session tokens — we hold off on
 	// saving anything and let the caller drive the second step.
 	const loginMutation = useMutation({
-		mutationFn: async (vars: { email: string; password: string }) => {
-			const data = await authFetch<LoginResponse>("/v1/auth/login", {
-				email: vars.email,
-				password: vars.password,
-			});
+		mutationFn: async (vars: { email: string; password: string; turnstileToken?: string }) => {
+			// After repeated failures the server demands a CAPTCHA (403). The re-submit
+			// then carries the solved token in the `cf-turnstile-response` header.
+			const headers = vars.turnstileToken
+				? { [TURNSTILE_HEADER]: vars.turnstileToken }
+				: undefined;
+			const data = await authFetch<LoginResponse>(
+				"/v1/auth/login",
+				{ email: vars.email, password: vars.password },
+				headers,
+			);
 			if (!data.mfa_required) saveTokens(data.access_token);
 			return data;
 		},
@@ -200,8 +206,9 @@ export function useAuth() {
 	const login = async (
 		email: string,
 		password: string,
+		turnstileToken?: string,
 	): Promise<{ mfaRequired: boolean; mfaToken: string }> => {
-		const data = await loginMutation.mutateAsync({ email, password });
+		const data = await loginMutation.mutateAsync({ email, password, turnstileToken });
 		return { mfaRequired: data.mfa_required, mfaToken: data.mfa_token };
 	};
 
