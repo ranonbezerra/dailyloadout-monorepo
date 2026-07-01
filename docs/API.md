@@ -94,6 +94,8 @@ Content-Type: application/json
 | POST | `/refresh` | Refresh access token |
 | POST | `/logout` | Revoke refresh token |
 | POST | `/logout-all` | Revoke every session (token_version bump) |
+| GET | `/sessions` | List the caller's active sessions (devices) |
+| DELETE | `/sessions/{public_id}` | Revoke one session by handle (owner-scoped) |
 | GET | `/me` | Current user profile |
 | GET | `/me/export` | Export the caller's personal data (GDPR/LGPD portability) |
 | POST | `/delete-account` | Permanently erase the account (password re-auth; GDPR/LGPD erasure) |

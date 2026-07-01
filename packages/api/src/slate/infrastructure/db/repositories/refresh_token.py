@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import Any, cast
+from uuid import UUID
 
 from sqlalchemy import CursorResult, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -87,6 +88,39 @@ class RefreshTokenRepository:
             )
         )
         return total or 0
+
+    async def list_active_for_user(self, user_id: int) -> list[RefreshToken]:
+        """Return *user_id*'s active (non-revoked, non-expired) sessions, newest first."""
+        now = datetime.now(UTC)
+        result = await self._session.execute(
+            select(RefreshToken)
+            .where(
+                RefreshToken.user_id == user_id,
+                RefreshToken.revoked_at.is_(None),
+                RefreshToken.expires_at > now,
+            )
+            .order_by(RefreshToken.last_used_at.desc().nullslast(), RefreshToken.created_at.desc())
+        )
+        return list(result.scalars().all())
+
+    async def revoke_by_public_id(self, user_id: int, public_id: UUID) -> bool:
+        """Revoke one active session by its handle, scoped to *user_id*.
+
+        Conditional UPDATE (``WHERE public_id AND user_id AND revoked_at IS NULL``)
+        so a user can only revoke their own live session; returns whether a row was
+        revoked (False = unknown/already-revoked/another user's).
+        """
+        stmt = (
+            update(RefreshToken)
+            .where(
+                RefreshToken.public_id == public_id,
+                RefreshToken.user_id == user_id,
+                RefreshToken.revoked_at.is_(None),
+            )
+            .values(revoked_at=datetime.now(UTC))
+        )
+        result = await self._session.execute(stmt)
+        return (cast("CursorResult[Any]", result).rowcount or 0) > 0
 
     async def revoke_all_for_user(self, user_id: int) -> None:
         """Revoke every active refresh token belonging to *user_id*."""

@@ -27,6 +27,7 @@ from slate.api.v1.auth_account import router as auth_account_router
 from slate.api.v1.auth_mfa import router as auth_mfa_router
 from slate.api.v1.auth_oauth import router as auth_oauth_router
 from slate.api.v1.auth_password import router as auth_password_router
+from slate.api.v1.auth_sessions import router as auth_sessions_router
 from slate.api.v1.capture import router as capture_router
 from slate.api.v1.concierge import router as concierge_router
 from slate.api.v1.library import router as library_router
@@ -226,6 +227,7 @@ def create_app() -> FastAPI:
     application.include_router(auth_account_router)
     application.include_router(auth_oauth_router)
     application.include_router(auth_password_router)
+    application.include_router(auth_sessions_router)
     application.include_router(auth_mfa_router)
     application.include_router(capture_router)
     application.include_router(library_import_router)

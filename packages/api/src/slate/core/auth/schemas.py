@@ -69,6 +69,18 @@ class ConfirmEmailChangeRequest(BaseModel):
     token: str = Field(min_length=1)
 
 
+class SessionResponse(BaseModel):
+    """One active refresh-token session (device) for the session-management UI."""
+
+    public_id: UUID
+    device_label: str | None
+    created_at: datetime
+    last_used_at: datetime | None
+    expires_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class RefreshRequest(BaseModel):
     # Optional so cookie-mode web callers can POST refresh/logout with no body;
     # in that case the token is read from the httpOnly cookie instead.

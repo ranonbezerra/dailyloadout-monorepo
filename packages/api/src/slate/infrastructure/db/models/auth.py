@@ -206,6 +206,14 @@ class RefreshToken(Base):
     __tablename__ = "refresh_tokens"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    # Opaque handle exposed to the API for session listing/revocation (never the id).
+    public_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        nullable=False,
+        unique=True,
+        default=uuid.uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
     user_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )

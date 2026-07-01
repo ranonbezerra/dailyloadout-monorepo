@@ -12,10 +12,12 @@ from fastapi import Depends
 
 from slate.core.auth.account import AccountService
 from slate.core.auth.email_change import EmailChangeService
+from slate.core.auth.sessions import SessionService
 from slate.infrastructure.db.repositories.capture import CaptureRepository
 from slate.infrastructure.db.repositories.library import LibraryRepository
 from slate.infrastructure.db.repositories.pick import PickRepository
 from slate.infrastructure.db.repositories.play_session import PlaySessionRepository
+from slate.infrastructure.db.repositories.refresh_token import RefreshTokenRepository
 from slate.infrastructure.db.repositories.user import UserRepository
 
 from .db import DbSession
@@ -41,3 +43,11 @@ def get_email_change_service(db: DbSession) -> EmailChangeService:
 
 
 EmailChangeServiceDep = Annotated[EmailChangeService, Depends(get_email_change_service)]
+
+
+def get_session_service(db: DbSession) -> SessionService:
+    """Provide a ``SessionService`` wired to the refresh-token repo."""
+    return SessionService(RefreshTokenRepository(db))
+
+
+SessionServiceDep = Annotated[SessionService, Depends(get_session_service)]
