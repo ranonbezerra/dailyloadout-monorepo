@@ -549,6 +549,8 @@ It adds a Docker service (SearXNG), a new dependency (`langgraph`), two new hexa
 
 **Goal:** an optional, conversational, tool-using agent — the agentic evolution of Daily Pick. Where the Pick (Epic 7) is a rigid 3-question → 1-pick form, the Concierge is a multi-turn chat: "I've got an hour, I'm tired, what should I play?" → it calls tools over the real library and reasons across turns.
 
+**Status:** done (v1.1). LangGraph + `ChatOllama.bind_tools` agent (`infrastructure/agent/concierge/langgraph_agent.py` via `create_react_agent`), read-only library/history/stats tools, a conversation-thread checkpointer, and an SSE streaming chat endpoint (`api/v1/concierge.py`) keyed by thread id, with the UUID-existence guard on any recommended entry. Web `ConciergePage` + a mobile concierge feature + 6 test files (api / service / streaming / checkpointer / tools / tools_write) ship it. Substitution: the tool model is **`qwen2.5:7b-instruct`** (not the planned `qwen3:8b`) — a robust local tool-caller. Extended by **Epic 12**: the Concierge also gained *write* tools (`tools_write.py`, gated by `concierge_write_tools_enabled`) so it operates the play-session pipeline, not just recommends.
+
 ### Product caveat (read before building)
 
 The product thesis is *"you don't choose, the app picks"* — zero friction, indecision killed. A chatty agent **reintroduces** that friction. So the Concierge is **not** a replacement for the one-tap Pick; it is an opt-in "talk to the operator" mode for power users who want to discuss. The default home action stays the single-tap Pick. If this caveat ever feels wrong in practice, cut the epic — the Pick already covers the core need.
@@ -566,13 +568,13 @@ This is the genuinely agentic case: multi-turn, stateful (conversation threads v
 
 ### Tasks
 
-- [ ] Add `langchain-ollama` (for `ChatOllama` + `bind_tools` ergonomics — tool-calling is the one place LangChain earns its keep)
-- [ ] New `OLLAMA_AGENT_MODEL` slot — **default `qwen3:8b`, not `gemma3`**: Gemma is weak at function-calling; Qwen3 is robust at tool-calling and is already a documented alternative in `docs/OLLAMA.md`
-- [ ] `infrastructure/agent/concierge/`: tool definitions (thin wrappers over existing repositories/services), graph builder, conversation-thread checkpointer
-- [ ] `core/concierge/service.py` + `api/v1/concierge.py`: a streaming chat endpoint (SSE) keyed by a thread id
-- [ ] Terminal validation node: any `library_entry_public_id` the agent recommends must exist in the user's library (reuse Epic 7's guard); reroll once, else degrade to a non-committal answer
-- [ ] App/Web: a simple chat UI gated behind a settings flag (off by default)
-- [ ] Pytest: tool unit tests, a graph test with a scripted tool-calling DummyLLM, the UUID-existence guard test
+- [x] Add `langchain-ollama` (for `ChatOllama` + `bind_tools` ergonomics — tool-calling is the one place LangChain earns its keep)
+- [x] New `OLLAMA_AGENT_MODEL` slot — **default `qwen3:8b`, not `gemma3`**: Gemma is weak at function-calling; Qwen3 is robust at tool-calling and is already a documented alternative in `docs/OLLAMA.md`
+- [x] `infrastructure/agent/concierge/`: tool definitions (thin wrappers over existing repositories/services), graph builder, conversation-thread checkpointer
+- [x] `core/concierge/service.py` + `api/v1/concierge.py`: a streaming chat endpoint (SSE) keyed by a thread id
+- [x] Terminal validation node: any `library_entry_public_id` the agent recommends must exist in the user's library (reuse Epic 7's guard); reroll once, else degrade to a non-committal answer
+- [x] App/Web: a simple chat UI gated behind a settings flag (off by default)
+- [x] Pytest: tool unit tests, a graph test with a scripted tool-calling DummyLLM, the UUID-existence guard test
 
 ### Definition of Done
 
