@@ -24,6 +24,7 @@ from evals.calibration import (
 from evals.checks import run_checks
 from evals.gate import baseline_from_report, diff_baseline
 from evals.gate_cache import fingerprint, is_cached_pass, record_pass
+from evals.rerank import evaluate_rerank, rerank_cases
 from evals.retrieval import evaluate_retrieval, retrieval_cases
 from evals.schema import CaseResult, CheckResult, EvalReport
 from slate.infrastructure.agent.dummy import DummyRecapAgent
@@ -543,6 +544,34 @@ class TestRetrievalEval:
             recent_by_age = sorted(range(len(case.pool)), key=lambda i: case.pool[i][1])
             recent_top_k = set(recent_by_age[: case.top_k])
             assert case.gold - recent_top_k, f"{case.id}: gold is not buried"
+
+
+# =====================================================================
+# Rerank A/B (reranked vs raw search order — Epic 25)
+# =====================================================================
+
+
+class TestRerankEval:
+    def test_rerank_beats_raw_order_on_buried_results(self) -> None:
+        report = evaluate_rerank()
+        assert report.reranked_recall > report.raw_recall
+        assert report.delta > 0.0
+        assert 0.0 <= report.raw_recall <= 1.0
+        assert 0.0 <= report.reranked_recall <= 1.0
+
+    def test_control_case_rerank_does_not_regress(self) -> None:
+        # When the relevant result is already in the raw top_n, rerank must not lose it.
+        report = evaluate_rerank()
+        control = next(r for r in report.rows if r["id"] == "already_top")
+        assert float(control["reranked"]) >= float(control["raw"])
+
+    def test_cases_have_buried_relevant_results(self) -> None:
+        # Each non-control case's gold must sit OUTSIDE the raw top_n, or it proves nothing.
+        for case in rerank_cases():
+            if case.id == "already_top":
+                continue
+            raw_top = set(range(len(case.results))[: case.top_n])
+            assert case.gold - raw_top, f"{case.id}: gold is not buried"
 
 
 # =====================================================================

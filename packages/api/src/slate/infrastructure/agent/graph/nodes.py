@@ -9,6 +9,7 @@ LLM-gated nodes; ``anti_hallucination`` reuses the Epic 6 validator unchanged.
 from __future__ import annotations
 
 import json
+import time
 import typing
 
 import structlog
@@ -18,7 +19,7 @@ from slate.infrastructure.llm.base import AbstractLLMClient
 from slate.infrastructure.research.base import AbstractResearchClient
 
 from .render import render
-from .state import Grade, PlaySessionContext, ResearchRecapState
+from .state import Grade, PlaySessionContext, ResearchRecapState, SearchResultDict
 
 logger = structlog.get_logger()
 
@@ -110,6 +111,60 @@ async def refine_query(
     }
 
 
+def _reorder(results: list[SearchResultDict], order: list[object]) -> list[SearchResultDict]:
+    """Apply *order* (a list of indices) to *results*, keeping every item once.
+
+    Invalid, duplicate, or out-of-range indices are dropped; any results the
+    model failed to mention are appended in their original order, so nothing is
+    silently lost — the node only ever *reorders*.
+    """
+    seen: set[int] = set()
+    ordered: list[SearchResultDict] = []
+    for i in order:
+        if isinstance(i, int) and 0 <= i < len(results) and i not in seen:
+            seen.add(i)
+            ordered.append(results[i])
+    ordered.extend(r for j, r in enumerate(results) if j not in seen)
+    return ordered
+
+
+async def rerank(
+    state: ResearchRecapState,
+    *,
+    llm: AbstractLLMClient,
+    enabled: bool = True,
+    top_n: int = 4,
+) -> dict[str, object]:
+    """Reorder retrieved results by task relevance before synthesis (Epic 25).
+
+    The ``fast`` model scores which results best match the player's situation;
+    the top *top_n* become ``ranked_results``, which ``synthesize`` prefers (and
+    scrapes first). Deterministic guards downstream are unchanged.
+
+    Degrades cleanly: disabled, past the deadline, ≤1 result, or an unparsable
+    response all skip the rerank and leave the raw ``results`` order in place.
+    """
+    results = state.get("results", [])
+    if not enabled or len(results) <= 1:
+        return {}
+    if time.monotonic() > state.get("deadline_ts", float("inf")):
+        logger.info("research_rerank_skipped_deadline")
+        return {}
+
+    prompt = render("research_rerank.j2", results=results, context=state["context"])
+    raw = await llm.complete(prompt, role="fast", json=True)
+    try:
+        parsed = json.loads(raw)
+        order = parsed.get("order") if isinstance(parsed, dict) else None
+        if not isinstance(order, list):
+            raise ValueError("missing 'order' array")
+    except (json.JSONDecodeError, AttributeError, TypeError, ValueError):
+        logger.warning("research_rerank_parse_error", raw=raw[:200])
+        return {}
+
+    return {"ranked_results": _reorder(results, order)[:top_n]}
+
+
 async def synthesize(
     state: ResearchRecapState,
     *,
@@ -121,9 +176,10 @@ async def synthesize(
 
     When *scrape_top_n* > 0 and a *research* client is given, the top results'
     pages are fetched and fed in full for richer, more specific grounding;
-    otherwise synthesis falls back to the search snippets.
+    otherwise synthesis falls back to the search snippets. Prefers the
+    rerank-ordered ``ranked_results`` (Epic 25) when present.
     """
-    results = state.get("results", [])
+    results = state.get("ranked_results") or state.get("results", [])
     pages: list[dict[str, str]] = []
     if research is not None and scrape_top_n > 0:
         for r in results[:scrape_top_n]:

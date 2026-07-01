@@ -153,6 +153,10 @@ class DummyLLMClient(AbstractLLMClient):
             return "refined query: next area directions spoiler-free"
         if "clean up the recap" in lowered:
             return "Head toward the next area and finish your current objective."
+        if '"order"' in lowered:
+            # Rerank prompt (Epic 25): empty order = "no reordering opinion", so
+            # the node keeps the raw order and just truncates to top_n.
+            return '{"order": []}'
         if '"grade"' in lowered:
             return '{"grade": "sufficient"}'
         if "previously on" in lowered:

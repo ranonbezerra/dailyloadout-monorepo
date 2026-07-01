@@ -214,6 +214,98 @@ class TestNodes:
 
 
 # ---------------------------------------------------------------------------
+# Rerank node (Epic 25)
+# ---------------------------------------------------------------------------
+
+
+class OrderLLM(DummyLLMClient):
+    """A dummy that returns a scripted rerank order for the rerank prompt."""
+
+    def __init__(self, order: list[int]) -> None:
+        self._order = order
+        self.calls = 0
+
+    async def complete(self, prompt, *, role="fast", json=False):  # type: ignore[override]
+        self.calls += 1
+        import json as _json
+
+        return _json.dumps({"order": self._order})
+
+
+def _results(*snippets: str) -> list[dict[str, str]]:
+    return [
+        {"title": f"t{i}", "url": f"https://x.test/{i}", "snippet": s}
+        for i, s in enumerate(snippets)
+    ]
+
+
+class TestRerank:
+    async def test_reorders_by_scripted_order_and_truncates(self) -> None:
+        state = {"context": _ctx(), "results": _results("a", "b", "c"), "deadline_ts": FUTURE}
+        out = await nodes.rerank(state, llm=OrderLLM([2, 0, 1]), top_n=2)
+        ranked = out["ranked_results"]
+        assert [r["snippet"] for r in ranked] == ["c", "a"]
+
+    async def test_missing_indices_are_appended_not_dropped(self) -> None:
+        state = {"context": _ctx(), "results": _results("a", "b", "c"), "deadline_ts": FUTURE}
+        # Model only mentions index 2; the rest must still follow in original order.
+        out = await nodes.rerank(state, llm=OrderLLM([2]), top_n=5)
+        assert [r["snippet"] for r in out["ranked_results"]] == ["c", "a", "b"]
+
+    async def test_disabled_skips_without_llm_call(self) -> None:
+        llm = OrderLLM([1, 0])
+        state = {"context": _ctx(), "results": _results("a", "b"), "deadline_ts": FUTURE}
+        out = await nodes.rerank(state, llm=llm, enabled=False)
+        assert out == {}
+        assert llm.calls == 0
+
+    async def test_single_result_skips(self) -> None:
+        llm = OrderLLM([0])
+        out = await nodes.rerank(
+            {"context": _ctx(), "results": _results("a"), "deadline_ts": FUTURE}, llm=llm
+        )
+        assert out == {}
+        assert llm.calls == 0
+
+    async def test_past_deadline_skips_without_llm_call(self) -> None:
+        llm = OrderLLM([1, 0])
+        state = {
+            "context": _ctx(),
+            "results": _results("a", "b"),
+            "deadline_ts": time.monotonic() - 1,
+        }
+        out = await nodes.rerank(state, llm=llm)
+        assert out == {}
+        assert llm.calls == 0
+
+    async def test_parse_error_degrades_to_raw_order(self) -> None:
+        class BadLLM(DummyLLMClient):
+            async def complete(self, prompt, *, role="fast", json=False):  # type: ignore[override]
+                return "not json"
+
+        state = {"context": _ctx(), "results": _results("a", "b"), "deadline_ts": FUTURE}
+        out = await nodes.rerank(state, llm=BadLLM())
+        assert out == {}
+
+    async def test_synthesize_prefers_ranked_results(self) -> None:
+        captured: dict[str, str] = {}
+
+        class CapturingLLM(DummyLLMClient):
+            async def complete(self, prompt, *, role="fast", json=False):  # type: ignore[override]
+                captured["prompt"] = prompt
+                return "DRAFT"
+
+        state = {
+            "context": _ctx(),
+            "results": _results("RAW-ONLY"),
+            "ranked_results": _results("RANKED-FIRST"),
+        }
+        await nodes.synthesize(state, llm=CapturingLLM())
+        assert "RANKED-FIRST" in captured["prompt"]
+        assert "RAW-ONLY" not in captured["prompt"]
+
+
+# ---------------------------------------------------------------------------
 # Router tests
 # ---------------------------------------------------------------------------
 
@@ -290,6 +382,26 @@ class TestGraphIntegration:
             deadline_ts=time.monotonic() - 1,
         )
         assert final["source"] == "quick_fallback"
+
+    async def test_rerank_runs_and_populates_ranked_results(self) -> None:
+        final = await _run(
+            DummyLLMClient(),
+            DummyResearchClient(),
+            _settings(deep_recap_rerank_top_n=2),
+        )
+        assert final["source"] == "deep_research"
+        # The rerank node ran and produced a bounded ordered view.
+        assert final["ranked_results"]
+        assert len(final["ranked_results"]) <= 2
+
+    async def test_rerank_disabled_leaves_no_ranked_results(self) -> None:
+        final = await _run(
+            DummyLLMClient(),
+            DummyResearchClient(),
+            _settings(deep_recap_rerank_enabled=False),
+        )
+        assert final["source"] == "deep_research"
+        assert not final.get("ranked_results")
 
     async def test_synthesis_output_is_the_final_recap(self) -> None:
         """Single-pass synthesis: the synthesized draft flows straight through to

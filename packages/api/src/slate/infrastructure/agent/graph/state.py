@@ -39,6 +39,10 @@ class ResearchRecapState(TypedDict, total=False):
     # --- research loop working state ---
     query: str
     results: Annotated[list[SearchResultDict], add]  # reducer: accumulate across refines
+    # Task-relevance-ordered view of ``results`` (Epic 25). Plain overwrite — NOT the
+    # accumulating reducer — since rerank replaces the ordering once, after grading.
+    # ``synthesize`` prefers this when present, else falls back to raw ``results``.
+    ranked_results: list[SearchResultDict]
     refine_count: int
     grade: Grade
 
