@@ -6,6 +6,7 @@ import pytest
 from httpx import AsyncClient
 
 from slate.api.v1 import auth_oauth
+from slate.api.v1.auth_cookies import OAUTH_NONCE_COOKIE
 from slate.config import settings
 from slate.core.auth.security import hash_password
 from slate.core.auth.service import AuthService
@@ -17,8 +18,15 @@ from slate.infrastructure.oauth import (
     OAuthError,
     OAuthState,
     OAuthUserInfo,
+    hash_oauth_nonce,
 )
 from tests.conftest import _TestSessionFactory
+
+# Browser-binding nonce used by the callback tests: the fake state stores its
+# hash and the request carries the raw value in the nonce cookie (sent via a
+# Cookie header, since httpx deprecates per-request cookies=).
+_NONCE = "browser-binding-nonce"
+_NONCE_HEADERS = {"Cookie": f"{OAUTH_NONCE_COOKIE}={_NONCE}"}
 
 
 def _info(
@@ -157,7 +165,9 @@ class TestOAuthRoutes:
         monkeypatch.setattr(settings, "google_oauth_client_id", "gid")
 
         async def _fake_consume(state: str) -> OAuthState | None:
-            return OAuthState(provider="google", code_verifier="v")
+            return OAuthState(
+                provider="google", code_verifier="v", nonce_hash=hash_oauth_nonce(_NONCE)
+            )
 
         async def _fake_exchange(provider, code, verifier, redirect_uri):  # type: ignore[no-untyped-def]
             return _info(uid="cb-1", email="cb@example.com")
@@ -165,7 +175,9 @@ class TestOAuthRoutes:
         monkeypatch.setattr(auth_oauth, "consume_state", _fake_consume)
         monkeypatch.setattr(auth_oauth, "exchange_code_for_user", _fake_exchange)
 
-        resp = await async_client.get("/v1/auth/oauth/google/callback?state=s&code=c")
+        resp = await async_client.get(
+            "/v1/auth/oauth/google/callback?state=s&code=c", headers=_NONCE_HEADERS
+        )
         assert resp.status_code == 302
         assert resp.headers["location"] == settings.oauth_web_success_url
         assert settings.auth_cookie_name in resp.headers.get("set-cookie", "")
@@ -181,6 +193,39 @@ class TestOAuthRoutes:
         assert resp.status_code == 302
         assert "error=invalid_state" in resp.headers["location"]
 
+    async def test_callback_missing_nonce_cookie_rejected(
+        self, async_client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Login-CSRF: a valid (state, code) replayed in a browser that never
+        # started the flow has no matching nonce cookie → rejected before exchange.
+        monkeypatch.setattr(settings, "google_oauth_client_id", "gid")
+        exchanged = False
+
+        async def _fake_consume(state: str) -> OAuthState | None:
+            return OAuthState(
+                provider="google", code_verifier="v", nonce_hash=hash_oauth_nonce(_NONCE)
+            )
+
+        async def _fake_exchange(provider, code, verifier, redirect_uri):  # type: ignore[no-untyped-def]
+            nonlocal exchanged
+            exchanged = True
+            return _info()
+
+        monkeypatch.setattr(auth_oauth, "consume_state", _fake_consume)
+        monkeypatch.setattr(auth_oauth, "exchange_code_for_user", _fake_exchange)
+
+        # No nonce cookie at all.
+        resp = await async_client.get("/v1/auth/oauth/google/callback?state=s&code=c")
+        assert resp.status_code == 302
+        assert "error=invalid_state" in resp.headers["location"]
+        # A wrong nonce is likewise rejected.
+        resp2 = await async_client.get(
+            "/v1/auth/oauth/google/callback?state=s&code=c",
+            headers={"Cookie": f"{OAUTH_NONCE_COOKIE}=attacker-nonce"},
+        )
+        assert "error=invalid_state" in resp2.headers["location"]
+        assert exchanged is False  # never reached the token exchange
+
     async def test_callback_provider_unavailable_redirects_error(
         self, async_client: AsyncClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -188,10 +233,14 @@ class TestOAuthRoutes:
         monkeypatch.setattr(settings, "google_oauth_client_id", "")
 
         async def _fake_consume(state: str) -> OAuthState | None:
-            return OAuthState(provider="google", code_verifier="v")
+            return OAuthState(
+                provider="google", code_verifier="v", nonce_hash=hash_oauth_nonce(_NONCE)
+            )
 
         monkeypatch.setattr(auth_oauth, "consume_state", _fake_consume)
-        resp = await async_client.get("/v1/auth/oauth/google/callback?state=s&code=c")
+        resp = await async_client.get(
+            "/v1/auth/oauth/google/callback?state=s&code=c", headers=_NONCE_HEADERS
+        )
         assert resp.status_code == 302
         assert "error=provider_unavailable" in resp.headers["location"]
 
@@ -201,14 +250,18 @@ class TestOAuthRoutes:
         monkeypatch.setattr(settings, "google_oauth_client_id", "gid")
 
         async def _fake_consume(state: str) -> OAuthState | None:
-            return OAuthState(provider="google", code_verifier="v")
+            return OAuthState(
+                provider="google", code_verifier="v", nonce_hash=hash_oauth_nonce(_NONCE)
+            )
 
         async def _fake_exchange(provider, code, verifier, redirect_uri):  # type: ignore[no-untyped-def]
             raise OAuthError("provider down")
 
         monkeypatch.setattr(auth_oauth, "consume_state", _fake_consume)
         monkeypatch.setattr(auth_oauth, "exchange_code_for_user", _fake_exchange)
-        resp = await async_client.get("/v1/auth/oauth/google/callback?state=s&code=c")
+        resp = await async_client.get(
+            "/v1/auth/oauth/google/callback?state=s&code=c", headers=_NONCE_HEADERS
+        )
         assert resp.status_code == 302
         assert "error=oauth_failed" in resp.headers["location"]
 
@@ -224,7 +277,9 @@ class TestOAuthRoutes:
             await session.commit()
 
         async def _fake_consume(state: str) -> OAuthState | None:
-            return OAuthState(provider="twitch", code_verifier="v")
+            return OAuthState(
+                provider="twitch", code_verifier="v", nonce_hash=hash_oauth_nonce(_NONCE)
+            )
 
         async def _fake_exchange(provider, code, verifier, redirect_uri):  # type: ignore[no-untyped-def]
             return _info(uid="cl-1", email="clash@example.com", verified=False)
@@ -232,6 +287,8 @@ class TestOAuthRoutes:
         monkeypatch.setattr(auth_oauth, "consume_state", _fake_consume)
         monkeypatch.setattr(auth_oauth, "exchange_code_for_user", _fake_exchange)
 
-        resp = await async_client.get("/v1/auth/oauth/twitch/callback?state=s&code=c")
+        resp = await async_client.get(
+            "/v1/auth/oauth/twitch/callback?state=s&code=c", headers=_NONCE_HEADERS
+        )
         assert resp.status_code == 302
         assert "error=account_exists" in resp.headers["location"]

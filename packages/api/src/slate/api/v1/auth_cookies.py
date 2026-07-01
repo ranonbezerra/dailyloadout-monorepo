@@ -23,6 +23,12 @@ _COOKIE_MODE_HEADER = "X-Auth-Mode"
 _COOKIE_MODE_VALUE = "cookie"
 _REFRESH_COOKIE_MAX_AGE = REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
 
+# Short-lived cookie carrying the OAuth browser-binding nonce (raw; only its hash
+# is stored server-side). SameSite=lax so it rides the top-level provider→callback
+# redirect; scoped to the OAuth path.
+OAUTH_NONCE_COOKIE = "slate_oauth_nonce"
+_OAUTH_NONCE_PATH = "/v1/auth/oauth"
+
 
 def is_cookie_mode(request: Request) -> bool:
     """Return ``True`` when the caller opted into cookie-mode auth."""
@@ -57,9 +63,36 @@ def read_refresh_cookie(request: Request) -> str | None:
     return request.cookies.get(settings.auth_cookie_name)
 
 
+def set_oauth_nonce_cookie(response: Response, nonce: str) -> None:
+    """Set the OAuth browser-binding nonce cookie for the duration of the flow."""
+    response.set_cookie(
+        key=OAUTH_NONCE_COOKIE,
+        value=nonce,
+        httponly=True,
+        secure=settings.auth_cookie_secure,
+        samesite="lax",
+        path=_OAUTH_NONCE_PATH,
+        max_age=settings.oauth_state_ttl_seconds,
+    )
+
+
+def read_oauth_nonce_cookie(request: Request) -> str | None:
+    """Return the OAuth nonce from the cookie, if present."""
+    return request.cookies.get(OAUTH_NONCE_COOKIE)
+
+
+def clear_oauth_nonce_cookie(response: Response) -> None:
+    """Delete the OAuth nonce cookie (same path it was set with)."""
+    response.delete_cookie(key=OAUTH_NONCE_COOKIE, path=_OAUTH_NONCE_PATH)
+
+
 __all__ = [
+    "OAUTH_NONCE_COOKIE",
+    "clear_oauth_nonce_cookie",
     "clear_refresh_cookie",
     "is_cookie_mode",
+    "read_oauth_nonce_cookie",
     "read_refresh_cookie",
+    "set_oauth_nonce_cookie",
     "set_refresh_cookie",
 ]

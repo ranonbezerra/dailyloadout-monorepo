@@ -11,14 +11,20 @@ Apple and the native-app (body-mode) return are a follow-up (ROADMAP Epic 20).
 
 from __future__ import annotations
 
+import hmac
 import secrets
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 
 from slate.api.v1._rate_limit import rate_limit
-from slate.api.v1.auth_cookies import set_refresh_cookie
+from slate.api.v1.auth_cookies import (
+    clear_oauth_nonce_cookie,
+    read_oauth_nonce_cookie,
+    set_oauth_nonce_cookie,
+    set_refresh_cookie,
+)
 from slate.config import settings
 from slate.deps import AuthServiceDep
 from slate.infrastructure.oauth import (
@@ -30,6 +36,7 @@ from slate.infrastructure.oauth import (
     consume_state,
     exchange_code_for_user,
     generate_pkce_pair,
+    hash_oauth_nonce,
     store_state,
 )
 
@@ -75,10 +82,19 @@ async def oauth_start(provider: str) -> RedirectResponse:
 
     verifier, challenge = generate_pkce_pair()
     state = secrets.token_urlsafe(32)
-    await store_state(state, OAuthState(provider=provider, code_verifier=verifier))
+    # Browser-binding nonce: raw value in a cookie on THIS browser, only its hash
+    # stored server-side, so a stolen (code,state) replayed in another browser
+    # (login-CSRF) can't complete the flow.
+    nonce = secrets.token_urlsafe(32)
+    await store_state(
+        state,
+        OAuthState(provider=provider, code_verifier=verifier, nonce_hash=hash_oauth_nonce(nonce)),
+    )
 
     url = build_authorize_url(config, _callback_uri(provider), state, challenge)
-    return RedirectResponse(url, status_code=status.HTTP_302_FOUND)
+    response = RedirectResponse(url, status_code=status.HTTP_302_FOUND)
+    set_oauth_nonce_cookie(response, nonce)
+    return response
 
 
 @router.get("/{provider}/callback", dependencies=[Depends(_check_oauth_callback_rate)])
@@ -86,12 +102,22 @@ async def oauth_callback(
     provider: str,
     state: str,
     code: str,
+    request: Request,
     auth_service: AuthServiceDep,
 ) -> RedirectResponse:
     """Complete the flow: validate state, resolve the user, issue our session."""
     state_data = await consume_state(state)
     if state_data is None or state_data.provider != provider:
         return _error_redirect("invalid_state")
+
+    # Browser binding: the nonce cookie set at /start must hash to the stored
+    # value. A missing/mismatched cookie means this browser didn't start the flow
+    # (login-CSRF / session-fixation) — reject and drop the cookie.
+    nonce = read_oauth_nonce_cookie(request)
+    if nonce is None or not hmac.compare_digest(hash_oauth_nonce(nonce), state_data.nonce_hash):
+        error = _error_redirect("invalid_state")
+        clear_oauth_nonce_cookie(error)
+        return error
 
     config = build_provider(provider, settings)
     if config is None:
@@ -112,4 +138,5 @@ async def oauth_callback(
     # the success URL and silent-refreshes to get its access token.
     response = RedirectResponse(settings.oauth_web_success_url, status_code=status.HTTP_302_FOUND)
     set_refresh_cookie(response, raw_refresh)
+    clear_oauth_nonce_cookie(response)
     return response
