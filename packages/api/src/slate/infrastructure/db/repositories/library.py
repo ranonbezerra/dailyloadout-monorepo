@@ -180,9 +180,15 @@ class LibraryRepository:
         await self._session.flush()
         return entry
 
+    # Identity/ownership columns that a caller-supplied field map must never set,
+    # so a widened/`extra`-allowing schema can't become a mass-assignment hole.
+    _PROTECTED_FIELDS = frozenset({"id", "public_id", "user_id", "game_id", "created_at"})
+
     async def update(self, entry: LibraryEntry, **fields: object) -> LibraryEntry:
         """Apply *fields* to *entry* and flush the changes."""
         for key, value in fields.items():
+            if key in self._PROTECTED_FIELDS:
+                raise ValueError(f"Field '{key}' cannot be updated")
             setattr(entry, key, value)
         await self._session.flush()
         await self._session.refresh(entry, attribute_names=["updated_at"])
