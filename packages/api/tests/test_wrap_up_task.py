@@ -58,6 +58,7 @@ class TestWrapUpExtractionTask:
                 play_session_id=1,
                 game_title="Hollow Knight",
                 wrap_up_text="Found the Mantis Claw. Heading to City of Tears.",
+                user_id=1,
             )
 
         # Verify the extracted state is persisted.
@@ -69,6 +70,39 @@ class TestWrapUpExtractionTask:
             assert row.extracted_state is not None
             state = row.extracted_state
             assert state.get("next_action") is not None
+
+    async def test_task_refuses_cross_user_write(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+        seed_platforms: list[dict[str, Any]],
+    ) -> None:
+        """A forged message with a non-owner user_id must not write extracted state."""
+        await _setup_ended_play_session(async_client, auth_headers, seed_platforms)
+
+        from tests.conftest import _TestSessionFactory
+
+        with patch(
+            "slate.infrastructure.db.session.async_session_factory",
+            _TestSessionFactory,
+        ):
+            from slate.infrastructure.tasks.wrap_up_extraction import (
+                extract_wrap_up_state_task,
+            )
+
+            await extract_wrap_up_state_task.original_func(
+                play_session_id=1,
+                game_title="Hollow Knight",
+                wrap_up_text="cross-user attempt",
+                user_id=999,  # not the owner
+            )
+
+        from slate.infrastructure.db.models import PlaySession
+
+        async with _TestSessionFactory() as session:
+            row = await session.get(PlaySession, 1)
+            assert row is not None
+            assert row.extracted_state is None  # ownership guard blocked the write
 
     async def test_task_updates_library_entry_next_action(
         self,
@@ -93,6 +127,7 @@ class TestWrapUpExtractionTask:
                 play_session_id=1,
                 game_title="Hollow Knight",
                 wrap_up_text="Found the Mantis Claw. Heading to City of Tears.",
+                user_id=1,
             )
 
         # Check library entry's play_session_next_action is updated.

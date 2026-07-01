@@ -230,11 +230,11 @@ class PlaySessionService:
 
         game_title = play_session.library_entry.game.title
         try:
-            from slate.infrastructure.tasks.wrap_up_extraction import (
-                extract_wrap_up_state_task,
-            )
+            from slate.infrastructure.tasks.wrap_up_extraction import extract_wrap_up_state_task
 
-            await extract_wrap_up_state_task.kiq(play_session.id, game_title, wrap_up_text)
+            await extract_wrap_up_state_task.kiq(
+                play_session.id, game_title, wrap_up_text, user_id
+            )
             logger.info(
                 "wrap_up_extraction_dispatched",
                 user_id=user_id,
