@@ -43,7 +43,9 @@ export function buildCsp({ apiOrigin = "", allowCloudflare = false } = {}) {
     // 'unsafe-inline' styles: Mantine injects inline style props; Google Fonts CSS.
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: https:",
+    // Scoped to the IGDB cover CDN (not a bare `https:` wildcard) so an XSS
+    // blast radius can't beacon the in-memory access token out via image GETs.
+    "img-src 'self' data: https://images.igdb.com",
     `connect-src ${connect.join(" ")}`,
     `frame-src ${frame.length ? frame.join(" ") : "'none'"}`,
     "base-uri 'self'",

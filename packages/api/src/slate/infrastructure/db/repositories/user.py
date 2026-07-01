@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from typing import Any, cast
 from uuid import UUID
 
-from sqlalchemy import ColumnElement, func, or_, select, update
+from sqlalchemy import ColumnElement, CursorResult, func, or_, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from slate.infrastructure.db.like import LIKE_ESCAPE, escape_like
@@ -55,7 +57,13 @@ class UserRepository:
             email_verified=email_verified,
         )
         self._session.add(user)
-        await self._session.flush()
+        try:
+            await self._session.flush()
+        except IntegrityError as exc:
+            # Unique-email race: two concurrent registers both passed email_exists;
+            # the constraint blocks the loser. Raise the same signal the sequential
+            # duplicate path uses so the caller returns 409, not a raw 500.
+            raise ValueError("Email already registered") from exc
         return user
 
     async def create_oauth_user(
@@ -113,6 +121,25 @@ class UserRepository:
         """Increment *user_id*'s ``token_version`` (kills outstanding access tokens)."""
         stmt = update(User).where(User.id == user_id).values(token_version=User.token_version + 1)
         await self._session.execute(stmt)
+
+    async def consume_reset_and_set_password(
+        self, *, user_id: int, password_hash: str, expected_token_version: int
+    ) -> bool:
+        """Atomically set the password + bump ``token_version``, only if it still matches.
+
+        The single-use guard for a password-reset link: the ``UPDATE`` applies its
+        change **and** the version check in one statement, so two concurrent replays
+        of the same token can't both succeed (the second sees the already-bumped
+        version and matches zero rows). Mirrors the refresh/MFA conditional-consume
+        pattern. Returns True if applied (token was fresh), False if already used.
+        """
+        stmt = (
+            update(User)
+            .where(User.id == user_id, User.token_version == expected_token_version)
+            .values(password_hash=password_hash, token_version=User.token_version + 1)
+        )
+        result = await self._session.execute(stmt)
+        return (cast("CursorResult[Any]", result).rowcount or 0) == 1
 
     async def set_banned(self, user_id: int, banned: bool) -> None:
         """Set *user_id*'s ``is_banned`` flag to *banned*."""

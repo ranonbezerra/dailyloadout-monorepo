@@ -54,6 +54,22 @@ _check_resend_rate = rate_limit(
     by="ip",
     times_key="rate_limit_register_per_minute",
 )
+# Per-account backstop on register (fail-closed): the per-target axis login has.
+_check_register_account_rate = account_rate_limit(
+    "auth_register_acct",
+    settings.rate_limit_register_per_minute,
+    60,
+    account_email_identity,
+    times_key="rate_limit_register_per_minute",
+)
+# Email-verify: anonymous DB read/write, cap per-IP (fail-open — token is signed).
+_check_verify_rate = rate_limit(
+    "auth_verify_email",
+    settings.rate_limit_register_per_minute,
+    60,
+    by="ip",
+    times_key="rate_limit_register_per_minute",
+)
 
 
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
@@ -63,7 +79,11 @@ router = APIRouter(prefix="/v1/auth", tags=["auth"])
     "/register",
     response_model=TokenResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(_check_register_rate), Depends(verify_turnstile)],
+    dependencies=[
+        Depends(_check_register_rate),
+        Depends(_check_register_account_rate),
+        Depends(verify_turnstile),
+    ],
 )
 async def register(
     body: RegisterRequest,
@@ -149,7 +169,11 @@ async def login(
     return LoginResponse(access_token=access_token, refresh_token=refresh_token)
 
 
-@router.post("/verify", response_model=MessageResponse)
+@router.post(
+    "/verify",
+    response_model=MessageResponse,
+    dependencies=[Depends(_check_verify_rate)],
+)
 async def verify_email(
     auth_service: AuthServiceDep,
     body: VerifyEmailRequest | None = None,

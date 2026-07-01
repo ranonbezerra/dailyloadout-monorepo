@@ -33,11 +33,14 @@ EXPOSE 8100
 # X-Forwarded-Proto from the Caddy reverse proxy, so the real client IP reaches
 # the app (auth rate limiter keys on client IP).
 # ⚠ FORWARDED_ALLOW_IPS must be EXACTLY the trusted proxy's source IP for YOUR
-# topology — host+systemd Caddy → 127.0.0.1; all-in-compose → the compose
-# network gateway (172.18+, NOT the 172.17.0.1 legacy default). A WRONG value
-# silently makes every request share ONE rate-limit bucket (per-IP isolation
-# collapses). VERIFY it after deploy. NEVER "*" — that lets clients spoof their IP.
+# topology — host+systemd Caddy → 127.0.0.1 (this safe default); all-in-compose →
+# the compose network gateway (172.18+). The default is the LOOPBACK-only
+# 127.0.0.1: if it's wrong for your topology, X-Forwarded-For is ignored and every
+# request shares ONE per-IP bucket (over-restrictive — fails SAFE), which is far
+# better than the old 172.17.0.1 bridge default that a mismatch could turn
+# spoofable. Override to the exact proxy IP and VERIFY after deploy. NEVER "*" —
+# that lets clients spoof their source IP and rotate the rate-limit identity.
 # --timeout-keep-alive bounds idle keep-alive sockets (slow-loris mitigation;
 # the reverse proxy should also enforce request read/write timeouts).
-ENV FORWARDED_ALLOW_IPS=172.17.0.1
+ENV FORWARDED_ALLOW_IPS=127.0.0.1
 CMD ["sh", "-c", "uvicorn src.slate.main:app --host 0.0.0.0 --port 8100 --proxy-headers --forwarded-allow-ips \"$FORWARDED_ALLOW_IPS\" --timeout-keep-alive 5"]

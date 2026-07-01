@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
 from httpx import AsyncClient
 
 # =====================================================================
@@ -57,6 +58,40 @@ class TestRegister:
         }
         resp = await async_client.post("/v1/auth/register", json=payload)
         assert resp.status_code == 422
+
+    async def test_register_rejects_overlong_password(self, async_client: AsyncClient) -> None:
+        # bcrypt ignores bytes past 72, so an over-long password is rejected at the
+        # boundary rather than silently truncated. 73 bytes, still complexity-valid.
+        payload = {
+            "email": "longpass@example.com",
+            "password": "Aa1" + "b" * 70,  # 73 bytes  # pragma: allowlist secret
+            "display_name": "Long Pass",
+        }
+        resp = await async_client.post("/v1/auth/register", json=payload)
+        assert resp.status_code == 422
+
+    async def test_register_race_surfaces_409_not_500(
+        self, async_client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # The concurrent-loser path: bypass the email_exists pre-check so the second
+        # insert reaches the DB and trips the unique constraint, exactly as a racing
+        # request would. It must surface as a clean 409, not a raw 500.
+        from slate.infrastructure.db.repositories.user import UserRepository
+
+        payload = {
+            "email": "race@example.com",
+            "password": "SecurePass1",
+            "display_name": "Race",
+        }
+        first = await async_client.post("/v1/auth/register", json=payload)
+        assert first.status_code == 201
+
+        async def _pretend_absent(*_args: object, **_kwargs: object) -> bool:
+            return False
+
+        monkeypatch.setattr(UserRepository, "email_exists", _pretend_absent)
+        second = await async_client.post("/v1/auth/register", json=payload)
+        assert second.status_code == 409
 
 
 # =====================================================================

@@ -13,6 +13,13 @@ from slate.core.sanitization import sanitize_display_name
 
 def _validate_password_complexity(v: str) -> str:
     """Require at least one upper, one lower, and one digit (shared by flows)."""
+    # bcrypt silently ignores bytes past 72, so a longer password would have a
+    # dead tail and two passwords sharing the first 72 bytes would be
+    # interchangeable. Reject over-long passwords at the boundary (byte length,
+    # since multi-byte chars count for more). Login is unbounded on purpose — it
+    # verifies against the stored hash, which already only used the first 72 bytes.
+    if len(v.encode("utf-8")) > 72:
+        raise ValueError("Password must be at most 72 bytes")
     if not re.search(r"[A-Z]", v):
         raise ValueError("Password must contain at least one uppercase letter")
     if not re.search(r"[a-z]", v):

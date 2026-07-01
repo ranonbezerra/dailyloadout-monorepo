@@ -329,7 +329,7 @@ path-filtered `ci-*` jobs):
 | **API + infra** | the VPS (systemd + compose) | `deploy-api.yml` → `infra/deploy/deploy.sh` | **Yes** |
 | **Web** | static `dist/` → Caddy / a CDN (Cloudflare Pages, Netlify) | `deploy-web.yml` (build + publish) | No (static) |
 | **App** | App Store / Play Store | Fastlane / Xcode Cloud / Play Console | No (store release) |
-| **Backoffice** (Epic 21, shipped) | its own admin SPA (`packages/web/backoffice`), static `dist/` — deploy behind an access-restricted host/path, never the public origin | build + publish (like web) | No (static) |
+| **Backoffice** (Epic 21, shipped) | its own admin SPA (`packages/web/backoffice`), static `dist/` — deploy behind an access-restricted host/path, never the public origin. The host **MUST** send `X-Frame-Options: DENY` + CSP `frame-ancestors 'none'` as **response headers** (a `<meta>` tag is ignored for `frame-ancestors`; the SPA ships an in-page frame-buster fallback, but the header is authoritative — clickjacking an admin is the threat). | build + publish (like web) | No (static) |
 
 Only the **API** carries a database, so only it needs the migration gate. Web is
 a static artifact; the mobile app ships through store review (independent of
@@ -575,6 +575,8 @@ Edge & transport:
 
 - [ ] Use HTTPS (Caddy auto-TLS, or Fly/Railway built-in)
 - [ ] Caddy emits security headers (HSTS, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, CSP) and `request_body { max_size 25MB }` — see §1.6
+- [ ] **Backoffice host** sends `X-Frame-Options: DENY` + CSP `frame-ancestors 'none'` as response headers, and is access-restricted (not the public origin) — the admin panel must not be framable (clickjacking) — see §1.10
+- [ ] **`FORWARDED_ALLOW_IPS`** set to the EXACT trusted-proxy source IP for the topology (never `*`); verify the per-IP rate limiter sees real client IPs after deploy — see the API Dockerfile note
 - [ ] Set `AUTH_COOKIE_SECURE=true` (cookies HTTPS-only). If web/API are cross-domain you'll need `AUTH_COOKIE_SAMESITE=none`, **which requires Secure** — browsers reject `SameSite=None` cookies without it.
 - [ ] Set `CORS_ORIGINS` to your actual domain(s)
 - [ ] Run uvicorn with `--proxy-headers --forwarded-allow-ips <trusted-proxy>` so client IPs (and the auth rate limiter) survive the proxy hop — see §1.4

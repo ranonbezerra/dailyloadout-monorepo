@@ -72,9 +72,21 @@ class PasswordRecoveryService:
         """
         public_id, token_version = self._decode_reset_token(token)
         user = await self._user_repo.get_by_public_id(public_id)
-        if user is None or user.token_version != token_version:
+        if user is None:
             raise ValueError("Invalid or expired reset token")
-        await self._apply_new_password(user, new_password)
+        # Atomic single-use: the conditional UPDATE both sets the password and
+        # bumps the version only if the version still matches, so a concurrent
+        # replay of the same link can't apply twice. Only revoke sessions + email
+        # when this call is the one that actually consumed the token.
+        applied = await self._user_repo.consume_reset_and_set_password(
+            user_id=user.id,
+            password_hash=hash_password(new_password),
+            expected_token_version=token_version,
+        )
+        if not applied:
+            raise ValueError("Invalid or expired reset token")
+        await self._refresh_token_repo.revoke_all_for_user(user.id)
+        send_password_changed_email(self._mailer, to=user.email)
 
     async def change_password(
         self, user: User, current_password: str, new_password: str

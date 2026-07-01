@@ -161,6 +161,41 @@ class TestResetPassword:
         )
         assert replay.status_code == 400
 
+    async def test_reset_consume_is_atomic_race_safe(
+        self, async_client: AsyncClient, register_user: dict[str, str]
+    ) -> None:
+        """Two concurrent replays both load ``tv=N``; only one may apply.
+
+        Simulates the race: both requests read the user at the same token_version
+        and call the conditional consume with the SAME expected version. The first
+        applies (bumps to N+1); the second — still holding the stale N — matches
+        zero rows and is rejected. Proves single-use is enforced by the atomic
+        UPDATE, not a check-then-write.
+        """
+        from slate.core.auth.security import hash_password
+        from slate.infrastructure.db.repositories.user import UserRepository
+
+        user = await _get_user("test@example.com")
+        uid, stale_tv = user.id, user.token_version
+
+        async with _TestSessionFactory() as session:
+            first = await UserRepository(session).consume_reset_and_set_password(
+                user_id=uid,
+                password_hash=hash_password(_NEW_PASSWORD),
+                expected_token_version=stale_tv,
+            )
+            await session.commit()
+        assert first is True
+
+        async with _TestSessionFactory() as session:
+            second = await UserRepository(session).consume_reset_and_set_password(
+                user_id=uid,
+                password_hash=hash_password("EvenNewer789"),  # pragma: allowlist secret
+                expected_token_version=stale_tv,  # the stale version a racer still holds
+            )
+            await session.commit()
+        assert second is False  # rejected — token already consumed
+
     async def test_reset_token_superseded_by_session_kill(
         self,
         async_client: AsyncClient,

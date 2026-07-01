@@ -81,6 +81,7 @@ class AuthService:
         # already verified and no email is sent, so local dev and the test suite
         # are never blocked by the verification gate.
         auto_verify = not settings.is_production
+        # create() raises ValueError on the unique-email race → same 409 as the dup path.
         user = await self._user_repo.create(
             email, pw_hash, display_name, email_verified=auto_verify
         )
