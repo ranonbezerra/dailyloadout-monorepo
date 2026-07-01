@@ -5,6 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#121119" />
     <meta name="robots" content="noindex, nofollow" />
+    <!--
+      Clickjacking defense-in-depth. The AUTHORITATIVE control is an
+      `X-Frame-Options: DENY` / `Content-Security-Policy: frame-ancestors 'none'`
+      *response header* at the host serving this file (a <meta> tag is ignored by
+      browsers for frame-ancestors) — see docs/DEPLOYMENT.md. This frame-buster is
+      the static-host fallback: the admin UI stays hidden unless it is the
+      top-level document, so it can't be silently framed for UI-redress even if
+      the host header is ever missing.
+    -->
+    <style>
+      html {
+        display: none !important;
+      }
+    </style>
+    <script>
+      if (window.self === window.top) {
+        document.documentElement.style.setProperty("display", "block", "important");
+      } else {
+        try {
+          window.top.location = window.self.location;
+        } catch (_e) {
+          /* sandboxed frame blocks navigation — the page simply stays hidden */
+        }
+      }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
