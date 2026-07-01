@@ -42,6 +42,18 @@ _recap_rate_limit = Depends(
 # Aggregate $ cost kill-switch for the LLM-bearing play_session routes.
 _play_session_cost_guard = Depends(cost_guard("play_session"))
 
+# Wrap-up enqueues a background LLM extraction, so it must consume a cost permit +
+# be throttled like the other play_session write surfaces (its own bucket).
+_wrap_up_rate_limit = Depends(
+    rate_limit(
+        "play_session_wrap_up",
+        settings.rate_limit_play_session_recap_per_minute,
+        60,
+        by="user",
+        fail_closed=True,
+    )
+)
+
 
 # ---------------------------------------------------------------------------
 # Start a play_session
@@ -157,6 +169,7 @@ async def get_active_play_session(
 @router.patch(
     "/{public_id}/wrap-up",
     response_model=PlaySessionResponse,
+    dependencies=[_wrap_up_rate_limit, _play_session_cost_guard],
 )
 async def submit_wrap_up(
     public_id: UUID,
