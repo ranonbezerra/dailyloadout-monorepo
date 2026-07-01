@@ -6,6 +6,7 @@ import functools
 import hashlib
 import secrets
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import bcrypt
 import jwt
@@ -20,6 +21,13 @@ ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
 REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
 _ALGORITHM = "HS256"
+# Issuer/audience binding: every token this service mints carries iss+aud, and
+# every decode verifies them — so a token minted for a different purpose/service
+# sharing the secret can't validate here (defense-in-depth).
+_ISSUER = "slate-api"
+_AUDIENCE = "slate-api"
+_ISS_AUD = {"iss": _ISSUER, "aud": _AUDIENCE}
+_DECODE_KW: dict[str, Any] = {"algorithms": [_ALGORITHM], "audience": _AUDIENCE, "issuer": _ISSUER}
 
 # ---------------------------------------------------------------------------
 # Password hashing (bcrypt)
@@ -80,13 +88,14 @@ def create_access_token(
         "tv": token_version,
         "exp": expire,
         "iat": now,
+        **_ISS_AUD,
     }
     return str(jwt.encode(payload, settings.secret_key, algorithm=_ALGORITHM))
 
 
 def decode_access_token(token: str) -> dict[str, object]:
     """Decode and verify *token*; raises ``JWTError`` on failure."""
-    return dict(jwt.decode(token, settings.secret_key, algorithms=[_ALGORITHM]))
+    return dict(jwt.decode(token, settings.secret_key, **_DECODE_KW))
 
 
 # ---------------------------------------------------------------------------
@@ -110,6 +119,7 @@ def create_email_verification_token(public_id: str) -> str:
         "purpose": _EMAIL_VERIFY_PURPOSE,
         "exp": expire,
         "iat": now,
+        **_ISS_AUD,
     }
     return str(jwt.encode(payload, settings.secret_key, algorithm=_ALGORITHM))
 
@@ -122,7 +132,7 @@ def decode_email_verification_token(token: str) -> str:
             email verification.
     """
     try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=[_ALGORITHM])
+        payload = jwt.decode(token, settings.secret_key, **_DECODE_KW)
     except PyJWTError as exc:
         raise ValueError("Invalid or expired verification token") from exc
 
@@ -164,6 +174,7 @@ def create_password_reset_token(public_id: str, token_version: int) -> str:
         "purpose": _PASSWORD_RESET_PURPOSE,
         "exp": expire,
         "iat": now,
+        **_ISS_AUD,
     }
     return str(jwt.encode(payload, settings.secret_key, algorithm=_ALGORITHM))
 
@@ -180,7 +191,7 @@ def decode_password_reset_token(token: str) -> tuple[str, int]:
             password reset, or missing a well-formed subject / ``tv`` claim.
     """
     try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=[_ALGORITHM])
+        payload = jwt.decode(token, settings.secret_key, **_DECODE_KW)
     except PyJWTError as exc:
         raise ValueError("Invalid or expired reset token") from exc
 
@@ -221,6 +232,7 @@ def create_mfa_challenge_token(public_id: str, token_version: int) -> str:
         "purpose": _MFA_CHALLENGE_PURPOSE,
         "exp": expire,
         "iat": now,
+        **_ISS_AUD,
     }
     return str(jwt.encode(payload, settings.secret_key, algorithm=_ALGORITHM))
 
@@ -233,7 +245,7 @@ def decode_mfa_challenge_token(token: str) -> tuple[str, int]:
             MFA challenge, or missing a well-formed subject / ``tv`` claim.
     """
     try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=[_ALGORITHM])
+        payload = jwt.decode(token, settings.secret_key, **_DECODE_KW)
     except PyJWTError as exc:
         raise ValueError("Invalid or expired MFA challenge") from exc
 
