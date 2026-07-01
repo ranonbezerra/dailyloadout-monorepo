@@ -43,9 +43,10 @@ class PlaySessionStartRequest(BaseModel):
         max_length=10000,
         description="Pre-generated recap from a preview call. Skips LLM generation.",
     )
-    mode: Literal["quick", "deep"] = Field(
+    mode: Literal["quick", "deep", "auto"] = Field(
         default="quick",
-        description="Recap mode: 'quick' (single-shot) or 'deep' (web-researched).",
+        description="Recap mode: 'quick' (single-shot), 'deep' (web-researched), or "
+        "'auto' (adaptive — the relevance router picks quick vs deep, entitlement-gated).",
     )
     skip_recap: bool = Field(
         default=False,
@@ -63,9 +64,10 @@ class RecapPreviewRequest(BaseModel):
         max_length=2000,
         description="Optional player-provided correction of their current in-game position.",
     )
-    mode: Literal["quick", "deep"] = Field(
+    mode: Literal["quick", "deep", "auto"] = Field(
         default="quick",
-        description="Recap mode: 'quick' (single-shot) or 'deep' (web-researched).",
+        description="Recap mode: 'quick' (single-shot), 'deep' (web-researched), or "
+        "'auto' (adaptive — the relevance router picks quick vs deep, entitlement-gated).",
     )
 
 

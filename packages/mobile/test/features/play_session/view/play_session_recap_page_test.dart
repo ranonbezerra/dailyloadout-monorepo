@@ -110,6 +110,7 @@ void main() {
       await tester.pumpWidget(buildPreviewSubject());
 
       expect(find.text('How should we prepare your recap?'), findsOneWidget);
+      expect(find.text('Smart recap'), findsOneWidget);
       expect(find.text('Quick recap'), findsOneWidget);
       expect(find.text('Deep recap (web)'), findsOneWidget);
     });
@@ -446,6 +447,24 @@ void main() {
         verify(
           () => playSessionBloc.add(
             const PreviewRecap(libraryEntryPublicId: 'entry-1', mode: 'deep'),
+          ),
+        ).called(1);
+      });
+
+      testWidgets('choosing Smart dispatches an auto PreviewRecap', (
+        tester,
+      ) async {
+        when(
+          () => playSessionBloc.state,
+        ).thenReturn(const PlaySessionInitial());
+
+        await tester.pumpWidget(buildPreviewSubject());
+        await tester.tap(find.text('Smart recap'));
+        await tester.pump();
+
+        verify(
+          () => playSessionBloc.add(
+            const PreviewRecap(libraryEntryPublicId: 'entry-1', mode: 'auto'),
           ),
         ).called(1);
       });

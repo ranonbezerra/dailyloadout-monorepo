@@ -6,7 +6,7 @@ import type { PlaySession, PlaySessionListResponse, RecapPreview } from "../type
 // Preview recap (before starting a playSession)
 // ---------------------------------------------------------------------------
 
-export type RecapMode = "quick" | "deep";
+export type RecapMode = "quick" | "deep" | "auto";
 
 export async function previewRecap(
 	libraryEntryPublicId: string,

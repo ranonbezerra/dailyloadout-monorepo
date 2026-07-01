@@ -10,6 +10,7 @@ from fastapi import HTTPException, status
 from slate.config import Settings
 from slate.config import settings as default_settings
 from slate.core.cache.invalidation import invalidate_user_stats
+from slate.core.play_session.adaptive import deep_recap_entitled
 from slate.core.play_session.recap import (
     RecapMode,
     build_preview,
@@ -72,9 +73,8 @@ class PlaySessionService:
     ) -> PlaySession:
         """Start a new play_session for a library entry.
 
-        If *recap_text* is provided, it's used as-is. If *skip_recap* is
-        set, the play_session starts with no recap at all (the "just play" path).
-        Otherwise a recap is generated in *mode* (quick or deep).
+        *recap_text* (if given) is used as-is; *skip_recap* starts with no recap
+        ("just play"); otherwise a recap is generated in *mode* (quick/deep/auto).
         """
         entry = await self._load_startable_entry(user_id, library_entry_public_id)
 
@@ -87,6 +87,7 @@ class PlaySessionService:
                 self._settings,
                 entry,
                 mode,
+                entitled_to_deep=deep_recap_entitled(self._settings),
             )
 
         return await create_play_session_for_entry(
@@ -117,6 +118,7 @@ class PlaySessionService:
             agent=self._agent,
             settings=self._settings,
             mode=mode,
+            entitled_to_deep=deep_recap_entitled(self._settings),
         )
 
     # -- Retroactive wrap_up ---------------------------------------------
@@ -127,12 +129,8 @@ class PlaySessionService:
         library_entry_public_id: UUID,
         wrap_up_text: str,
     ) -> dict[str, object]:
-        """Record a wrap_up for a play session that wasn't tracked.
-
-        Creates a pre-ended play_session with ``play_session_type="retroactive"``,
-        runs LLM extraction synchronously, and returns a fresh recap
-        preview.
-        """
+        """Record a wrap_up for an untracked play session (pre-ended ``retroactive``
+        session, synchronous LLM extraction, returns a fresh recap preview)."""
         wrap_up_text = sanitize_and_audit(wrap_up_text, surface="wrap_up", user_id=user_id)
         entry = await self._library_repo.get_by_public_id(library_entry_public_id, user_id)
         if entry is None:

@@ -64,11 +64,11 @@ class _PlaySessionRecapPageState extends State<PlaySessionRecapPage> {
     super.dispose();
   }
 
-  void _onSelectMode(bool deep) {
+  void _onSelectMode(String mode) {
     context.read<PlaySessionBloc>().add(
       PreviewRecap(
         libraryEntryPublicId: widget.libraryEntryPublicId!,
-        mode: deep ? 'deep' : 'quick',
+        mode: mode,
       ),
     );
     setState(() => _step = _RecapStep.recap);
@@ -250,11 +250,20 @@ class _PlaySessionRecapPageState extends State<PlaySessionRecapPage> {
           const SizedBox(height: 16),
           _modeCard(
             context,
+            icon: Icons.auto_awesome,
+            title: 'Smart recap',
+            subtitle:
+                'Recommended — instant when your history is enough, and only '
+                'researches the web when it needs to.',
+            onTap: () => _onSelectMode('auto'),
+          ),
+          const SizedBox(height: 12),
+          _modeCard(
+            context,
             icon: Icons.bolt,
             title: 'Quick recap',
-            subtitle:
-                'Instant — built from your own past sessions. Recommended.',
-            onTap: () => _onSelectMode(false),
+            subtitle: 'Instant — built from your own past sessions.',
+            onTap: () => _onSelectMode('quick'),
           ),
           const SizedBox(height: 12),
           _modeCard(
@@ -262,9 +271,9 @@ class _PlaySessionRecapPageState extends State<PlaySessionRecapPage> {
             icon: Icons.travel_explore,
             title: 'Deep recap (web)',
             subtitle:
-                'Searches the web for spoiler-free next steps. Takes up to a '
-                'minute.',
-            onTap: () => _onSelectMode(true),
+                'Always searches the web for spoiler-free next steps. Takes up '
+                'to a minute.',
+            onTap: () => _onSelectMode('deep'),
           ),
           const SizedBox(height: 12),
           _modeCard(

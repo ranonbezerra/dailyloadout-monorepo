@@ -12,6 +12,7 @@ from slate.config import Settings
 from slate.config import settings as _settings
 from slate.core.play_session.anti_hallucination import validate_recap
 from slate.core.play_session.retrieval import get_grounding_sessions
+from slate.core.play_session.routing import resolve_auto_mode
 from slate.infrastructure.agent.base import AbstractRecapAgent, DeepRecapRequest
 from slate.infrastructure.agent.graph.state import PlaySessionContext
 from slate.infrastructure.db.models import LibraryEntry, PlaySession
@@ -22,7 +23,7 @@ from slate.infrastructure.research.base import ResearchUnavailableError
 
 logger = structlog.get_logger()
 
-RecapMode = Literal["quick", "deep"]
+RecapMode = Literal["quick", "deep", "auto"]
 
 
 def _collect_previous_wrap_ups(recent_play_sessions: list[PlaySession]) -> list[dict[str, object]]:
@@ -47,8 +48,8 @@ async def build_play_session_context(
 ) -> PlaySessionContext:
     """Assemble the grounding context for a deep recap run.
 
-    Mirrors the context ``generate_recap`` uses: the last 3 wrap_ups plus
-    the most recent extracted location/quest/level and the entry's next action.
+    Mirrors the context ``generate_recap`` uses: the last 3 wrap_ups plus the most
+    recent extracted location/quest/level and the entry's next action.
     """
     await ensure_extractions_complete(play_session_repo, library_repo, llm_client, entry.id)
     recent_play_sessions = await get_grounding_sessions(play_session_repo, entry.id, limit=3)
@@ -78,13 +79,13 @@ async def build_preview(
     agent: AbstractRecapAgent | None = None,
     settings: Settings | None = None,
     mode: RecapMode = "quick",
+    entitled_to_deep: bool = True,
 ) -> dict[str, object]:
     """Build a recap preview dict for a library entry.
 
-    Shared by ``preview_recap`` and ``submit_retroactive_wrap_up``. Does NOT
-    check for active play_sessions. When *mode* is ``deep`` and an *agent* is given,
-    the deep web-researched path runs (falling back to quick on failure);
-    otherwise the quick single-shot recap is used.
+    Shared by ``preview_recap`` and ``submit_retroactive_wrap_up`` (no active-session
+    check). ``deep`` (or ``auto`` when the router escalates) with an *agent* runs the
+    web-researched path (falling back to quick); otherwise the quick single-shot recap.
     """
     await ensure_extractions_complete(play_session_repo, library_repo, llm_client, entry.id)
 
@@ -93,7 +94,7 @@ async def build_preview(
     if recent_play_sessions and recent_play_sessions[0].extracted_state:
         last_context = recent_play_sessions[0].extracted_state
 
-    if mode == "deep" and agent is not None:
+    if mode in ("deep", "auto") and agent is not None:
         recap_text, suspicious = await generate_recap_for_mode(
             play_session_repo,
             library_repo,
@@ -101,7 +102,8 @@ async def build_preview(
             agent,
             settings or _settings,
             entry,
-            "deep",
+            mode,
+            entitled_to_deep=entitled_to_deep,
         )
     else:
         recap_text, suspicious = await generate_recap(
@@ -130,9 +132,8 @@ async def ensure_extractions_complete(
 ) -> None:
     """Sync fallback: extract state for play_sessions with wrap_up but no extraction.
 
-    This handles the case where the Taskiq worker failed or hasn't processed
-    the wrap_up yet. Called before recap generation to ensure context is
-    available.
+    Handles the case where the Taskiq worker failed or hasn't run yet; called before
+    recap generation to ensure context is available.
     """
     pending = await play_session_repo.get_pending_extractions(library_entry_id)
     for play_session in pending:
@@ -175,12 +176,13 @@ async def generate_recap_for_mode(
     settings: Settings,
     entry: LibraryEntry,
     mode: RecapMode,
+    *,
+    entitled_to_deep: bool = True,
 ) -> tuple[str, bool]:
     """Produce ``(recap_text, suspicious)`` for *mode*, degrading deep -> quick.
 
-    The deep path runs the research agent under a hard wall-clock ceiling; any
-    timeout, research outage, or unexpected error falls back to the quick
-    single-shot recap, as does an empty deep result.
+    ``mode="auto"`` runs the adaptive router (Epic 29). The deep path runs under a hard
+    deadline; any timeout, outage, error, or empty result falls back to the quick recap.
     """
 
     async def _quick() -> tuple[str, bool]:
@@ -191,6 +193,17 @@ async def generate_recap_for_mode(
             entry.id,
             entry.game.title,
             entry.play_session_next_action,
+        )
+
+    if mode == "auto":
+        mode = await resolve_auto_mode(
+            play_session_repo,
+            library_repo,
+            llm_client,
+            settings,
+            entry,
+            agent=agent,
+            entitled_to_deep=entitled_to_deep,
         )
 
     if mode != "deep" or agent is None:
@@ -236,12 +249,9 @@ async def generate_recap(
 ) -> tuple[str, bool]:
     """Generate a recap from the last 3 wrap_ups.
 
-    If *position_override* is provided, it's passed to the LLM as the
-    player's corrected current position.
-
-    Returns ``(recap_text, suspicious)`` — *suspicious* is the anti-hallucination
-    verdict (low token overlap with the player's notes). The caller surfaces it as
-    a discreet note; it is no longer baked into the text.
+    *position_override*, if given, is passed to the LLM as the player's corrected
+    position. Returns ``(recap_text, suspicious)`` — *suspicious* is the anti-hallucination
+    verdict (low token overlap with the notes), surfaced by the caller as a discreet note.
     """
     await ensure_extractions_complete(
         play_session_repo, library_repo, llm_client, library_entry_id

@@ -39,7 +39,8 @@ final class PreviewRecap extends PlaySessionEvent {
   final String libraryEntryPublicId;
   final String? positionOverride;
 
-  /// Recap mode: `'quick'` (single-shot) or `'deep'` (web-researched).
+  /// Recap mode: `'quick'` (single-shot), `'deep'` (web-researched), or
+  /// `'auto'` (server routes quick/deep from the player's history).
   final String mode;
 
   @override

@@ -14,9 +14,10 @@ class PlaySessionRepository {
 
   /// Previews a recap for a library entry before starting a playSession.
   ///
-  /// [mode] selects the quick single-shot recap or the deep web-researched
-  /// one. Deep mode uses a longer receive timeout and accepts a [cancelToken]
-  /// so the user can abort the (slow) request.
+  /// [mode] is `'quick'` (single-shot), `'deep'` (web-researched), or `'auto'`
+  /// (server routes quick/deep from the player's history). Anything but
+  /// `'quick'` may run the slow deep path, so it uses the longer receive
+  /// timeout and accepts a [cancelToken] so the user can abort.
   Future<RecapPreview> previewRecap(
     String libraryEntryPublicId, {
     String? positionOverride,
@@ -30,7 +31,7 @@ class PlaySessionRepository {
         'mode': mode,
         if (positionOverride != null) 'position_override': positionOverride,
       },
-      options: mode == 'deep' ? _deepLlmOptions : _llmOptions,
+      options: mode == 'quick' ? _llmOptions : _deepLlmOptions,
       cancelToken: cancelToken,
     );
     return RecapPreview.fromJson(response.data!);

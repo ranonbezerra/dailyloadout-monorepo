@@ -116,7 +116,9 @@ class PlaySessionBloc extends Bloc<PlaySessionEvent, PlaySessionState> {
     PreviewRecap event,
     Emitter<PlaySessionState> emit,
   ) async {
-    final isDeep = event.mode == 'deep';
+    // 'auto' may resolve to the deep path server-side, so it gets the same
+    // cancellable deep-loading UX as an explicit 'deep' choice.
+    final isDeep = event.mode != 'quick';
     if (isDeep) {
       _deepCancelToken = CancelToken();
       emit(const DeepRecapLoading());

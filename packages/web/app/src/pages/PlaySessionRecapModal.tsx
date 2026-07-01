@@ -115,13 +115,15 @@ export function PlaySessionRecapModal(props: PlaySessionRecapModalProps) {
 			return;
 		}
 
+		// "deep" (forced) and "auto" (may resolve to deep server-side) both use the
+		// research overlay + cancel path. Auto that resolves to quick just returns fast.
 		const controller = new AbortController();
 		deepAbortRef.current = controller;
 		setDeepLoading(true);
 		try {
 			const updated = await previewMutation.mutateAsync({
 				libraryEntryPublicId: props.libraryEntryPublicId,
-				mode: "deep",
+				mode: next,
 				signal: controller.signal,
 			});
 			if (!controller.signal.aborted) {
@@ -131,7 +133,7 @@ export function PlaySessionRecapModal(props: PlaySessionRecapModalProps) {
 		} catch (err) {
 			if (controller.signal.aborted) return; // user cancelled — stay silent
 			notifications.show({
-				title: "Deep recap unavailable",
+				title: "Recap unavailable",
 				message: err instanceof Error ? err.message : "Try the quick recap instead",
 				color: "yellow",
 			});
@@ -270,12 +272,28 @@ export function PlaySessionRecapModal(props: PlaySessionRecapModalProps) {
 							justify="flex-start"
 							py="md"
 							styles={choiceButtonStyles}
+							onClick={() => handleChooseMode("auto")}
+						>
+							<Stack gap={2} align="flex-start">
+								<Text fw={600}>✨ Smart recap</Text>
+								<Text size="sm" c="dimmed">
+									Picks the best source automatically — instant from your own sessions, or
+									web-researched when they're too thin to go on. Recommended.
+								</Text>
+							</Stack>
+						</Button>
+						<Button
+							variant="default"
+							fullWidth
+							justify="flex-start"
+							py="md"
+							styles={choiceButtonStyles}
 							onClick={() => handleChooseMode("quick")}
 						>
 							<Stack gap={2} align="flex-start">
 								<Text fw={600}>⚡ Quick recap</Text>
 								<Text size="sm" c="dimmed">
-									Instant — built from your own past sessions. Recommended.
+									Instant — built only from your own past sessions.
 								</Text>
 							</Stack>
 						</Button>
@@ -290,7 +308,7 @@ export function PlaySessionRecapModal(props: PlaySessionRecapModalProps) {
 							<Stack gap={2} align="flex-start">
 								<Text fw={600}>🔎 Deep recap (web)</Text>
 								<Text size="sm" c="dimmed">
-									Searches the web for spoiler-free next steps. Takes up to a minute.
+									Always searches the web for spoiler-free next steps. Takes up to a minute.
 								</Text>
 							</Stack>
 						</Button>

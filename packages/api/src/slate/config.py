@@ -55,6 +55,18 @@ class Settings(BaseSettings):
     embedding_dimensions: int = 768  # must match the model; a change = migration + re-embed
     recap_retrieval: str = "recent"  # recent | semantic — the A/B grounding source
 
+    # ── Corrective / Adaptive RAG: relevance-gated recap routing (Epic 29) ──
+    # When `mode="auto"`, a relevance evaluator over the retrieved local history picks
+    # quick (local RAG is enough, OR a cold-start new game) vs deep (the player has
+    # played but the notes are too thin — web research augments). A new game never
+    # auto-escalates to the expensive deep path — that keeps the cost bounded.
+    adaptive_recap_enabled: bool = True  # feature flag / A/B toggle
+    adaptive_rich_token_min: int = 12  # distinct interesting tokens ⇒ "correct" (quick)
+    adaptive_sparse_token_max: int = 5  # below this (but non-empty) ⇒ "incorrect" (escalate)
+    # Placeholder entitlement gate: a free-tier user is never auto-escalated to the
+    # paid deep path. Replaced by a real per-user tier check when monetization lands.
+    adaptive_deep_entitled_default: bool = True
+
     # ── Batch re-inference / backfill (Epic 28) ───────────────────────────
     # Bump when the extraction prompt/model changes so `make api-backfill kind=extraction`
     # detects stale rows. The embedding side versions itself via `embedding_model`.

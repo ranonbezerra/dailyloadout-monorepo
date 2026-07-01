@@ -26,6 +26,16 @@ _OVERLAP_THRESHOLD = 0.40
 _INTERESTING_RE = re.compile(r"\b(?:[A-Z][a-z]{2,}|[A-Z]{2,}|\d+)\b")
 
 
+def extract_interesting_tokens(text: str) -> set[str]:
+    """Return the proper-noun/number tokens in *text* (the grounding-signal vocabulary).
+
+    Shared with the adaptive-RAG relevance evaluator (Epic 29), which grades how much
+    concrete content the player's retrieved history carries — reusing the same token
+    notion the anti-hallucination guard uses, so "what counts as signal" has one source.
+    """
+    return set(_INTERESTING_RE.findall(text))
+
+
 @dataclass
 class ValidationResult:
     """Result of anti-hallucination check."""
