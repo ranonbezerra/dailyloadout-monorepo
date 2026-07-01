@@ -19,7 +19,13 @@ def get_redis_client() -> redis.Redis:
     """Return the process-wide async Redis client (memoised connection pool)."""
     global _redis_client
     if _redis_client is None:
+        # Bounded socket timeouts: a hung Redis TCP connection must surface as an
+        # error (so the fail-open / fail-closed branches in the limiter and cost
+        # guard actually trigger) instead of stalling the request indefinitely.
         _redis_client = redis.from_url(  # type: ignore[no-untyped-call]
-            settings.redis_url, decode_responses=True
+            settings.redis_url,
+            decode_responses=True,
+            socket_timeout=settings.redis_socket_timeout_seconds,
+            socket_connect_timeout=settings.redis_socket_timeout_seconds,
         )
     return _redis_client

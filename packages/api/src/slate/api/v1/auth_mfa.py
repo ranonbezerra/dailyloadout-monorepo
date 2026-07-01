@@ -10,7 +10,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
-from slate.api.v1._rate_limit import rate_limit
+from slate.api.v1._rate_limit import account_rate_limit, rate_limit
 from slate.api.v1.auth_cookies import is_cookie_mode, set_refresh_cookie
 from slate.config import settings
 from slate.core.auth.schemas import (
@@ -31,6 +31,34 @@ _check_mfa_login_rate = rate_limit(
 )
 _check_mfa_verify_rate = rate_limit(
     "auth_mfa_verify", settings.rate_limit_login_per_minute, 60, by="ip", fail_closed=True
+)
+# Per-user backstop on the authenticated code-verify endpoints (confirm / disable
+# / recovery-code regen): a stolen-session attacker brute-forcing the second
+# factor is bounded per account, not just per IP.
+_check_mfa_manage_user_rate = rate_limit(
+    "auth_mfa_manage_user", settings.rate_limit_login_per_minute, 60, by="user", fail_closed=True
+)
+
+
+async def _mfa_challenge_identity(request: Request) -> str | None:
+    """Return an ``mfa:<public_id>`` identity from the challenge token, or None.
+
+    Keys the /mfa/login per-account limit on the account being signed into, so a
+    6-digit code can't be brute-forced across many source IPs against one target.
+    """
+    try:
+        body = await request.json()
+        token = body.get("mfa_token") if isinstance(body, dict) else None
+        if not isinstance(token, str) or not token:
+            return None
+        public_id, _tv = decode_mfa_challenge_token(token)
+    except Exception:
+        return None
+    return f"mfa:{public_id}"
+
+
+_check_mfa_login_account_rate = account_rate_limit(
+    "auth_mfa_login_acct", settings.rate_limit_login_per_minute, 60, _mfa_challenge_identity
 )
 
 router = APIRouter(prefix="/v1/auth/mfa", tags=["auth"])
@@ -65,7 +93,7 @@ async def mfa_enroll(
 @router.post(
     "/confirm",
     response_model=MfaRecoveryCodesResponse,
-    dependencies=[Depends(_check_mfa_verify_rate)],
+    dependencies=[Depends(_check_mfa_verify_rate), Depends(_check_mfa_manage_user_rate)],
 )
 async def mfa_confirm(
     body: MfaCodeRequest,
@@ -86,7 +114,7 @@ async def mfa_confirm(
 @router.post(
     "/recovery-codes",
     response_model=MfaRecoveryCodesResponse,
-    dependencies=[Depends(_check_mfa_verify_rate)],
+    dependencies=[Depends(_check_mfa_verify_rate), Depends(_check_mfa_manage_user_rate)],
 )
 async def mfa_regenerate_recovery_codes(
     body: MfaCodeRequest,
@@ -104,7 +132,7 @@ async def mfa_regenerate_recovery_codes(
 @router.post(
     "/disable",
     response_model=MessageResponse,
-    dependencies=[Depends(_check_mfa_verify_rate)],
+    dependencies=[Depends(_check_mfa_verify_rate), Depends(_check_mfa_manage_user_rate)],
 )
 async def mfa_disable(
     body: MfaCodeRequest,
@@ -122,7 +150,7 @@ async def mfa_disable(
 @router.post(
     "/login",
     response_model=LoginResponse,
-    dependencies=[Depends(_check_mfa_login_rate)],
+    dependencies=[Depends(_check_mfa_login_rate), Depends(_check_mfa_login_account_rate)],
 )
 async def mfa_login(
     body: MfaLoginRequest,

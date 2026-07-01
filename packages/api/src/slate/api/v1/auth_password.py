@@ -7,7 +7,7 @@ oracle), and password changes cut off every existing session.
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
-from slate.api.v1._rate_limit import rate_limit
+from slate.api.v1._rate_limit import account_email_identity, account_rate_limit, rate_limit
 from slate.api.v1.auth_cookies import is_cookie_mode, set_refresh_cookie
 from slate.config import settings
 from slate.core.auth.schemas import (
@@ -28,6 +28,16 @@ _check_forgot_rate = rate_limit(
     by="ip",
     times_key="rate_limit_register_per_minute",
 )
+# Per-email cap so a distributed sender can't bomb one victim's inbox with reset
+# mail (the per-IP cap alone doesn't bound mail-per-recipient).
+_check_forgot_account_rate = account_rate_limit(
+    "auth_forgot_acct",
+    settings.rate_limit_register_per_minute,
+    60,
+    account_email_identity,
+    fail_closed=False,
+    times_key="rate_limit_register_per_minute",
+)
 # Reset/change verify a secret (token or current password) → brute-forceable.
 # Reuse the login cap; fail-closed so a downed limiter can't open the gate.
 _check_reset_rate = rate_limit(
@@ -35,6 +45,15 @@ _check_reset_rate = rate_limit(
 )
 _check_change_rate = rate_limit(
     "auth_change_password", settings.rate_limit_login_per_minute, 60, by="ip", fail_closed=True
+)
+# Per-user cap: an attacker with a stolen session brute-forcing the current
+# password (to fully take over) is bounded per account, not just per IP.
+_check_change_user_rate = rate_limit(
+    "auth_change_password_user",
+    settings.rate_limit_login_per_minute,
+    60,
+    by="user",
+    fail_closed=True,
 )
 
 
@@ -44,7 +63,7 @@ router = APIRouter(prefix="/v1/auth", tags=["auth"])
 @router.post(
     "/forgot-password",
     response_model=MessageResponse,
-    dependencies=[Depends(_check_forgot_rate)],
+    dependencies=[Depends(_check_forgot_rate), Depends(_check_forgot_account_rate)],
 )
 async def forgot_password(
     body: ForgotPasswordRequest,
@@ -82,7 +101,7 @@ async def reset_password(
 @router.post(
     "/change-password",
     response_model=TokenResponse,
-    dependencies=[Depends(_check_change_rate)],
+    dependencies=[Depends(_check_change_rate), Depends(_check_change_user_rate)],
 )
 async def change_password(
     body: ChangePasswordRequest,

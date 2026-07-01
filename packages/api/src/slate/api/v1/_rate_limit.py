@@ -156,3 +156,55 @@ def rate_limit(
         await _enforce(scope, _client_ip(request), await _resolve_times(), seconds, fail_closed)
 
     return _dep_ip
+
+
+# ---------------------------------------------------------------------------
+# Per-ACCOUNT limiting — complements the per-IP limiter on the pre-auth routes.
+# A distributed attacker rotating source IPs (no spoofing needed) otherwise gets
+# a full per-IP allowance against a SINGLE victim account; keying a second bucket
+# on the target account (submitted email / challenge subject) caps that.
+# ---------------------------------------------------------------------------
+
+BodyIdentity = Callable[[Request], Awaitable[str | None]]
+
+
+async def account_email_identity(request: Request) -> str | None:
+    """Return a normalized ``email:<addr>`` identity from the JSON body, or None."""
+    try:
+        body = await request.json()
+    except Exception:
+        return None
+    email = body.get("email") if isinstance(body, dict) else None
+    if isinstance(email, str) and email.strip():
+        return f"email:{email.strip().lower()}"
+    return None
+
+
+def account_rate_limit(
+    scope: str,
+    times: int,
+    seconds: int,
+    extract: BodyIdentity,
+    *,
+    fail_closed: bool = True,
+    times_key: str | None = None,
+) -> Callable[..., Awaitable[None]]:
+    """Build a dependency that rate-limits by the TARGET ACCOUNT, not the IP.
+
+    *extract* pulls the account identity from the request body (the submitted
+    email, or a challenge subject). When it returns None (body unparsable /
+    field absent) the account axis is skipped — the handler's own validation and
+    the per-IP limiter still apply, so a malformed request isn't given a free
+    pass but also isn't double-counted on a bogus key.
+    """
+
+    async def _dep(request: Request) -> None:
+        if not await dynamic_config.get_bool("rate_limit_enabled"):
+            return
+        identity = await extract(request)
+        if identity is None:
+            return
+        resolved = await dynamic_config.get_int(times_key) if times_key else times
+        await _enforce(scope, identity, resolved, seconds, fail_closed)
+
+    return _dep

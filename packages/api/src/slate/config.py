@@ -21,6 +21,9 @@ class Settings(BaseSettings):
 
     # ── Redis ────────────────────────────────────────────────────────────
     redis_url: str = "redis://localhost:6380/0"
+    # Socket read/connect timeout: a hung Redis must error (triggering the
+    # limiter/cost-guard fail modes), not stall the request.
+    redis_socket_timeout_seconds: float = 2.0
     cache_enabled: bool = True  # off => NullCache (Epic 17)
     stats_cache_ttl_seconds: int = 300  # per-user stats; bust on session events (Epic 18)
     recap_cache_ttl_seconds: int = 7 * 24 * 3600  # deep recaps, content-addressed (Epic 18)
