@@ -56,6 +56,21 @@ class TestTranscribeAudio:
         assert data["language"] is not None
         assert data["duration_seconds"] is not None
 
+    async def test_transcribe_rejects_overlong_audio(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict[str, str],
+        monkeypatch: Any,
+    ) -> None:
+        # A short (byte-capped) upload whose container advertises a huge duration
+        # must be rejected BEFORE the expensive transcription runs.
+        from slate.api.v1 import capture
+
+        monkeypatch.setattr(capture, "probe_audio_duration_seconds", lambda _p: 99_999.0)
+        resp = await _transcribe(async_client, auth_headers)
+        assert resp.status_code == 422, resp.text
+        assert "seconds" in resp.json()["detail"]
+
     async def test_transcribe_invalid_mime(
         self,
         async_client: AsyncClient,
