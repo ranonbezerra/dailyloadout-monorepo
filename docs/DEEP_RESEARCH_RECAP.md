@@ -7,6 +7,20 @@ This document specifies the LangGraph graph that produces a **web-grounded,
 spoiler-free** play session recap. The existing single-shot `generate_recap`
 (Epic 6) is the `quick` path and the fallback; this graph is the `deep` path.
 
+> **Implementation status (as shipped).** Two changes landed after the original
+> design; the diagrams and tables below reflect the **shipped** graph:
+> 1. **No separate `spoiler_filter` node.** The spoiler rules are baked into the
+>    single synthesis prompt (`recap_research.j2`) — one spoiler-aware pass
+>    instead of synthesize-then-rewrite, so nothing dilutes the draft before the
+>    terminal gate.
+> 2. **A `rerank` node was added (Epic 25)** between `grade_results` and
+>    `synthesize`: it reorders retrieved results by task relevance (`fast` role),
+>    writing a `ranked_results` view that `synthesize` prefers (and scrapes
+>    first). Deadline-aware and flag-gated; degrades to raw order.
+>
+> The code (`infrastructure/agent/graph/`) is authoritative; the per-node code
+> blocks below are illustrative sketches.
+
 ---
 
 ## 1. Why a graph (and not more single-shot code)
@@ -33,7 +47,8 @@ existing `AbstractLLMClient`. We pull in `langgraph` only.
 1. **Local-first.** SearXNG + Ollama. No cloud keys. Same as the rest of the app.
 2. **Deterministic guards around probabilistic nodes.** The one creative node
    (`synthesize`) is bracketed by deterministic/gated nodes: a bounded refine
-   loop gated by `grade`, a `spoiler_filter` pass, and the Epic 6 token-overlap
+   loop gated by `grade`, a relevance `rerank` of the grounding before synthesis
+   (Epic 25), a spoiler-aware synthesis prompt, and the Epic 6 token-overlap
    validator as the terminal gate.
 3. **Reuse, don't duplicate.** `anti_hallucination` imports the Epic 6 validator
    from `core/play-session`. It is not reimplemented.
@@ -53,12 +68,12 @@ flowchart TD
     START([start]) --> build[build_query]
     build --> search[search]
     search --> grade[grade_results]
-    grade -->|sufficient| synth[synthesize]
+    grade -->|sufficient| rerank[rerank]
     grade -->|insufficient & refines left| refine[refine_query]
     grade -->|empty / refines exhausted / past deadline| fb[fallback_quick]
     refine --> search
-    synth --> spoiler[spoiler_filter]
-    spoiler --> halluc[anti_hallucination]
+    rerank --> synth[synthesize]
+    synth --> halluc[anti_hallucination]
     halluc --> DONE([end])
     fb --> DONE
 ```
@@ -82,13 +97,14 @@ infrastructure/
     └── graph/
         ├── state.py          # ResearchRecapState (TypedDict)
         ├── nodes.py          # the 8 node functions
+        ├── render.py         # thin Jinja loader (SandboxedEnvironment + udata fence)
         └── builder.py        # StateGraph wiring + router + checkpointer
 
 prompts/
 ├── research_grade.j2         # "are these results enough?" -> JSON {grade}
 ├── research_refine.j2        # reformulate the query
-├── recap_research.j2      # synthesize recap from context + results
-└── spoiler_filter.j2         # rewrite to directions/areas only
+├── research_rerank.j2        # order results by task relevance -> JSON {order} (Epic 25)
+└── recap_research.j2         # spoiler-aware synthesis from context + results + scraped pages
 ```
 
 ---
@@ -103,13 +119,13 @@ from operator import add
 from typing import Annotated, Literal, TypedDict
 
 
-class SearchResult(TypedDict):
+class SearchResultDict(TypedDict):
     title: str
     url: str
     snippet: str
 
 
-class PlaySessionContext(TypedDict):
+class PlaySessionContext(TypedDict, total=False):
     game_title: str
     location: str | None
     current_quest: str | None
@@ -129,24 +145,27 @@ class ResearchRecapState(TypedDict, total=False):
 
     # --- research loop working state ---
     query: str
-    results: Annotated[list[SearchResult], add]   # reducer: accumulate across refine loops
+    results: Annotated[list[SearchResultDict], add]  # reducer: accumulate across refine loops
+    ranked_results: list[SearchResultDict]   # rerank output (plain overwrite); synthesize prefers this
     refine_count: int
     grade: Grade
 
     # --- synthesis + guards ---
-    draft: str                               # raw synthesized recap (may contain spoilers)
-    filtered: str                            # after spoiler_filter
+    draft: str                               # the single spoiler-aware synthesis output
+    scraped_text: str                        # full page text fed to synthesis; also grounds the guard
     overlap: float
     suspicious: bool
 
     # --- output ---
-    recap: str                            # final text returned to the caller
+    recap: str                               # final text returned to the caller
     source: Source
 ```
 
 The `results` field uses the `add` reducer so each `search` pass **appends**
 rather than overwrites — refining the query accumulates evidence instead of
-discarding the first round.
+discarding the first round. `ranked_results` is a **plain-overwrite** key (not
+the reducer): `rerank` replaces the ordering once, after grading, so it must not
+accumulate.
 
 ---
 
@@ -158,8 +177,8 @@ discarding the first round.
 | `search` | none | yes (tool) | `results` (appended) |
 | `grade_results` | `fast` | LLM-gated | `grade` |
 | `refine_query` | `fast` | LLM | `query`, `refine_count+1` |
-| `synthesize` | `smart` | LLM (creative) | `draft` |
-| `spoiler_filter` | `smart` | LLM-gated | `filtered` |
+| `rerank` | `fast` | LLM-gated | `ranked_results` (top-N by relevance; Epic 25) |
+| `synthesize` | `smart` | LLM (creative) | `draft`, `scraped_text` (spoiler-aware; scrapes top results) |
 | `anti_hallucination` | none | **yes** (Epic 6 reuse) | `overlap`, `suspicious`, `recap`, `source` |
 | `fallback_quick` | `smart` | LLM (existing path) | `recap`, `source` |
 
@@ -174,7 +193,7 @@ import time
 
 import structlog
 
-from slate.core.play session.validators import check_recap_overlap  # Epic 6, reused
+from slate.core.play_session.anti_hallucination import validate_recap  # Epic 6, reused
 from slate.infrastructure.llm.base import AbstractLLMClient
 from slate.infrastructure.research.base import AbstractResearchClient
 
@@ -213,25 +232,34 @@ async def refine_query(state, *, llm: AbstractLLMClient) -> dict:
     return {"query": new_q, "refine_count": state["refine_count"] + 1}
 
 
-async def synthesize(state, *, llm: AbstractLLMClient) -> dict:
-    prompt = render("recap_research.j2", context=state["context"], results=state["results"])
-    return {"draft": (await llm.complete(prompt, role="smart")).strip()}
+async def rerank(state, *, llm: AbstractLLMClient, enabled=True, top_n=4) -> dict:
+    results = state.get("results", [])
+    if not enabled or len(results) <= 1 or time.monotonic() > state["deadline_ts"]:
+        return {}  # degrade: keep raw order
+    prompt = render("research_rerank.j2", results=results, context=state["context"])
+    order = json.loads(await llm.complete(prompt, role="fast", json=True)).get("order", [])
+    return {"ranked_results": _reorder(results, order)[:top_n]}  # missing indices appended
 
 
-async def spoiler_filter(state, *, llm: AbstractLLMClient) -> dict:
-    prompt = render("spoiler_filter.j2", draft=state["draft"], context=state["context"])
-    return {"filtered": (await llm.complete(prompt, role="smart")).strip()}
+async def synthesize(state, *, llm: AbstractLLMClient,
+                     research=None, scrape_top_n=0) -> dict:
+    # spoiler rules live in recap_research.j2 (single pass — no separate filter node).
+    results = state.get("ranked_results") or state.get("results", [])
+    pages = [...]  # optionally fetch top-N result bodies for richer grounding
+    prompt = render("recap_research.j2", context=state["context"], results=results, pages=pages)
+    draft = (await llm.complete(prompt, role="smart")).strip()
+    return {"draft": draft, "scraped_text": " ".join(p["content"] for p in pages)}
 
 
-async def anti_hallucination(state) -> dict:
+async def anti_hallucination(state, *, threshold=0.4) -> dict:
     ctx = state["context"]
-    grounding = _context_text(ctx) + " " + " ".join(r["snippet"] for r in state["results"])
-    overlap, suspicious = check_recap_overlap(output=state["filtered"], context=grounding)
-    text = state["filtered"]
-    if suspicious:
-        text += "\n\n_(Heads up: this recap drifted from your notes — take it loosely.)_"
-    return {"overlap": overlap, "suspicious": suspicious,
-            "recap": text, "source": "deep_research"}
+    grounding = (_context_text(ctx) + " "
+                 + " ".join(r["snippet"] for r in state.get("results", []))
+                 + " " + state.get("scraped_text", ""))
+    result = validate_recap(state["draft"], grounding, threshold=threshold)
+    # Text stays clean; the caller surfaces `suspicious` as a discreet note.
+    return {"overlap": result.overlap_ratio, "suspicious": result.is_suspicious,
+            "recap": state["draft"], "source": "deep_research"}
 
 
 async def fallback_quick(state, *, llm: AbstractLLMClient) -> dict:
@@ -265,7 +293,7 @@ def route_after_grade(state, *, max_refines: int) -> str:
         return "fallback_quick"
     grade = state["grade"]
     if grade == "sufficient":
-        return "synthesize"
+        return "synthesize"  # maps to the "rerank" node below (rerank → synthesize)
     if grade == "insufficient" and state["refine_count"] < max_refines:
         return "refine_query"
     return "fallback_quick"  # empty, or refines exhausted
@@ -279,9 +307,13 @@ def build_graph(*, llm, research, settings):
                                  max_results=settings.deep_recap_max_results))
     g.add_node("grade_results", partial(nodes.grade_results, llm=llm))
     g.add_node("refine_query", partial(nodes.refine_query, llm=llm))
-    g.add_node("synthesize", partial(nodes.synthesize, llm=llm))
-    g.add_node("spoiler_filter", partial(nodes.spoiler_filter, llm=llm))
-    g.add_node("anti_hallucination", nodes.anti_hallucination)
+    g.add_node("rerank", partial(nodes.rerank, llm=llm,
+                                 enabled=settings.deep_recap_rerank_enabled,
+                                 top_n=settings.deep_recap_rerank_top_n))
+    g.add_node("synthesize", partial(nodes.synthesize, llm=llm, research=research,
+                                     scrape_top_n=settings.deep_recap_scrape_top_n))
+    g.add_node("anti_hallucination",
+               partial(nodes.anti_hallucination, threshold=settings.deep_recap_overlap_threshold))
     g.add_node("fallback_quick", partial(nodes.fallback_quick, llm=llm))
 
     g.add_edge(START, "build_query")
@@ -290,11 +322,11 @@ def build_graph(*, llm, research, settings):
     g.add_conditional_edges(
         "grade_results",
         partial(route_after_grade, max_refines=settings.deep_recap_max_refines),
-        {"synthesize": "synthesize", "refine_query": "refine_query", "fallback_quick": "fallback_quick"},
+        {"synthesize": "rerank", "refine_query": "refine_query", "fallback_quick": "fallback_quick"},
     )
     g.add_edge("refine_query", "search")        # the bounded loop
-    g.add_edge("synthesize", "spoiler_filter")
-    g.add_edge("spoiler_filter", "anti_hallucination")
+    g.add_edge("rerank", "synthesize")          # Epic 25: rerank grounding, then synthesize
+    g.add_edge("synthesize", "anti_hallucination")
     g.add_edge("anti_hallucination", END)
     g.add_edge("fallback_quick", END)
 
@@ -307,18 +339,26 @@ check at the top of the router. Two independent stops; the loop cannot run away.
 
 ---
 
-## 8. The two guards, as nodes
+## 8. Rerank + the guards
 
-- **`spoiler_filter`** (new). A `smart`-model rewrite constrained to suggest
-  **directions and areas only** — never boss names, plot twists, story beats,
-  or item locations the player has not already mentioned. The prompt receives
-  the player's own context so it knows what is "already known" vs. a spoiler.
-- **`anti_hallucination`** (reused, Epic 6). The terminal gate. It tokenizes
-  the filtered output for proper nouns + numbers and checks ≥70% overlap with
-  the grounding text (player's own words **plus** the retrieved snippets). Below
-  threshold → `suspicious=True` and a disclaimer is appended. This is the
-  **same** function used by the quick path; importing it keeps one source of
-  truth for "what counts as drift."
+- **`rerank`** (Epic 25). Between `grade_results` and `synthesize`, the `fast`
+  model orders the retrieved results by task relevance and returns the top-N as
+  `ranked_results`, which `synthesize` prefers (and scrapes first). Deadline-aware
+  and flag-gated: disabled, past the deadline, ≤1 result, or an unparsable
+  response all skip it and keep the raw order. Measured by a model-free recall@k
+  A/B (`evals/rerank.py`).
+- **Spoiler safety** is enforced **inside the synthesis prompt**
+  (`recap_research.j2`), not as a separate rewrite node — one spoiler-aware pass
+  constrained to **directions and areas only** (never boss names, plot twists,
+  or item locations the player has not already mentioned), so nothing dilutes the
+  draft before the terminal gate.
+- **`anti_hallucination`** (reused, Epic 6). The terminal gate. It tokenizes the
+  synthesized draft for proper nouns + numbers and checks token overlap
+  (`deep_recap_overlap_threshold`, more tolerant than the quick path) against the
+  grounding text (player's own words **plus** the retrieved snippets **plus** any
+  scraped page text). Below threshold → `suspicious=True`; the recap text stays
+  clean and the caller surfaces the note. This is the **same** validator the quick
+  path uses — one source of truth for "what counts as drift."
 
 Optional deterministic backstop (v1.1++): maintain a per-game blocklist of
 high-risk proper nouns harvested from results and assert none survive the
@@ -332,7 +372,7 @@ LLM filter + overlap gate are enough for v1.
 - **Checkpointer:** start with `MemorySaver` (zero infra). Upgrade to
   `AsyncPostgresSaver` against the existing PostgreSQL 18 when you want durable
   resume and run inspection — matches the repo's "YAGNI until then" stance.
-- **Thread id:** use `play session.public_id` as the `thread_id` so a given play session's
+- **Thread id:** use `play_session.public_id` as the `thread_id` so a given play session's
   deep-recap run is addressable (resume, cancel, inspect).
 - **Two-layer deadline:**
   1. *Inside the graph* — `route_after_grade` checks `time.monotonic()` against
@@ -402,14 +442,14 @@ from typing import Literal
 
 
 async def start_play_session(self, *, library_entry_id, mode: Literal["quick", "deep"] = "quick"):
-    play session = await self._play_sessions.create(library_entry_id=library_entry_id, ...)
-    ctx = self._build_context(play session)   # location/quest/next_action + last 3 wrap-ups
+    play_session = await self._play_sessions.create(library_entry_id=library_entry_id, ...)
+    ctx = self._build_context(play_session)   # location/quest/next_action + last 3 wrap-ups
 
     if mode == "deep" and self._agent is not None:
         try:
             result = await asyncio.wait_for(
                 self._agent.deep_recap(
-                    DeepRecapRequest(context=ctx, thread_id=str(play session.public_id))
+                    DeepRecapRequest(context=ctx, thread_id=str(play_session.public_id))
                 ),
                 timeout=self._settings.deep_recap_deadline_seconds + 5,  # hard ceiling
             )
@@ -419,8 +459,8 @@ async def start_play_session(self, *, library_entry_id, mode: Literal["quick", "
     else:
         recap = await self._quick_recap(ctx)
 
-    await self._play_sessions.set_recap(play session.id, recap)
-    return play session, recap
+    await self._play_sessions.set_recap(play_session.id, recap)
+    return play_session, recap
 ```
 
 Note the small addition to the LLM port: a generic
@@ -442,6 +482,10 @@ SEARXNG_BASE_URL=http://localhost:8888
 DEEP_RECAP_DEADLINE_SECONDS=60
 DEEP_RECAP_MAX_REFINES=2
 DEEP_RECAP_MAX_RESULTS=6
+DEEP_RECAP_SCRAPE_TOP_N=2             # fetch top-N result bodies into synthesis (0 = snippets only)
+DEEP_RECAP_OVERLAP_THRESHOLD=0.25     # anti_hallucination floor (more tolerant than quick's 0.40)
+DEEP_RECAP_RERANK_ENABLED=true        # Epic 25: rerank grounding before synthesis
+DEEP_RECAP_RERANK_TOP_N=4             # keep top-N after reranking
 ```
 
 Defaults are `dummy` so a fresh clone and CI never need SearXNG or a model.
@@ -468,8 +512,12 @@ Defaults are `dummy` so a fresh clone and CI never need SearXNG or a model.
   fallback.
 - **Fallback-on-timeout test.** `deadline_ts` in the past → `fallback_quick`,
   `source == "quick_fallback"`.
-- **Spoiler-leak regression.** Feed a draft containing a known boss name not in
-  the player's context; assert `spoiler_filter` removes it (curated fixtures).
+- **Rerank tests.** Node reorders by a scripted order and truncates to top-N;
+  degrade paths (disabled, past-deadline, ≤1 result, unparsable response) leave
+  the raw order; plus the model-free recall@k A/B (`evals/rerank.py`).
+- **Spoiler-leak regression.** Feed results/context containing a known boss name
+  not in the player's own notes; assert the spoiler-aware synthesis + overlap gate
+  don't surface it (curated fixtures).
 - Coverage target ≥ 85% for `infrastructure/agent/` and `infrastructure/research/`.
   No real LLM or network in CI (both ports default to `dummy`).
 
@@ -479,8 +527,8 @@ Defaults are `dummy` so a fresh clone and CI never need SearXNG or a model.
 
 > *"How do you build a reliable agent on a local model?"* — A LangGraph state
 > machine where the one creative step is bracketed by deterministic guards: a
-> bounded refine loop gated by an LLM grader, a spoiler-filter pass, and a
-> token-overlap validator as the terminal gate — with a hard deadline that
-> routes to a simpler, always-available path when grounding fails. Stateful,
-> long-running, branching, with graceful degradation, and not one line of
-> fine-tuning.
+> bounded refine loop gated by an LLM grader, a relevance rerank of the grounding,
+> a spoiler-aware synthesis pass, and a token-overlap validator as the terminal
+> gate — with a hard deadline that routes to a simpler, always-available path when
+> grounding fails. Stateful, long-running, branching, with graceful degradation,
+> and not one line of fine-tuning.
