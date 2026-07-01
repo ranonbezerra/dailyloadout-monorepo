@@ -18,6 +18,7 @@ from slate.api.middleware import (
 )
 from slate.api.request_logging import RequestLoggingMiddleware
 from slate.api.v1.admin import router as admin_router
+from slate.api.v1.admin_cache import router as admin_cache_router
 from slate.api.v1.admin_captures import router as admin_captures_router
 from slate.api.v1.admin_picks import router as admin_picks_router
 from slate.api.v1.admin_play_sessions import router as admin_play_sessions_router
@@ -217,6 +218,7 @@ def create_app() -> FastAPI:
 
     # Routers
     application.include_router(admin_router)
+    application.include_router(admin_cache_router)
     application.include_router(admin_captures_router)
     application.include_router(admin_play_sessions_router)
     application.include_router(admin_picks_router)

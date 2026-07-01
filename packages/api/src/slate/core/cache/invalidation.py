@@ -17,7 +17,22 @@ from __future__ import annotations
 from slate.config import settings
 from slate.infrastructure.cache.base import AbstractCache
 from slate.infrastructure.cache.factory import get_cache
-from slate.infrastructure.cache.keys import stats_namespace
+from slate.infrastructure.cache.keys import (
+    NS_CAPTURE,
+    NS_IGDB,
+    NS_LLM,
+    NS_RECAP,
+    NS_REF,
+    NS_RESEARCH,
+    NS_STATS,
+    stats_namespace,
+)
+from slate.infrastructure.cache.layer import process_tier
+
+# Every cache namespace, for a full flush. Deliberately excludes the durable
+# rate-limit / cost-guard counters (they live under their own key prefixes, not
+# these) — a flush must never reset spend/abuse counters.
+_ALL_NAMESPACES = (NS_IGDB, NS_STATS, NS_RECAP, NS_LLM, NS_RESEARCH, NS_REF, NS_CAPTURE)
 
 
 async def invalidate_user_stats(user_id: int, cache: AbstractCache | None = None) -> None:
@@ -30,3 +45,18 @@ async def invalidate_user_stats(user_id: int, cache: AbstractCache | None = None
     """
     target = cache if cache is not None else get_cache(settings)
     await target.delete_namespace(stats_namespace(user_id))
+
+
+async def invalidate_all_cache(cache: AbstractCache | None = None) -> list[str]:
+    """Flush every application-cache namespace + the in-process tier.
+
+    The break-glass "clear the whole cache" action (backoffice-only). Only the
+    cache namespaces are cleared — the durable rate-limit/cost-guard counters,
+    which live under other prefixes, are left untouched. Best-effort per
+    namespace; returns the namespaces cleared for the audit trail.
+    """
+    target = cache if cache is not None else get_cache(settings)
+    for namespace in _ALL_NAMESPACES:
+        await target.delete_namespace(f"{namespace}:")
+    process_tier.clear()
+    return list(_ALL_NAMESPACES)

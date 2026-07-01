@@ -11,6 +11,7 @@ from typing import Annotated
 
 from fastapi import Depends
 
+from slate.core.admin.cache_service import AdminCacheService
 from slate.core.admin.picks_service import AdminPickService
 from slate.core.admin.play_sessions_service import AdminPlaySessionService
 from slate.infrastructure.db.repositories.admin import AdminAuditRepository
@@ -19,6 +20,14 @@ from slate.infrastructure.db.repositories.play_session import PlaySessionReposit
 from slate.infrastructure.db.repositories.user import UserRepository
 
 from .db import DbSession
+
+
+def get_admin_cache_service(db: DbSession) -> AdminCacheService:
+    """Provide an ``AdminCacheService`` wired to the audit repo."""
+    return AdminCacheService(AdminAuditRepository(db))
+
+
+AdminCacheServiceDep = Annotated[AdminCacheService, Depends(get_admin_cache_service)]
 
 
 def get_admin_pick_service(db: DbSession) -> AdminPickService:

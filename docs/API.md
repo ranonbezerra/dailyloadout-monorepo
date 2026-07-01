@@ -203,6 +203,7 @@ public origin; single-user mode is rejected outright. Non-admins get `403`.
 | POST | `/play-sessions/{public_id}/clamp` | Force-end an active session (`ended_via=admin_clamp`) |
 | GET | `/picks` | List/search picks with per-action tallies — `q`, `action` (read-only) |
 | GET | `/picks/{public_id}` | Pick detail (read-only) |
+| POST | `/cache/flush` | Break-glass: flush every application-cache namespace + the in-process tier (rate-limited, audited; durable rate-limit/cost counters untouched) |
 | GET | `/config` | List the curated operational knobs (effective/override/baseline) |
 | PUT | `/config/{key}` | Set a runtime override (validated); `422` on bad type/range, `404` unknown key |
 | DELETE | `/config/{key}` | Clear the override, reverting to the env/code baseline |
