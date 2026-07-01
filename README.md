@@ -9,6 +9,12 @@
 [![CI – Web](https://img.shields.io/badge/CI-Web-blue)](https://github.com/ranonbezerra/slate-monorepo/actions/workflows/ci-web-app.yml)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 
+[![API coverage ≥90%](https://img.shields.io/badge/API_coverage-%E2%89%A590%25-brightgreen)](.github/workflows/ci-api.yml)
+[![Web coverage ≥90%](https://img.shields.io/badge/Web_coverage-%E2%89%A590%25-brightgreen)](.github/workflows/ci-web-app.yml)
+[![Mobile coverage ≥90%](https://img.shields.io/badge/Mobile_coverage-%E2%89%A590%25-brightgreen)](.github/workflows/ci-mobile.yml)
+
+> Coverage badges show the **CI-enforced floor**, not a fluctuating number: every package's pipeline fails below 90% line coverage (`--cov-fail-under=90`, vitest `thresholds.lines: 90`, `check_coverage.sh 90`). The badge stays green because the gate keeps it true.
+
 ---
 
 ## What problem this solves

@@ -435,7 +435,7 @@ This is the spot that connects Slate to Freeler narratively. A recruiter who rea
 
 **Goal:** state of "vitrine ready to announce".
 
-**Status:** mostly done — the launch-blocking work (docs + polish) is complete; a few public-facing artifacts remain. Done: a comprehensive README, ARCHITECTURE / PRODUCT / DEPLOYMENT / OLLAMA / API docs, and polished empty / error / loading states across web + mobile. The v1.1 roadmap is already tracked as open GitHub issues (#15–18). **Still open:** a recorded demo GIF, a mermaid architecture diagram in the README, coverage badges, and the LinkedIn announcement (the three unchecked boxes below).
+**Status:** mostly done — the launch-blocking work (docs + polish) is complete; a few public-facing artifacts remain. Done: a comprehensive README, ARCHITECTURE / PRODUCT / DEPLOYMENT / OLLAMA / API docs, and polished empty / error / loading states across web + mobile. The v1.1 roadmap is already tracked as open GitHub issues (#15–18), and per-package coverage badges (enforced-floor style) are in the README. **Still open:** a recorded demo GIF, a mermaid architecture diagram in the README, and the LinkedIn announcement (the two unchecked boxes below).
 
 ### Tasks
 
@@ -460,7 +460,7 @@ This is the spot that connects Slate to Freeler narratively. A recruiter who rea
 - [x] Empty states polished in app and web
 - [x] Error states polished
 - [x] Loading states with shimmer/skeleton
-- [ ] Coverage badges in README
+- [x] Coverage badges in README (per-package `≥90%` enforced-floor badges linked to the CI gates)
 - [ ] LinkedIn announcement post
 
 ### Definition of Done
