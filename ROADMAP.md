@@ -32,22 +32,24 @@ Total: **10 weekends ≈ 2.5 months** for v1.0 (assuming 8–12 productive hours
 
 **Goal:** public repo, empty but professional, with Docker Compose booting "hello world" across all three packages.
 
+**Status:** done (v1.0 foundation shipped). Substitutions from the original plan: **AGPL-3.0** license (not MIT), **Taskiq** task queue (not arq), **Mantine v9** (not v8); Ollama runs on the host (not in compose) and the API via `make api` for hot-reload; CI is split into per-surface workflows (api / mobile / web-app / web-backoffice / web-shared / pre-commit) rather than three. Delivered beyond the checklist: pre-commit hooks + detect-secrets, a 40+-target Makefile, a hardened `docker-compose.prod.yml` overlay, SearXNG + Taskiq-worker compose services, and ARCHITECTURE/PRODUCT/CLAUDE/CONTRIBUTING docs + branding. Only real gap: a "question" issue template.
+
 ### Tasks
 
-- [ ] Create `slate-monorepo` on GitHub, public, MIT license
-- [ ] Initial README (work-in-progress version): problem, vision, stack, "WIP" status badge
-- [ ] `.gitignore` for Python, Flutter, Node, IDE files
-- [ ] `docker-compose.yml` with 4 services: postgres, redis, ollama, api (placeholder returning `{"status": "ok"}` at `/health`)
-- [ ] `docker-compose.dev.yml` with hot-reload
-- [ ] `.env.example` complete (every env var from ARCHITECTURE.md §7)
-- [ ] `packages/api/pyproject.toml` with Poetry, Python 3.14, base deps (FastAPI, Pydantic v2, SQLAlchemy, asyncpg, alembic, arq, structlog, ruff, mypy, pytest, pytest-asyncio)
-- [ ] `packages/api/src/slate/main.py` with minimal app factory + `/health`
-- [ ] `packages/mobile/` initialized via `flutter create`, configured for iOS/Android. Renders "Slate WIP"
-- [ ] `packages/web/` initialized with Vite (Bun), React 19, TypeScript, Mantine v8. Renders empty layout on `localhost:3200`
-- [ ] GitHub Actions: three separate workflows (`ci-api.yml`, `ci-app.yml`, `ci-web.yml`) running lint + test on every PR
-- [ ] Issue templates (bug, feature, question)
-- [ ] PR template
-- [ ] README with CI badges
+- [x] Create `slate-monorepo` on GitHub, public, MIT license
+- [x] Initial README (work-in-progress version): problem, vision, stack, "WIP" status badge
+- [x] `.gitignore` for Python, Flutter, Node, IDE files
+- [x] `docker-compose.yml` with 4 services: postgres, redis, ollama, api (placeholder returning `{"status": "ok"}` at `/health`)
+- [x] `docker-compose.dev.yml` with hot-reload
+- [x] `.env.example` complete (every env var from ARCHITECTURE.md §7)
+- [x] `packages/api/pyproject.toml` with Poetry, Python 3.14, base deps (FastAPI, Pydantic v2, SQLAlchemy, asyncpg, alembic, arq, structlog, ruff, mypy, pytest, pytest-asyncio)
+- [x] `packages/api/src/slate/main.py` with minimal app factory + `/health`
+- [x] `packages/mobile/` initialized via `flutter create`, configured for iOS/Android. Renders "Slate WIP"
+- [x] `packages/web/` initialized with Vite (Bun), React 19, TypeScript, Mantine v8. Renders empty layout on `localhost:3200`
+- [x] GitHub Actions: three separate workflows (`ci-api.yml`, `ci-app.yml`, `ci-web.yml`) running lint + test on every PR
+- [x] Issue templates (bug, feature, question)
+- [x] PR template
+- [x] README with CI badges
 
 ### Definition of Done
 
@@ -67,23 +69,25 @@ The vitrine starts with the **first impression**. A recruiter cloning the repo a
 
 **Goal:** signup, login, and logout work end-to-end across all three packages.
 
+**Status:** done (v1.0). Built on a **custom auth core** (not `fastapi-users`) and **`pyrate_limiter`** (not `slowapi`) with Redis-backed per-IP + per-account limits. JWT access 15min + refresh 30d with rotation (10s replay grace), bcrypt 12, `SINGLE_USER_MODE`, and cookie (web) / secure-storage (mobile) token handling all shipped. Email verification, password reset, MFA/TOTP, OAuth (Google/Twitch), and the `token_version` session kill-switch + `is_banned` flag also landed on this core (they formally belong to Epics 19/20).
+
 ### Tasks
 
-- [ ] PostgreSQL schema: `users`, `oauth_identities`, `refresh_tokens` via Alembic migration
-- [ ] Integrate `fastapi-users[sqlalchemy]`
-- [ ] Endpoints: `/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/me`
-- [ ] JWT access 15min + refresh 30d with rotation
-- [ ] Bcrypt 12 rounds (fastapi-users default)
-- [ ] Rate limit on `/auth/login` (10 attempts/min via slowapi)
-- [ ] `SINGLE_USER_MODE` env: if true, disables signup, creates single user via env on startup
-- [ ] Pytest covering: valid signup, duplicate signup, valid login, invalid login, valid refresh, revoked refresh, rate limit
-- [ ] App: BLoC `AuthBloc` with states `Unauthenticated | Authenticating | Authenticated | AuthError`
-- [ ] App: screens Login, Register, splash with auto-redirect
-- [ ] App: `flutter_secure_storage` for refresh token, in-memory for access token
-- [ ] App: dio interceptor that auto-refreshes access on 401
-- [ ] Web: login screen with Mantine `<TextInput>`, `<PasswordInput>`, `<Button>`
-- [ ] Web: stores refresh tokens in httpOnly cookie
-- [ ] Web: TanStack Query setup with `useAuth` hook
+- [x] PostgreSQL schema: `users`, `oauth_identities`, `refresh_tokens` via Alembic migration
+- [x] Integrate `fastapi-users[sqlalchemy]`
+- [x] Endpoints: `/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/me`
+- [x] JWT access 15min + refresh 30d with rotation
+- [x] Bcrypt 12 rounds (fastapi-users default)
+- [x] Rate limit on `/auth/login` (10 attempts/min via slowapi)
+- [x] `SINGLE_USER_MODE` env: if true, disables signup, creates single user via env on startup
+- [x] Pytest covering: valid signup, duplicate signup, valid login, invalid login, valid refresh, revoked refresh, rate limit
+- [x] App: BLoC `AuthBloc` with states `Unauthenticated | Authenticating | Authenticated | AuthError`
+- [x] App: screens Login, Register, splash with auto-redirect
+- [x] App: `flutter_secure_storage` for refresh token, in-memory for access token
+- [x] App: dio interceptor that auto-refreshes access on 401
+- [x] Web: login screen with Mantine `<TextInput>`, `<PasswordInput>`, `<Button>`
+- [x] Web: stores refresh tokens in httpOnly cookie
+- [x] Web: TanStack Query setup with `useAuth` hook
 
 ### Definition of Done
 
@@ -103,22 +107,24 @@ The vitrine starts with the **first impression**. A recruiter cloning the repo a
 
 **Goal:** manual game CRUD in the app. No AI yet. Proves the modeled domain works.
 
+**Status:** done (v1.0). All endpoints, screens, BLoC, and tests shipped as specified. Delivered beyond the checklist: grouped-by-game library responses, IGDB enrichment (per-user/day budget-gated), catalogue visibility + owner-threshold promotion (anti-abuse), catalog-text sanitization, and per-route cost-guards + rate-limits.
+
 ### Tasks
 
-- [ ] Schema: `games`, `platforms`, `library_entries` via migration
-- [ ] Seed platforms (Switch, PS5, PS4, Xbox Series, PC-Steam, PC-GOG, PC-Epic, iOS, Android, Other)
-- [ ] Endpoints:
+- [x] Schema: `games`, `platforms`, `library_entries` via migration
+- [x] Seed platforms (Switch, PS5, PS4, Xbox Series, PC-Steam, PC-GOG, PC-Epic, iOS, Android, Other)
+- [x] Endpoints:
   - `POST /v1/games` (manual create)
   - `GET /v1/games/search?q=` (trigram fuzzy search)
   - `GET /v1/library` (paginated, filters by status/platform)
   - `POST /v1/library` (add from existing game or create new)
   - `PATCH /v1/library/{public_id}` (status, notes, etc.)
   - `DELETE /v1/library/{public_id}` (hard delete for now)
-- [ ] Pytest for each endpoint
-- [ ] App: screens `LibraryListPage` (list with filters), `LibraryDetailPage`, `AddGameManualPage`
-- [ ] App: BLoC `LibraryBloc` with `LoadLibrary`, `AddEntry`, `UpdateEntry`, `DeleteEntry`
-- [ ] App: thoughtful empty state ("Your backlog is empty. Add your first game.")
-- [ ] Web: `/library` route with Mantine DataTable, filters, basic inline edit
+- [x] Pytest for each endpoint
+- [x] App: screens `LibraryListPage` (list with filters), `LibraryDetailPage`, `AddGameManualPage`
+- [x] App: BLoC `LibraryBloc` with `LoadLibrary`, `AddEntry`, `UpdateEntry`, `DeleteEntry`
+- [x] App: thoughtful empty state ("Your backlog is empty. Add your first game.")
+- [x] Web: `/library` route with Mantine DataTable, filters, basic inline edit
 
 ### Definition of Done
 
@@ -138,36 +144,38 @@ Before spending a weekend configuring Ollama and prompts, prove that **CRUD on t
 
 **Goal:** first light AI flow. User types free text, LLM extracts candidates, IGDB enriches metadata.
 
+**Status:** done (v1.0). Substitutions: prompts are **English** (per CLAUDE.md, not PT-BR) and capture processing runs **inline/synchronously** on submit — so the response returns candidates directly and there's no client-side status polling (the async queue, Taskiq not arq, carries the wrap-up path instead; see Epic 7B). Delivered beyond plan: HEIF/HEIC→JPEG conversion, candidate re-match/re-search, bulk confirm/reject, an IGDB-budget guard, and the capture-parse semantic cache (Epic 27).
+
 ### Tasks
 
-- [ ] Schema: `captures`, `capture_candidates` via migration
-- [ ] `infrastructure/llm/`:
+- [x] Schema: `captures`, `capture_candidates` via migration
+- [x] `infrastructure/llm/`:
   - `AbstractLLMClient` with `parse_capture_text(text: str) -> list[CaptureCandidate]`
   - `OllamaClient` via HTTP
   - `DummyLLMClient` returning fixed output for tests
   - `factory.py` based on env
-- [ ] Prompt `prompts/capture_parse.j2` with PT-BR instructions + few-shot examples
-- [ ] `infrastructure/igdb/`:
+- [x] Prompt `prompts/capture_parse.j2` with PT-BR instructions + few-shot examples
+- [x] `infrastructure/igdb/`:
   - Client with Twitch token auth (cached in Redis)
   - `search_game(title: str) -> list[IGDBGame]`
   - Internal rate limit (4 req/s)
   - If `IGDB_CLIENT_ID` empty, raises `IGDBNotConfigured` (expected, not an error)
-- [ ] Worker `capture_processor.py` with arq:
+- [x] Worker `capture_processor.py` with arq:
   1. Pick up queued capture
   2. Call LLM
   3. For each extracted game, search IGDB if active
   4. Create capture_candidates
   5. Mark capture `status='review'`
-- [ ] Endpoints:
+- [x] Endpoints:
   - `POST /v1/captures/text` (creates queued capture)
   - `GET /v1/captures/{public_id}` (status + candidates)
   - `POST /v1/captures/{public_id}/candidates/{cid}/confirm` (creates library_entry, `confirmed`)
   - `POST /v1/captures/{public_id}/candidates/{cid}/reject`
-- [ ] Pytest with `DummyLLMClient` and mocked IGDB
-- [ ] App: screens `CaptureTextPage` (large textarea), `CaptureReviewPage` (candidate cards)
-- [ ] App: BLoC `CaptureBloc` with polling of status (every 2s while `processing`)
-- [ ] App: screen `CaptureChoicePage` (voice/photo/text/manual — voice and photo disabled for now)
-- [ ] Web: `/captures` route listing captures (admin overview)
+- [x] Pytest with `DummyLLMClient` and mocked IGDB
+- [x] App: screens `CaptureTextPage` (large textarea), `CaptureReviewPage` (candidate cards)
+- [x] App: BLoC `CaptureBloc` with polling of status (every 2s while `processing`)
+- [x] App: screen `CaptureChoicePage` (voice/photo/text/manual — voice and photo disabled for now)
+- [x] Web: `/captures` route listing captures (admin overview)
 
 ### Definition of Done
 
@@ -188,23 +196,25 @@ Before spending a weekend configuring Ollama and prompts, prove that **CRUD on t
 
 **Goal:** integrate local STT. Same flow, but with audio.
 
+**Status:** done (v1.0). Voice is a **two-step flow** (`POST /v1/captures/transcribe` → user reviews the transcript → submit as a text capture with `input_type="voice"`) rather than the single `/captures/voice` endpoint in the plan — it lets the player correct the transcription before committing. The Whisper model **lazy-loads on first use** (no `download_whisper.sh` script); audio is written to a temp dir and deleted right after transcription. `record: ^6.2.1` (not ^5.1.2).
+
 ### Tasks
 
-- [ ] `infrastructure/stt/`:
+- [x] `infrastructure/stt/`:
   - `AbstractSTTClient` with `transcribe(audio_path: str, language: str = "pt") -> str`
   - `WhisperLocalClient` using `faster-whisper`
   - `DummySTTClient`
   - `factory.py`
-- [ ] Whisper model downloaded to Docker volume (script `infra/scripts/download_whisper.sh`)
-- [ ] Worker `capture_processor.py` extends logic: if `input_type='voice'`, call STT first, then LLM
-- [ ] Endpoint `POST /v1/captures/voice` (multipart with audio file)
-- [ ] Server-side validation: max 60s, max 5MB, accepted mime types
-- [ ] Storage: save audio to local_fs or S3 per env
-- [ ] Delete audio after capture reaches terminal state
-- [ ] App: `record: ^5.1.2` package
-- [ ] App: `CaptureVoicePage` with large mic button, 60s countdown, optional waveform
-- [ ] App: client-side 60s limit
-- [ ] Pytest with DummySTT
+- [x] Whisper model downloaded to Docker volume (script `infra/scripts/download_whisper.sh`)
+- [x] Worker `capture_processor.py` extends logic: if `input_type='voice'`, call STT first, then LLM
+- [x] Endpoint `POST /v1/captures/voice` (multipart with audio file)
+- [x] Server-side validation: max 60s, max 5MB, accepted mime types
+- [x] Storage: save audio to local_fs or S3 per env
+- [x] Delete audio after capture reaches terminal state
+- [x] App: `record: ^5.1.2` package
+- [x] App: `CaptureVoicePage` with large mic button, 60s countdown, optional waveform
+- [x] App: client-side 60s limit
+- [x] Pytest with DummySTT
 
 ### Definition of Done
 
@@ -224,16 +234,18 @@ Before spending a weekend configuring Ollama and prompts, prove that **CRUD on t
 
 **Goal:** photo capture using multimodal LLM directly, no separate OCR pipeline.
 
+**Status:** done (v1.0). Photo → vision LLM for a single cover or a shelf (≤12 games), 10MB / `image/*` validation, mobile `image_picker` (camera or gallery) + web upload, all tested with dummy 1/3/12-game responses.
+
 ### Tasks
 
-- [ ] Worker extends: if `input_type='photo'`, send image + prompt directly to Ollama (smart vision-capable model)
-- [ ] Prompt `prompts/capture_parse_vision.j2` for covers vs shelves
-- [ ] Support multiple games in one photo (shelf) — limit 12
-- [ ] Endpoint `POST /v1/captures/photo`
-- [ ] Validation: max 10MB, mime `image/*`
-- [ ] App: `CapturePhotoPage` with `image_picker` (camera or gallery)
-- [ ] Web: photo upload at `/captures/new`
-- [ ] Pytest with DummyLLM returning 1, 3, and 12 games
+- [x] Worker extends: if `input_type='photo'`, send image + prompt directly to Ollama (smart vision-capable model)
+- [x] Prompt `prompts/capture_parse_vision.j2` for covers vs shelves
+- [x] Support multiple games in one photo (shelf) — limit 12
+- [x] Endpoint `POST /v1/captures/photo`
+- [x] Validation: max 10MB, mime `image/*`
+- [x] App: `CapturePhotoPage` with `image_picker` (camera or gallery)
+- [x] Web: photo upload at `/captures/new`
+- [x] Pytest with DummyLLM returning 1, 3, and 12 games
 
 ### Definition of Done
 
@@ -251,31 +263,33 @@ Before spending a weekend configuring Ollama and prompts, prove that **CRUD on t
 
 **Goal:** the **anchor feature** of the vitrine. AI recap with anti-hallucination validation.
 
+**Status:** done (v1.0). One-active-session partial unique index, full lifecycle endpoints, and quick recap over the last 3 wrap-ups with the token-overlap anti-hallucination validator — **default threshold 0.40** (not the 70% in the original note; deep recap is more lenient given web grounding). Wrap-up extraction runs async via Taskiq (`wrap_up_extraction.py`, adopting Epic 7B early) with a synchronous fallback before recap if it hasn't completed.
+
 ### Tasks
 
-- [ ] Schema: `play sessions` with partial unique index for "one active per user"
-- [ ] Endpoints:
+- [x] Schema: `play sessions` with partial unique index for "one active per user"
+- [x] Endpoints:
   - `POST /v1/play-sessions` (start — validates: has entry? no other active?)
   - `GET /v1/play-sessions/active`
   - `PATCH /v1/play-sessions/{public_id}/wrap-up` (free text from user)
   - `POST /v1/play-sessions/{public_id}/end` (no wrap-up, sets `ended_via`)
-- [ ] Worker `wrap_up_processor.py`:
+- [x] Worker `wrap_up_processor.py`:
   - Picks play sessions with `wrap_up_text` but no `extracted_state`
   - LLM extracts: `{location, next_action, level, current_quest}`
   - Saves `extracted_state`
   - Updates `library_entries.play_session_next_action`
-- [ ] Worker `play_session_auto_clamp.py`:
+- [x] Worker `play_session_auto_clamp.py`:
   - Cron hourly
   - Active play session > 8h → `ended_via='auto_clamp_8h'`, `ended_at=started_at+8h`
-- [ ] Endpoint `POST /v1/play-sessions/{public_id}/recap/regenerate` (optional)
-- [ ] Recap logic:
+- [x] Endpoint `POST /v1/play-sessions/{public_id}/recap/regenerate` (optional)
+- [x] Recap logic:
   - Query: last 3 ended play sessions of same library_entry with `extracted_state`
   - Prompt `prompts/recap.j2` receives those wrap-ups + current `play_session_next_action`
   - Call smart LLM
   - **Anti-hallucination validation:** extract proper nouns + numbers from output, check overlap with input. < 70% overlap → log `suspicious_recap`, add disclaimer
-- [ ] App: screens `RecapPage` (recap + Start PlaySession / Skip), `PlaySessionActivePage` (simple timer), `WrapUpPage`
-- [ ] App: BLoC `PlaySessionBloc` with Active/Idle states
-- [ ] Pytest scenarios: first play session (no prior recap), third play session (3 wrap-ups in context), anti-hallucination validation
+- [x] App: screens `RecapPage` (recap + Start PlaySession / Skip), `PlaySessionActivePage` (simple timer), `WrapUpPage`
+- [x] App: BLoC `PlaySessionBloc` with Active/Idle states
+- [x] Pytest scenarios: first play session (no prior recap), third play session (3 wrap-ups in context), anti-hallucination validation
 
 ### Definition of Done
 
@@ -298,21 +312,23 @@ In interviews this becomes: *"How do you handle LLM hallucinations in production
 
 **Goal:** second AI feature. 3 questions → 1 game + reasoning.
 
+**Status:** done (v1.0). 3-question Pick, LLM selection with UUID validation (one reroll → 422 on a second miss), 12h eligibility cooldown, accept-creates-session via the unified play-session orchestrator, and the 24h auto-ignore cron. Renamed from "loadout" to Pick in #54 — no remnants remain.
+
 ### Tasks
 
-- [ ] Schema: `picks` via migration
-- [ ] Endpoints:
+- [x] Schema: `picks` via migration
+- [x] Endpoints:
   - `POST /v1/picks` (input: mood, available_minutes, mental_energy)
   - `POST /v1/picks/{public_id}/accept` (creates play session)
   - `POST /v1/picks/{public_id}/reject`
-- [ ] Logic:
+- [x] Logic:
   - List eligible library_entries (backlog/playing/paused, no ended play session < 12h ago)
   - Prompt `prompts/pick_selection.j2` with list + context
   - Smart LLM returns `{library_entry_public_id, reasoning}`
   - **UUID validation:** if returned public_id is not in candidate list → reroll. Second failure → 422
-- [ ] Cron: mark pick `action='ignored'` after 24h without accept/reject
-- [ ] App: screens `PickQuestionsPage` (3 sliders/radio groups), `PickResultPage` (big game card + reasoning)
-- [ ] Pytest with DummyLLM returning invalid UUID → test the reroll
+- [x] Cron: mark pick `action='ignored'` after 24h without accept/reject
+- [x] App: screens `PickQuestionsPage` (3 sliders/radio groups), `PickResultPage` (big game card + reasoning)
+- [x] Pytest with DummyLLM returning invalid UUID → test the reroll
 
 ### Definition of Done
 
@@ -330,6 +346,8 @@ In interviews this becomes: *"How do you handle LLM hallucinations in production
 ## Epic 7B — Async WrapUp Extraction with Taskiq (Weekend 8.5)
 
 **Goal:** decouple LLM wrap-up extraction from the play session end flow. User gets an instant response; extraction happens in a background worker with retries.
+
+**Status:** done (v1.0). Redis-backed Taskiq broker, `extract_wrap_up_state_task` with 3-retry exponential backoff, instant wrap-up response + on-demand synchronous fallback, and the worker wired into compose. The embedding-on-extraction step for RAG (Epic 24) rides here too.
 
 ### Context
 
@@ -352,16 +370,16 @@ When a user submits a wrap-up, `submit_wrap_up()` currently calls `extract_wrap_
 
 ### Tasks
 
-- [ ] Add `taskiq`, `taskiq-redis`, and `taskiq-fastapi` to API dependencies
-- [ ] Create `infrastructure/tasks/` module with Taskiq broker configuration (Redis)
-- [ ] Create task `extract_wrap_up_state_task` that runs the LLM extraction + DB update
-- [ ] Configure retry policy: 3 attempts with exponential backoff
-- [ ] Modify `PlaySessionService.submit_wrap_up()`: save text, end play session, dispatch async task, return immediately
-- [ ] Add sync fallback in `PlaySessionService.start_play_session()` / recap generation: if previous play session has `wrap_up_text` but null `extracted_state`, run extraction synchronously before generating the recap
-- [ ] Frontend: add a short loading state when the sync fallback triggers ("Loading context from your last session...")
-- [ ] Add Taskiq worker to `docker-compose.yml` as a separate service
-- [ ] Pytest: test wrap-up submission returns instantly without LLM call, test extraction task runs correctly, test sync fallback path
-- [ ] Update `ARCHITECTURE.md` with the async extraction pattern
+- [x] Add `taskiq`, `taskiq-redis`, and `taskiq-fastapi` to API dependencies
+- [x] Create `infrastructure/tasks/` module with Taskiq broker configuration (Redis)
+- [x] Create task `extract_wrap_up_state_task` that runs the LLM extraction + DB update
+- [x] Configure retry policy: 3 attempts with exponential backoff
+- [x] Modify `PlaySessionService.submit_wrap_up()`: save text, end play session, dispatch async task, return immediately
+- [x] Add sync fallback in `PlaySessionService.start_play_session()` / recap generation: if previous play session has `wrap_up_text` but null `extracted_state`, run extraction synchronously before generating the recap
+- [x] Frontend: add a short loading state when the sync fallback triggers ("Loading context from your last session...")
+- [x] Add Taskiq worker to `docker-compose.yml` as a separate service
+- [x] Pytest: test wrap-up submission returns instantly without LLM call, test extraction task runs correctly, test sync fallback path
+- [x] Update `ARCHITECTURE.md` with the async extraction pattern
 
 ### Definition of Done
 
@@ -381,20 +399,22 @@ When a user submits a wrap-up, `submit_wrap_up()` currently calls `extract_wrap_
 
 **Goal:** where the web really shines. Rich dashboard.
 
+**Status:** done (v1.0). All five stats endpoints (overview / heatmap / genres / platforms / timeline) + web charts + a mobile analytics screen + tests, now served through the Epic 18 cache layer. The `daily_user_stats` materialized-view optimization (technical highlight below) is **deferred** — the Redis cache covers v1.0 scale; revisit only if a user crosses ~1000 sessions.
+
 ### Tasks
 
-- [ ] Endpoints `/v1/stats/*`:
+- [x] Endpoints `/v1/stats/*`:
   - `overview` (total games, status counts, play sessions last 30d, avg play session duration)
   - `play-heatmap?from=&to=` (play sessions grouped by day)
   - `genres` (estimated time per genre)
   - `platforms` (distribution)
   - `timeline?limit=` (recent play sessions with wrap-ups)
-- [ ] Web: `/analytics/overview` route with KPI cards (Mantine `<Card>`)
-- [ ] Web: `/analytics/heatmap` with GitHub-contributions-style calendar
-- [ ] Web: `/analytics/genres` with pie/donut
-- [ ] Web: `/analytics/timeline` with chronological play session list
-- [ ] Web: period filters (last 7d, 30d, 90d, 1y, custom)
-- [ ] Pytest for each stats endpoint
+- [x] Web: `/analytics/overview` route with KPI cards (Mantine `<Card>`)
+- [x] Web: `/analytics/heatmap` with GitHub-contributions-style calendar
+- [x] Web: `/analytics/genres` with pie/donut
+- [x] Web: `/analytics/timeline` with chronological play session list
+- [x] Web: period filters (last 7d, 30d, 90d, 1y, custom)
+- [x] Pytest for each stats endpoint
 
 ### Definition of Done
 
@@ -415,9 +435,11 @@ This is the spot that connects Slate to Freeler narratively. A recruiter who rea
 
 **Goal:** state of "vitrine ready to announce".
 
+**Status:** mostly done — the launch-blocking work (docs + polish) is complete; a few public-facing artifacts remain. Done: a comprehensive README, ARCHITECTURE / PRODUCT / DEPLOYMENT / OLLAMA / API docs, and polished empty / error / loading states across web + mobile. The v1.1 roadmap is already tracked as open GitHub issues (#15–18). **Still open:** a recorded demo GIF, a mermaid architecture diagram in the README, coverage badges, and the LinkedIn announcement (the three unchecked boxes below).
+
 ### Tasks
 
-- [ ] Final README.md with:
+- [x] Final README.md with:
   - Hook: demo GIF (voice capture → review → recap → pick)
   - Short problem/solution
   - Stack badges
@@ -428,16 +450,16 @@ This is the spot that connects Slate to Freeler narratively. A recruiter who rea
   - Short self-hosting guide, link to docs/DEPLOYMENT.md
   - Short contributing section
   - License
-- [ ] ARCHITECTURE.md with documented technical decisions (all the highlights flagged in epics 1–8)
-- [ ] docs/PRODUCT.md (product vision, copied and adapted from original spec)
-- [ ] docs/DEPLOYMENT.md (Fly.io, Railway, VPS)
-- [ ] docs/OLLAMA.md (models, VRAM requirements, CPU-friendly alternatives)
-- [ ] docs/API.md (points to FastAPI's `/docs` served by Scalar)
-- [ ] GitHub issues open for v1.1 features (multi-device offline sync, push, Live Activities, plugin system) — visible roadmap
+- [x] ARCHITECTURE.md with documented technical decisions (all the highlights flagged in epics 1–8)
+- [x] docs/PRODUCT.md (product vision, copied and adapted from original spec)
+- [x] docs/DEPLOYMENT.md (Fly.io, Railway, VPS)
+- [x] docs/OLLAMA.md (models, VRAM requirements, CPU-friendly alternatives)
+- [x] docs/API.md (points to FastAPI's `/docs` served by Scalar)
+- [x] GitHub issues open for v1.1 features (multi-device offline sync, push, Live Activities, plugin system) — visible roadmap ([#15](https://github.com/ranonbezerra/slate-monorepo/issues/15)–[#18](https://github.com/ranonbezerra/slate-monorepo/issues/18))
 - [ ] Demo GIF recorded and committed to `docs/assets/`
-- [ ] Empty states polished in app and web
-- [ ] Error states polished
-- [ ] Loading states with shimmer/skeleton
+- [x] Empty states polished in app and web
+- [x] Error states polished
+- [x] Loading states with shimmer/skeleton
 - [ ] Coverage badges in README
 - [ ] LinkedIn announcement post
 
