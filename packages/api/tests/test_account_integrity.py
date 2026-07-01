@@ -360,6 +360,8 @@ class TestSingleUserProductionGuard:
             auth_cookie_secure=True,
             single_user_mode=False,
             turnstile_secret="ts-secret",  # pragma: allowlist secret
+            trusted_hosts=["api.slate.app"],
+            cors_origins=["https://slate.app"],
         )
         _validate_production_settings(s)  # should not raise
 

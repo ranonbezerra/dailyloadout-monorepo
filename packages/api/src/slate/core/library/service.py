@@ -120,7 +120,10 @@ class LibraryService:
             title=sanitize_catalog_text(title) or title,
             metadata_source="manual",
             igdb_id=None,
-            summary=summary,
+            # summary is globally visible once the row is promoted to the shared
+            # catalog (Epic 14) and feeds other users' pick prompts, so strip the
+            # bidi/zero-width/control payloads like the other shared fields (Epic 26).
+            summary=sanitize_catalog_text(summary) if summary else None,
             cover_url=cover_url,
             first_release_date=first_release_date,
             genres=[sanitize_catalog_text(g) for g in genres] if genres else None,

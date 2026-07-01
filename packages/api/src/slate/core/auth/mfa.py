@@ -13,6 +13,8 @@ from __future__ import annotations
 import hashlib
 import re
 import secrets
+import time
+from datetime import UTC, datetime
 
 import pyotp
 
@@ -26,6 +28,7 @@ __all__ = ["MfaService"]
 _RECOVERY_CODE_COUNT = 10
 # Accept the adjacent 30s step on each side to tolerate clock skew.
 _TOTP_VALID_WINDOW = 1
+_TOTP_INTERVAL = 30
 
 
 def _canonicalize_recovery_code(code: str) -> str:
@@ -88,7 +91,9 @@ class MfaService:
         row = await self._repo.get_for_user(user.id)
         if row is None or row.confirmed_at is not None:
             raise ValueError("No pending MFA enrollment")
-        if not self._verify_totp(row, code):
+        # _consume_totp records the step, so the enrollment code can't be replayed
+        # into a login within its window.
+        if not await self._consume_totp(row, code):
             raise ValueError("Invalid verification code")
         await self._repo.confirm(row)
         codes = _generate_recovery_codes(_RECOVERY_CODE_COUNT)
@@ -136,13 +141,35 @@ class MfaService:
         return row
 
     @staticmethod
-    def _verify_totp(row: UserMfa, code: str) -> bool:
-        secret = decrypt_secret(row.totp_secret)
-        return bool(pyotp.TOTP(secret).verify(code.strip(), valid_window=_TOTP_VALID_WINDOW))
+    def _matched_totp_step(row: UserMfa, code: str) -> int | None:
+        """The TOTP time-step *code* matches within the valid window, or ``None``."""
+        totp = pyotp.TOTP(decrypt_secret(row.totp_secret))
+        stripped = code.strip()
+        now = int(time.time())
+        for offset in range(-_TOTP_VALID_WINDOW, _TOTP_VALID_WINDOW + 1):
+            timestamp = now + offset * _TOTP_INTERVAL
+            when = datetime.fromtimestamp(timestamp, tz=UTC)
+            if totp.verify(stripped, for_time=when, valid_window=0):
+                return timestamp // _TOTP_INTERVAL
+        return None
+
+    async def _consume_totp(self, row: UserMfa, code: str) -> bool:
+        """True for a valid, NON-replayed TOTP; records the step so it can't be reused.
+
+        A code whose step was already consumed (``<= last_totp_step``) is rejected —
+        closing the replay window an observed code would otherwise have (~90s).
+        """
+        step = self._matched_totp_step(row, code)
+        if step is None:
+            return False
+        if row.last_totp_step is not None and step <= row.last_totp_step:
+            return False
+        await self._repo.set_last_totp_step(row, step)
+        return True
 
     async def _verify_any(self, user_id: int, row: UserMfa, code: str) -> bool:
         """Accept a valid TOTP code, else a single-use recovery code (consumed)."""
-        if self._verify_totp(row, code):
+        if await self._consume_totp(row, code):
             return True
         recovery = await self._repo.get_unused_recovery_code(user_id, _hash_recovery_code(code))
         if recovery is not None:

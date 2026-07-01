@@ -40,6 +40,11 @@ class MfaRepository:
         user_mfa.confirmed_at = datetime.now(UTC)
         await self._session.flush()
 
+    async def set_last_totp_step(self, user_mfa: UserMfa, step: int) -> None:
+        """Record the highest consumed TOTP time-step (replay guard)."""
+        user_mfa.last_totp_step = step
+        await self._session.flush()
+
     async def delete_for_user(self, user_id: int) -> None:
         """Remove the MFA credential and every recovery code for *user_id*."""
         await self._session.execute(

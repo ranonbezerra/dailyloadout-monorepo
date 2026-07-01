@@ -90,6 +90,9 @@ class UserMfa(TimestampMixin, Base):
     )
     totp_secret: Mapped[str] = mapped_column(String, nullable=False)
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Highest TOTP time-step already consumed. A code at or below it is a replay
+    # (an observed code reused within its ~90s window) and is rejected.
+    last_totp_step: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
 
 
 class MfaRecoveryCode(Base):

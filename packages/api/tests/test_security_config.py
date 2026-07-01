@@ -40,6 +40,8 @@ def test_production_accepts_hardened_settings() -> None:
         auth_cookie_secure=True,
         auth_cookie_samesite="none",
         turnstile_secret="ts-secret",  # pragma: allowlist secret
+        trusted_hosts=["api.slate.app"],
+        cors_origins=["https://slate.app"],
     )
     _validate_production_settings(s)  # should not raise
 

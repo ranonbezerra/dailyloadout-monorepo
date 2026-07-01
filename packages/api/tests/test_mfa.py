@@ -7,6 +7,7 @@ endpoints (status / enroll / confirm / regenerate / disable).
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pyotp
@@ -26,6 +27,12 @@ _EMAIL = "test@example.com"
 
 def _totp_now(secret: str) -> str:
     return pyotp.TOTP(secret).now()
+
+
+def _totp_next(secret: str) -> str:
+    """A code for the NEXT 30s step — valid after the current step was consumed
+    (TOTP replay protection rejects re-using the just-confirmed code)."""
+    return pyotp.TOTP(secret).at(datetime.now(UTC) + timedelta(seconds=30))
 
 
 async def _enroll_and_confirm(
@@ -163,13 +170,33 @@ class TestMfaLogin:
         mfa_token = login.json()["mfa_token"]
 
         resp = await async_client.post(
-            "/v1/auth/mfa/login", json={"mfa_token": mfa_token, "code": _totp_now(secret)}
+            "/v1/auth/mfa/login", json={"mfa_token": mfa_token, "code": _totp_next(secret)}
         )
         assert resp.status_code == 200
         access = resp.json()["access_token"]
         assert access
         me = await async_client.get("/v1/auth/me", headers={"Authorization": f"Bearer {access}"})
         assert me.status_code == 200
+
+    async def test_totp_code_cannot_be_replayed(
+        self, async_client: AsyncClient, auth_headers: dict[str, str]
+    ) -> None:
+        """A TOTP code accepted once is rejected on reuse within its window."""
+        secret, _ = await _enroll_and_confirm(async_client, auth_headers)
+        code = _totp_next(secret)
+
+        async def _login_with(c: str) -> int:
+            login = await async_client.post(
+                "/v1/auth/login", json={"email": _EMAIL, "password": _PASSWORD}
+            )
+            token = login.json()["mfa_token"]
+            resp = await async_client.post(
+                "/v1/auth/mfa/login", json={"mfa_token": token, "code": c}
+            )
+            return resp.status_code
+
+        assert await _login_with(code) == 200  # first use accepted
+        assert await _login_with(code) != 200  # same code replayed → rejected
 
     async def test_mfa_login_with_recovery_code_consumes_it(
         self, async_client: AsyncClient, auth_headers: dict[str, str]
@@ -212,7 +239,7 @@ class TestMfaLogin:
 
         resp = await async_client.post(
             "/v1/auth/mfa/login",
-            json={"mfa_token": mfa_token, "code": _totp_now(secret)},
+            json={"mfa_token": mfa_token, "code": _totp_next(secret)},
             headers={"X-Auth-Mode": "cookie"},
         )
         assert resp.status_code == 200
@@ -251,7 +278,7 @@ class TestMfaLogin:
         await async_client.post("/v1/auth/logout-all", headers=auth_headers)
 
         resp = await async_client.post(
-            "/v1/auth/mfa/login", json={"mfa_token": mfa_token, "code": _totp_now(secret)}
+            "/v1/auth/mfa/login", json={"mfa_token": mfa_token, "code": _totp_next(secret)}
         )
         assert resp.status_code == 401
 
@@ -269,7 +296,7 @@ class TestRecoveryAndDisable:
 
         regen = await async_client.post(
             "/v1/auth/mfa/recovery-codes",
-            json={"code": _totp_now(secret)},
+            json={"code": _totp_next(secret)},
             headers=auth_headers,
         )
         assert regen.status_code == 200
@@ -301,7 +328,7 @@ class TestRecoveryAndDisable:
         secret, _ = await _enroll_and_confirm(async_client, auth_headers)
 
         resp = await async_client.post(
-            "/v1/auth/mfa/disable", json={"code": _totp_now(secret)}, headers=auth_headers
+            "/v1/auth/mfa/disable", json={"code": _totp_next(secret)}, headers=auth_headers
         )
         assert resp.status_code == 200
 
