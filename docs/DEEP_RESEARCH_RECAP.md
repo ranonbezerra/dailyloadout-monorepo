@@ -17,6 +17,13 @@ spoiler-free** play session recap. The existing single-shot `generate_recap`
 >    `synthesize`: it reorders retrieved results by task relevance (`fast` role),
 >    writing a `ranked_results` view that `synthesize` prefers (and scrapes
 >    first). Deadline-aware and flag-gated; degrades to raw order.
+> 3. **An `auto` recap mode was added (Epic 29, Corrective/Adaptive RAG).** Beyond
+>    the `quick`/`deep` split below, `auto` grades whether the player's retrieved
+>    local history is rich enough to ground a faithful recap and routes `quick`/`deep`
+>    itself — staying `quick` for a new game with no history (cold-start cost guard)
+>    and never auto-escalating a free-tier user to the paid `deep` path (entitlement
+>    gate). The routing is a pure decision layer (`core/play_session/adaptive.py`);
+>    this deep graph is unchanged — `auto` just decides whether to enter it.
 >
 > The code (`infrastructure/agent/graph/`) is authoritative; the per-node code
 > blocks below are illustrative sketches.

@@ -43,11 +43,12 @@ The repo also includes versioned AI-engineering workflow files (`CLAUDE.md`, `.c
 
 The LangGraph **Deep Research Recap** (a local SearXNG + Ollama graph that searches, grades, refines, synthesizes, spoiler-filters, and then reuses the anti-hallucination validator) and the tool-using **Backlog Concierge** (now an operator of the play-session pipeline, not just a recommender) are **shipped**. The single-shot recap remains the fast path and fallback. Those designs live in [docs/DEEP_RESEARCH_RECAP.md](./docs/DEEP_RESEARCH_RECAP.md) and [ROADMAP.md](./ROADMAP.md).
 
-The current track is **LLM Platform Hardening** ([ROADMAP.md](./ROADMAP.md), Epics 23–28) — the engineering *around* the models rather than more features:
+The current track is **LLM Platform Hardening** ([ROADMAP.md](./ROADMAP.md), Epics 23–29) — the engineering *around* the models rather than more features, now **shipped end to end**:
 
 - **Evaluation harness + observability/tracing (Epic 23)** — a golden-dataset eval with deterministic checks plus a **model-agnostic, kappa-calibrated** LLM-as-judge, gating prompt/model changes via `make quality` (`--real --gate` against a committed baseline), with per-call and per-graph-node spans (tokens / latency / cost / cache-hit) and redacted prompt/completion capture. Answers *"how do you know a prompt change didn't regress quality?"* with a number. **(shipped)**
-- **RAG over PlaySession history** — embed the player's own wrap-ups (Ollama + pgvector) and retrieve semantically to ground recaps, instead of the last 3 by SQL.
-- **Reranking** in the deep-research pipeline (shipped); **prompt-injection guardrails** on the agent's untrusted surfaces (chat + capture, with a tool-arg allowlist); a **semantic completion cache**; and **resumable batch re-inference** for embedding/prompt changes.
+- **RAG over PlaySession history (Epic 24)** — embed the player's own wrap-ups (Ollama + pgvector) and retrieve semantically to ground recaps, instead of the last 3 by SQL. **(shipped)**
+- **Reranking** in the deep-research pipeline; **prompt-injection guardrails** on the agent's untrusted surfaces (chat + capture, with a tool-arg allowlist); a **semantic completion cache**; and **resumable batch re-inference** for embedding/prompt changes (Epics 25–28). **(shipped)**
+- **Corrective / Adaptive RAG (Epic 29)** — the recap routes itself: it grades whether the player's retrieved history is rich enough to ground a faithful recap and stays on the cheap local path when it is, escalating to deep web research only when it isn't. A cold-start cost guard keeps brand-new games on the quick path, and a free-tier entitlement gate means a user is never auto-escalated to the paid deep path — surfaced as a "Smart recap" mode with explicit quick/deep override. **(shipped)**
 
 ---
 
@@ -127,7 +128,7 @@ Detailed architecture in [ARCHITECTURE.md](./ARCHITECTURE.md).
 - [x] **Bulk library import** — local-first OCR (Tesseract) of platform list-view/purchase-history screenshots, fuzzy-matched to a canonical catalog, with a capped cloud-vision fallback.
 - [x] **Cost governance** — per-call token→$ metering, per-user/global spend kill-switch with a degraded in-process fallback (Redis-outage safe).
 - [x] **Application caching layer** — `AbstractCache` port (Redis/null) with IGDB result + token caching; broader strategy in progress.
-- [x] **Backoffice / admin panel** — users (ban/verify/sessions), catalogue moderation, and runtime operational config (Postgres overlay over env), every change audited.
+- [x] **Backoffice / admin panel** — users (ban/verify/sessions), catalogue moderation, moderation domains (play sessions force-clamp, captures reprocess/purge, picks browse), and runtime operational config (Postgres overlay over env), every change audited.
 - [x] **Social login** — Google & Twitch (Authorization Code + PKCE) on web, behind the existing auth core.
 - [x] **Account recovery** — forgot / reset / change password with single-use, session-invalidating reset tokens.
 - [x] **Two-factor auth (TOTP)** — authenticator-app MFA with encrypted-at-rest secrets and single-use recovery codes, behind the existing auth core.
@@ -138,10 +139,12 @@ Detailed architecture in [ARCHITECTURE.md](./ARCHITECTURE.md).
 - [x] **Semantic LLM cache** — a two-layer cache on capture-parse (exact Redis → semantic pgvector): near-duplicate game-name spellings the hash misses reuse the parse above a cosine threshold. A `--cache` threshold sweep reports the honest trade-off — hit-rate gain vs the false-hit rate on confusable inputs.
 - [x] **Prompt-injection guardrails** — defense-in-depth over the two untrusted surfaces (Concierge chat + captures): edge sanitization (control/bidi/zero-width strip + `<user_data>` fencing), a high-precision injection detector that blocks + logs override/jailbreak/tool-abuse turns, and PII redaction on echoed output. The load-bearing layer is the deterministic tool allowlist — a hijacked prompt physically can't drive an unsafe write (adversarially tested).
 - [x] **Deep-research reranking** — an LLM-rerank node between retrieval and synthesis reorders results by task relevance so the most on-topic passages ground the recap (and get scraped first). Deadline-aware and flag-gated, degrading to raw order when disabled/over budget. A model-free recall@k A/B (`evals/rerank.py`) shows the reordering surfaces buried-but-relevant results the raw search order misses (0.33 → 1.00 on buried-result cases; control case does not regress).
+- [x] **Resumable batch re-inference** — an idempotent, resumable Taskiq job that reprocesses the corpus (re-extract wrap-up state and/or re-embed) when a prompt, LLM, or embedding model changes, with progress, concurrency caps, and cost-guard awareness. The ops layer that makes a model/prompt swap safe.
+- [x] **Corrective / Adaptive RAG** — the recap grades whether the player's retrieved history is rich enough to ground it and routes itself: cheap local path when it is, deep web research only when it isn't. A cold-start cost guard keeps brand-new games quick, and a free-tier entitlement gate blocks auto-escalation to the paid deep path. Surfaced as a "Smart recap" mode with explicit quick/deep override. A model-free A/B (`evals/adaptive_recap.py`) shows it matches always-deep grounding at a fraction of the cost.
 
 ### In Design / Next
 
-- [ ] **LLM Platform Hardening** (Epic 28) — eval + tracing + RAG + reranking + semantic cache + injection guardrails **shipped** (Epics 23–27); next: resumable batch re-inference for embedding/prompt-model changes.
+- [ ] **Application caching layer (broadening)** — generalise the `AbstractCache` seed into an app-wide strategy (deep recap, stats, LLM completions, research) with an event-driven invalidation model, single-flight/stampede protection, tiering, and per-namespace observability. The single biggest lever on hosted inference cost.
 - [ ] **Cloud LLM adapters** — Bedrock/Vertex behind the existing LLM port for a hosted distribution; Ollama stays the local default.
 - [ ] **Apple Sign In + native iOS/Android apps** — with on-device LLMs for the fast path, backend fallback for the heavy work.
 

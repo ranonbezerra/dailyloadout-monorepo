@@ -155,6 +155,14 @@ These distinctions are precise — don't conflate them.
 6. App shows recap screen: "Previously on Hollow Knight..." + "Start" / "Skip".
 7. User plays. Eventually returns to the app.
 
+> **Recap modes (v1.1).** The flow above is the **quick** recap (grounded on the
+> player's own history, steps 3–4). Two more modes exist: **deep** — a web-research
+> pass (LangGraph over search results) for spoiler-free next steps when local history
+> isn't enough — and **Smart** (`auto`), the recommended default, which grades the
+> retrieved history and picks quick vs deep automatically. Smart keeps a brand-new game
+> on the cheap quick path (cold-start cost guard) and never auto-escalates a free-tier
+> user to the paid deep path; deep stays available as an explicit choice.
+
 ### 3.6 Ending a play session with wrap-up
 
 1. User taps "End PlaySession".

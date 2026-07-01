@@ -141,6 +141,13 @@ The auth surface also includes (see the live `/docs` for schemas):
 | POST | `/{public_id}/recap/preview` | Preview recap before starting |
 | POST | `/{public_id}/recap/regenerate` | Regenerate recap |
 
+Recap requests accept a `mode`: `quick` (single-shot, grounded on the player's own
+history), `deep` (LangGraph web-research path), or `auto` (**Smart recap**, Epic 29) — the
+server grades whether the retrieved local history is rich enough and routes `quick`/`deep`
+itself. A brand-new game with no history stays `quick` (cold-start cost guard), and a
+free-tier user is never auto-escalated to the paid `deep` path (entitlement gate); `deep`
+remains available as an explicit override.
+
 ### Picks (`/v1/picks`)
 
 | Method | Path | Description |
@@ -176,11 +183,26 @@ public origin; single-user mode is rejected outright. Non-admins get `403`.
 | Method | Path | Description |
 | --- | --- | --- |
 | GET | `/me` | Current admin identity (panel access check) |
+| GET | `/dashboard` | Aggregate metrics (user/ban/verify/admin counts, active sessions, catalogue size, config overrides, recent actions) |
 | GET | `/users` | List/search users — `q`, `banned`, `verified`, `limit`, `offset` |
 | GET | `/users/{public_id}` | Full user detail (sessions, admin/password flags) |
 | POST | `/users/{public_id}/ban` | Ban + kill sessions; body `{ "reason": str? }`; refuses admins |
 | POST | `/users/{public_id}/unban` | Lift a ban (does not re-mint sessions) |
 | POST | `/users/{public_id}/verify` | Force-verify the user's email (idempotent) |
+| GET | `/games` | List/search catalogue — `q`, `source`, owner counts + provenance |
+| GET | `/games/{public_id}` | Game detail (metadata, provenance, owner count) |
+| POST | `/games/{public_id}/demote` | Demote a shared game to private (surfaces `demote_game.py`) |
+| POST | `/games/{public_id}/promote` | Promote a game back to shared |
+| PATCH | `/games/{public_id}` | Edit catalogue metadata (title, summary) |
+| GET | `/captures` | List/search captures with per-status tallies — `q`, `status` |
+| GET | `/captures/{public_id}` | Capture detail + candidates |
+| POST | `/captures/{public_id}/reprocess` | Re-run the capture pipeline (rate-limited + cost-guarded) |
+| DELETE | `/captures/{public_id}` | Purge a capture |
+| GET | `/play-sessions` | List/search play sessions with per-status tallies — `q`, `status` |
+| GET | `/play-sessions/{public_id}` | Play-session detail |
+| POST | `/play-sessions/{public_id}/clamp` | Force-end an active session (`ended_via=admin_clamp`) |
+| GET | `/picks` | List/search picks with per-action tallies — `q`, `action` (read-only) |
+| GET | `/picks/{public_id}` | Pick detail (read-only) |
 | GET | `/config` | List the curated operational knobs (effective/override/baseline) |
 | PUT | `/config/{key}` | Set a runtime override (validated); `422` on bad type/range, `404` unknown key |
 | DELETE | `/config/{key}` | Clear the override, reverting to the env/code baseline |

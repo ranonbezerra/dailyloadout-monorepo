@@ -329,7 +329,7 @@ path-filtered `ci-*` jobs):
 | **API + infra** | the VPS (systemd + compose) | `deploy-api.yml` → `infra/deploy/deploy.sh` | **Yes** |
 | **Web** | static `dist/` → Caddy / a CDN (Cloudflare Pages, Netlify) | `deploy-web.yml` (build + publish) | No (static) |
 | **App** | App Store / Play Store | Fastlane / Xcode Cloud / Play Console | No (store release) |
-| **Backoffice** (Epic 21) | with the web, or its own admin SPA | decided when built | No |
+| **Backoffice** (Epic 21, shipped) | its own admin SPA (`packages/web/backoffice`), static `dist/` — deploy behind an access-restricted host/path, never the public origin | build + publish (like web) | No (static) |
 
 Only the **API** carries a database, so only it needs the migration gate. Web is
 a static artifact; the mobile app ships through store review (independent of

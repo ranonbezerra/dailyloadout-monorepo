@@ -20,14 +20,13 @@ line in the same repo. `+45` is the store build number (mirrors `pubspec.yaml`'s
 | API | `packages/api/pyproject.toml` (`[tool.poetry] version`) | `api/vX.Y.Z` | release-please |
 | Web | `packages/web/package.json` (`version`) | `web/vX.Y.Z` | release-please |
 | App | `packages/mobile/pubspec.yaml` (`version: X.Y.Z+BUILD`) | `app/vX.Y.Z+BUILD` | *its own store pipeline (add later)* |
-| Backoffice | its `package.json` | `backoffice/vX.Y.Z` | *add when built* |
+| Backoffice | `packages/web/backoffice/package.json` | `backoffice/vX.Y.Z` | release-please (`web-backoffice`) |
 
-> Only **api** and **web** are wired into release-please today
-> (`release-please-config.json`). The **app** is store-released and may move off
-> Flutter to native Swift/Kotlin — its build-number semantics are store-specific,
-> so it gets its own pipeline. The **backoffice** (Epic 21) is added when built.
-> Add either as a new entry in `release-please-config.json` +
-> `.release-please-manifest.json`.
+> **api**, **web** (shared + app), and the **backoffice** (Epic 21, shipped — component
+> `web-backoffice`) are wired into release-please today (`release-please-config.json`).
+> The **app** is store-released and may move off Flutter to native Swift/Kotlin — its
+> build-number semantics are store-specific, so it gets its own pipeline. Add a new
+> surface as an entry in `release-please-config.json` + `.release-please-manifest.json`.
 
 ## Why release-please (the path-scoped changelog)
 

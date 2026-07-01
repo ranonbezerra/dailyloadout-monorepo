@@ -1037,7 +1037,7 @@ Epic 17 is a tactical fix for one adapter. This is a **cross-cutting architectur
 
 **Goal:** an internal **admin panel** to manage users, the game catalogue, and the data, plus a **dynamic operational config** layer so a curated set of operational knobs (kill-switches, abuse caps, feature flags) can be changed **at runtime without a redeploy** — backed by Postgres, surfaced as one screen of the backoffice.
 
-**Status:** not started. Planned. The anti-abuse work (Epics 11–19) shipped incident-response *primitives* — ban (`scripts/ban_user.py`), catalogue demote (`scripts/demote_game.py`), token kill-switch, cost-guard caps — but they live in CLIs/env. This epic gives them a UI and makes the tunable ones live-editable, so reacting to abuse is a panel action, not an SSH + redeploy.
+**Status:** done — all 6 phases shipped (#44–47, #54; reprocess metering hardened in #67). Admin authz + `/internal/v1` boundary, users + audit log, Postgres config overlay, backoffice web shell, catalogue admin, and the Phase 6 moderation domains (play sessions/captures/picks) are all live. The anti-abuse work (Epics 11–19) shipped incident-response *primitives* — ban (`scripts/ban_user.py`), catalogue demote (`scripts/demote_game.py`), token kill-switch, cost-guard caps — but they live in CLIs/env. This epic gives them a UI and makes the tunable ones live-editable, so reacting to abuse is a panel action, not an SSH + redeploy.
 
 ### Decision (2026-06): config split — env baseline + Postgres-backed dynamic overrides
 
@@ -1062,7 +1062,7 @@ Two kinds of config, two mechanisms (do **not** put everything in one place):
 
 - [x] **Phase 4 — Backoffice web foundation + ready domains** (#47): a distinct admin shell (separate `/backoffice` area reusing the existing auth/session, visually marked as a backoffice) + admin guard; **Dashboard** (`GET /internal/v1/dashboard` aggregate endpoint: user/ban/verify/admin counts, active play sessions, catalogue size, config overrides, recent admin actions); **Users**, **Config**, and **Audit** management screens over the existing APIs.
 - [x] **Phase 5 — Games / catalogue admin** (this PR): `/internal/v1/games` (list/search with owner counts + provenance filters, detail, demote/promote — surfacing `demote_game.py` as a panel action — and metadata edit, all audited) + a **Catalogue** screen in the backoffice (table, source filters, demote/promote/edit, catalogue tallies). Catalogue *merge* (library-entry reassignment) deferred to a follow-up.
-- [ ] **Phase 6 — Other domains (moderation & data browse)**: play sessions (browse/force-clamp), captures (browse/reprocess/purge), picks, and basic read-only data browse across domains — each behind the same audited admin boundary.
+- [x] **Phase 6 — Other domains (moderation & data browse)** (#54, metering in #67): play sessions (`admin_play_sessions.py` — browse/detail/force-clamp), captures (`admin_captures.py` — browse/detail/reprocess/purge, reprocess is rate-limited + cost-guarded), and picks (`admin_picks.py` — read-only browse/detail), each behind the same `require_admin` boundary with audited mutations; **Sessions**, **Captures**, and **Picks** screens in the backoffice.
 
 ### Definition of Done
 
@@ -1363,7 +1363,7 @@ It adds a vector-similarity layer with a real correctness/staleness surface on t
 
 **Goal:** when an extraction prompt, an LLM model, or an **embedding model** changes, a **resumable, idempotent** Taskiq batch job reprocesses the corpus (re-extract wrap-up state and/or re-embed) with progress, concurrency caps, and cost-guard awareness — the ops layer for the embedding/RAG features.
 
-**Status:** not started. Depends on embeddings existing (Epics 24 / 27).
+**Status:** done — shipped in #72. Resumable, idempotent Taskiq batch job (re-extract wrap-up state and/or re-embed) with progress, concurrency caps, and cost-guard awareness. Depends on embeddings existing (Epics 24 / 27).
 
 ### Context
 
@@ -1399,7 +1399,7 @@ It's an operational capability (batch reprocessing at scale) that only becomes m
 
 **Goal:** make the recap **adaptive** — after retrieving the player's own session history (Epic 24), evaluate whether that local context is actually sufficient to ground a faithful recap, and route accordingly: stay on the cheap local path when it is, escalate to the deep web-research path (Epic 10) when it isn't, or combine both when it's borderline. The CRAG (Corrective RAG) pattern, mapped onto Slate's two existing recap modes.
 
-**Status:** not started. Depends on Epic 24 (local RAG retrieval), Epic 23 (the eval that must *prove* the corrective loop helps), and the entitlement gate below.
+**Status:** done — shipped in #73. Relevance-gated recap routing: a pure decision layer evaluates the player's retrieved history and routes quick/deep, with a cold-start cost guard (a new game with no history stays quick, never auto-deep) and an entitlement gate (a free-tier user is never auto-escalated to the paid deep path). Surfaced as a "Smart recap" (auto) mode in both clients, alongside explicit force-quick/force-deep. Depends on Epic 24 (local RAG retrieval), Epic 23 (the eval that must *prove* the corrective loop helps), and the entitlement gate below.
 
 ### Context
 
