@@ -212,6 +212,61 @@ class TestTurnstile:
         monkeypatch.setattr(captcha.httpx, "AsyncClient", lambda *a, **k: _Client())
         assert await captcha._siteverify("tok", None) is True
 
+    @staticmethod
+    def _patch_siteverify_payload(
+        monkeypatch: pytest.MonkeyPatch, payload: dict[str, object]
+    ) -> None:
+        monkeypatch.setattr(settings, "turnstile_secret", "sk")
+
+        class _Resp:
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self) -> dict[str, object]:
+                return payload
+
+        class _Client:
+            async def __aenter__(self) -> _Client:
+                return self
+
+            async def __aexit__(self, *args: object) -> None:
+                return None
+
+            async def post(self, *args: object, **kwargs: object) -> _Resp:
+                return _Resp()
+
+        monkeypatch.setattr(captcha.httpx, "AsyncClient", lambda *a, **k: _Client())
+
+    async def test_siteverify_failure_with_error_codes(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        self._patch_siteverify_payload(
+            monkeypatch, {"success": False, "error-codes": ["timeout-or-duplicate"]}
+        )
+        assert await captcha._siteverify("tok", None) is False
+
+    async def test_siteverify_rejects_wrong_hostname(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(settings, "turnstile_allowed_hostnames", ["slate.app"])
+        self._patch_siteverify_payload(monkeypatch, {"success": True, "hostname": "evil.example"})
+        assert await captcha._siteverify("tok", None) is False
+
+    async def test_siteverify_rejects_wrong_action(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(settings, "turnstile_expected_action", "register")
+        self._patch_siteverify_payload(monkeypatch, {"success": True, "action": "login"})
+        assert await captcha._siteverify("tok", None) is False
+
+    async def test_siteverify_accepts_matching_hostname_and_action(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(settings, "turnstile_allowed_hostnames", ["slate.app"])
+        monkeypatch.setattr(settings, "turnstile_expected_action", "register")
+        self._patch_siteverify_payload(
+            monkeypatch, {"success": True, "hostname": "slate.app", "action": "register"}
+        )
+        assert await captcha._siteverify("tok", None) is True
+
 
 # =====================================================================
 # Fail-closed auth rate limiter

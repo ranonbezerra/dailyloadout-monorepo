@@ -52,7 +52,23 @@ async def _siteverify(token: str, remote_ip: str | None) -> bool:
     except Exception:
         logger.warning("turnstile_verify_error", exc_info=True)
         return False
-    return bool(data.get("success"))
+
+    if not data.get("success"):
+        # Surface Cloudflare's reason (e.g. timeout-or-duplicate, invalid token).
+        logger.warning("turnstile_verify_rejected", error_codes=data.get("error-codes"))
+        return False
+
+    # Defense-in-depth: reject a token solved on a different site (same sitekey)
+    # or a different widget/action, when the binding is configured.
+    allowed_hosts = settings.turnstile_allowed_hostnames
+    if allowed_hosts and data.get("hostname") not in allowed_hosts:
+        logger.warning("turnstile_hostname_mismatch", hostname=data.get("hostname"))
+        return False
+    expected_action = settings.turnstile_expected_action
+    if expected_action and data.get("action") != expected_action:
+        logger.warning("turnstile_action_mismatch", action=data.get("action"))
+        return False
+    return True
 
 
 async def verify_turnstile(request: Request) -> None:

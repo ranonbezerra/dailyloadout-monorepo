@@ -149,6 +149,12 @@ class Settings(BaseSettings):
     # Empty => Turnstile dependency is a no-op; set => register needs a token.
     turnstile_secret: str = ""
     turnstile_verify_url: str = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
+    # Defense-in-depth token binding (opt-in). When non-empty, a solved token is
+    # accepted only if siteverify reports a matching hostname / action — so a
+    # token farmed on another site sharing the sitekey (or a different widget)
+    # can't be replayed here. Empty => not enforced (back-compat).
+    turnstile_allowed_hostnames: list[str] = []
+    turnstile_expected_action: str = ""
 
     # ── Auth ───────────────────────────────────────────────────────
     bcrypt_rounds: int = 12
