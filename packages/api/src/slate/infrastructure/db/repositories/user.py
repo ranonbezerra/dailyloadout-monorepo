@@ -105,6 +105,12 @@ class UserRepository:
         user.email_verified = True
         await self._session.flush()
 
+    async def set_email(self, user: User, new_email: str) -> None:
+        """Set *user*'s email to *new_email* (already verified via the change link)."""
+        user.email = _normalize_email(new_email)
+        user.email_verified = True
+        await self._session.flush()
+
     async def set_password_and_bump(self, user: User, password_hash: str) -> None:
         """Set *user*'s password hash and bump ``token_version`` in one flush.
 

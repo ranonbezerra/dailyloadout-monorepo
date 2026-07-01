@@ -98,6 +98,28 @@ def send_password_reset_email(mailer: Mailer, *, to: str, token: str) -> bool:
     return mailer.send(to=to, subject="Reset your Slate password", body=body)
 
 
+def send_email_change_verification(mailer: Mailer, *, to: str, token: str) -> bool:
+    """Send the confirmation link to the *new* email address."""
+    link = f"{settings.email_change_base_url}?token={token}"
+    body = (
+        "Confirm your new Slate email address by opening this link:\n\n"
+        f"{link}\n\n"
+        "If you did not request this change, you can ignore this message — your "
+        "email will not change."
+    )
+    return mailer.send(to=to, subject="Confirm your new Slate email", body=body)
+
+
+def send_email_change_notice(mailer: Mailer, *, to: str) -> bool:
+    """Notify the *old* email that a change was requested (security notice)."""
+    body = (
+        "A change to a new email address was requested for your Slate account.\n\n"
+        "If this was you, follow the link sent to the new address. If it was NOT "
+        "you, change your password immediately."
+    )
+    return mailer.send(to=to, subject="Your Slate email is being changed", body=body)
+
+
 def send_password_changed_email(mailer: Mailer, *, to: str) -> bool:
     """Send a security notice that the account password was changed."""
     body = (

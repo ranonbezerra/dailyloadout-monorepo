@@ -5,6 +5,7 @@ from __future__ import annotations
 from httpx import AsyncClient
 from sqlalchemy import select
 
+from slate.core.auth.email_change import create_email_change_token
 from slate.core.auth.security import create_access_token
 from slate.infrastructure.db.models import User
 from tests.conftest import _TestSessionFactory
@@ -92,3 +93,82 @@ class TestAccountDeletion:
     async def test_delete_requires_auth(self, async_client: AsyncClient) -> None:
         resp = await async_client.post("/v1/auth/delete-account", json={"password": _PASSWORD})
         assert resp.status_code == 401
+
+
+class TestEmailChange:
+    async def test_request_change_succeeds(
+        self, async_client: AsyncClient, auth_headers: dict[str, str]
+    ) -> None:
+        resp = await async_client.post(
+            "/v1/auth/change-email",
+            headers=auth_headers,
+            json={"new_email": "brand-new@example.com", "password": _PASSWORD},
+        )
+        assert resp.status_code == 200
+        # The email is NOT changed yet — only confirmed via the link.
+        login = await async_client.post(
+            "/v1/auth/login", json={"email": _EMAIL, "password": _PASSWORD}
+        )
+        assert login.status_code == 200
+
+    async def test_request_change_wrong_password(
+        self, async_client: AsyncClient, auth_headers: dict[str, str]
+    ) -> None:
+        resp = await async_client.post(
+            "/v1/auth/change-email",
+            headers=auth_headers,
+            json={
+                "new_email": "x@example.com",
+                "password": "WrongPass123",
+            },  # pragma: allowlist secret
+        )
+        assert resp.status_code == 403
+
+    async def test_request_change_to_same_email(
+        self, async_client: AsyncClient, auth_headers: dict[str, str]
+    ) -> None:
+        resp = await async_client.post(
+            "/v1/auth/change-email",
+            headers=auth_headers,
+            json={"new_email": _EMAIL, "password": _PASSWORD},
+        )
+        assert resp.status_code == 400
+
+    async def test_request_change_to_taken_email(
+        self, async_client: AsyncClient, auth_headers: dict[str, str]
+    ) -> None:
+        await async_client.post(
+            "/v1/auth/register",
+            json={"email": "taken@example.com", "password": _PASSWORD, "display_name": "T"},
+        )
+        resp = await async_client.post(
+            "/v1/auth/change-email",
+            headers=auth_headers,
+            json={"new_email": "taken@example.com", "password": _PASSWORD},
+        )
+        assert resp.status_code == 400
+
+    async def test_confirm_applies_the_new_email(
+        self, async_client: AsyncClient, register_user: dict[str, str]
+    ) -> None:
+        async with _TestSessionFactory() as session:
+            user = (await session.execute(select(User).where(User.email == _EMAIL))).scalar_one()
+            token = create_email_change_token(str(user.public_id), "confirmed@example.com")
+
+        resp = await async_client.post("/v1/auth/confirm-email-change", json={"token": token})
+        assert resp.status_code == 200
+        # Login now works with the new address, not the old.
+        new = await async_client.post(
+            "/v1/auth/login", json={"email": "confirmed@example.com", "password": _PASSWORD}
+        )
+        assert new.status_code == 200
+        old = await async_client.post(
+            "/v1/auth/login", json={"email": _EMAIL, "password": _PASSWORD}
+        )
+        assert old.status_code == 401
+
+    async def test_confirm_rejects_a_bad_token(self, async_client: AsyncClient) -> None:
+        resp = await async_client.post(
+            "/v1/auth/confirm-email-change", json={"token": "not-a-jwt"}
+        )
+        assert resp.status_code == 400

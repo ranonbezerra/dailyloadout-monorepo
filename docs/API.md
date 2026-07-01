@@ -101,6 +101,7 @@ Content-Type: application/json
 The auth surface also includes (see the live `/docs` for schemas):
 
 - **Email verification & password recovery** — `/v1/auth/verify-email`, `/v1/auth/forgot-password`, `/v1/auth/reset-password`, `/v1/auth/change-password` (single-use, session-invalidating reset tokens).
+- **Email change** — `POST /v1/auth/change-email` (password re-auth → confirm link to the new address, notice to the old) then `POST /v1/auth/confirm-email-change` (token-gated).
 - **Two-factor (TOTP)** — `/v1/auth/mfa/*` (`status`, `enroll`, `confirm`, challenge/verify, disable; encrypted-at-rest secrets + single-use recovery codes).
 - **Social login (OAuth)** — `GET /v1/auth/oauth/{provider}/start` and `/callback` (Google, Twitch; Authorization Code + PKCE).
 

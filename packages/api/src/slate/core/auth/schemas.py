@@ -60,6 +60,15 @@ class DeleteAccountRequest(BaseModel):
     password: str = ""
 
 
+class ChangeEmailRequest(BaseModel):
+    new_email: EmailStr
+    password: str = ""  # re-auth; empty for OAuth-only accounts
+
+
+class ConfirmEmailChangeRequest(BaseModel):
+    token: str = Field(min_length=1)
+
+
 class RefreshRequest(BaseModel):
     # Optional so cookie-mode web callers can POST refresh/logout with no body;
     # in that case the token is read from the httpOnly cookie instead.

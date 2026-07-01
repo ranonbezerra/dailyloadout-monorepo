@@ -11,6 +11,7 @@ from typing import Annotated
 from fastapi import Depends
 
 from slate.core.auth.account import AccountService
+from slate.core.auth.email_change import EmailChangeService
 from slate.infrastructure.db.repositories.capture import CaptureRepository
 from slate.infrastructure.db.repositories.library import LibraryRepository
 from slate.infrastructure.db.repositories.pick import PickRepository
@@ -32,3 +33,11 @@ def get_account_service(db: DbSession) -> AccountService:
 
 
 AccountServiceDep = Annotated[AccountService, Depends(get_account_service)]
+
+
+def get_email_change_service(db: DbSession) -> EmailChangeService:
+    """Provide an ``EmailChangeService`` wired to the user repo (mailer internal)."""
+    return EmailChangeService(UserRepository(db))
+
+
+EmailChangeServiceDep = Annotated[EmailChangeService, Depends(get_email_change_service)]

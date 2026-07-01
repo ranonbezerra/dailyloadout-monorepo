@@ -163,6 +163,8 @@ class Settings(BaseSettings):
     email_verification_ttl_hours: int = 24
     # Public base URL the verification link points at (deep link appends token).
     email_verification_base_url: str = "http://localhost:5173/verify-email"
+    # Where the email-change confirmation link points (reuses the verify TTL).
+    email_change_base_url: str = "http://localhost:5173/confirm-email-change"
 
     # ── Password reset — signed purpose-scoped JWTs, short TTL, bumps tv ──
     password_reset_ttl_hours: int = 1
