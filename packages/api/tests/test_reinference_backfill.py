@@ -251,9 +251,7 @@ class TestTaskiqWrapper:
             ps = await _seed(s, user, entry, "task note")  # embedding_model NULL → stale
             await s.commit()
 
-        with patch(
-            "slate.infrastructure.db.session.async_session_factory", _TestSessionFactory
-        ):
+        with patch("slate.infrastructure.db.session.async_session_factory", _TestSessionFactory):
             from slate.infrastructure.tasks.backfill import backfill_task
 
             await backfill_task.original_func("embeddings")
