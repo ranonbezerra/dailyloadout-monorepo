@@ -220,8 +220,11 @@ class AuthService:
                     await self._refresh_token_repo.commit()
             raise ValueError("Invalid or expired refresh token")
 
-        # Revoke the old token (rotation)
-        await self._refresh_token_repo.revoke(stored.id)
+        # Revoke the old token (rotation) — atomically. If a concurrent refresh
+        # already rotated this same token, we lose the claim and must reject THIS
+        # request rather than mint a second, undetected token family.
+        if not await self._refresh_token_repo.revoke(stored.id):
+            raise ValueError("Invalid or expired refresh token")
 
         # Fetch the owning user by internal id to get their public_id for the JWT
         user = await self._user_repo.get_by_id(stored.user_id)

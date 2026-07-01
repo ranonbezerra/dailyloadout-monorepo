@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Any, cast
 
-from sqlalchemy import func, select, update
+from sqlalchemy import CursorResult, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from slate.infrastructure.db.models import RefreshToken
@@ -56,11 +57,22 @@ class RefreshTokenRepository:
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def revoke(self, token_id: int) -> None:
-        """Mark a single refresh token as revoked."""
+    async def revoke(self, token_id: int) -> bool:
+        """Atomically revoke a token, but ONLY while it's still active.
+
+        Conditional UPDATE (``WHERE revoked_at IS NULL``) so two concurrent
+        rotations of the SAME valid token can't both revoke-and-mint: the loser
+        matches 0 rows and the caller rejects it. This closes the rotation race
+        that reuse-detection would otherwise miss (neither request replays the
+        rotated hash). Returns ``True`` if this call revoked it.
+        """
         now = datetime.now(UTC)
-        stmt = update(RefreshToken).where(RefreshToken.id == token_id).values(revoked_at=now)
-        await self._session.execute(stmt)
+        result = await self._session.execute(
+            update(RefreshToken)
+            .where(RefreshToken.id == token_id, RefreshToken.revoked_at.is_(None))
+            .values(revoked_at=now)
+        )
+        return (cast("CursorResult[Any]", result).rowcount or 0) > 0
 
     async def count_active_for_user(self, user_id: int) -> int:
         """Return how many non-revoked, non-expired sessions *user_id* has."""

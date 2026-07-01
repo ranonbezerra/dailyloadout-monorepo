@@ -156,23 +156,20 @@ class MfaService:
     async def _consume_totp(self, row: UserMfa, code: str) -> bool:
         """True for a valid, NON-replayed TOTP; records the step so it can't be reused.
 
-        A code whose step was already consumed (``<= last_totp_step``) is rejected —
-        closing the replay window an observed code would otherwise have (~90s).
+        The replay guard is enforced by an atomic conditional step-advance, so two
+        concurrent verifies of the same code can't both pass (~90s replay window).
         """
         step = self._matched_totp_step(row, code)
         if step is None:
             return False
-        if row.last_totp_step is not None and step <= row.last_totp_step:
-            return False
-        await self._repo.set_last_totp_step(row, step)
-        return True
+        return await self._repo.try_advance_totp_step(row.user_id, step)
 
     async def _verify_any(self, user_id: int, row: UserMfa, code: str) -> bool:
-        """Accept a valid TOTP code, else a single-use recovery code (consumed)."""
+        """Accept a valid TOTP code, else a single-use recovery code (consumed).
+
+        Both paths consume atomically (conditional UPDATE), so a code can't be
+        double-spent by racing two submissions.
+        """
         if await self._consume_totp(row, code):
             return True
-        recovery = await self._repo.get_unused_recovery_code(user_id, _hash_recovery_code(code))
-        if recovery is not None:
-            await self._repo.mark_recovery_code_used(recovery)
-            return True
-        return False
+        return await self._repo.consume_recovery_code(user_id, _hash_recovery_code(code))
