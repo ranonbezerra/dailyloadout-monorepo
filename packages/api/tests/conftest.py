@@ -160,6 +160,41 @@ for _table in Base.metadata.tables.values():
 _schema_created = False
 
 
+class _FakeStepupRedis:
+    """Minimal in-memory async Redis for the login step-up counter (per test)."""
+
+    def __init__(self) -> None:
+        self.store: dict[str, int] = {}
+
+    async def get(self, key: str) -> str | None:
+        return None if key not in self.store else str(self.store[key])
+
+    async def incr(self, key: str) -> int:
+        self.store[key] = self.store.get(key, 0) + 1
+        return self.store[key]
+
+    async def expire(self, key: str, _seconds: int) -> bool:
+        return True
+
+    async def delete(self, key: str) -> None:
+        self.store.pop(key, None)
+
+
+@pytest.fixture(autouse=True)
+def _fake_login_stepup_redis(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Run the real login step-up against a fake Redis (per test).
+
+    The step-up functions hit ``get_redis_client()`` directly (not a FastAPI dep),
+    so without this they'd open real Redis connections per login test and leak an
+    unclosed transport across event loops. Swapping the client keeps the real logic
+    (and its coverage) while isolating each test.
+    """
+    from slate.core.auth import login_stepup
+
+    fake = _FakeStepupRedis()
+    monkeypatch.setattr(login_stepup, "get_redis_client", lambda: fake)
+
+
 @pytest.fixture(autouse=True)
 def _reset_cache_layer() -> None:
     """Clear the module-level cache counters + in-process tier before each test.
