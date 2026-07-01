@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 
-from slate.api.v1._rate_limit import rate_limit
+from slate.api.v1._rate_limit import account_email_identity, account_rate_limit, rate_limit
 from slate.api.v1.auth_cookies import (
     clear_refresh_cookie,
     is_cookie_mode,
@@ -31,6 +31,11 @@ from slate.deps.captcha import verify_turnstile
 # overridden to no-ops in tests (see conftest), matching the old wiring.
 _check_login_rate = rate_limit(
     "auth_login", settings.rate_limit_login_per_minute, 60, by="ip", fail_closed=True
+)
+# Per-account backstop: caps attempts against a single email regardless of how
+# many source IPs an attacker rotates through (credential stuffing).
+_check_login_account_rate = account_rate_limit(
+    "auth_login_acct", settings.rate_limit_login_per_minute, 60, account_email_identity
 )
 _check_register_rate = rate_limit(
     "auth_register",
@@ -107,7 +112,7 @@ async def register(
 @router.post(
     "/login",
     response_model=LoginResponse,
-    dependencies=[Depends(_check_login_rate)],
+    dependencies=[Depends(_check_login_rate), Depends(_check_login_account_rate)],
 )
 async def login(
     body: LoginRequest,
