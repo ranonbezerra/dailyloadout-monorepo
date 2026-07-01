@@ -202,10 +202,7 @@ class PickService:
         (ROADMAP Epic 12), optionally with a pre-generated *recap_text*."""
         pick = await self._pick_repo.get_by_public_id(pick_public_id, user_id=user_id)
         if pick is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Pick not found",
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pick not found")
 
         if pick.action is not None:
             raise HTTPException(
@@ -228,6 +225,14 @@ class PickService:
                 detail=_ACTIVE_PLAY_SESSION_DETAIL,
             )
 
+        # Atomically claim the pick before doing work; a concurrent accept/reject
+        # loses (0 rows → 409) and any later raise rolls the claim back.
+        if not await self._pick_repo.set_action(pick.id, "accepted"):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Pick already actioned",
+            )
+
         play_session = await create_play_session_for_entry(
             play_session_repo=self._play_session_repo,
             library_repo=self._library_repo,
@@ -236,7 +241,6 @@ class PickService:
             recap_text=recap_text,
         )
 
-        await self._pick_repo.set_action(pick.id, "accepted")
         await self._pick_repo.set_play_session(pick.id, play_session.id)
         log_pick_actioned(user_id=user_id, pick=pick, action="accepted")
 
@@ -255,10 +259,7 @@ class PickService:
         """
         pick = await self._pick_repo.get_by_public_id(pick_public_id, user_id=user_id)
         if pick is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Pick not found",
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pick not found")
 
         if pick.action is not None:
             raise HTTPException(
@@ -266,7 +267,11 @@ class PickService:
                 detail=f"Pick already {pick.action}",
             )
 
-        await self._pick_repo.set_action(pick.id, "rejected")
+        if not await self._pick_repo.set_action(pick.id, "rejected"):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Pick already actioned",
+            )
         log_pick_actioned(user_id=user_id, pick=pick, action="rejected")
 
         # Re-fetch for response.
@@ -291,8 +296,5 @@ class PickService:
         """Fetch a pick or raise 404."""
         pick = await self._pick_repo.get_by_public_id(pick_public_id, user_id=user_id)
         if pick is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Pick not found",
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pick not found")
         return pick

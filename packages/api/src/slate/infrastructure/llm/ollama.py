@@ -205,12 +205,7 @@ class OllamaClient(AbstractLLMClient):
             game_title=game_title,
             wrap_up_text=wrap_up_text,
         )
-        payload = {
-            "model": self._model,
-            "prompt": prompt,
-            "stream": False,
-            "format": "json",
-        }
+        payload = {"model": self._model, "prompt": prompt, "stream": False, "format": "json"}
 
         resp = await self._call_generate(payload, "ollama_wrap_up_extract_failed")
         if resp is None:
@@ -222,7 +217,8 @@ class OllamaClient(AbstractLLMClient):
             parsed = json.loads(raw_text)
 
             if not isinstance(parsed, dict):
-                logger.warning("ollama_wrap_up_not_a_dict", raw=raw_text)
+                # parsed_type, never raw_text — raw would leak the user's private notes.
+                logger.warning("ollama_wrap_up_not_a_dict", parsed_type=type(parsed).__name__)
                 return ExtractedState()
 
             return ExtractedState(

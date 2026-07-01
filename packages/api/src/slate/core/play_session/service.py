@@ -217,15 +217,15 @@ class PlaySessionService:
         """
         wrap_up_text = sanitize_and_audit(wrap_up_text, surface="wrap_up", user_id=user_id)
         play_session = await self.get_play_session(user_id, play_session_public_id)
-        if play_session.ended_at is not None:
+
+        # End first via the atomic claim; a concurrent end/wrap-up loses → 409.
+        if not await self._play_session_repo.end_play_session(
+            play_session.id, ended_via="wrap_up_completed"
+        ):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT, detail="PlaySession is already ended"
             )
-
         await self._play_session_repo.set_wrap_up(play_session.id, wrap_up_text)
-        await self._play_session_repo.end_play_session(
-            play_session.id, ended_via="wrap_up_completed"
-        )
         await invalidate_user_stats(user_id)
 
         game_title = play_session.library_entry.game.title
@@ -255,14 +255,14 @@ class PlaySessionService:
         play_session_public_id: UUID,
         ended_via: str = "paused_app",
     ) -> PlaySession:
-        """End a play_session without a wrap_up."""
+        """End a play_session without a wrap_up (atomic claim; already-ended → 409)."""
         play_session = await self.get_play_session(user_id, play_session_public_id)
-        if play_session.ended_at is not None:
+        if not await self._play_session_repo.end_play_session(
+            play_session.id, ended_via=ended_via
+        ):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT, detail="PlaySession is already ended"
             )
-
-        await self._play_session_repo.end_play_session(play_session.id, ended_via=ended_via)
         await invalidate_user_stats(user_id)
         return await self.get_play_session(user_id, play_session_public_id)
 

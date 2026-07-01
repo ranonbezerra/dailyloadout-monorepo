@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from typing import Any, cast
 from uuid import UUID
 
-from sqlalchemy import ColumnElement, func, select
+from sqlalchemy import ColumnElement, CursorResult, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -76,12 +77,20 @@ class PickRepository:
         result = await self._session.execute(stmt)
         return result.unique().scalar_one_or_none()
 
-    async def set_action(self, pick_id: int, action: str) -> None:
-        """Set the action on a pick."""
-        pick = await self._session.get(Pick, pick_id)
-        if pick is not None:
-            pick.action = action
-            await self._session.flush()
+    async def set_action(self, pick_id: int, action: str) -> bool:
+        """Atomically set the action, but ONLY while the pick is un-actioned.
+
+        Conditional UPDATE (``WHERE action IS NULL``) so two concurrent
+        accept/reject requests for the same pick can't both win under READ
+        COMMITTED — the second UPDATE re-checks the predicate on the row the
+        first locked, matches 0 rows, and the caller maps that to a 409. Returns
+        ``True`` if this call claimed the pick.
+        """
+        result = await self._session.execute(
+            update(Pick).where(Pick.id == pick_id, Pick.action.is_(None)).values(action=action)
+        )
+        await self._session.flush()
+        return (cast("CursorResult[Any]", result).rowcount or 0) > 0
 
     async def set_play_session(self, pick_id: int, play_session_id: int) -> None:
         """Link a play_session to a pick."""

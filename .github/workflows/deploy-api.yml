@@ -55,6 +55,7 @@ jobs:
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
           VPS_SSH_KNOWN_HOSTS: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
           DEPLOY_REF: ${{ inputs.ref }}
+          DEPLOY_ENVIRONMENT: ${{ inputs.environment }}
         run: |
           set -euo pipefail
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
@@ -62,8 +63,14 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           if [ -n "${VPS_SSH_KNOWN_HOSTS:-}" ]; then
             printf '%s\n' "$VPS_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          elif [ "${DEPLOY_ENVIRONMENT}" = "production" ]; then
+            # Production must pin the host key: a TOFU keyscan is MITM-able, and a
+            # forged key would hand the deploy SSH session (and the DB it reaches)
+            # to an attacker. Fail closed rather than trust-on-first-use.
+            echo "::error::VPS_SSH_KNOWN_HOSTS is required for production deploys (no TOFU fallback)."
+            exit 1
           else
-            # TOFU fallback — prefer pinning VPS_SSH_KNOWN_HOSTS in prod.
+            # Staging TOFU fallback — still prefer pinning VPS_SSH_KNOWN_HOSTS.
             ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
           fi
           # On the VPS: backup -> fetch -> alembic upgrade head (gate) -> restart
