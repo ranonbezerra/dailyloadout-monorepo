@@ -213,3 +213,76 @@ async def test_invalidation_forces_recompute() -> None:
 
     assert a == {"n": 1}
     assert b == {"n": 2}  # recomputed after the bust
+
+
+# ── In-process tier (Epic 18) ────────────────────────────────────────────
+
+
+class _CountingCache(FakeCache):
+    """FakeCache that counts reads, to prove the tier skips the round-trip."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.reads = 0
+
+    async def get_json(self, key: str) -> Any | None:
+        self.reads += 1
+        return await super().get_json(key)
+
+
+async def test_process_tier_serves_repeat_without_touching_shared_cache() -> None:
+    reset_cache_stats()
+    cache = _CountingCache()
+    calls = 0
+
+    async def compute() -> dict[str, int]:
+        nonlocal calls
+        calls += 1
+        return {"v": 1}
+
+    kw = {"cache": cache, "key": "ref:x", "ttl_seconds": 10, "namespace": "ref"}
+    first = await cached_call(compute=compute, process_ttl_seconds=60, **kw)  # type: ignore[arg-type]
+    reads_after_first = cache.reads
+    second = await cached_call(compute=compute, process_ttl_seconds=60, **kw)  # type: ignore[arg-type]
+
+    assert first == second == {"v": 1}
+    assert calls == 1  # computed once
+    assert cache.reads == reads_after_first  # 2nd call from the tier, no shared-cache read
+    assert cache_stats()["ref"] == {"hit": 1, "miss": 1}
+
+
+async def test_process_tier_entry_expires_and_falls_back(monkeypatch: Any) -> None:
+    reset_cache_stats()
+    import slate.infrastructure.cache.layer as layer_mod
+
+    clock = {"t": 1000.0}
+    monkeypatch.setattr(layer_mod.time, "monotonic", lambda: clock["t"])
+
+    cache = _CountingCache()
+
+    async def compute() -> int:
+        return 1
+
+    kw = {"cache": cache, "key": "ref:y", "ttl_seconds": 999, "namespace": "ref"}
+    await cached_call(compute=compute, process_ttl_seconds=5, **kw)  # type: ignore[arg-type]
+    reads_after_first = cache.reads  # tier miss → shared-cache read(s)
+    await cached_call(compute=compute, process_ttl_seconds=5, **kw)  # type: ignore[arg-type]
+    assert cache.reads == reads_after_first  # within TTL: served from the tier
+
+    clock["t"] += 6  # advance past the tier TTL
+    await cached_call(compute=compute, process_ttl_seconds=5, **kw)  # type: ignore[arg-type]
+    assert cache.reads > reads_after_first  # tier expired → shared cache consulted again
+
+
+def test_process_tier_is_bounded_lru() -> None:
+    from slate.infrastructure.cache.layer import _ProcessTier
+
+    tier = _ProcessTier(maxsize=2)
+    tier.set("a", 1, ttl_seconds=60)
+    tier.set("b", 2, ttl_seconds=60)
+    tier.get("a")  # touch "a" so "b" is the least-recently-used
+    tier.set("c", 3, ttl_seconds=60)  # evicts the LRU ("b")
+
+    assert tier.get("a") == (True, 1)
+    assert tier.get("c") == (True, 3)
+    assert tier.get("b") == (False, None)  # evicted

@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     research_cache_ttl_seconds: int = 6 * 3600  # web-research network-hop cache
     llm_cache_ttl_seconds: int = 24 * 3600  # idempotent LLM completions, by content
     reference_cache_ttl_seconds: int = 3600  # genre list etc. — tiny, hot
+    reference_process_ttl_seconds: int = 60  # in-process tier in front of Redis (Epic 18)
     # Semantic capture-parse cache (Epic 27): off by default — a measured experiment.
     semantic_cache_enabled: bool = False
     semantic_cache_threshold: float = 0.95  # cosine floor to reuse a near-duplicate parse

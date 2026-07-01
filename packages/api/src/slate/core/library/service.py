@@ -6,6 +6,7 @@ from datetime import date
 from uuid import UUID
 
 from slate.core.cache.invalidation import invalidate_user_stats
+from slate.core.library import reference
 from slate.core.library.backfill import enrich_in_place, reconcile_manual_title
 from slate.core.library.igdb_budget import igdb_budget_allows
 from slate.core.library.promotion import maybe_promote_to_shared
@@ -13,12 +14,11 @@ from slate.core.library.schemas import (
     GameResponse,
     LibraryGameGroup,
     LibraryPlatformState,
+    PlatformResponse,
 )
 from slate.core.sanitization import sanitize_catalog_text
 from slate.infrastructure.cache.base import AbstractCache, NullCache
-from slate.infrastructure.cache.keys import NS_REF, reference_key
-from slate.infrastructure.cache.layer import cached_call
-from slate.infrastructure.db.models import Game, LibraryEntry, Platform
+from slate.infrastructure.db.models import Game, LibraryEntry
 from slate.infrastructure.db.repositories.game import GameRepository
 from slate.infrastructure.db.repositories.library import LibraryRepository
 from slate.infrastructure.db.repositories.platform import PlatformRepository
@@ -41,6 +41,7 @@ class LibraryService:
         platform_repo: PlatformRepository,
         cache: AbstractCache | None = None,
         reference_ttl_seconds: int = 3600,
+        reference_process_ttl_seconds: int = 60,
         igdb_client: IGDBSearchClient | None = None,
         match_min_score: float = 0.6,
         share_threshold: int = 5,
@@ -50,6 +51,7 @@ class LibraryService:
         self._platform_repo = platform_repo
         self._cache = cache or NullCache()
         self._reference_ttl = reference_ttl_seconds
+        self._reference_process_ttl = reference_process_ttl_seconds
         self._igdb_client = igdb_client
         self._match_min_score = match_min_score
         # Distinct-owner count that promotes a private manual row to globally
@@ -131,18 +133,13 @@ class LibraryService:
         )
 
     async def list_genres(self, *, user_id: int) -> list[str]:
-        """Return distinct genre names visible to *user_id*.
-
-        Genres come only from rows the user may browse (canonical/shared rows plus
-        the user's own private manual rows), so another user's unvalidated private
-        manual genres don't leak. Per-user, so the cache key is namespaced by user.
-        """
-        return await cached_call(
-            cache=self._cache,
-            key=reference_key(f"genres:{user_id}"),
+        """Return distinct genre names visible to *user_id* (cached; see reference)."""
+        return await reference.list_genres(
+            self._game_repo,
+            self._cache,
+            user_id=user_id,
             ttl_seconds=self._reference_ttl,
-            namespace=NS_REF,
-            compute=lambda: self._game_repo.distinct_genres(user_id=user_id),
+            process_ttl_seconds=self._reference_process_ttl,
         )
 
     async def search_games(self, query: str, *, user_id: int, limit: int = 20) -> list[Game]:
@@ -152,9 +149,14 @@ class LibraryService:
     # ------------------------------------------------------------------
     # Platforms
     # ------------------------------------------------------------------
-    async def list_platforms(self) -> list[Platform]:
-        """Return all available platforms."""
-        return await self._platform_repo.list_all()
+    async def list_platforms(self) -> list[PlatformResponse]:
+        """Return all available platforms (cached + in-process tier; see reference)."""
+        return await reference.list_platforms(
+            self._platform_repo,
+            self._cache,
+            ttl_seconds=self._reference_ttl,
+            process_ttl_seconds=self._reference_process_ttl,
+        )
 
     # ------------------------------------------------------------------
     # Library entries

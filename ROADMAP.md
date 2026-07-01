@@ -923,7 +923,7 @@ Epic 11 is already useful with buffered streaming; the live path adds real compl
 
 **Goal:** make the optional IGDB integration *compliant* and *cheap*. The client itself is correct (verified against the v4 docs: Twitch OAuth `client_credentials`, `Client-ID` + `Authorization: Bearer` headers, `POST /v4/games` with an Apicalypse body, parsing `name`/`cover.image_id`/`summary`/`genres.name`/`first_release_date`), but two promised pieces were skipped: the **Redis cache** (ARCHITECTURE §2 "Redis 7 for IGDB cache"; Epic 3 "token cached in Redis") and **user-facing attribution**.
 
-**Status:** attribution done; caching pending.
+**Status:** done. Attribution shipped earlier; IGDB result caching (`igdb/cached.py`, TTL `igdb_cache_ttl_seconds`) and the shared OAuth-token cache now run through the Epic 18 cache layer, which generalised this seed into the app-wide caching strategy.
 
 ### Context
 
@@ -954,7 +954,7 @@ IGDB is opt-in via `IGDB_CLIENT_ID` / `IGDB_CLIENT_SECRET` — graceful `IGDBNot
 
 **Goal:** promote the throwaway cache primitive introduced in Epic 17 into a **first-class, app-wide caching strategy** that materially cuts latency and LLM/API cost across every expensive path — not just IGDB. The hard parts are *correctness* (what is safe to cache, and how it's invalidated) and *coherence* (one consistent mechanism, keyed, observable, degradable), not the Redis calls themselves.
 
-**Status:** not started. Epic 17 shipped the seed: an `AbstractCache` port (`NullCache`/`RedisCache`) and one consumer (IGDB). This epic generalises that seed into a deliberate layer with an invalidation model, stampede protection, tiering, and observability.
+**Status:** done. Epic 17 shipped the seed (an `AbstractCache` port + IGDB consumer); this epic generalised it into a first-class layer. Shipped: the namespaced key builders (`keys.py`, user-scoped keys embed `user_id`), the read-through `cached_call` (`layer.py`) with **single-flight** stampede protection and per-namespace hit/miss counters, an **in-process tier** (LRU + TTL) in front of Redis for hot shared reference data (platforms, genres), consumers for deep recap / LLM completions / web research / stats / capture-parse, the event-driven invalidation map (`core/cache/invalidation.py` — `invalidate_user_stats` ambient across every stats-affecting mutation; deep recap is content-addressed so a new wrap-up structurally busts it), a global `cache_enabled` kill-switch + per-call `skip_cache` opt-out with best-effort degradation on any Redis outage, and observability (`GET /internal/v1/cache/stats` + `make cache-stats`).
 
 ### Why this deserves its own epic
 
@@ -974,14 +974,14 @@ The app has several genuinely expensive, repeat-heavy operations — a **deep re
 
 ### Cross-cutting mechanics
 
-- [ ] **Key + namespace convention** — a typed key-builder and per-namespace prefixes (`igdb:`, `recap:`, `llm:`, `stats:<user_id>:`); **never** mix users into a shared key.
-- [ ] **Invalidation model** — a documented map from domain events → busted keys (new wrap-up ⇒ that game's recap + that user's stats; play session start/end ⇒ stats). Event hooks live at the service layer, not scattered.
-- [ ] **Single-flight / stampede protection** — a per-key in-flight guard so N concurrent identical requests (e.g. two tabs opening the same deep recap) trigger **one** computation and the rest await it. Critical for the LLM/recap paths.
-- [ ] **Tiered cache** — optional in-process LRU in front of Redis for small, hot, shared data (platforms/genres) to skip a network round-trip; Redis for everything user- or size-significant.
-- [ ] **Observability** — per-namespace hit/miss counters (structured logs + optional metrics) so TTLs can be tuned against real hit rates, plus a `make cache-stats`-style readout.
-- [ ] **Safety & degradation** — every cache read is best-effort (outage ⇒ live); a global `cache_enabled` kill-switch; explicit opt-out per call where freshness must be guaranteed.
-- [ ] **Ops** — per-namespace TTL config; document a Redis `maxmemory-policy` (e.g. `allkeys-lru`) and memory budget; optional warm-up of popular IGDB titles.
-- [ ] **Tests** — invalidation correctness (event busts the right keys, never a cross-user key), single-flight (one compute under concurrency), tiered read-through, and graceful degradation when the cache is down. `RedisCache` stays integration-tested; the strategy/logic is unit-tested with a fake cache.
+- [x] **Key + namespace convention** — a typed key-builder and per-namespace prefixes (`igdb:`, `recap:`, `llm:`, `stats:<user_id>:`); **never** mix users into a shared key.
+- [x] **Invalidation model** — a documented map from domain events → busted keys (new wrap-up ⇒ that game's recap + that user's stats; play session start/end ⇒ stats). Event hooks live at the service layer, not scattered.
+- [x] **Single-flight / stampede protection** — a per-key in-flight guard so N concurrent identical requests (e.g. two tabs opening the same deep recap) trigger **one** computation and the rest await it. Critical for the LLM/recap paths.
+- [x] **Tiered cache** — optional in-process LRU in front of Redis for small, hot, shared data (platforms/genres) to skip a network round-trip; Redis for everything user- or size-significant.
+- [x] **Observability** — per-namespace hit/miss counters (structured logs + optional metrics) so TTLs can be tuned against real hit rates, plus a `make cache-stats`-style readout.
+- [x] **Safety & degradation** — every cache read is best-effort (outage ⇒ live); a global `cache_enabled` kill-switch; explicit opt-out per call where freshness must be guaranteed.
+- [x] **Ops** — per-namespace TTL config; document a Redis `maxmemory-policy` (e.g. `allkeys-lru`) and memory budget; optional warm-up of popular IGDB titles.
+- [x] **Tests** — invalidation correctness (event busts the right keys, never a cross-user key), single-flight (one compute under concurrency), tiered read-through, and graceful degradation when the cache is down. `RedisCache` stays integration-tested; the strategy/logic is unit-tested with a fake cache.
 
 ### Definition of Done
 

@@ -590,7 +590,7 @@ Two invalidation strategies, picked by data shape:
 - **Per-user, event-invalidated** — `stats:<user_id>:*`. Cached on read; busted on every mutation that shifts an aggregate (play session start/end/wrap-up, library add/update/delete, capture confirm). Invalidation is **ambient**, like `structlog`'s logger: `invalidate_user_stats(user_id)` resolves the process cache itself, so no service threads a cache for the write side. The boundary: *busting is ambient; caching reads are an injected dependency.*
 - **Content-addressed, TTL-only** — `recap:`, `research:`, `llm:`, `ref:`. The key is a digest of the inputs, so when inputs change the key changes and stale entries simply age out. The **deep recap** is the marquee case: its key digests the full `PlaySessionContext` (which *includes* the session's wrap-ups), so "bust on new wrap-up" is structural — a new wrap-up yields a fresh key, no explicit hook. Degraded results (a deep recap that fell back to quick, an empty LLM/search response) are never stored (`cache_if`), so a transient failure isn't remembered.
 
-Hit/miss is observable per namespace via `GET /v1/cache/stats` (and `make cache-stats`), so TTLs can be tuned against real hit rates.
+Hit/miss is observable per namespace via `GET /internal/v1/cache/stats` (and `make cache-stats`), so TTLs can be tuned against real hit rates.
 
 **Ops:** the cache is advisory, so set Redis `maxmemory` with `maxmemory-policy allkeys-lru` — content-addressed keys (recaps, completions) accumulate orphans by design and should be evicted under pressure rather than erroring. Per-namespace TTLs are config-driven (`*_CACHE_TTL_SECONDS`).
 

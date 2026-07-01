@@ -106,7 +106,7 @@ api-backfill: ## Re-inference backfill of stale embeddings/extractions (dry-run;
 
 .PHONY: cache-stats
 cache-stats: ## Show per-namespace cache hit/miss rates from the running API
-	@curl -s http://localhost:$${API_PORT:-8100}/v1/cache/stats | python3 -m json.tool
+	@curl -s http://localhost:$${API_PORT:-8100}/internal/v1/cache/stats | python3 -m json.tool
 
 .PHONY: api-lint
 api-lint: ## Lint API (ruff check)
