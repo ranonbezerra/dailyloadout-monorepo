@@ -53,6 +53,16 @@ async def confirm_candidate(
     if platform is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Platform not found")
 
+    # Atomically claim the candidate BEFORE creating the game/entry, so a
+    # concurrent double-confirm can't both reach ``library_repo.create`` (the
+    # loser would otherwise hit the uq_library_user_game_platform constraint as a
+    # 500). A later raise rolls the claim back with the rest of the transaction.
+    if not await candidate_repo.claim_status(candidate.id, "confirmed"):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Candidate already processed",
+        )
+
     game = await get_or_create_game(game_repo, candidate, created_by_user_id=user_id)
     if await library_repo.exists(user_id, game.id, platform_id):
         raise HTTPException(
@@ -111,8 +121,13 @@ async def bulk_confirm_candidates(
         if candidate.status != "pending":
             continue
         if candidate.public_id not in confirm_set:
-            await candidate_repo.update_status(candidate.id, "rejected")
-            rejected += 1
+            if await candidate_repo.claim_status(candidate.id, "rejected"):
+                rejected += 1
+            continue
+
+        # Atomically claim the candidate before any work; skip (don't count) if a
+        # concurrent confirm already took it.
+        if not await candidate_repo.claim_status(candidate.id, "confirmed"):
             continue
 
         # Apply a user-corrected title (drops the stale catalog match).
@@ -154,7 +169,11 @@ async def reject_candidate(
             detail=f"Candidate already {candidate.status}",
         )
 
-    await candidate_repo.update_status(candidate.id, "rejected")
+    if not await candidate_repo.claim_status(candidate.id, "rejected"):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Candidate already processed",
+        )
     await resolve_capture_status(capture.id, candidate_repo, capture_repo)
 
 

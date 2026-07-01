@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
-from sqlalchemy import ColumnElement, func, select
+from sqlalchemy import ColumnElement, CursorResult, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -231,13 +231,15 @@ class PlaySessionRepository:
         play_session_id: int,
         ended_via: str,
         ended_at: datetime | None = None,
-    ) -> None:
-        """Mark a play_session as ended."""
-        play_session = await self._session.get(PlaySession, play_session_id)
-        if play_session is not None:
-            play_session.ended_via = ended_via
-            play_session.ended_at = ended_at or datetime.now(UTC)
-            await self._session.flush()
+    ) -> bool:
+        """Atomically end only while active (``ended_at IS NULL``); ``False`` if already ended."""
+        result = await self._session.execute(
+            update(PlaySession)
+            .where(PlaySession.id == play_session_id, PlaySession.ended_at.is_(None))
+            .values(ended_via=ended_via, ended_at=ended_at or datetime.now(UTC))
+        )
+        await self._session.flush()
+        return (cast("CursorResult[Any]", result).rowcount or 0) > 0
 
     async def set_recap(
         self,
@@ -286,9 +288,13 @@ class PlaySessionRepository:
         return list(result.scalars().all())
 
     async def auto_clamp(self, play_session_id: int, max_hours: int = 8) -> None:
-        """Auto-clamp a stale play_session."""
-        play_session = await self._session.get(PlaySession, play_session_id)
-        if play_session is not None:
-            play_session.ended_via = "auto_clamp"
-            play_session.ended_at = play_session.started_at + timedelta(hours=max_hours)
-            await self._session.flush()
+        """Auto-clamp a stale play_session, only while still active (race-safe)."""
+        ps = await self._session.get(PlaySession, play_session_id)
+        if ps is None or ps.ended_at is not None:
+            return
+        await self._session.execute(
+            update(PlaySession)
+            .where(PlaySession.id == play_session_id, PlaySession.ended_at.is_(None))
+            .values(ended_via="auto_clamp", ended_at=ps.started_at + timedelta(hours=max_hours))
+        )
+        await self._session.flush()

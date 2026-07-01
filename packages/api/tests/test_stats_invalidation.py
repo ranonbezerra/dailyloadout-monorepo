@@ -251,6 +251,14 @@ class _CandidateRepo:
     async def update_status(self, candidate_id: int, status: str, **kwargs: Any) -> None:
         self._candidate.status = status
 
+    async def claim_status(
+        self, candidate_id: int, new_status: str, *, expected: str = "pending"
+    ) -> bool:
+        if self._candidate.status != expected:
+            return False
+        self._candidate.status = new_status
+        return True
+
     async def get_all_for_capture(self, capture_id: int) -> list[_Candidate]:
         return [self._candidate]
 
