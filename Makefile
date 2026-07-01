@@ -100,6 +100,10 @@ igdb-check: ## Smoke-test the live IGDB client (make igdb-check q="Hollow Knight
 igdb-backfill: ## Backfill IGDB metadata onto pre-IGDB games (dry-run; make igdb-backfill args="--apply")
 	cd $(API_DIR) && poetry run python scripts/backfill_igdb.py $(args)
 
+.PHONY: api-backfill
+api-backfill: ## Re-inference backfill of stale embeddings/extractions (dry-run; make api-backfill kind=embeddings args="--apply")
+	cd $(API_DIR) && poetry run python scripts/backfill.py --kind $(or $(kind),embeddings) $(args)
+
 .PHONY: cache-stats
 cache-stats: ## Show per-namespace cache hit/miss rates from the running API
 	@curl -s http://localhost:$${API_PORT:-8100}/v1/cache/stats | python3 -m json.tool

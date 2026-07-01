@@ -95,6 +95,12 @@ Content-Type: application/json
 | POST | `/logout` | Revoke refresh token |
 | GET | `/me` | Current user profile |
 
+The auth surface also includes (see the live `/docs` for schemas):
+
+- **Email verification & password recovery** — `/v1/auth/verify-email`, `/v1/auth/forgot-password`, `/v1/auth/reset-password`, `/v1/auth/change-password` (single-use, session-invalidating reset tokens).
+- **Two-factor (TOTP)** — `/v1/auth/mfa/*` (`status`, `enroll`, `confirm`, challenge/verify, disable; encrypted-at-rest secrets + single-use recovery codes).
+- **Social login (OAuth)** — `GET /v1/auth/oauth/{provider}/start` and `/callback` (Google, Twitch; Authorization Code + PKCE).
+
 ### Library (`/v1`)
 
 | Method | Path | Description |
@@ -119,6 +125,10 @@ Content-Type: application/json
 | GET | `/{public_id}` | Get capture status + candidates |
 | POST | `/{public_id}/candidates/{cid}/confirm` | Confirm a candidate |
 | POST | `/{public_id}/candidates/{cid}/reject` | Reject a candidate |
+| POST | `/library-import` | Bulk import from platform screenshots (multipart, multiple images) |
+| GET | `/{public_id}/candidates/duplicates` | List candidates that duplicate existing library entries |
+| POST | `/{public_id}/candidates/bulk-confirm` | Confirm many candidates, reject the rest, in one call |
+| POST | `/{public_id}/candidates/{cid}/rematch` | Re-match a candidate to a corrected title (re-search IGDB) |
 
 ### PlaySessions (`/v1/play-sessions`)
 
@@ -147,6 +157,14 @@ Content-Type: application/json
 | --- | --- | --- |
 | GET | `/overview` | KPI summary (games, play sessions, durations) |
 | GET | `/sessions` | Recent sessions (paginated) |
+
+### Concierge (`/v1/concierge`)
+
+Tool-using conversational agent over the real library and play-session pipeline (opt-in; gated write tools are UUID-validated).
+
+| Method | Path | Description |
+| --- | --- | --- |
+| POST | `/chat` | Send a message; streamed reply (SSE) keyed by a thread id |
 
 ### Backoffice (`/internal/v1`)
 
@@ -219,13 +237,21 @@ Errors follow a consistent format:
 | 404 | Resource not found |
 | 409 | Conflict (duplicate, already exists) |
 | 422 | Unprocessable (e.g. LLM failed after retries) |
-| 429 | Rate limited (auth endpoints) |
+| 429 | Rate limited |
 
 ---
 
 ## Rate limiting
 
-Auth endpoints (`/v1/auth/login`, `/v1/auth/register`) are rate-limited to prevent brute-force attacks. Other endpoints are not rate-limited in v1.0.
+Rate limits are enforced across the API (backed by Redis, shared across workers):
+
+- **Auth routes** are IP- **and** target-account-limited (login, register, verification resend, OAuth start/callback) to blunt brute-force and distributed attacks on a single account.
+- **Expensive routes** are per-user limited — e.g. concierge chat, recap, pick, capture, and library-import each have their own cap.
+- A generous **per-user backstop** applies to every authenticated request as a catch-all.
+- Limiters **fail open** (a Redis outage allows the request, logged) except on account-creation surfaces, which fail closed.
+- On top of rate limits, LLM-bearing routes pass through a **cost guard** (per-user + global token→$ spend caps) that returns `429`/`503` when a ceiling is hit.
+
+Per-route caps are tunable at runtime via the backoffice operational config. Exceeding a limit returns `429` with a `Retry-After` header.
 
 ---
 

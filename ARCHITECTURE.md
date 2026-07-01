@@ -339,7 +339,7 @@ CREATE INDEX idx_picks_user_recent ON picks(user_id, created_at DESC);
 CREATE TABLE audit_log (
     id          BIGSERIAL PRIMARY KEY,
     user_id     BIGINT REFERENCES users(id) ON DELETE SET NULL,
-    action      TEXT NOT NULL,              -- 'play session.start', 'library_entry.delete'
+    action      TEXT NOT NULL,              -- 'play_session.start', 'library_entry.delete'
     target_type TEXT NOT NULL,
     target_id   BIGINT,
     metadata    JSONB,

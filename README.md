@@ -47,7 +47,7 @@ The current track is **LLM Platform Hardening** ([ROADMAP.md](./ROADMAP.md), Epi
 
 - **Evaluation harness + observability/tracing (Epic 23)** — a golden-dataset eval with deterministic checks plus a **model-agnostic, kappa-calibrated** LLM-as-judge, gating prompt/model changes via `make quality` (`--real --gate` against a committed baseline), with per-call and per-graph-node spans (tokens / latency / cost / cache-hit) and redacted prompt/completion capture. Answers *"how do you know a prompt change didn't regress quality?"* with a number. **(shipped)**
 - **RAG over PlaySession history** — embed the player's own wrap-ups (Ollama + pgvector) and retrieve semantically to ground recaps, instead of the last 3 by SQL.
-- **Reranking** in the deep-research pipeline; **prompt-injection guardrails** on the agent's untrusted surfaces (chat + capture, with a tool-arg allowlist); a **semantic completion cache**; and **resumable batch re-inference** for embedding/prompt changes.
+- **Reranking** in the deep-research pipeline (shipped); **prompt-injection guardrails** on the agent's untrusted surfaces (chat + capture, with a tool-arg allowlist); a **semantic completion cache**; and **resumable batch re-inference** for embedding/prompt changes.
 
 ---
 
@@ -121,7 +121,7 @@ Detailed architecture in [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ### Shipped beyond v1.0
 
-- [x] **Deep Research Recap** — LangGraph graph over local SearXNG + Ollama: bounded search/refine loops, reranked grounding (planned, Epic 25), spoiler filtering, the anti-hallucination validator as the terminal gate, and quick-recap fallback.
+- [x] **Deep Research Recap** — LangGraph graph over local SearXNG + Ollama: bounded search/refine loops, relevance-**reranked** grounding before synthesis, spoiler-aware synthesis, the anti-hallucination validator as the terminal gate, and quick-recap fallback.
 - [x] **Backlog Concierge** — tool-using conversational agent over the real library; an operator of the play-session pipeline (start / recap / log), with write tools gated and UUID-validated.
 - [x] **Unified PlaySession pipeline** — one `start_play_session` spine; Pick, direct start, and the Concierge all funnel through it (recap is an optional stage).
 - [x] **Bulk library import** — local-first OCR (Tesseract) of platform list-view/purchase-history screenshots, fuzzy-matched to a canonical catalog, with a capped cloud-vision fallback.
@@ -137,10 +137,11 @@ Detailed architecture in [ARCHITECTURE.md](./ARCHITECTURE.md).
 - [x] **RAG over PlaySession history** — embed each wrap-up (Ollama + pgvector) and ground the recap on the *semantically* most relevant prior sessions, scoped per `(user, game)`, behind a `recap_retrieval` flag. A recall@k A/B shows semantic surfaces buried-but-relevant context the chronological last-N misses.
 - [x] **Semantic LLM cache** — a two-layer cache on capture-parse (exact Redis → semantic pgvector): near-duplicate game-name spellings the hash misses reuse the parse above a cosine threshold. A `--cache` threshold sweep reports the honest trade-off — hit-rate gain vs the false-hit rate on confusable inputs.
 - [x] **Prompt-injection guardrails** — defense-in-depth over the two untrusted surfaces (Concierge chat + captures): edge sanitization (control/bidi/zero-width strip + `<user_data>` fencing), a high-precision injection detector that blocks + logs override/jailbreak/tool-abuse turns, and PII redaction on echoed output. The load-bearing layer is the deterministic tool allowlist — a hijacked prompt physically can't drive an unsafe write (adversarially tested).
+- [x] **Deep-research reranking** — an LLM-rerank node between retrieval and synthesis reorders results by task relevance so the most on-topic passages ground the recap (and get scraped first). Deadline-aware and flag-gated, degrading to raw order when disabled/over budget. A model-free recall@k A/B (`evals/rerank.py`) shows the reordering surfaces buried-but-relevant results the raw search order misses (0.33 → 1.00 on buried-result cases; control case does not regress).
 
 ### In Design / Next
 
-- [ ] **LLM Platform Hardening** (Epics 25, 28) — eval + tracing + RAG + semantic cache + injection guardrails **shipped** (Epics 23–24, 26–27); next: research reranking and resumable batch re-inference.
+- [ ] **LLM Platform Hardening** (Epic 28) — eval + tracing + RAG + reranking + semantic cache + injection guardrails **shipped** (Epics 23–27); next: resumable batch re-inference for embedding/prompt-model changes.
 - [ ] **Cloud LLM adapters** — Bedrock/Vertex behind the existing LLM port for a hosted distribution; Ollama stays the local default.
 - [ ] **Apple Sign In + native iOS/Android apps** — with on-device LLMs for the fast path, backend fallback for the heavy work.
 

@@ -62,6 +62,9 @@ class PlaySession(TimestampMixin, Base):
     # The model that produced `embedding`, so a model swap can be detected and the
     # corpus re-embedded (never silently mixing vector spaces during retrieval).
     embedding_model: Mapped[str | None] = mapped_column(String, nullable=True)
+    # The extraction prompt+model version that produced `extracted_state`, so a
+    # prompt/model change is detectable and the corpus can be re-extracted (Epic 28).
+    extraction_version: Mapped[str | None] = mapped_column(String, nullable=True)
     play_session_type: Mapped[str] = mapped_column(
         String, nullable=False, default="regular", server_default="regular"
     )

@@ -55,6 +55,13 @@ class Settings(BaseSettings):
     embedding_dimensions: int = 768  # must match the model; a change = migration + re-embed
     recap_retrieval: str = "recent"  # recent | semantic — the A/B grounding source
 
+    # ── Batch re-inference / backfill (Epic 28) ───────────────────────────
+    # Bump when the extraction prompt/model changes so `make api-backfill kind=extraction`
+    # detects stale rows. The embedding side versions itself via `embedding_model`.
+    extraction_version: str = "v1"
+    backfill_batch_size: int = 100  # rows fetched per page
+    backfill_concurrency: int = 4  # concurrent inference calls per page (bounds cost + load)
+
     # ── Agent / Deep Research Recap (Epic 10) ─────────────────────────
     agent_provider: str = "dummy"  # langgraph | dummy
     research_provider: str = "dummy"  # searxng | dummy
