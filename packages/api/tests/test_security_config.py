@@ -70,3 +70,11 @@ def test_dev_env_normalized_case_and_whitespace() -> None:
     # "Development "/" TESTING" still count as dev (normalised), staying relaxed.
     assert Settings(app_env="Development ").is_production is False
     assert Settings(app_env=" testing").is_production is False
+
+
+def test_settings_ignores_unknown_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Operational vars consumed outside the schema (e.g. LOG_LEVEL via os.getenv)
+    # live in .env too; Settings must ignore them rather than fail on boot.
+    monkeypatch.setenv("LOG_LEVEL", "DEBUG")
+    monkeypatch.setenv("SOME_TOTALLY_UNKNOWN_VAR", "x")
+    Settings(_env_file=None)  # must not raise ValidationError

@@ -1,18 +1,19 @@
+import os
 from typing import Literal
 
 from pydantic_settings import BaseSettings
 
+# Tests (APP_ENV=testing) stay hermetic — never read a developer's local .env.
+_ENV_FILE = None if os.getenv("APP_ENV") == "testing" else ".env"
+
 
 class Settings(BaseSettings):
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {"env_file": _ENV_FILE, "env_file_encoding": "utf-8", "extra": "ignore"}
 
     # ── Core ─────────────────────────────────────────────────────────────
     app_env: str = "development"
     secret_key: str = "change-me-in-prod"
-    cors_origins: list[str] = [
-        "http://localhost:3200",
-        "http://localhost:5173",
-    ]
+    cors_origins: list[str] = ["http://localhost:3200", "http://localhost:5173"]
     # Host allowlist (TrustedHostMiddleware). ["*"]=dev; set API domain(s) in prod.
     trusted_hosts: list[str] = ["*"]
 
@@ -21,8 +22,7 @@ class Settings(BaseSettings):
 
     # ── Redis ────────────────────────────────────────────────────────────
     redis_url: str = "redis://localhost:6380/0"
-    # Socket read/connect timeout: a hung Redis must error (triggering the
-    # limiter/cost-guard fail modes), not stall the request.
+    # Socket read/connect timeout: a hung Redis errors (limiter/cost-guard fail modes).
     redis_socket_timeout_seconds: float = 2.0
     cache_enabled: bool = True  # off => NullCache (Epic 17)
     stats_cache_ttl_seconds: int = 300  # per-user stats; bust on session events (Epic 18)
